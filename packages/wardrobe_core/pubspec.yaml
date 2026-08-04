@@ -1,0 +1,17 @@
+name: wardrobe_core
+description: >-
+  Pure-Dart domain core for the Washing Advice wardrobe and laundry assistant.
+  Contains the care model, laundry sorting engine, machine translation and item
+  matching. Deliberately free of Flutter and of all runtime dependencies so it
+  can be exercised anywhere a Dart VM runs.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+# No `dependencies:` block, by design. See docs/adr/0002-pure-dart-core.md —
+# the domain must stay portable and instantly testable.
+
+dev_dependencies:
+  test: ^1.25.0

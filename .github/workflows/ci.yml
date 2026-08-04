@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A superseded run on the same branch has nothing useful left to say.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  wardrobe-core:
+    name: wardrobe_core (analyze, format, test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/wardrobe_core
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The core is pure Dart with no Flutter dependency, so the Dart SDK alone
+      # runs the entire suite — no Flutter, no Android SDK, no emulator.
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: Resolve dependencies
+        run: dart pub get
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed lib test example
+
+      - name: Analyze
+        # Anything the analyzer reports at all is a failure here: the domain is
+        # the part of the system that cannot afford to be subtly wrong.
+        run: dart analyze --fatal-infos --fatal-warnings
+
+      - name: Test
+        run: dart test --reporter=expanded
+
+      - name: Run the sorting demo
+        # Guards against the engine compiling and passing its unit tests while
+        # throwing on a realistic end-to-end pile.
+        run: dart run example/sort_demo.dart

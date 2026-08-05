@@ -12,7 +12,7 @@ from functools import lru_cache
 from app.config import Settings, get_settings
 from app.core.errors import ProviderUnavailableError
 from app.services.ai import providers as _providers  # noqa: F401 — registers providers
-from app.services.ai.base import ProviderError, StageCost, VisionStage
+from app.services.ai.base import ProviderError, StageCost, VisionProvider, VisionStage
 from app.services.ai.knowledge_cache import (
     InMemoryKnowledgeCache,
     KnowledgeCache,
@@ -57,12 +57,30 @@ def get_pipeline() -> VisionPipeline:
             hint="set GEMINI_API_KEY, or set VISION_PROVIDER=fake",
         ) from error
 
+    _live_providers.append(provider)
     stages.append(ProviderStage(provider, cost=StageCost.NETWORK, cache=cache))
 
     return VisionPipeline(
         stages,
         sufficient_confidence=settings.sufficient_confidence,
     )
+
+
+_live_providers: list[VisionProvider] = []
+"""Providers built by `get_pipeline`, so their connection pools can be closed.
+
+Tracked here rather than reached for through the pipeline's stages, which would
+mean the shutdown path depended on the pipeline's internal shape.
+"""
+
+
+async def close_providers() -> None:
+    """Releases every live provider's resources, at application shutdown."""
+    for provider in _live_providers:
+        closer = getattr(provider, "aclose", None)
+        if closer is not None:
+            await closer()
+    _live_providers.clear()
 
 
 def reset_wiring() -> None:
@@ -73,4 +91,5 @@ def reset_wiring() -> None:
     """
     get_pipeline.cache_clear()
     get_knowledge_cache.cache_clear()
+    _live_providers.clear()
     get_settings.cache_clear()

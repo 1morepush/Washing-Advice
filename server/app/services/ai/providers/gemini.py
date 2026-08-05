@@ -78,7 +78,8 @@ class GeminiVisionProvider:
         self._model = model
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout_seconds
-        self._client = client
+        self._injected_client = client
+        self._client: httpx.AsyncClient | None = client
 
     @classmethod
     def from_settings(cls, settings: Settings | None = None) -> GeminiVisionProvider:
@@ -100,6 +101,31 @@ class GeminiVisionProvider:
         return "gemini"
 
     # --- Transport ----------------------------------------------------------
+
+    def _http(self) -> httpx.AsyncClient:
+        """The client for this provider's lifetime.
+
+        Created once and kept. Building a fresh `AsyncClient` per request — as
+        this did originally — throws away the connection pool, so every scan
+        pays a new TCP connection and TLS handshake before it can start
+        uploading a multi-megabyte image. On a service whose whole job is
+        round-tripping images to a model, that is latency added to every single
+        call for nothing.
+        """
+        if self._client is None:
+            self._client = httpx.AsyncClient(timeout=self._timeout)
+        return self._client
+
+    async def aclose(self) -> None:
+        """Releases the connection pool.
+
+        Only closes a client this provider created; an injected one belongs to
+        whoever passed it in, and closing it here would break a caller sharing
+        one client across providers.
+        """
+        if self._client is not None and self._injected_client is None:
+            await self._client.aclose()
+            self._client = None
 
     async def _generate(
         self,
@@ -158,18 +184,10 @@ class GeminiVisionProvider:
         # proxies and error trackers as a matter of course.
         headers = {"x-goog-api-key": self._api_key}
 
-        client = self._client
-        owned = client is None
-        if client is None:
-            client = httpx.AsyncClient(timeout=self._timeout)
-
         try:
-            response = await client.post(url, json=body, headers=headers)
+            response = await self._http().post(url, json=body, headers=headers)
         except httpx.HTTPError as error:
             raise ProviderError(self.name, f"request failed: {error}") from error
-        finally:
-            if owned and client is not None:
-                await client.aclose()
 
         if response.status_code != 200:
             # Deliberately does not include the response body verbatim, which

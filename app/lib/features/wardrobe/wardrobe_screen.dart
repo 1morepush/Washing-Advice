@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
+import 'filter_sheet.dart';
 import 'widgets/item_tile.dart';
 
 class WardrobeScreen extends ConsumerWidget {
@@ -29,6 +30,19 @@ class WardrobeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Wardrobe'),
         actions: [
+          _FilterAction(
+            // Counted against the baseline, not against an empty query: the
+            // lifecycle filter in `.owned()` is the default view, and badging
+            // it as an active filter would show "1" to someone who has set
+            // nothing.
+            count: ref
+                .watch(wardrobeQueryProvider)
+                .copyWith(
+                  lifecycleStates: WardrobeScreen.baseline.lifecycleStates,
+                )
+                .activeFilterCount,
+            onPressed: () => showFilterSheet(context),
+          ),
           IconButton(
             onPressed: () => context.go('/settings'),
             icon: const Icon(Icons.settings_outlined),
@@ -70,6 +84,26 @@ class WardrobeScreen extends ConsumerWidget {
             : _ItemList(items: list),
       ),
     );
+  }
+}
+
+/// The filter button, badged with how many filters are on.
+class _FilterAction extends StatelessWidget {
+  const _FilterAction({required this.count, required this.onPressed});
+
+  final int count;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final button = IconButton(
+      onPressed: onPressed,
+      icon: const Icon(Icons.tune),
+      tooltip: 'Filter',
+    );
+    if (count == 0) return button;
+
+    return Badge.count(count: count, child: button);
   }
 }
 

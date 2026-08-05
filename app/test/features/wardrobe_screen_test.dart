@@ -39,9 +39,7 @@ void main() {
     expect(find.text('2 items'), findsOneWidget);
   });
 
-  testWidgets('an empty wardrobe says so rather than spinning', (
-    tester,
-  ) async {
+  testWidgets('an empty wardrobe says so rather than spinning', (tester) async {
     await pump(tester);
 
     expect(find.text('Your wardrobe is empty'), findsOneWidget);

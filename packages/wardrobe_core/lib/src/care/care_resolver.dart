@@ -69,6 +69,12 @@ final class CareResolver {
   /// source said nothing about it, which is different from saying "no". A
   /// creased care label with an illegible drying symbol produces a constraint
   /// with `tumbleDryAllowed: null`, and the rule table fills that gap.
+  /// [factsConfidence] is how sure we are of the *inputs* — the fibre content
+  /// and item type the rules fire on. It attenuates a rule-derived result,
+  /// because a derivation cannot be surer than its premise: applying the wool
+  /// rule to a garment only probably made of wool yields advice only probably
+  /// right, and presenting that at full strength is how an app talks someone
+  /// into felting a jumper. Defaults to 1.0 for facts that are established.
   CareResolution resolve({
     required ItemFacts facts,
     CareConstraint? fromLabel,
@@ -76,6 +82,7 @@ final class CareResolver {
     CareConstraint? fromInference,
     double inferenceConfidence = 0.5,
     CareInstructions? userOverride,
+    double factsConfidence = 1.0,
   }) {
     // 1 + 2: conservative defaults, tightened by the rule table.
     final evaluation = _evaluator.evaluate(facts);
@@ -114,6 +121,7 @@ final class CareResolver {
       hasInference: fromInference != null && !fromInference.statesNothing,
       inferenceConfidence: inferenceConfidence,
       hasRules: evaluation.applied.isNotEmpty,
+      factsConfidence: factsConfidence,
     );
 
     return CareResolution(
@@ -160,15 +168,32 @@ final class CareResolver {
   /// Reports the strongest source that contributed. Rule-derived care is
   /// recorded at a deliberately middling confidence: the derivation is exact,
   /// but it rests on a fibre composition that may itself have been guessed.
+  /// How much a rule-derived conclusion is worth before attenuation.
+  ///
+  /// Below the "act on it silently" threshold on purpose. The rule table is
+  /// exact, but it reasons from fibre content alone and cannot know about the
+  /// finish, the construction, or the manufacturer's own testing — so even at
+  /// full input confidence it is a good default rather than an instruction.
+  static const _ruleDerivedConfidence = 0.7;
+
   (Provenance, double) _strongestSource({
     required bool hasLabel,
     required double labelConfidence,
     required bool hasInference,
     required double inferenceConfidence,
     required bool hasRules,
+    required double factsConfidence,
   }) {
+    // A label is the manufacturer's own statement about this garment, so it is
+    // not attenuated by how well we guessed the fibre — it supersedes the guess
+    // rather than building on it.
     if (hasLabel) return (Provenance.tagScan, labelConfidence);
-    if (hasRules) return (Provenance.careRule, 0.7);
+    if (hasRules) {
+      return (
+        Provenance.careRule,
+        _ruleDerivedConfidence * factsConfidence.clamp(0.0, 1.0),
+      );
+    }
     if (hasInference) return (Provenance.aiInference, inferenceConfidence);
     return (Provenance.fallbackDefault, 0.0);
   }

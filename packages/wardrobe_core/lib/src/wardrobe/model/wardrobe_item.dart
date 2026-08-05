@@ -15,6 +15,7 @@ library;
 
 import '../../care/model/care_instructions.dart';
 import '../../care/model/care_symbols.dart';
+import '../../care/rules/care_rule.dart';
 import '../../shared/confidence.dart';
 import '../../shared/ids.dart';
 import 'condition.dart';
@@ -184,6 +185,41 @@ final class WardrobeItem {
   bool get needsCareTagScan => care.shouldPromptForTagScan && isLaunderable;
 
   double? get costPerWear => usage.costPerWear(purchase);
+
+  /// What the care rules are allowed to see.
+  ///
+  /// The rules take an [ItemFacts] rather than a whole item on purpose: the
+  /// care context should not be able to reach into lifecycle, photos or
+  /// purchase history, and keeping the input narrow is what makes a rule easy
+  /// to reason about and to test.
+  ///
+  /// This getter is the single definition of that projection. Building the
+  /// struct at each call site instead would let one caller quietly omit
+  /// `timesWashed` and get different advice for the same garment.
+  ///
+  /// Confidence is dropped here, not lost: the resolver tracks its own
+  /// confidence from the provenance of what it was given, and a rule asking
+  /// "is there enough wool in this?" cannot act on a maybe.
+  /// How much [facts] can be trusted, for attenuating anything derived from it.
+  ///
+  /// The weakest link, not an average: the rules reason from type *and*
+  /// composition together, so a confident reading of one cannot compensate for
+  /// a shaky reading of the other. Averaging would let "definitely a jumper,
+  /// possibly wool" pass as reasonably certain, which is precisely the case
+  /// where the advice needs a caveat.
+  double get factsConfidence =>
+      type.confidence < composition.confidence
+          ? type.confidence
+          : composition.confidence;
+
+  ItemFacts get facts => ItemFacts(
+        type: type.value,
+        composition: composition.value,
+        colors: colors.value,
+        pattern: pattern?.value,
+        conditionGrade: condition.grade,
+        timesWashed: usage.timesWashed,
+      );
 
   /// A display label such as `'Nike Hoodie'`.
   String get displayName => name.isNotEmpty

@@ -19,13 +19,19 @@ library;
 /// across a load with a plain comparison.
 enum FabricClass {
   /// Silk, wool, lace. Minimal agitation, low spin, usually no dryer.
-  delicate,
+  delicate(label: 'Delicate'),
 
   /// Cotton jersey, poly blends, most of a wardrobe.
-  normal,
+  normal(label: 'Everyday'),
 
   /// Denim, canvas, towels, work wear. Tolerates a full-strength cycle.
-  heavy;
+  heavy(label: 'Heavy duty');
+
+  const FabricClass({required this.label});
+
+  /// How robust the item is, in words. "Everyday" rather than "Normal", which
+  /// reads as a judgement about the garment instead of a washing instruction.
+  final String label;
 
   /// The more fragile of two classes — the safe choice for a shared load.
   FabricClass leastRobust(FabricClass other) =>

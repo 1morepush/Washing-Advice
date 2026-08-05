@@ -193,6 +193,43 @@ void main() {
       );
       expect(result.profile.shouldPromptForTagScan, isFalse);
     });
+
+    test('a rule fired on established facts is worth its full weight', () {
+      final result = resolver.resolve(facts: woolFacts);
+
+      expect(result.profile.source, Provenance.careRule);
+      expect(result.profile.confidence, closeTo(0.7, 1e-9));
+    });
+
+    test('a rule fired on a guessed fabric reports itself as a guess', () {
+      // The wool rule is exact. What it was applied *to* was a vision model's
+      // reading of a photograph, and the conclusion cannot be surer than that.
+      final result = resolver.resolve(facts: woolFacts, factsConfidence: 0.62);
+
+      expect(result.profile.source, Provenance.careRule);
+      expect(result.profile.confidence, closeTo(0.7 * 0.62, 1e-9));
+      // Which is what puts the "scan the label" prompt on exactly the garments
+      // whose care rests on an uncertain fibre reading.
+      expect(result.profile.band, ConfidenceBand.low);
+      expect(result.profile.shouldPromptForTagScan, isTrue);
+    });
+
+    test('a label is not attenuated by how well the fabric was guessed', () {
+      // The manufacturer's own instruction supersedes our reading of the
+      // fabric; it does not build on it. Attenuating here would make a clear
+      // photograph of a care label look uncertain because the garment shot
+      // beside it was blurry.
+      final result = resolver.resolve(
+        facts: woolFacts,
+        fromLabel: const CareConstraint(maxTempC: 40),
+        labelConfidence: 0.95,
+        factsConfidence: 0.3,
+      );
+
+      expect(result.profile.source, Provenance.tagScan);
+      expect(result.profile.confidence, closeTo(0.95, 1e-9));
+      expect(result.profile.isTrusted, isTrue);
+    });
   });
 
   test('explanations come back with the result', () {

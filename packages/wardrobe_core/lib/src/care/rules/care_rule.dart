@@ -197,6 +197,66 @@ final class CareConstraint {
 
   bool get statesNothing => statedFields.isEmpty && warnings.isEmpty;
 
+  Map<String, Object?> toJson() => {
+        if (method != null) 'method': method!.name,
+        if (maxTempC != null) 'maxTempC': maxTempC,
+        if (agitation != null) 'agitation': agitation!.name,
+        if (bleach != null) 'bleach': bleach!.name,
+        if (tumbleDryAllowed != null) 'tumbleDryAllowed': tumbleDryAllowed,
+        if (tumbleDryHeat != null) 'tumbleDryHeat': tumbleDryHeat!.name,
+        if (naturalDry != null) 'naturalDry': naturalDry!.name,
+        if (dryInShade != null) 'dryInShade': dryInShade,
+        if (doNotWring != null) 'doNotWring': doNotWring,
+        if (ironTemperature != null) 'ironTemperature': ironTemperature!.name,
+        if (steamAllowed != null) 'steamAllowed': steamAllowed,
+        if (doNotDryClean != null) 'doNotDryClean': doNotDryClean,
+        if (warnings.isNotEmpty)
+          'warnings': [for (final warning in warnings) warning.name],
+      };
+
+  /// Reads a constraint from the wire.
+  ///
+  /// Lives in the core rather than in the app's API client because the
+  /// absent-versus-null distinction is a domain invariant, not a transport
+  /// detail: a missing key means the label was silent and the rule table
+  /// should fill the gap, while a present one overrides it. A second parser
+  /// elsewhere would eventually get that backwards, and the failure mode is a
+  /// garment washed at the wrong temperature.
+  ///
+  /// A key that is present but null is therefore treated as absent — that is
+  /// what a JSON encoder that does not strip nulls produces, and reading it as
+  /// a stated value would invent an instruction the label never gave.
+  static CareConstraint fromJson(Map<String, Object?> json) {
+    T? read<T>(String key, T Function(Object raw) decode) {
+      final raw = json[key];
+      return raw == null ? null : decode(raw);
+    }
+
+    return CareConstraint(
+      method: read('method', (r) => WashMethod.values.byName(r as String)),
+      maxTempC: read('maxTempC', (r) => (r as num).toInt()),
+      agitation: read('agitation', (r) => Agitation.values.byName(r as String)),
+      bleach: read('bleach', (r) => BleachAllowance.values.byName(r as String)),
+      tumbleDryAllowed: read('tumbleDryAllowed', (r) => r as bool),
+      tumbleDryHeat:
+          read('tumbleDryHeat', (r) => TumbleDryHeat.values.byName(r as String)),
+      naturalDry:
+          read('naturalDry', (r) => NaturalDryMethod.values.byName(r as String)),
+      dryInShade: read('dryInShade', (r) => r as bool),
+      doNotWring: read('doNotWring', (r) => r as bool),
+      ironTemperature: read(
+        'ironTemperature',
+        (r) => IronTemperature.values.byName(r as String),
+      ),
+      steamAllowed: read('steamAllowed', (r) => r as bool),
+      doNotDryClean: read('doNotDryClean', (r) => r as bool),
+      warnings: {
+        for (final raw in (json['warnings'] as List<Object?>?) ?? const [])
+          CareWarning.values.byName(raw! as String),
+      },
+    );
+  }
+
   @override
   String toString() => 'CareConstraint(${[
         if (method != null) 'method=${method!.name}',

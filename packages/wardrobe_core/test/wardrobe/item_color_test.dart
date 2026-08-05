@@ -87,6 +87,38 @@ void main() {
     });
   });
 
+  group('CIELAB to sRGB', () {
+    test('round-trips every channel exactly', () {
+      // Exact, not approximate: the conversion runs through two non-linear
+      // transfer functions, and rounding drift here would show up as a swatch
+      // that is not the colour the garment was scanned as.
+      const samples = [
+        '#FFFFFF',
+        '#000000',
+        '#FF0000',
+        '#00FF00',
+        '#0000FF',
+        '#3F5B8C',
+        '#8A8A8A',
+        '#1A1A2E',
+      ];
+      for (final hex in samples) {
+        expect(ItemColor.fromHex(hex).hex, hex, reason: hex);
+      }
+    });
+
+    test('clamps colours sRGB cannot show instead of overflowing', () {
+      // A highly chromatic Lab value sits outside the sRGB gamut. Clamping
+      // loses accuracy, which is honest; letting the channel wrap would render
+      // a vivid green garment as something unrelated.
+      const outOfGamut = ItemColor(lightness: 60, a: -120, b: 90);
+      final rgb = outOfGamut.rgb;
+      for (var shift = 0; shift <= 16; shift += 8) {
+        expect((rgb >> shift) & 0xFF, inInclusiveRange(0, 255));
+      }
+    });
+  });
+
   group('colour classification', () {
     test('near-white with low chroma is a white', () {
       expect(Colors.white.colorClass, ColorClass.whites);

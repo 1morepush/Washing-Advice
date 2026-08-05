@@ -157,6 +157,38 @@ void main() {
       expect(result['unreadableSymbolCount'], 1);
     });
 
+    test('the parser carries absence through to statedFields', () {
+      // The assertion above checks the server's bytes; this one checks that the
+      // core actually reads them that way. Between them, a regression on either
+      // side of the wire fails a test.
+      final constraint = CareConstraint.fromJson(instructions);
+
+      expect(constraint.ironTemperature, isNull);
+      expect(constraint.statedFields, isNot(contains('iron.temperature')));
+      expect(constraint.statedFields, contains('wash.maxTempC'));
+      expect(constraint.method, WashMethod.machine);
+      expect(constraint.warnings, contains(CareWarning.washInsideOut));
+    });
+
+    test('a null on the wire is read as unstated, not as a stated value', () {
+      // A server that forgot `exclude_none` would send `"maxTempC": null`.
+      // Reading that as a stated limit would be inventing an instruction the
+      // label never gave, so it must be indistinguishable from absence.
+      final fromNull = CareConstraint.fromJson({'maxTempC': null});
+      expect(fromNull.maxTempC, isNull);
+      expect(fromNull.statesNothing, isTrue);
+    });
+
+    test('a constraint survives a round trip through JSON', () {
+      final original = CareConstraint.fromJson(instructions);
+      final round = CareConstraint.fromJson(original.toJson());
+
+      expect(round.statedFields, original.statedFields);
+      expect(round.warnings, original.warnings);
+      expect(round.maxTempC, original.maxTempC);
+      expect(round.agitation, original.agitation);
+    });
+
     test('a bar-less tub arrives as normal agitation', () {
       // If the server omitted this, every ordinary garment would inherit the
       // conservative default and be recommended a gentle cycle it does not need.

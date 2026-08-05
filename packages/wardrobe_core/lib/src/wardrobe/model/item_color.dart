@@ -13,16 +13,21 @@ import 'dart:math' as math;
 /// The laundry-relevant colour families.
 enum ColorClass {
   /// Bright white and off-white. Ruined by a single stray dark sock.
-  whites,
+  whites(label: 'Whites'),
 
   /// Pastels, beige, light grey. Tolerant of each other, not of dye bleed.
-  lights,
+  lights(label: 'Lights'),
 
   /// Saturated reds, blues, oranges. The category that bleeds.
-  brights,
+  brights(label: 'Brights'),
 
   /// Navy, charcoal, black, dark brown.
-  darks,
+  darks(label: 'Darks');
+
+  const ColorClass({required this.label});
+
+  /// What to call this pile when telling someone which load it goes in.
+  final String label;
 }
 
 /// A colour in CIELAB (D65), with the share of the garment it covers.
@@ -132,6 +137,47 @@ final class ItemColor {
 
   /// Whether this colour is saturated enough that its dye is likely to run.
   bool get isLikelyToBleed => chroma >= 45 && lightness <= 70;
+
+  /// Back to 8-bit sRGB, as `0xRRGGBB`.
+  ///
+  /// The exact inverse of [ItemColor.fromRgb]. It lives here rather than in the
+  /// app because the core owns the colour space: a widget that reimplemented
+  /// CIELAB inversion would be a second, quietly diverging opinion about what a
+  /// stored colour looks like.
+  ///
+  /// Lab covers colours sRGB cannot show, so the channels are clamped. That is
+  /// a real conversion loss and not an error — the alternative is a garment
+  /// swatch with a negative amount of green in it.
+  int get rgb {
+    const xn = 0.95047, yn = 1.0, zn = 1.08883;
+    const delta = 6.0 / 29.0;
+
+    final fy = (lightness + 16) / 116;
+    final fx = fy + a / 500;
+    final fz = fy - b / 200;
+
+    double invert(double t) =>
+        t > delta ? t * t * t : 3 * delta * delta * (t - 4.0 / 29.0);
+
+    final x = xn * invert(fx), y = yn * invert(fy), z = zn * invert(fz);
+
+    // Inverse of the sRGB D65 primaries used in `fromRgb`.
+    final r = 3.2404542 * x - 1.5371385 * y - 0.4985314 * z;
+    final g = -0.9692660 * x + 1.8760108 * y + 0.0415560 * z;
+    final bl = 0.0556434 * x - 0.2040259 * y + 1.0572252 * z;
+
+    int channel(double linear) {
+      final companded = linear <= 0.0031308
+          ? 12.92 * linear
+          : 1.055 * math.pow(linear, 1 / 2.4).toDouble() - 0.055;
+      return (companded.clamp(0.0, 1.0) * 255).round();
+    }
+
+    return (channel(r) << 16) | (channel(g) << 8) | channel(bl);
+  }
+
+  /// As `#RRGGBB`, for display and for anything that speaks CSS.
+  String get hex => '#${rgb.toRadixString(16).padLeft(6, '0').toUpperCase()}';
 
   /// Perceptual difference between two colours, per CIEDE2000.
   ///

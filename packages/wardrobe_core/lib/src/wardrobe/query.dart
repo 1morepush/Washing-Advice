@@ -92,7 +92,9 @@ final class WardrobeQuery {
 
   final Set<Season> seasons;
 
-  /// Matches an item containing *any* of these fibres in a decisive amount.
+  /// Matches an item any of these fibres genuinely describes — see
+  /// [FabricComposition.isDescribedBy], which is a lower bar than the care
+  /// threshold on purpose.
   final Set<Fiber> fibers;
 
   final Set<LifecycleState> lifecycleStates;

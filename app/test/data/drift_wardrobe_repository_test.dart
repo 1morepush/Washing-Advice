@@ -80,7 +80,10 @@ void main() {
         await repository.query(const WardrobeQuery(text: 'after')),
         hasLength(1),
       );
-      expect(await repository.query(const WardrobeQuery(text: 'before')), isEmpty);
+      expect(
+        await repository.query(const WardrobeQuery(text: 'before')),
+        isEmpty,
+      );
       expect(
         await repository.query(const WardrobeQuery(brands: {'Adidas'})),
         hasLength(1),
@@ -115,22 +118,18 @@ void main() {
       // built from the *care* threshold, so an 80/20 cotton-polyester tee was
       // not findable under polyester at all.
       await repository.saveAll([
-        _item(
-          id: 'trace',
-          composition: {Fiber.cotton: 98, Fiber.elastane: 2},
-        ),
-        _item(
-          id: 'real',
-          composition: {Fiber.cotton: 80, Fiber.polyester: 20},
-        ),
+        _item(id: 'trace', composition: {Fiber.cotton: 98, Fiber.elastane: 2}),
+        _item(id: 'real', composition: {Fiber.cotton: 80, Fiber.polyester: 20}),
       ]);
 
-      final elastane =
-          await repository.query(const WardrobeQuery(fibers: {Fiber.elastane}));
+      final elastane = await repository.query(
+        const WardrobeQuery(fibers: {Fiber.elastane}),
+      );
       expect(elastane, isEmpty);
 
-      final polyester = await repository
-          .query(const WardrobeQuery(fibers: {Fiber.polyester}));
+      final polyester = await repository.query(
+        const WardrobeQuery(fibers: {Fiber.polyester}),
+      );
       expect([for (final i in polyester) i.id.value], ['real']);
     });
 
@@ -145,8 +144,7 @@ void main() {
       expect(page, hasLength(3));
     });
 
-    test('brands come back in their display casing, not lower-cased',
-        () async {
+    test('brands come back in their display casing, not lower-cased', () async {
       await repository.save(_item(id: 'a', brand: 'Nike'));
       expect(await repository.knownBrands(), ['Nike']);
     });

@@ -92,26 +92,26 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) async {
-          await m.createAll();
-          // Indexes on the columns the wardrobe screen actually filters by.
-          // Without these every filter is a table scan, which is fine at 50
-          // items and not at 500.
-          await customStatement(
-            'CREATE INDEX IF NOT EXISTS idx_items_lifecycle '
-            'ON items (lifecycle)',
-          );
-          await customStatement(
-            'CREATE INDEX IF NOT EXISTS idx_items_category ON items (category)',
-          );
-          await customStatement(
-            'CREATE INDEX IF NOT EXISTS idx_items_brand ON items (brand_lower)',
-          );
-          await customStatement(
-            'CREATE INDEX IF NOT EXISTS idx_events_item ON events (item_id)',
-          );
-        },
+    onCreate: (m) async {
+      await m.createAll();
+      // Indexes on the columns the wardrobe screen actually filters by.
+      // Without these every filter is a table scan, which is fine at 50
+      // items and not at 500.
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_items_lifecycle '
+        'ON items (lifecycle)',
       );
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_items_category ON items (category)',
+      );
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_items_brand ON items (brand_lower)',
+      );
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_events_item ON events (item_id)',
+      );
+    },
+  );
 }
 
 /// Builds the storage row for an item.

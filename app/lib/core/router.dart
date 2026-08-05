@@ -14,24 +14,15 @@ import '../features/wardrobe/item_detail_screen.dart';
 import '../features/wardrobe/wardrobe_screen.dart';
 
 GoRouter buildRouter() => GoRouter(
-      initialLocation: '/',
-      routes: [
-        GoRoute(
-          path: '/',
-          builder: (_, _) => const WardrobeScreen(),
-        ),
-        GoRoute(
-          path: '/item/:id',
-          builder: (_, state) =>
-              ItemDetailScreen(id: ItemId(state.pathParameters['id']!)),
-        ),
-        GoRoute(
-          path: '/scan',
-          builder: (_, _) => const ScanScreen(),
-        ),
-        GoRoute(
-          path: '/settings',
-          builder: (_, _) => const SettingsScreen(),
-        ),
-      ],
-    );
+  initialLocation: '/',
+  routes: [
+    GoRoute(path: '/', builder: (_, _) => const WardrobeScreen()),
+    GoRoute(
+      path: '/item/:id',
+      builder: (_, state) =>
+          ItemDetailScreen(id: ItemId(state.pathParameters['id']!)),
+    ),
+    GoRoute(path: '/scan', builder: (_, _) => const ScanScreen()),
+    GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
+  ],
+);

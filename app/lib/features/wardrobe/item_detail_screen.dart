@@ -123,10 +123,7 @@ class _Details extends StatelessWidget {
             _Fact(label: 'Worn', value: '${item.usage.timesWorn} times'),
             _Fact(label: 'Washed', value: '${item.usage.timesWashed} times'),
             if (item.costPerWear case final double cost)
-              _Fact(
-                label: 'Cost per wear',
-                value: cost.toStringAsFixed(2),
-              ),
+              _Fact(label: 'Cost per wear', value: cost.toStringAsFixed(2)),
             _Fact(label: 'Status', value: item.lifecycle.label),
           ],
         ),
@@ -160,7 +157,10 @@ class _ScanPrompt extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.document_scanner_outlined, color: scheme.onTertiaryContainer),
+          Icon(
+            Icons.document_scanner_outlined,
+            color: scheme.onTertiaryContainer,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -175,11 +175,7 @@ class _ScanPrompt extends StatelessWidget {
 }
 
 class _Section extends StatelessWidget {
-  const _Section({
-    required this.title,
-    required this.children,
-    this.trailing,
-  });
+  const _Section({required this.title, required this.children, this.trailing});
 
   final String title;
   final List<Widget> children;
@@ -187,28 +183,28 @@ class _Section extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                  ),
+            Expanded(
+              child: Text(
+                title,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
                 ),
-                if (trailing case final Widget trailing) trailing,
-              ],
+              ),
             ),
-            const SizedBox(height: 8),
-            ...children,
+            if (trailing case final Widget trailing) trailing,
           ],
         ),
-      );
+        const SizedBox(height: 8),
+        ...children,
+      ],
+    ),
+  );
 }
 
 /// A single labelled claim, with its provenance when it has one.

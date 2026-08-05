@@ -25,10 +25,7 @@ class ItemTile extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
-        [
-          item.type.value.label,
-          item.composition.value.label,
-        ].join(' · '),
+        [item.type.value.label, item.composition.value.label].join(' · '),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: theme.textTheme.bodySmall,

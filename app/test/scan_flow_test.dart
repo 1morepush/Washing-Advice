@@ -32,8 +32,9 @@ void main() {
         wardrobeRepositoryProvider.overrideWithValue(repository),
         eventLogProvider.overrideWithValue(InMemoryEventLog()),
         aiGatewayProvider.overrideWithValue(gateway),
-        idGeneratorProvider
-            .overrideWithValue(SequentialIdGenerator(prefix: 'scan')),
+        idGeneratorProvider.overrideWithValue(
+          SequentialIdGenerator(prefix: 'scan'),
+        ),
         imageCaptureProvider.overrideWithValue(
           FixedImageCaptureSource([
             const ScanImage(bytes: [1, 2, 3]),
@@ -67,7 +68,8 @@ void main() {
 
   test('care is derived from the fabric, not taken from the model', () async {
     await controller().captureAndScan();
-    final draft = (container.read(scanControllerProvider) as ScanReviewing).draft;
+    final draft =
+        (container.read(scanControllerProvider) as ScanReviewing).draft;
 
     // The fake returns a wool jumper. Nothing in the response mentions washing,
     // so a care profile at all is proof the rule table ran — and it must be the
@@ -80,7 +82,8 @@ void main() {
 
   test('a wool garment still asks for its care label', () async {
     await controller().captureAndScan();
-    final draft = (container.read(scanControllerProvider) as ScanReviewing).draft;
+    final draft =
+        (container.read(scanControllerProvider) as ScanReviewing).draft;
 
     // A rule-derived profile is a good default and not a manufacturer's word.
     // Superwash wool exists, and the label is the only way to know.

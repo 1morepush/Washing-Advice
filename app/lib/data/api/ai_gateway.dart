@@ -34,7 +34,7 @@ class ScanFailure implements Exception {
 
 class AiGateway implements VisionPort {
   AiGateway({required this.baseUrl, http.Client? client})
-      : _client = client ?? http.Client();
+    : _client = client ?? http.Client();
 
   /// Where the M2 server lives, e.g. `http://localhost:8000`.
   final Uri baseUrl;
@@ -131,7 +131,9 @@ class AiGateway implements VisionPort {
     final body = jsonDecode(response.body) as Map<String, Object?>;
     lastDiagnostics = body['diagnostics'] == null
         ? null
-        : ScanDiagnostics.fromJson(body['diagnostics']! as Map<String, Object?>);
+        : ScanDiagnostics.fromJson(
+            body['diagnostics']! as Map<String, Object?>,
+          );
 
     final result = body['result'];
     if (result is! Map<String, Object?>) {
@@ -161,16 +163,14 @@ class AiGateway implements VisionPort {
 
     return switch (response.statusCode) {
       413 => ScanFailure(
-          detail ?? 'That photo is too large.',
-          isRetryable: false,
-        ),
+        detail ?? 'That photo is too large.',
+        isRetryable: false,
+      ),
       422 => ScanFailure(
-          detail ?? 'That photo could not be read.',
-          isRetryable: false,
-        ),
-      503 => ScanFailure(
-          detail ?? 'Scanning is unavailable right now.',
-        ),
+        detail ?? 'That photo could not be read.',
+        isRetryable: false,
+      ),
+      503 => ScanFailure(detail ?? 'Scanning is unavailable right now.'),
       _ => ScanFailure(detail ?? 'The scan failed (${response.statusCode}).'),
     };
   }

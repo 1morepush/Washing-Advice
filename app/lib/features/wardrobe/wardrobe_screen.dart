@@ -82,8 +82,8 @@ class _ItemList extends ConsumerWidget {
                 ? '${items.length} ${items.length == 1 ? 'item' : 'items'}'
                 : '${items.length} of $owned items',
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
         Expanded(
@@ -125,28 +125,28 @@ class _SearchFieldState extends State<_SearchField> {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        child: TextField(
-          controller: _controller,
-          onChanged: widget.onChanged,
-          textInputAction: TextInputAction.search,
-          decoration: InputDecoration(
-            hintText: 'Search your wardrobe',
-            prefixIcon: const Icon(Icons.search),
-            isDense: true,
-            suffixIcon: _controller.text.isEmpty
-                ? null
-                : IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: () {
-                      _controller.clear();
-                      widget.onChanged('');
-                      setState(() {});
-                    },
-                  ),
-          ),
-        ),
-      );
+    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+    child: TextField(
+      controller: _controller,
+      onChanged: widget.onChanged,
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        hintText: 'Search your wardrobe',
+        prefixIcon: const Icon(Icons.search),
+        isDense: true,
+        suffixIcon: _controller.text.isEmpty
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.clear),
+                onPressed: () {
+                  _controller.clear();
+                  widget.onChanged('');
+                  setState(() {});
+                },
+              ),
+      ),
+    ),
+  );
 }
 
 class _EmptyState extends StatelessWidget {

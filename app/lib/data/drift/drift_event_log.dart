@@ -20,26 +20,28 @@ class DriftEventLog implements EventLog {
   final AppDatabase _db;
 
   @override
-  Future<void> append(WardrobeEvent event) =>
-      _db.into(_db.events).insert(_rowFor(event), mode: InsertMode.insertOrIgnore);
+  Future<void> append(WardrobeEvent event) => _db
+      .into(_db.events)
+      .insert(_rowFor(event), mode: InsertMode.insertOrIgnore);
 
   @override
   Future<void> appendAll(Iterable<WardrobeEvent> events) => _db.batch((batch) {
-        batch.insertAll(
-          _db.events,
-          [for (final event in events) _rowFor(event)],
-          // An event id is deterministic for a given happening, so a retry
-          // after a dropped connection must not double-count a wash.
-          mode: InsertMode.insertOrIgnore,
-        );
-      });
+    batch.insertAll(
+      _db.events,
+      [for (final event in events) _rowFor(event)],
+      // An event id is deterministic for a given happening, so a retry
+      // after a dropped connection must not double-count a wash.
+      mode: InsertMode.insertOrIgnore,
+    );
+  });
 
   @override
   Future<List<WardrobeEvent>> forItem(ItemId itemId) async {
-    final rows = await (_db.select(_db.events)
-          ..where((t) => t.itemId.equals(itemId.value))
-          ..orderBy([(t) => OrderingTerm(expression: t.occurredAt)]))
-        .get();
+    final rows =
+        await (_db.select(_db.events)
+              ..where((t) => t.itemId.equals(itemId.value))
+              ..orderBy([(t) => OrderingTerm(expression: t.occurredAt)]))
+            .get();
     return [for (final row in rows) _eventFrom(row)];
   }
 
@@ -60,11 +62,11 @@ class DriftEventLog implements EventLog {
   }
 
   EventsCompanion _rowFor(WardrobeEvent event) => EventsCompanion.insert(
-        id: event.id.value,
-        itemId: event.itemId.value,
-        occurredAt: event.occurredAt,
-        payload: jsonEncode(event.toJson()),
-      );
+    id: event.id.value,
+    itemId: event.itemId.value,
+    occurredAt: event.occurredAt,
+    payload: jsonEncode(event.toJson()),
+  );
 
   WardrobeEvent _eventFrom(Event row) =>
       WardrobeEvent.fromJson(jsonDecode(row.payload) as Map<String, Object?>);

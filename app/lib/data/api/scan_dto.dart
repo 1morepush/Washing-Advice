@@ -45,14 +45,14 @@ final class ScanDiagnostics {
   final int elapsedMs;
 
   static ScanDiagnostics fromJson(Map<String, Object?> json) => ScanDiagnostics(
-        stagesRun: [
-          for (final stage in (json['stagesRun'] as List<Object?>?) ?? const [])
-            stage! as String,
-        ],
-        stageAnswered: json['stageAnswered'] as String?,
-        servedFromCache: json['servedFromCache'] as bool? ?? false,
-        elapsedMs: (json['elapsedMs'] as num?)?.toInt() ?? 0,
-      );
+    stagesRun: [
+      for (final stage in (json['stagesRun'] as List<Object?>?) ?? const [])
+        stage! as String,
+    ],
+    stageAnswered: json['stageAnswered'] as String?,
+    servedFromCache: json['servedFromCache'] as bool? ?? false,
+    elapsedMs: (json['elapsedMs'] as num?)?.toInt() ?? 0,
+  );
 }
 
 /// A scan result together with how it was produced.
@@ -92,7 +92,11 @@ GarmentScanResult garmentResultFromJson(Map<String, Object?> json) {
     // Colour is required by the core but optional on the wire, because a
     // provider can fail to read it. An empty palette is the honest stand-in and
     // classifies as darks, which is the safe pile to guess.
-    colors: optional('colors', (raw) => ColorPalette.fromJson(raw! as List<Object?>)) ??
+    colors:
+        optional(
+          'colors',
+          (raw) => ColorPalette.fromJson(raw! as List<Object?>),
+        ) ??
         Confident(
           ColorPalette.empty(),
           confidence: 0,
@@ -103,7 +107,10 @@ GarmentScanResult garmentResultFromJson(Map<String, Object?> json) {
       (raw) => FabricComposition.fromJson(raw! as Map<String, Object?>),
     ),
     brand: optional('brand', (raw) => raw! as String),
-    pattern: optional('pattern', (raw) => Pattern.values.byName(raw! as String)),
+    pattern: optional(
+      'pattern',
+      (raw) => Pattern.values.byName(raw! as String),
+    ),
     sleeveLength: optional(
       'sleeveLength',
       (raw) => SleeveLength.values.byName(raw! as String),
@@ -150,18 +157,18 @@ CareTagScanResult careTagResultFromJson(Map<String, Object?> json) {
 }
 
 PileScanResult pileResultFromJson(Map<String, Object?> json) => PileScanResult(
-      items: [
-        for (final raw in (json['items'] as List<Object?>?) ?? const [])
-          _detectedItemFromJson(raw! as Map<String, Object?>),
-      ],
-      partiallyObscuredCount:
-          (json['partiallyObscuredCount'] as num?)?.toInt() ?? 0,
-    );
+  items: [
+    for (final raw in (json['items'] as List<Object?>?) ?? const [])
+      _detectedItemFromJson(raw! as Map<String, Object?>),
+  ],
+  partiallyObscuredCount:
+      (json['partiallyObscuredCount'] as num?)?.toInt() ?? 0,
+);
 
 DetectedItem _detectedItemFromJson(Map<String, Object?> json) => DetectedItem(
-      scan: garmentResultFromJson(json['scan']! as Map<String, Object?>),
-      boundingBox:
-          BoundingBox.fromJson(json['boundingBox']! as Map<String, Object?>),
-      detectionConfidence:
-          (json['detectionConfidence']! as num).toDouble(),
-    );
+  scan: garmentResultFromJson(json['scan']! as Map<String, Object?>),
+  boundingBox: BoundingBox.fromJson(
+    json['boundingBox']! as Map<String, Object?>,
+  ),
+  detectionConfidence: (json['detectionConfidence']! as num).toDouble(),
+);

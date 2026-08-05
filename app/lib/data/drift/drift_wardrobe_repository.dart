@@ -21,9 +21,9 @@ class DriftWardrobeRepository implements WardrobeRepository {
 
   @override
   Future<WardrobeItem?> byId(ItemId id) async {
-    final row = await (_db.select(_db.items)
-          ..where((t) => t.id.equals(id.value)))
-        .getSingleOrNull();
+    final row = await (_db.select(
+      _db.items,
+    )..where((t) => t.id.equals(id.value))).getSingleOrNull();
     return row == null ? null : itemFrom(row);
   }
 
@@ -45,11 +45,10 @@ class DriftWardrobeRepository implements WardrobeRepository {
 
   @override
   Future<void> saveAll(Iterable<WardrobeItem> items) => _db.batch((batch) {
-        batch.insertAllOnConflictUpdate(
-          _db.items,
-          [for (final item in items) rowFor(item)],
-        );
-      });
+    batch.insertAllOnConflictUpdate(_db.items, [
+      for (final item in items) rowFor(item),
+    ]);
+  });
 
   @override
   Future<void> delete(ItemId id) async {
@@ -57,16 +56,16 @@ class DriftWardrobeRepository implements WardrobeRepository {
   }
 
   @override
-  Stream<List<WardrobeItem>> watch(WardrobeQuery query) =>
-      _build(query, paged: true)
-          .watch()
-          .map((rows) => [for (final row in rows) itemFrom(row)]);
+  Stream<List<WardrobeItem>> watch(WardrobeQuery query) => _build(
+    query,
+    paged: true,
+  ).watch().map((rows) => [for (final row in rows) itemFrom(row)]);
 
   @override
   Future<List<String>> knownBrands() async {
-    final rows = await (_db.select(_db.items)
-          ..where((t) => t.brandLower.isNotNull()))
-        .get();
+    final rows = await (_db.select(
+      _db.items,
+    )..where((t) => t.brandLower.isNotNull())).get();
 
     // Read the display-cased brand back from the payload: `brandLower` exists
     // for matching, not for showing a user "nike".
@@ -104,7 +103,8 @@ class DriftWardrobeRepository implements WardrobeRepository {
     }
     if (query.lifecycleStates.isNotEmpty) {
       select.where(
-        (t) => t.lifecycle.isIn([for (final s in query.lifecycleStates) s.name]),
+        (t) =>
+            t.lifecycle.isIn([for (final s in query.lifecycleStates) s.name]),
       );
     }
 
@@ -113,7 +113,8 @@ class DriftWardrobeRepository implements WardrobeRepository {
       // comparison. An item with no brand never matches, because NULL fails
       // isIn — which is the behaviour the contract asks for.
       select.where(
-        (t) => t.brandLower.isIn([for (final b in query.brands) b.toLowerCase()]),
+        (t) =>
+            t.brandLower.isIn([for (final b in query.brands) b.toLowerCase()]),
       );
     }
 
@@ -172,7 +173,10 @@ class DriftWardrobeRepository implements WardrobeRepository {
   }
 
   /// Whether a packed column contains any of [values].
-  Expression<bool> _anyPacked(GeneratedColumn<String> column, List<String> values) {
+  Expression<bool> _anyPacked(
+    GeneratedColumn<String> column,
+    List<String> values,
+  ) {
     final expression = column as Expression<String>;
     return values
         .map((value) => expression.like(packedPattern(value)))
@@ -182,36 +186,32 @@ class DriftWardrobeRepository implements WardrobeRepository {
   List<OrderClauseGenerator<$ItemsTable>> _ordering(WardrobeSort sort) =>
       switch (sort) {
         WardrobeSort.recentlyAdded => [
-            (t) => OrderingTerm(expression: t.addedAt, mode: OrderingMode.desc),
-          ],
+          (t) => OrderingTerm(expression: t.addedAt, mode: OrderingMode.desc),
+        ],
         WardrobeSort.nameAscending => [
-            (t) => OrderingTerm(expression: t.name.lower()),
-          ],
+          (t) => OrderingTerm(expression: t.name.lower()),
+        ],
         WardrobeSort.mostWorn => [
-            (t) =>
-                OrderingTerm(expression: t.timesWorn, mode: OrderingMode.desc),
-          ],
+          (t) => OrderingTerm(expression: t.timesWorn, mode: OrderingMode.desc),
+        ],
         // `nulls: last` on every date and cost ordering. Never-worn and
         // unpriced items must sort last in BOTH directions, or a view meant to
         // surface what gets used would bury it under everything untouched.
         WardrobeSort.recentlyWorn => [
-            (t) => OrderingTerm(
-                  expression: t.lastWornAt,
-                  mode: OrderingMode.desc,
-                  nulls: NullsOrder.last,
-                ),
-          ],
+          (t) => OrderingTerm(
+            expression: t.lastWornAt,
+            mode: OrderingMode.desc,
+            nulls: NullsOrder.last,
+          ),
+        ],
         WardrobeSort.leastRecentlyWorn => [
-            (t) => OrderingTerm(
-                  expression: t.lastWornAt,
-                  nulls: NullsOrder.last,
-                ),
-          ],
+          (t) => OrderingTerm(expression: t.lastWornAt, nulls: NullsOrder.last),
+        ],
         WardrobeSort.costPerWear => [
-            (t) => OrderingTerm(
-                  expression: t.costPerWearMinor,
-                  nulls: NullsOrder.last,
-                ),
-          ],
+          (t) => OrderingTerm(
+            expression: t.costPerWearMinor,
+            nulls: NullsOrder.last,
+          ),
+        ],
       };
 }

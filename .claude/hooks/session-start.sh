@@ -59,11 +59,32 @@ fi
 
 export PATH="$DART_HOME/bin:$PATH"
 
-# Warm the package cache so the first `dart test` does not stall on a download.
+# The Flutter app needs the Flutter SDK, which is much larger than Dart and is
+# only useful if it is already in the image. It is not installed here on
+# purpose: a ~1 GB download would delay the start of every session, including
+# the many that only touch the core or the server. When the image provides it,
+# it is picked up; otherwise the core and server work as before and the app's
+# commands are reported as unavailable rather than failing obscurely later.
+FLUTTER_HOME="${FLUTTER_HOME:-/opt/flutter}"
+if [ -x "$FLUTTER_HOME/bin/flutter" ]; then
+  export PATH="$FLUTTER_HOME/bin:$PATH"
+  HAVE_FLUTTER=1
+  echo "Flutter present: $("$FLUTTER_HOME/bin/flutter" --version 2>/dev/null | head -1)"
+else
+  HAVE_FLUTTER=0
+fi
+
+# Warm the package caches so the first test run does not stall on a download.
 if [ -d packages/wardrobe_core ]; then
   (cd packages/wardrobe_core && dart pub get >/dev/null 2>&1) \
     && echo "wardrobe_core dependencies resolved." \
     || echo "warning: 'dart pub get' failed; run it by hand in packages/wardrobe_core."
+fi
+
+if [ "$HAVE_FLUTTER" = "1" ] && [ -d app ]; then
+  (cd app && flutter pub get >/dev/null 2>&1) \
+    && echo "app dependencies resolved." \
+    || echo "warning: 'flutter pub get' failed; run it by hand in app."
 fi
 
 cat <<'EOF'
@@ -73,3 +94,17 @@ Ready. From packages/wardrobe_core:
   dart test
   dart run example/sort_demo.dart
 EOF
+
+if [ "$HAVE_FLUTTER" = "1" ]; then
+  cat <<'EOF'
+From app:
+  flutter analyze
+  flutter test
+  dart run build_runner build   # after changing the Drift schema
+EOF
+else
+  cat <<'EOF'
+Flutter was not found at /opt/flutter, so the app cannot be built or tested in
+this session. The core and the server are unaffected.
+EOF
+fi

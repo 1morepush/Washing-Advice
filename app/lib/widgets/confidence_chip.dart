@@ -26,12 +26,12 @@ class ConfidenceChip extends StatelessWidget {
 
   /// Builds a chip for any [Confident] value.
   ConfidenceChip.of(Confident<Object> value, {bool compact = false, Key? key})
-      : this(
-          confidence: value.confidence,
-          source: value.source,
-          compact: compact,
-          key: key,
-        );
+    : this(
+        confidence: value.confidence,
+        source: value.source,
+        compact: compact,
+        key: key,
+      );
 
   final double confidence;
   final Provenance source;
@@ -62,9 +62,9 @@ class ConfidenceChip extends StatelessWidget {
       child: Text(
         text,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: scheme.onConfidenceContainer(band),
-              fontWeight: FontWeight.w500,
-            ),
+          color: scheme.onConfidenceContainer(band),
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }
@@ -77,9 +77,9 @@ class ConfidenceChip extends StatelessWidget {
 /// manufacturer's instruction, a photo is the app's guess — because that is
 /// what decides whether someone should go and check.
 String provenanceLabel(Provenance source) => switch (source) {
-      Provenance.fallbackDefault => 'assumed',
-      Provenance.aiInference => 'from a photo',
-      Provenance.careRule => 'from the fabric',
-      Provenance.tagScan => 'from the care label',
-      Provenance.userEdited => 'you set this',
-    };
+  Provenance.fallbackDefault => 'assumed',
+  Provenance.aiInference => 'from a photo',
+  Provenance.careRule => 'from the fabric',
+  Provenance.tagScan => 'from the care label',
+  Provenance.userEdited => 'you set this',
+};

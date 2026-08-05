@@ -62,9 +62,8 @@ final wardrobeItemsProvider = StreamProvider<List<WardrobeItem>>((ref) {
 /// Lets the list say "12 of 40" instead of leaving someone to wonder whether
 /// an empty screen means an empty wardrobe or a filter they forgot about.
 final ownedCountProvider = FutureProvider<int>(
-  (ref) => ref
-      .watch(wardrobeRepositoryProvider)
-      .count(const WardrobeQuery.owned()),
+  (ref) =>
+      ref.watch(wardrobeRepositoryProvider).count(const WardrobeQuery.owned()),
 );
 
 /// Brands present in the wardrobe, for the filter sheet.
@@ -134,4 +133,3 @@ final idGeneratorProvider = Provider<IdGenerator>((ref) => RandomIdGenerator());
 final careResolverProvider = Provider<CareResolver>(
   (ref) => const CareResolver(),
 );
-

@@ -46,6 +46,45 @@ jobs:
         # throwing on a realistic end-to-end pile.
         run: dart run example/sort_demo.dart
 
+  app:
+    name: app (analyze, format, test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Flutter, not bare Dart: this package depends on the Flutter SDK. It
+      # bundles Dart, so it would also serve the core's job — that job is kept
+      # on plain Dart deliberately, as a standing check that the domain has not
+      # quietly grown a Flutter dependency.
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Verify generated code is current
+        # Drift's output is committed so the repository analyzes without a
+        # build step. Regenerating and diffing is what stops it going stale
+        # against a schema change nobody re-ran the generator for.
+        run: |
+          dart run build_runner build
+          git diff --exit-code lib/data/drift/database.g.dart
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      - name: Analyze
+        run: flutter analyze --fatal-infos --fatal-warnings
+
+      - name: Test
+        run: flutter test --reporter=expanded
+
   server:
     name: server (lint, types, test)
     runs-on: ubuntu-latest

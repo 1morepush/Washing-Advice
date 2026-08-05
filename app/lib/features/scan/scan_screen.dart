@@ -40,10 +40,10 @@ class ScanScreen extends ConsumerWidget {
         ScanReviewing() => _Review(state: state, controller: controller),
         ScanSaved(:final item) => _Saved(item: item, controller: controller),
         ScanError(:final message, :final isRetryable) => _Failed(
-            message: message,
-            isRetryable: isRetryable,
-            controller: controller,
-          ),
+          message: message,
+          isRetryable: isRetryable,
+          controller: controller,
+        ),
       },
     );
   }
@@ -56,46 +56,46 @@ class _Capture extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.checkroom_outlined,
-                size: 64,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Photograph the garment',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Lay it flat against a plain background. A front and a back '
-                'read better than one shot.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-              ),
-              const SizedBox(height: 32),
-              FilledButton.icon(
-                onPressed: controller.captureAndScan,
-                icon: const Icon(Icons.camera_alt_outlined),
-                label: const Text('Take a photo'),
-              ),
-              const SizedBox(height: 8),
-              TextButton.icon(
-                onPressed: () => controller.captureAndScan(fromGallery: true),
-                icon: const Icon(Icons.photo_library_outlined),
-                label: const Text('Choose from library'),
-              ),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.checkroom_outlined,
+            size: 64,
+            color: Theme.of(context).colorScheme.primary,
           ),
-        ),
-      );
+          const SizedBox(height: 24),
+          Text(
+            'Photograph the garment',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Lay it flat against a plain background. A front and a back '
+            'read better than one shot.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 32),
+          FilledButton.icon(
+            onPressed: controller.captureAndScan,
+            icon: const Icon(Icons.camera_alt_outlined),
+            label: const Text('Take a photo'),
+          ),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: () => controller.captureAndScan(fromGallery: true),
+            icon: const Icon(Icons.photo_library_outlined),
+            label: const Text('Choose from library'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _Analysing extends StatelessWidget {
@@ -105,20 +105,20 @@ class _Analysing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 24),
-            Text(
-              imageCount == 1
-                  ? 'Reading the photo…'
-                  : 'Reading $imageCount photos…',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ],
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const CircularProgressIndicator(),
+        const SizedBox(height: 24),
+        Text(
+          imageCount == 1
+              ? 'Reading the photo…'
+              : 'Reading $imageCount photos…',
+          style: Theme.of(context).textTheme.titleMedium,
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _Review extends StatelessWidget {
@@ -296,8 +296,8 @@ class _CareSummary extends StatelessWidget {
               wash.method == WashMethod.doNotWash
                   ? 'Do not wash'
                   : '${wash.method.label}'
-                      '${wash.maxTempC == null ? '' : ', up to ${wash.maxTempC}°C'}'
-                      ', ${wash.agitation.label.toLowerCase()}',
+                        '${wash.maxTempC == null ? '' : ', up to ${wash.maxTempC}°C'}'
+                        ', ${wash.agitation.label.toLowerCase()}',
               style: theme.textTheme.bodyMedium,
             ),
             if (item.needsCareTagScan) ...[
@@ -359,38 +359,38 @@ class _Saved extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.check_circle_outline,
-                size: 64,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '${item.displayName} added',
-                style: Theme.of(context).textTheme.titleMedium,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: () {
-                  controller.reset();
-                  context.go('/item/${item.id.value}');
-                },
-                child: const Text('View it'),
-              ),
-              TextButton(
-                onPressed: controller.reset,
-                child: const Text('Scan another'),
-              ),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.check_circle_outline,
+            size: 64,
+            color: Theme.of(context).colorScheme.primary,
           ),
-        ),
-      );
+          const SizedBox(height: 16),
+          Text(
+            '${item.displayName} added',
+            style: Theme.of(context).textTheme.titleMedium,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: () {
+              controller.reset();
+              context.go('/item/${item.id.value}');
+            },
+            child: const Text('View it'),
+          ),
+          TextButton(
+            onPressed: controller.reset,
+            child: const Text('Scan another'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _Failed extends StatelessWidget {

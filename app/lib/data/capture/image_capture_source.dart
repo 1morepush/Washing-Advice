@@ -24,7 +24,7 @@ abstract interface class ImageCaptureSource {
 
 class ImagePickerCaptureSource implements ImageCaptureSource {
   ImagePickerCaptureSource({ImagePicker? picker})
-      : _picker = picker ?? ImagePicker();
+    : _picker = picker ?? ImagePicker();
 
   final ImagePicker _picker;
 
@@ -59,11 +59,11 @@ class ImagePickerCaptureSource implements ImageCaptureSource {
 }
 
 Future<ScanImage> _toScanImage(XFile file) async => ScanImage(
-      bytes: await file.readAsBytes(),
-      // `image_picker` reports the type on web and often not on mobile, where
-      // the compressor above has already re-encoded to JPEG.
-      mimeType: file.mimeType ?? 'image/jpeg',
-    );
+  bytes: await file.readAsBytes(),
+  // `image_picker` reports the type on web and often not on mobile, where
+  // the compressor above has already re-encoded to JPEG.
+  mimeType: file.mimeType ?? 'image/jpeg',
+);
 
 /// A source that returns prepared bytes.
 ///

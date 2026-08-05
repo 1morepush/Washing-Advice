@@ -47,11 +47,8 @@ final class ScanReviewing extends ScanState {
 
   final ScanDiagnostics? diagnostics;
 
-  ScanReviewing withDraft(WardrobeItem draft) => ScanReviewing(
-        draft: draft,
-        result: result,
-        diagnostics: diagnostics,
-      );
+  ScanReviewing withDraft(WardrobeItem draft) =>
+      ScanReviewing(draft: draft, result: result, diagnostics: diagnostics);
 }
 
 /// The item was written to the wardrobe.
@@ -145,7 +142,9 @@ class ScanController extends StateNotifier<ScanState> {
       // row is what the wardrobe screen reads; the event is what makes the
       // history replayable, and without it "added on" would be a field nobody
       // could verify.
-      await _ref.read(eventLogProvider).append(
+      await _ref
+          .read(eventLogProvider)
+          .append(
             ItemAdded(
               id: EventId(ids.next()),
               itemId: item.id,
@@ -170,7 +169,8 @@ class ScanController extends StateNotifier<ScanState> {
       id: ItemId(_ref.read(idGeneratorProvider).next()),
       name: result.suggestedName ?? result.type.value.label,
       type: result.type,
-      composition: result.composition ??
+      composition:
+          result.composition ??
           Confident(
             FabricComposition(const {}),
             confidence: 0,
@@ -198,18 +198,19 @@ class ScanController extends StateNotifier<ScanState> {
   /// a photo of a hoodie told us its wash temperature would put a guess where the
   /// user expects a manufacturer's instruction.
   WardrobeItem _reresolveCare(WardrobeItem item) => item.copyWith(
-        care: _ref
-            .read(careResolverProvider)
-            .resolve(
-              facts: item.facts,
-              // Passing this is what makes a rule fired on a guessed fabric
-              // report itself as a guess, which in turn is what raises the
-              // "scan the label" prompt on exactly the items that need it.
-              factsConfidence: item.factsConfidence,
-            )
-            .profile,
-      );
+    care: _ref
+        .read(careResolverProvider)
+        .resolve(
+          facts: item.facts,
+          // Passing this is what makes a rule fired on a guessed fabric
+          // report itself as a guess, which in turn is what raises the
+          // "scan the label" prompt on exactly the items that need it.
+          factsConfidence: item.factsConfidence,
+        )
+        .profile,
+  );
 }
 
-final scanControllerProvider =
-    StateNotifierProvider<ScanController, ScanState>(ScanController.new);
+final scanControllerProvider = StateNotifierProvider<ScanController, ScanState>(
+  ScanController.new,
+);

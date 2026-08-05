@@ -16,8 +16,9 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  late final TextEditingController _url =
-      TextEditingController(text: ref.read(backendUrlProvider));
+  late final TextEditingController _url = TextEditingController(
+    text: ref.read(backendUrlProvider),
+  );
 
   ({bool reachable, String status, String? problem})? _health;
   bool _checking = false;
@@ -30,8 +31,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _save() async {
     await ref.read(settingsStoreProvider).setBackendUrl(_url.text);
-    ref.read(backendUrlProvider.notifier).state =
-        _url.text.trim().isEmpty ? defaultBackendUrl : _url.text.trim();
+    ref.read(backendUrlProvider.notifier).state = _url.text.trim().isEmpty
+        ? defaultBackendUrl
+        : _url.text.trim();
     await _check();
   }
 
@@ -121,27 +123,28 @@ class _HealthResult extends StatelessWidget {
 
     final (IconData icon, Color color, String title) = switch (health) {
       (reachable: false, status: _, problem: _) => (
-          Icons.cloud_off,
-          scheme.error,
-          'Could not reach the server',
-        ),
+        Icons.cloud_off,
+        scheme.error,
+        'Could not reach the server',
+      ),
       (reachable: true, status: 'ok', problem: _) => (
-          Icons.check_circle_outline,
-          scheme.primary,
-          'Connected',
-        ),
+        Icons.check_circle_outline,
+        scheme.primary,
+        'Connected',
+      ),
       _ => (
-          Icons.warning_amber_outlined,
-          scheme.tertiary,
-          'Reachable, but not ready to scan',
-        ),
+        Icons.warning_amber_outlined,
+        scheme.tertiary,
+        'Reachable, but not ready to scan',
+      ),
     };
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isOk ? scheme.surfaceContainerHighest : scheme.errorContainer
-            .withValues(alpha: isOk ? 1 : 0.4),
+        color: isOk
+            ? scheme.surfaceContainerHighest
+            : scheme.errorContainer.withValues(alpha: isOk ? 1 : 0.4),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -159,8 +162,8 @@ class _HealthResult extends StatelessWidget {
                   Text(
                     problem,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ],

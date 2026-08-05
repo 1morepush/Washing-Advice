@@ -20,15 +20,26 @@ String washSummary(WashCare wash) {
   ].join(', ');
 }
 
-String drySummary(DryCare dry) => [
-  if (dry.tumbleDryAllowed)
-    'Tumble dry ${dry.tumbleDryHeat.label.toLowerCase()}'
-  else
-    'Do not tumble dry',
-  if (dry.naturalDry case final NaturalDryMethod method) method.label,
-  if (dry.dryInShade) 'in the shade',
-  if (dry.doNotWring) 'do not wring',
-].join(', ');
+String drySummary(DryCare dry) {
+  // When a dryer is permitted, the natural method is an *alternative* and has
+  // to read as one. Comma-joining them gave "Tumble dry low heat, Dry flat",
+  // which reads as two instructions that contradict each other. When a dryer
+  // is forbidden it genuinely is the instruction, so the comma is right there.
+  final natural = dry.naturalDry?.label.toLowerCase();
+
+  final drying = dry.tumbleDryAllowed
+      ? [
+          'Tumble dry ${dry.tumbleDryHeat.label.toLowerCase()}',
+          if (natural != null) 'or $natural',
+        ].join(', ')
+      : ['Do not tumble dry', ?natural].join(', ');
+
+  return [
+    drying,
+    if (dry.dryInShade) 'out of direct sun',
+    if (dry.doNotWring) 'do not wring',
+  ].join(', ');
+}
 
 String ironSummary(IronCare iron) {
   if (!iron.isIronable) return 'Do not iron';

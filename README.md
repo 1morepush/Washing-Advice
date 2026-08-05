@@ -17,27 +17,33 @@ The domain core, the perception backend and the Flutter app all run. See
 |---|---|---|
 | 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 297 tests |
 | 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache | **Done** — 112 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 50 tests |
-| 4 | Care-tag scanning UI, filter sheet, item editing | Next |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 70 tests |
+| 4 | Care-tag scanning UI, item editing, filter sheet | **Done** |
 | 5 | Pile scanning and batch processing | |
 | 6 | Outfits, packing, analytics | |
 | 7 | Offline sync, Supabase, store preparation | |
 
 ## What it looks like
 
-| Wardrobe | Item detail | Scan review |
-|---|---|---|
-| ![Wardrobe list](app/docs/screenshots/wardrobe-light.png) | ![Item detail](app/docs/screenshots/item-detail-light.png) | ![Scan review](app/docs/screenshots/scan-review.png) |
+| Wardrobe | Item detail | Scan review | Care label |
+|---|---|---|---|
+| ![Wardrobe list](app/docs/screenshots/wardrobe-light.png) | ![Item detail](app/docs/screenshots/item-detail-light.png) | ![Scan review](app/docs/screenshots/scan-review.png) | ![Care label review](app/docs/screenshots/care-label-review.png) |
 
 These are captures of the real app, not mock-ups — a web build of
 `app/lib/main_demo.dart`, which is the shipping code with storage, the camera
 and the backend substituted. See [ADR 8](docs/adr/0008-app-layering-and-the-capture-seam.md).
 
-Note what the middle screenshot is doing. The fabric was read from a
+Note what the third screenshot is doing. The fabric was read from a
 photograph, so it is marked *"Please check · from a photo"*, and the care
 derived from it is marked *"Unsure · from the fabric"* with a prompt to scan
 the label. A care instruction the app is guessing at looks different from one
 it read off the garment, because acting on the wrong one shrinks a jumper.
+
+The fourth is what happens when that label is scanned: the manufacturer says
+this wool jumper may be machine washed at 40° and tumble dried on low, so the
+generic wool rule is struck through and overruled. Knowing *which* garments
+are exceptions to their own fabric is the thing a laundry app can tell you
+that reading the label yourself each time cannot.
 
 ## Layout
 

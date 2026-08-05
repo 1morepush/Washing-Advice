@@ -95,6 +95,20 @@ for (const theme of ['light', 'dark']) {
     await tapText(page, 'Take a photo');
     await page.waitForTimeout(2000);
     await shot(page, 'scan-review');
+
+    // The care-label flow, driven to its review step — the screen that shows
+    // where the manufacturer overruled the rule table.
+    await page.goto(`${BASE}/#/item/demo-jumper/care-label`, {
+      waitUntil: 'load',
+    });
+    await ready(page);
+    await tapText(page, 'Take a photo');
+    await page.waitForTimeout(2500);
+    await shot(page, 'care-label-review');
+
+    await page.goto(`${BASE}/#/item/demo-jumper/edit`, { waitUntil: 'load' });
+    await ready(page);
+    await shot(page, 'edit-item');
   }
 
   await context.close();

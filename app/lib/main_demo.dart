@@ -112,6 +112,32 @@ class _CannedGateway extends AiGateway {
       suggestedName: 'Slate wool jumper',
     );
   }
+
+  @override
+  Future<CareTagScanResult> scanCareTag(ScanImage image) async {
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+
+    // A superwash label: it permits things the generic wool rule forbids, which
+    // is the case the review screen exists to surface.
+    return CareTagScanResult(
+      instructions: const CareConstraint(
+        method: WashMethod.machine,
+        maxTempC: 40,
+        agitation: Agitation.mild,
+        tumbleDryAllowed: true,
+        tumbleDryHeat: TumbleDryHeat.low,
+        ironTemperature: IronTemperature.low,
+      ),
+      confidence: 0.91,
+      composition: Confident(
+        FabricComposition(const {Fiber.wool: 80, Fiber.nylon: 20}),
+        confidence: 0.94,
+        source: Provenance.tagScan,
+      ),
+      symbolsFound: const ['wash_40', 'tumble_low', 'iron_low', 'no_bleach'],
+      unreadableSymbolCount: 1,
+    );
+  }
 }
 
 /// A small wardrobe covering the cases the UI has to handle.
@@ -134,6 +160,7 @@ List<WardrobeItem> _seed() {
     double compositionConfidence = 0.9,
     Provenance compositionSource = Provenance.tagScan,
     CareProfile? care,
+    Confident<CareConstraint>? careLabel,
     UsageStats usage = const UsageStats.none(),
     bool isFavorite = false,
     int addedDaysAgo = 0,
@@ -158,6 +185,7 @@ List<WardrobeItem> _seed() {
         source: Provenance.aiInference,
       ),
       brand: brand == null ? null : Confident.fromUser(brand),
+      careLabel: careLabel,
       care: const CareProfile.unknown(),
       usage: usage,
       isFavorite: isFavorite,
@@ -170,11 +198,7 @@ List<WardrobeItem> _seed() {
     // shows what the rule table actually concludes rather than hand-written
     // instructions that could quietly disagree with it.
     return item.copyWith(
-      care:
-          care ??
-          const CareResolver()
-              .resolve(facts: item.facts, factsConfidence: item.factsConfidence)
-              .profile,
+      care: care ?? const CareResolver().forItem(item).profile,
     );
   }
 
@@ -206,6 +230,19 @@ List<WardrobeItem> _seed() {
       hex: '#F4F4F2',
       colorName: 'White',
       brand: 'Everlane',
+      // Its label has been read, so this one is advice from the manufacturer
+      // rather than from a rule — and the app stops asking to scan it.
+      careLabel: Confident(
+        const CareConstraint(
+          method: WashMethod.machine,
+          maxTempC: 40,
+          agitation: Agitation.normal,
+          tumbleDryAllowed: true,
+          tumbleDryHeat: TumbleDryHeat.medium,
+        ),
+        confidence: 0.95,
+        source: Provenance.tagScan,
+      ),
       usage: const UsageStats(timesWorn: 31, timesWashed: 22),
       addedDaysAgo: 120,
     ),

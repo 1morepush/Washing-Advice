@@ -31,6 +31,8 @@ dependencies:
   # Capture and transport.
   image_picker: ^1.1.2
   http: ^1.2.2
+  # Direct, not transitive: multipart parts need an explicit MediaType.
+  http_parser: ^4.1.2
 
   # Small preferences: chosen machines, backend URL.
   shared_preferences: ^2.3.3

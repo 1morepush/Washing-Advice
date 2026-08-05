@@ -15,6 +15,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../core/providers.dart';
 import '../../widgets/confidence_chip.dart';
 import '../../widgets/item_thumbnail.dart';
+import '../history/wear_recorder.dart';
 import 'cutout_controller.dart';
 import 'care_text.dart';
 
@@ -139,6 +140,7 @@ class _Details extends StatelessWidget {
         ),
         _Section(
           title: 'Use',
+          trailing: _WoreItButton(id: item.id),
           children: [
             _Fact(label: 'Worn', value: '${item.usage.timesWorn} times'),
             _Fact(label: 'Washed', value: '${item.usage.timesWashed} times'),
@@ -164,6 +166,37 @@ class _Details extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Records a wear.
+///
+/// On the detail screen rather than the list, because it is a deliberate act
+/// and a stray tap in a scrolling list would quietly corrupt the counters that
+/// cost-per-wear and "never worn" are computed from.
+class _WoreItButton extends ConsumerStatefulWidget {
+  const _WoreItButton({required this.id});
+
+  final ItemId id;
+
+  @override
+  ConsumerState<_WoreItButton> createState() => _WoreItButtonState();
+}
+
+class _WoreItButtonState extends ConsumerState<_WoreItButton> {
+  bool _saving = false;
+
+  @override
+  Widget build(BuildContext context) => TextButton.icon(
+    onPressed: _saving
+        ? null
+        : () async {
+            setState(() => _saving = true);
+            await ref.read(wearRecorderProvider).recordWear(widget.id);
+            if (mounted) setState(() => _saving = false);
+          },
+    icon: const Icon(Icons.add, size: 18),
+    label: const Text('Wore it'),
+  );
 }
 
 /// The banner asking for a care label scan.

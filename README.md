@@ -138,6 +138,19 @@ other source permanently. Changing the fabric re-derives the washing
 instructions immediately — a form that let you correct 100% wool to 100% acrylic
 while still recommending a wool cycle would be worse than no form at all.
 
+### Keep a history
+
+Mark a load washed and every garment in it gets an event recorded — with the
+programme, temperature and spin actually used, and the machine's name so the
+record stays readable after you replace it. Mark an item worn and the same
+happens.
+
+That history is the source of truth; the counters on each item are a cache of
+it, rebuildable by replay. It is also what makes several things work that
+cannot without it: cost per wear has a divisor, "never worn" means something,
+and a new red shirt stops being isolated into its own load once it has been
+through the machine three times and stopped bleeding.
+
 ### Search and filter
 
 By category, colour, fabric, brand, season, favourites, never-worn, or items
@@ -249,9 +262,9 @@ A few decisions worth reading about:
 |---|---|---|
 | 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 311 tests |
 | 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts | **Done** — 130 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 93 tests |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 103 tests |
 | 4 | Care-label scanning, item editing, filter sheet, garment cutouts, grid view | **Done** |
-| 5 | Pile scanning, load grouping, machine profiles | **Done** |
+| 5 | Pile scanning, load grouping, machine profiles, wear and wash history | **Done** |
 | 6 | Outfits, packing, analytics | Next |
 | 7 | Offline sync, Supabase, store preparation | |
 

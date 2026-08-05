@@ -12,7 +12,10 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
+
+import '../../history/wear_recorder.dart';
 
 /// The rationale entries that explain the settings, as opposed to instructing.
 List<LoadRationale> _explanations(LaundryLoad load) => [
@@ -20,10 +23,19 @@ List<LoadRationale> _explanations(LaundryLoad load) => [
     if (entry.kind != RationaleKind.handling) entry,
 ];
 
-class LoadCard extends StatelessWidget {
+class LoadCard extends ConsumerStatefulWidget {
   const LoadCard({required this.load, super.key});
 
   final LaundryLoad load;
+
+  @override
+  ConsumerState<LoadCard> createState() => _LoadCardState();
+}
+
+class _LoadCardState extends ConsumerState<LoadCard> {
+  bool _recorded = false;
+
+  LaundryLoad get load => widget.load;
 
   @override
   Widget build(BuildContext context) {
@@ -104,6 +116,40 @@ class LoadCard extends StatelessWidget {
               const SizedBox(height: 12),
               _Reasons(title: 'Also', entries: handling),
             ],
+
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: _recorded
+                  // Not undoable from here on purpose. The event log is
+                  // append-only, and a button that appeared to delete history
+                  // would misrepresent what the system does.
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline,
+                          size: 18,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Recorded',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    )
+                  : FilledButton.tonalIcon(
+                      onPressed: () async {
+                        await ref.read(wearRecorderProvider).recordWash(load);
+                        if (mounted) setState(() => _recorded = true);
+                      },
+                      icon: const Icon(Icons.check),
+                      label: const Text('I washed this'),
+                    ),
+            ),
           ],
         ),
       ),

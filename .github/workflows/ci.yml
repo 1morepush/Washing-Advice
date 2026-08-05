@@ -98,6 +98,18 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+          # Pinned to the floor in `requires-python`, and matched by
+          # `server/.python-version` so a developer gets the same interpreter.
+          #
+          # Without this uv takes whatever the runner happens to ship, and the
+          # lockfile then resolves a *different dependency set* — numpy is
+          # 2.4.6 below 3.12 and 2.5.1 at or above it, and the newer stubs use
+          # syntax mypy rejects when targeting the version this project
+          # actually supports. CI was testing something no developer runs.
+          #
+          # Pinning to the oldest supported version rather than the newest is
+          # deliberate: it is the only way to catch newer syntax creeping in.
+          python-version: "3.11"
 
       - name: Install dependencies
         run: uv sync --group dev --frozen

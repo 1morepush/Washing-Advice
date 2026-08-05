@@ -48,6 +48,20 @@ final wardrobeQueryProvider = StateProvider<WardrobeQuery>(
   (ref) => const WardrobeQuery.owned(),
 );
 
+/// How the wardrobe is laid out.
+///
+/// A grid is the better default now that items carry cutouts: a wall of
+/// garments on transparency is scannable by shape and colour before a single
+/// word is read, which is how people find things in an actual wardrobe. The
+/// list survives because it fits far more items on a screen and shows the full
+/// fabric composition, which is what you want when comparing rather than
+/// hunting.
+enum WardrobeView { grid, list }
+
+final wardrobeViewProvider = StateProvider<WardrobeView>(
+  (ref) => WardrobeView.grid,
+);
+
 /// The items matching the current query, kept live.
 ///
 /// A stream rather than a future: saving an item after a scan has to make it

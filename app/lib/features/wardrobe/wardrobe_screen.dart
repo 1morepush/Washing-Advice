@@ -8,6 +8,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import 'filter_sheet.dart';
+import 'widgets/item_card.dart';
 import 'widgets/item_tile.dart';
 
 class WardrobeScreen extends ConsumerWidget {
@@ -30,6 +31,11 @@ class WardrobeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Wardrobe'),
         actions: [
+          _ViewToggle(
+            view: ref.watch(wardrobeViewProvider),
+            onChanged: (view) =>
+                ref.read(wardrobeViewProvider.notifier).state = view,
+          ),
           _FilterAction(
             // Counted against the baseline, not against an empty query: the
             // lifecycle filter in `.owned()` is the default view, and badging
@@ -87,6 +93,27 @@ class WardrobeScreen extends ConsumerWidget {
   }
 }
 
+/// Switches between the grid and the list.
+class _ViewToggle extends StatelessWidget {
+  const _ViewToggle({required this.view, required this.onChanged});
+
+  final WardrobeView view;
+  final ValueChanged<WardrobeView> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final isGrid = view == WardrobeView.grid;
+    return IconButton(
+      // The icon shows what tapping *gives you*, not what you are looking at.
+      // The other convention leaves people tapping to find out.
+      onPressed: () =>
+          onChanged(isGrid ? WardrobeView.list : WardrobeView.grid),
+      icon: Icon(isGrid ? Icons.view_list_outlined : Icons.grid_view_outlined),
+      tooltip: isGrid ? 'Show as a list' : 'Show as a grid',
+    );
+  }
+}
+
 /// The filter button, badged with how many filters are on.
 class _FilterAction extends StatelessWidget {
   const _FilterAction({required this.count, required this.onPressed});
@@ -134,21 +161,53 @@ class _ItemList extends ConsumerWidget {
           ),
         ),
         Expanded(
-          child: ListView.separated(
-            itemCount: items.length,
-            separatorBuilder: (_, _) => const Divider(height: 1, indent: 76),
-            itemBuilder: (context, index) {
-              final item = items[index];
-              return ItemTile(
-                item: item,
-                onTap: () => context.go('/item/${item.id.value}'),
-              );
-            },
-          ),
+          child: ref.watch(wardrobeViewProvider) == WardrobeView.grid
+              ? _Grid(items: items)
+              : ListView.separated(
+                  itemCount: items.length,
+                  separatorBuilder: (_, _) =>
+                      const Divider(height: 1, indent: 88),
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    return ItemTile(
+                      item: item,
+                      onTap: () => context.go('/item/${item.id.value}'),
+                    );
+                  },
+                ),
         ),
       ],
     );
   }
+}
+
+/// The wardrobe as a wall of garments.
+class _Grid extends StatelessWidget {
+  const _Grid({required this.items});
+
+  final List<WardrobeItem> items;
+
+  @override
+  Widget build(BuildContext context) => GridView.builder(
+    padding: const EdgeInsets.fromLTRB(12, 4, 12, 96),
+    // Sized by extent rather than a fixed column count, so a phone gets three
+    // columns, a tablet gets six, and neither has to be special-cased.
+    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+      maxCrossAxisExtent: 180,
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+      // Taller than wide: garments are, and the two text lines need room.
+      childAspectRatio: 0.78,
+    ),
+    itemCount: items.length,
+    itemBuilder: (context, index) {
+      final item = items[index];
+      return ItemCard(
+        item: item,
+        onTap: () => context.go('/item/${item.id.value}'),
+      );
+    },
+  );
 }
 
 class _SearchField extends StatefulWidget {

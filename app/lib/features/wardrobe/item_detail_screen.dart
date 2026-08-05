@@ -15,6 +15,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../core/providers.dart';
 import '../../widgets/confidence_chip.dart';
 import '../../widgets/item_thumbnail.dart';
+import 'cutout_controller.dart';
 import 'care_text.dart';
 
 class ItemDetailScreen extends ConsumerWidget {
@@ -70,6 +71,7 @@ class _Details extends StatelessWidget {
             padding: const EdgeInsets.only(top: 16),
             child: Center(child: ItemThumbnail(item: item, size: 160)),
           ),
+        if (CutoutController.isAvailableFor(item)) _CutoutPrompt(id: item.id),
         if (item.needsCareTagScan) _ScanPrompt(id: item.id),
         _Section(
           title: 'What it is',
@@ -211,6 +213,61 @@ class _ScanPrompt extends StatelessWidget {
               child: const Text('Scan the label'),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Offers to remove the background of an item that still has one.
+///
+/// Shown only where it can do something: an item with a photograph and no
+/// cutout. Items scanned since the feature arrived already have one and never
+/// see this.
+class _CutoutPrompt extends ConsumerWidget {
+  const _CutoutPrompt({required this.id});
+
+  final ItemId id;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(cutoutControllerProvider);
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              switch (status) {
+                CutoutStatus.working => 'Removing the background…',
+                CutoutStatus.failed =>
+                  'The garment could not be told apart from its background.',
+                _ => 'Remove the background to make this easier to spot.',
+              },
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: status == CutoutStatus.failed
+                    ? theme.colorScheme.error
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          if (status == CutoutStatus.working)
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            TextButton(
+              onPressed: () =>
+                  ref.read(cutoutControllerProvider.notifier).generate(id),
+              child: Text(
+                status == CutoutStatus.failed ? 'Try again' : 'Clean up',
+              ),
+            ),
         ],
       ),
     );

@@ -83,6 +83,16 @@ for (const theme of ['light', 'dark']) {
 
   await shot(page, `wardrobe-${theme}`);
 
+  // The list view, reached through the toggle. Both are worth showing: the
+  // grid is for finding a garment, the list for comparing several.
+  if (theme === 'light') {
+    await page.getByLabel('Show as a list').first().click().catch(() => {});
+    await page.waitForTimeout(1200);
+    await shot(page, 'wardrobe-list');
+    await page.getByLabel('Show as a grid').first().click().catch(() => {});
+    await page.waitForTimeout(1000);
+  }
+
   await page.goto(`${BASE}/#/item/demo-jumper`, { waitUntil: 'load' });
   await ready(page);
   await shot(page, `item-detail-${theme}`);

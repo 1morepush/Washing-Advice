@@ -64,11 +64,18 @@ pattern and cut, each with a confidence and a stated source. It suggests a name.
 Anything it is unsure about is flagged for you to confirm rather than silently
 accepted.
 
-Every item's background is removed, so the wardrobe list is a column of garments
-floating on the page. That is not decoration: a list of photographs taken on
-assorted beds and carpets is genuinely hard to scan, because every row shares a
-busy background and your eye has to find the clothing in each one. A silhouette
-and a colour are recognisable at a glance.
+Every item's background is removed, so the wardrobe is a wall of garments
+floating on the page — browsable by shape and colour before you read a word,
+the way you would look along an actual rail. That is not decoration: a grid of
+photographs taken on assorted beds and carpets is a patchwork of backgrounds
+with clothes somewhere inside it.
+
+A list view is one tap away for when you are comparing rather than hunting, and
+it shows the full fabric composition that a grid cell has no room for.
+
+Anything added before the feature existed, or whose background defeated the
+remover on the day, can have a cutout made from the photograph already stored —
+without re-photographing the garment.
 
 ### Read care labels
 
@@ -224,8 +231,8 @@ A few decisions worth reading about:
 |---|---|---|
 | 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 311 tests |
 | 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts | **Done** — 130 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 73 tests |
-| 4 | Care-label scanning, item editing, filter sheet, garment cutouts | **Done** |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 81 tests |
+| 4 | Care-label scanning, item editing, filter sheet, garment cutouts, grid view | **Done** |
 | 5 | Pile scanning and load grouping | Next |
 | 6 | Outfits, packing, analytics | |
 | 7 | Offline sync, Supabase, store preparation | |

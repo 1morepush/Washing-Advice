@@ -14,6 +14,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../../widgets/confidence_chip.dart';
+import 'care_text.dart';
 
 class ItemDetailScreen extends ConsumerWidget {
   const ItemDetailScreen({required this.id, super.key});
@@ -52,7 +53,7 @@ class _Details extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.only(bottom: 32),
       children: [
-        if (item.needsCareTagScan) const _ScanPrompt(),
+        if (item.needsCareTagScan) _ScanPrompt(id: item.id),
         _Section(
           title: 'What it is',
           children: [
@@ -87,9 +88,9 @@ class _Details extends StatelessWidget {
             source: item.care.source,
           ),
           children: [
-            _Fact(label: 'Wash', value: _washSummary(care.wash)),
-            _Fact(label: 'Dry', value: _drySummary(care.dry)),
-            _Fact(label: 'Iron', value: _ironSummary(care.iron)),
+            _Fact(label: 'Wash', value: washSummary(care.wash)),
+            _Fact(label: 'Dry', value: drySummary(care.dry)),
+            _Fact(label: 'Iron', value: ironSummary(care.iron)),
             _Fact(label: 'Bleach', value: care.bleach.label),
             if (care.warnings.isNotEmpty)
               _Fact(
@@ -152,7 +153,9 @@ class _Details extends StatelessWidget {
 /// is weak enough that acting on it risks damage. Prompting on every item would
 /// make the prompt meaningless.
 class _ScanPrompt extends StatelessWidget {
-  const _ScanPrompt();
+  const _ScanPrompt({required this.id});
+
+  final ItemId id;
 
   @override
   Widget build(BuildContext context) {
@@ -164,17 +167,31 @@ class _ScanPrompt extends StatelessWidget {
         color: scheme.tertiaryContainer,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.document_scanner_outlined,
-            color: scheme.onTertiaryContainer,
+          Row(
+            children: [
+              Icon(
+                Icons.document_scanner_outlined,
+                color: scheme.onTertiaryContainer,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'These instructions are a guess. Scan the care label to be '
+                  'sure.',
+                  style: TextStyle(color: scheme.onTertiaryContainer),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'These instructions are a guess. Scan the care label to be sure.',
-              style: TextStyle(color: scheme.onTertiaryContainer),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.tonal(
+              onPressed: () => context.go('/item/${id.value}/care-label'),
+              child: const Text('Scan the label'),
             ),
           ),
         ],
@@ -253,40 +270,4 @@ class _Fact extends StatelessWidget {
       ),
     );
   }
-}
-
-// --- Turning care values into sentences ------------------------------------
-//
-// These read the core's model and phrase it; they never decide anything. A
-// temperature or a permission invented here would be laundry logic in the
-// presentation layer, which is exactly what the core exists to prevent.
-
-String _washSummary(WashCare wash) {
-  if (wash.method == WashMethod.doNotWash) return 'Do not wash';
-  final parts = [
-    wash.method.label,
-    if (wash.maxTempC case final int temp) 'up to $temp°C',
-    if (wash.agitation != Agitation.normal) wash.agitation.label.toLowerCase(),
-  ];
-  return parts.join(', ');
-}
-
-String _drySummary(DryCare dry) {
-  final parts = [
-    if (dry.tumbleDryAllowed)
-      'Tumble dry ${dry.tumbleDryHeat.label.toLowerCase()}'
-    else
-      'Do not tumble dry',
-    if (dry.naturalDry case final NaturalDryMethod method) method.label,
-    if (dry.dryInShade) 'in the shade',
-    if (dry.doNotWring) 'do not wring',
-  ];
-  return parts.join(', ');
-}
-
-String _ironSummary(IronCare iron) {
-  if (!iron.isIronable) return 'Do not iron';
-  return iron.steamAllowed
-      ? '${iron.temperature.label}, steam allowed'
-      : '${iron.temperature.label}, no steam';
 }

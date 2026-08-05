@@ -16,6 +16,7 @@
 /// * `machines` — translating abstract requirements into settings on a real
 ///   washer or dryer.
 /// * `matching` — recognising a garment already in the wardrobe.
+/// * `outfits` — styling: colour harmony, suggestions, saved outfits, packing.
 /// * `vision` — the contract the AI layer must satisfy (no implementation).
 /// * `events` — the append-only history and the projections derived from it.
 library;
@@ -50,6 +51,12 @@ export 'src/machines/seed/machine_catalog.dart';
 export 'src/matching/attribute_matcher.dart';
 export 'src/matching/fingerprint.dart';
 export 'src/matching/matcher.dart';
+// Outfits: styling, saved combinations and packing.
+export 'src/outfits/color_harmony.dart';
+export 'src/outfits/model/occasion.dart';
+export 'src/outfits/model/outfit.dart';
+export 'src/outfits/outfit_builder.dart';
+export 'src/outfits/packing.dart';
 // Shared kernel.
 export 'src/shared/clock.dart';
 export 'src/shared/confidence.dart';
@@ -60,6 +67,7 @@ export 'src/sync/sync_engine.dart';
 // Vision: the contract the AI layer must satisfy.
 export 'src/vision/vision_port.dart';
 // Wardrobe: what the user owns.
+export 'src/wardrobe/analytics.dart';
 export 'src/wardrobe/in_memory_repository.dart';
 export 'src/wardrobe/model/condition.dart';
 export 'src/wardrobe/model/fabric.dart';

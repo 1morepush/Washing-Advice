@@ -122,6 +122,31 @@ final class ItemColor {
   /// saturated usually means dye that can bleed.
   double get chroma => math.sqrt(a * a + b * b);
 
+  /// Hue angle in degrees, `0..360`, measured anticlockwise from the red-green
+  /// axis. This is CIE h°, the same quantity a colour wheel shows.
+  ///
+  /// Only meaningful when [chroma] is appreciable: near the neutral axis the
+  /// angle is numerically defined but perceptually arbitrary, since a grey has
+  /// no hue to speak of. Callers that compare hues must check chroma first.
+  double get hue {
+    final degrees = math.atan2(b, a) * 180 / math.pi;
+    return degrees < 0 ? degrees + 360 : degrees;
+  }
+
+  /// Whether the colour reads as a neutral — black, white, grey, beige, navy.
+  ///
+  /// The threshold is generous on purpose, and navy is why. A typical navy
+  /// measures a chroma of about 18, which is enough to be a colour by the
+  /// numbers and nowhere near enough to behave like one: navy goes with
+  /// everything, which is the entire reason wardrobes are full of it. A cream
+  /// with a warm cast is the same story at the other end of the lightness
+  /// scale. So the line is drawn above both.
+  ///
+  /// This is a *styling* judgement and is deliberately looser than the
+  /// bleed-risk and pile thresholds above, which answer a different question:
+  /// navy is emphatically not neutral in a wash with whites.
+  bool get isNeutral => chroma < 22;
+
   /// Which laundry pile this colour belongs in.
   ///
   /// Checked in order of consequence: a stray dark item ruins a white load, so

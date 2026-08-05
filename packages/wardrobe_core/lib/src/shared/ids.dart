@@ -113,3 +113,8 @@ final class DryerId extends EntityId {
 final class LoadId extends EntityId {
   const LoadId(super.value);
 }
+
+/// Identifies a saved outfit.
+final class OutfitId extends EntityId {
+  const OutfitId(super.value);
+}

@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://washing-advice.app/contracts/care_constraint.schema.json",
+  "title": "CareConstraint",
+  "description": "A partial set of care requirements — exactly what a care label states, and no more. Every property is optional on purpose: an absent property means the label did not state it, which is categorically different from the label permitting it. A creased label whose drying symbol is illegible must omit `tumbleDryAllowed` rather than send `true`, so the domain core's rule table fills the gap instead of reading silence as permission. See docs/adr/0004-label-overrides-rules.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "method": {
+      "description": "How the garment may be washed.",
+      "enum": ["machine", "hand", "doNotWash"]
+    },
+    "maxTempC": {
+      "description": "Maximum wash temperature in Celsius, as printed in the tub.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 95
+    },
+    "agitation": {
+      "description": "Mechanical action, from the bars beneath the tub. A tub with NO bars means `normal` and must be reported as such — absence of bars is a stated fact under ISO 3758, not silence.",
+      "enum": ["normal", "mild", "veryMild"]
+    },
+    "bleach": {
+      "description": "From the triangle.",
+      "enum": ["any", "nonChlorineOnly", "none"]
+    },
+    "tumbleDryAllowed": {
+      "description": "From the circle-in-a-square. Omit when the symbol was absent or illegible.",
+      "type": "boolean"
+    },
+    "tumbleDryHeat": {
+      "description": "Dots inside the circle-in-a-square.",
+      "enum": ["noHeat", "low", "medium", "high"]
+    },
+    "naturalDry": {
+      "description": "From the plain square symbols.",
+      "enum": ["lineDry", "dripDry", "flatDry"]
+    },
+    "dryInShade": { "type": "boolean" },
+    "doNotWring": { "type": "boolean" },
+    "ironTemperature": {
+      "description": "Dots inside the iron.",
+      "enum": ["none", "low", "medium", "high"]
+    },
+    "steamAllowed": { "type": "boolean" },
+    "doNotDryClean": { "type": "boolean" },
+    "solvent": {
+      "description": "The letter inside the circle.",
+      "enum": ["perchloroethylene", "hydrocarbon", "wetClean"]
+    },
+    "warnings": {
+      "description": "Instructions labels print as words rather than symbols.",
+      "type": "array",
+      "items": {
+        "enum": [
+          "washInsideOut",
+          "washSeparately",
+          "washWithLikeColours",
+          "doNotSoak",
+          "useMeshBag",
+          "closeFastenings",
+          "removePromptly",
+          "reshapeWhileDamp",
+          "doNotUseSoftener",
+          "ironOnReverse"
+        ]
+      },
+      "uniqueItems": true
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "result": {
+    "items": [
+      {
+        "scan": {
+          "type": { "value": "tShirt", "confidence": 0.93, "source": "aiInference" },
+          "colors": {
+            "value": [{ "l": 96.5, "a": 0.1, "b": 0.6, "coverage": 1.0, "name": "White" }],
+            "confidence": 0.88,
+            "source": "aiInference"
+          },
+          "suggestedName": "White t-shirt"
+        },
+        "boundingBox": { "left": 0.08, "top": 0.12, "width": 0.34, "height": 0.29 },
+        "detectionConfidence": 0.91
+      },
+      {
+        "scan": {
+          "type": { "value": "jeans", "confidence": 0.89, "source": "aiInference" },
+          "colors": {
+            "value": [{ "l": 24.1, "a": 2.3, "b": -8.7, "coverage": 1.0, "name": "Indigo" }],
+            "confidence": 0.85,
+            "source": "aiInference"
+          },
+          "suggestedName": "Indigo jeans"
+        },
+        "boundingBox": { "left": 0.46, "top": 0.31, "width": 0.41, "height": 0.44 },
+        "detectionConfidence": 0.87
+      },
+      {
+        "scan": {
+          "type": { "value": "socks", "confidence": 0.71, "source": "aiInference" },
+          "colors": {
+            "value": [{ "l": 18.0, "a": 0.0, "b": 0.0, "coverage": 1.0, "name": "Black" }],
+            "confidence": 0.66,
+            "source": "aiInference"
+          }
+        },
+        "boundingBox": { "left": 0.21, "top": 0.66, "width": 0.14, "height": 0.11 },
+        "detectionConfidence": 0.62
+      }
+    ],
+    "partiallyObscuredCount": 2
+  },
+  "diagnostics": {
+    "stagesRun": ["gemini"],
+    "stageAnswered": "gemini",
+    "servedFromCache": false,
+    "elapsedMs": 3420
+  }
+}

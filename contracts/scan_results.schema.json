@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://washing-advice.app/contracts/scan_results.schema.json",
+  "title": "Scan results",
+  "description": "What the perception layer returns to the app. The server produces these shapes and the Flutter client decodes them, so a silent rename here becomes a runtime failure on a phone. Golden fixtures in contracts/examples/ are parsed by tests on both sides to pin the correspondence.",
+
+  "$defs": {
+    "confidence": {
+      "description": "How sure we are, 0..1.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+
+    "provenance": {
+      "description": "What kind of evidence produced a belief, weakest first. The order is load-bearing: it decides which source wins when two disagree.",
+      "enum": ["fallbackDefault", "aiInference", "careRule", "tagScan", "userEdited"]
+    },
+
+    "confident": {
+      "description": "A value the system believes, with how strongly and on what basis. Perceived fields are wrapped in this rather than returned bare, because the app's decision to ask 'Is this your grey Nike hoodie?' depends on the confidence being real.",
+      "type": "object",
+      "required": ["value", "confidence", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "value": {},
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "source": { "$ref": "#/$defs/provenance" }
+      }
+    },
+
+    "itemType": {
+      "enum": [
+        "tShirt", "longSleeveShirt", "dressShirt", "poloShirt", "blouse",
+        "tankTop", "sweater", "cardigan", "hoodie", "sweatshirt",
+        "jeans", "trousers", "chinos", "shorts", "skirt", "leggings",
+        "dress", "jumpsuit",
+        "jacket", "blazer", "coat", "vest",
+        "underwear", "bra", "socks", "tights",
+        "pajamas", "robe", "activewearTop", "activewearBottom", "swimwear",
+        "scarf", "hat", "gloves", "belt", "tie",
+        "sneakers", "boots", "dressShoes", "sandals", "handbag", "backpack",
+        "handTowel", "bathTowel", "bedSheet", "pillowcase", "duvetCover", "blanket",
+        "other"
+      ]
+    },
+
+    "fiber": {
+      "enum": [
+        "cotton", "linen", "hemp", "ramie",
+        "wool", "cashmere", "silk",
+        "viscose", "modal", "lyocell", "acetate",
+        "polyester", "nylon", "acrylic", "elastane",
+        "down", "leather", "other"
+      ]
+    },
+
+    "fabricComposition": {
+      "description": "Fibre percentages by weight. Not required to total exactly 100 — real labels round and OCR of a curled label is imperfect.",
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0, "maximum": 100 },
+      "propertyNames": { "$ref": "#/$defs/fiber" }
+    },
+
+    "itemColor": {
+      "description": "A colour in CIELAB (D65). CIELAB rather than RGB because colours are compared perceptually with CIEDE2000, and RGB distance mis-sorts laundry.",
+      "type": "object",
+      "required": ["l", "a", "b"],
+      "additionalProperties": false,
+      "properties": {
+        "l": { "type": "number", "minimum": 0, "maximum": 100 },
+        "a": { "type": "number", "minimum": -128, "maximum": 128 },
+        "b": { "type": "number", "minimum": -128, "maximum": 128 },
+        "coverage": {
+          "description": "Share of the garment showing this colour.",
+          "type": "number", "minimum": 0, "maximum": 1
+        },
+        "name": { "type": "string" }
+      }
+    },
+
+    "colorPalette": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/itemColor" }
+    },
+
+    "boundingBox": {
+      "description": "Normalised image coordinates, 0..1 from the top left, so the value survives the image being resized or re-encoded in transit.",
+      "type": "object",
+      "required": ["left", "top", "width", "height"],
+      "additionalProperties": false,
+      "properties": {
+        "left": { "type": "number", "minimum": 0, "maximum": 1 },
+        "top": { "type": "number", "minimum": 0, "maximum": 1 },
+        "width": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+        "height": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+      }
+    },
+
+    "garmentScanResult": {
+      "description": "What identifying a single garment produces.",
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "$ref": "#/$defs/confident" },
+        "colors": { "$ref": "#/$defs/confident" },
+        "composition": { "$ref": "#/$defs/confident" },
+        "brand": { "$ref": "#/$defs/confident" },
+        "pattern": { "$ref": "#/$defs/confident" },
+        "sleeveLength": { "$ref": "#/$defs/confident" },
+        "fit": { "$ref": "#/$defs/confident" },
+        "styleCut": { "$ref": "#/$defs/confident" },
+        "seasons": {
+          "type": "array",
+          "items": { "enum": ["spring", "summer", "autumn", "winter", "allSeason"] }
+        },
+        "suggestedName": { "type": "string" },
+        "distinguishingText": {
+          "description": "Text printed on the garment. Unusually discriminating for re-identification: two black t-shirts are hard to tell apart until one says 'Nirvana'.",
+          "type": "string"
+        }
+      }
+    },
+
+    "careTagScanResult": {
+      "description": "What reading a care label produces.",
+      "type": "object",
+      "required": ["instructions", "confidence"],
+      "additionalProperties": false,
+      "properties": {
+        "instructions": { "$ref": "care_constraint.schema.json" },
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "composition": { "$ref": "#/$defs/confident" },
+        "symbolsFound": { "type": "array", "items": { "type": "string" } },
+        "unreadableSymbolCount": {
+          "description": "Symbols visible but not interpretable. Reported so the app can honestly say part of the label could not be read, rather than returning an incomplete answer as if it were complete.",
+          "type": "integer", "minimum": 0
+        },
+        "rawText": { "type": "string" }
+      }
+    },
+
+    "detectedItem": {
+      "type": "object",
+      "required": ["scan", "boundingBox", "detectionConfidence"],
+      "additionalProperties": false,
+      "properties": {
+        "scan": { "$ref": "#/$defs/garmentScanResult" },
+        "boundingBox": { "$ref": "#/$defs/boundingBox" },
+        "detectionConfidence": {
+          "description": "How sure the model is that this is a distinct garment — separate from how sure it is about the garment's attributes.",
+          "$ref": "#/$defs/confidence"
+        }
+      }
+    },
+
+    "pileScanResult": {
+      "type": "object",
+      "required": ["items"],
+      "additionalProperties": false,
+      "properties": {
+        "items": { "type": "array", "items": { "$ref": "#/$defs/detectedItem" } },
+        "partiallyObscuredCount": {
+          "description": "Garments visible but too obscured to identify. Reported rather than hidden, so the user can reshuffle the pile and rescan.",
+          "type": "integer", "minimum": 0
+        }
+      }
+    },
+
+    "scanDiagnostics": {
+      "description": "How a result was arrived at, so the pipeline is observable in production.",
+      "type": "object",
+      "required": ["stagesRun"],
+      "additionalProperties": false,
+      "properties": {
+        "stagesRun": { "type": "array", "items": { "type": "string" } },
+        "stageAnswered": { "type": ["string", "null"] },
+        "servedFromCache": { "type": "boolean" },
+        "elapsedMs": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["result", "diagnostics"],
+      "additionalProperties": false,
+      "properties": {
+        "result": { "$ref": "#/$defs/garmentScanResult" },
+        "diagnostics": { "$ref": "#/$defs/scanDiagnostics" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["result", "diagnostics"],
+      "additionalProperties": false,
+      "properties": {
+        "result": { "$ref": "#/$defs/careTagScanResult" },
+        "diagnostics": { "$ref": "#/$defs/scanDiagnostics" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["result", "diagnostics"],
+      "additionalProperties": false,
+      "properties": {
+        "result": { "$ref": "#/$defs/pileScanResult" },
+        "diagnostics": { "$ref": "#/$defs/scanDiagnostics" }
+      }
+    }
+  ]
+}

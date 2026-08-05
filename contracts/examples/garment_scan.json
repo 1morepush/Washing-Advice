@@ -1,0 +1,36 @@
+{
+  "result": {
+    "type": { "value": "hoodie", "confidence": 0.94, "source": "aiInference" },
+    "colors": {
+      "value": [
+        { "l": 63.7, "a": 0.0, "b": 0.0, "coverage": 0.82, "name": "Grey" },
+        { "l": 20.5, "a": 1.2, "b": -3.4, "coverage": 0.18, "name": "Black" }
+      ],
+      "confidence": 0.9,
+      "source": "aiInference"
+    },
+    "composition": {
+      "value": { "cotton": 80, "polyester": 20 },
+      "confidence": 0.86,
+      "source": "aiInference"
+    },
+    "brand": { "value": "Nike", "confidence": 0.91, "source": "aiInference" },
+    "pattern": { "value": "graphic", "confidence": 0.77, "source": "aiInference" },
+    "sleeveLength": {
+      "value": "longSleeve",
+      "confidence": 0.95,
+      "source": "aiInference"
+    },
+    "fit": { "value": "relaxed", "confidence": 0.6, "source": "aiInference" },
+    "styleCut": { "value": "unisex", "confidence": 0.55, "source": "aiInference" },
+    "seasons": ["autumn", "winter"],
+    "suggestedName": "Grey Nike hoodie",
+    "distinguishingText": "Just Do It"
+  },
+  "diagnostics": {
+    "stagesRun": ["knowledge-cache", "gemini"],
+    "stageAnswered": "gemini",
+    "servedFromCache": false,
+    "elapsedMs": 1840
+  }
+}

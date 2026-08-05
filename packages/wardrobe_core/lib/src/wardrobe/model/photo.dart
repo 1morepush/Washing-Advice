@@ -53,12 +53,25 @@ final class ItemPhoto {
     required this.uri,
     required this.role,
     required this.capturedAt,
+    this.cutoutUri,
     this.width,
     this.height,
     this.isPrimary = false,
   });
 
   final String uri;
+
+  /// The same photograph with its background removed, if one has been made.
+  ///
+  /// A property of this photo rather than a [PhotoRole] of its own, because a
+  /// cutout is not a picture *of* something new — it is this picture,
+  /// processed. Giving it a role would lose the fact that it is the front
+  /// shot, which is what the recogniser needs to know.
+  ///
+  /// Nullable because it is derived and may be absent, may have failed, or may
+  /// simply not have been made yet — and because it can be regenerated later
+  /// from [uri] by a better remover without anything else changing.
+  final String? cutoutUri;
   final PhotoRole role;
   final DateTime capturedAt;
   final int? width;
@@ -67,10 +80,25 @@ final class ItemPhoto {
   /// Whether this is the image shown for the item in lists and grids.
   final bool isPrimary;
 
-  ItemPhoto copyWith({PhotoRole? role, bool? isPrimary}) => ItemPhoto(
+  /// What to show for this photo: the cutout when there is one.
+  ///
+  /// A garment on transparency reads at a glance in a list; the same garment
+  /// on a duvet does not, because every row then shares a background and the
+  /// eye has to find the clothing in each one.
+  String get displayUri => cutoutUri ?? uri;
+
+  bool get hasCutout => cutoutUri != null;
+
+  ItemPhoto copyWith({
+    PhotoRole? role,
+    bool? isPrimary,
+    String? cutoutUri,
+  }) =>
+      ItemPhoto(
         uri: uri,
         role: role ?? this.role,
         capturedAt: capturedAt,
+        cutoutUri: cutoutUri ?? this.cutoutUri,
         width: width,
         height: height,
         isPrimary: isPrimary ?? this.isPrimary,
@@ -78,6 +106,7 @@ final class ItemPhoto {
 
   Map<String, Object?> toJson() => {
         'uri': uri,
+        if (cutoutUri != null) 'cutoutUri': cutoutUri,
         'role': role.name,
         'capturedAt': capturedAt.toIso8601String(),
         if (width != null) 'width': width,
@@ -87,6 +116,7 @@ final class ItemPhoto {
 
   static ItemPhoto fromJson(Map<String, Object?> json) => ItemPhoto(
         uri: json['uri']! as String,
+        cutoutUri: json['cutoutUri'] as String?,
         role: PhotoRole.values.byName(json['role']! as String),
         capturedAt: DateTime.parse(json['capturedAt']! as String),
         width: (json['width'] as num?)?.toInt(),
@@ -99,6 +129,7 @@ final class ItemPhoto {
       identical(this, other) ||
       other is ItemPhoto &&
           other.uri == uri &&
+          other.cutoutUri == cutoutUri &&
           other.role == role &&
           other.capturedAt == capturedAt &&
           other.width == width &&
@@ -107,7 +138,7 @@ final class ItemPhoto {
 
   @override
   int get hashCode =>
-      Object.hash(uri, role, capturedAt, width, height, isPrimary);
+      Object.hash(uri, cutoutUri, role, capturedAt, width, height, isPrimary);
 
   @override
   String toString() => 'ItemPhoto(${role.name}, $uri)';
@@ -131,18 +162,40 @@ final class PhotoSet {
 
   int get length => _photos.length;
 
-  /// The image to show in a list. Prefers an explicit primary, then a front
-  /// shot, then whatever exists.
+  /// The image to show in a list.
+  ///
+  /// An explicit primary wins outright — the user said so. Otherwise a front
+  /// shot *with a cutout* is preferred over one without, because a list of
+  /// garments on transparency is scannable and a list of garments on assorted
+  /// duvets is not. Falls back to any front shot, then to whatever exists.
   ItemPhoto? get displayPhoto {
     if (_photos.isEmpty) return null;
     for (final photo in _photos) {
       if (photo.isPrimary) return photo;
     }
     for (final photo in _photos) {
+      if (photo.role == PhotoRole.front && photo.hasCutout) return photo;
+    }
+    for (final photo in _photos) {
+      if (photo.hasCutout) return photo;
+    }
+    for (final photo in _photos) {
       if (photo.role == PhotoRole.front) return photo;
     }
     return _photos.first;
   }
+
+  /// The URI to render for this item in a list, if there is one.
+  String? get displayImageUri => displayPhoto?.displayUri;
+
+  /// Replaces a photo's cutout, matched by [uri].
+  ///
+  /// Returns an unchanged set when the photo is gone — a cutout arriving for
+  /// something the user has since deleted is not an error worth raising.
+  PhotoSet withCutout(String uri, String cutoutUri) => PhotoSet([
+        for (final photo in _photos)
+          if (photo.uri == uri) photo.copyWith(cutoutUri: cutoutUri) else photo,
+      ]);
 
   Iterable<ItemPhoto> withRole(PhotoRole role) =>
       _photos.where((p) => p.role == role);

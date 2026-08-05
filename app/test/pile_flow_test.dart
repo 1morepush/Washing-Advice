@@ -30,7 +30,9 @@ void main() {
   /// one set.
   ProviderContainer build({
     String? washer,
-    List<ScanImage> captured = const [ScanImage(bytes: [1, 2, 3])],
+    List<ScanImage> captured = const [
+      ScanImage(bytes: [1, 2, 3]),
+    ],
   }) => ProviderContainer(
     overrides: [
       wardrobeRepositoryProvider.overrideWithValue(repository),
@@ -38,9 +40,7 @@ void main() {
       idGeneratorProvider.overrideWithValue(
         SequentialIdGenerator(prefix: 'pile'),
       ),
-      imageCaptureProvider.overrideWithValue(
-        FixedImageCaptureSource(captured),
-      ),
+      imageCaptureProvider.overrideWithValue(FixedImageCaptureSource(captured)),
       washerBrandProvider.overrideWith((ref) => washer),
       dryerBrandProvider.overrideWith((ref) => null),
     ],
@@ -187,10 +187,7 @@ void main() {
   test('nothing identifiable but things visible says so differently', () async {
     // Distinct from an empty frame: there *are* clothes, and the fix is to
     // spread them out rather than to point the camera somewhere else.
-    gateway.result = const PileScanResult(
-      items: [],
-      partiallyObscuredCount: 4,
-    );
+    gateway.result = const PileScanResult(items: [], partiallyObscuredCount: 4);
 
     await controller().captureAndPlan();
     expect((state() as PileFailed).message, contains('Spread'));

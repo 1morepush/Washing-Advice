@@ -1,0 +1,53 @@
+name: washing_advice
+description: >-
+  AI wardrobe and laundry assistant. Presentation only — every judgement about
+  how to treat a garment lives in the wardrobe_core package.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # The domain. Everything this app knows about clothing, it asks the core.
+  wardrobe_core:
+    path: ../packages/wardrobe_core
+
+  # State and navigation.
+  flutter_riverpod: ^2.6.1
+  go_router: ^14.6.2
+
+  # Local storage. Codegen is used here deliberately — ADR 1 forbids it in the
+  # core, where portability and zero dependencies were the point, and allows it
+  # in the app layer where it pays for itself.
+  drift: ^2.22.0
+  drift_flutter: ^0.2.4
+  path_provider: ^2.1.5
+  path: ^1.9.0
+
+  # Capture and transport.
+  image_picker: ^1.1.2
+  http: ^1.2.2
+
+  # Small preferences: chosen machines, backend URL.
+  shared_preferences: ^2.3.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # The plain Dart test runner, alongside flutter_test. Widget tests need
+  # Flutter's binding; the storage tests deliberately do not, and they reuse the
+  # core's contract suite, which `flutter test` cannot load because it imports
+  # `package:test/test.dart`. See test/data/drift_wardrobe_repository_test.dart.
+  test: ^1.25.15
+
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.13
+  drift_dev: ^2.22.0
+
+flutter:
+  uses-material-design: true

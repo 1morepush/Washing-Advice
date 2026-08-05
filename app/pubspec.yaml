@@ -53,3 +53,12 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # Only used on web, where CanvasKit has no system font and would otherwise
+  # fetch Roboto from a CDN at runtime. See assets/fonts/README.md.
+  fonts:
+    - family: Liberation Sans
+      fonts:
+        - asset: assets/fonts/LiberationSans-Regular.ttf
+        - asset: assets/fonts/LiberationSans-Bold.ttf
+          weight: 700

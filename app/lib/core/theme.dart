@@ -9,10 +9,21 @@
 /// and that distinction is worthless if the UI renders both identically.
 library;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 const _seed = Color(0xFF3F5B8C);
+
+/// The font to render with, or null to let the platform decide.
+///
+/// Android and iOS have Roboto and SF Pro, which look right on their own
+/// platforms and cost nothing to use. Web has neither: CanvasKit draws text
+/// itself and, with no font asset, fetches Roboto from a CDN on first paint —
+/// a network dependency the app does not otherwise have, and one that fails
+/// outright in a sandboxed container. So the bundled font is used there and
+/// only there.
+String? get _fontFamily => kIsWeb ? 'Liberation Sans' : null;
 
 abstract final class AppTheme {
   static ThemeData light() => _build(Brightness.light);
@@ -28,12 +39,14 @@ abstract final class AppTheme {
     return ThemeData(
       colorScheme: scheme,
       useMaterial3: true,
+      fontFamily: _fontFamily,
       scaffoldBackgroundColor: scheme.surface,
       appBarTheme: AppBarTheme(
         backgroundColor: scheme.surface,
         surfaceTintColor: scheme.surfaceTint,
         centerTitle: false,
         titleTextStyle: TextStyle(
+          fontFamily: _fontFamily,
           color: scheme.onSurface,
           fontSize: 22,
           fontWeight: FontWeight.w600,

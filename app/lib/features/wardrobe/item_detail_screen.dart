@@ -123,7 +123,16 @@ class _Details extends StatelessWidget {
             _Fact(label: 'Worn', value: '${item.usage.timesWorn} times'),
             _Fact(label: 'Washed', value: '${item.usage.timesWashed} times'),
             if (item.costPerWear case final double cost)
-              _Fact(label: 'Cost per wear', value: cost.toStringAsFixed(2)),
+              // With the currency it was recorded in. A bare "4.99" is not a
+              // number anyone can act on, and assuming the user's local
+              // currency would silently misstate what they paid.
+              _Fact(
+                label: 'Cost per wear',
+                value:
+                    '${cost.toStringAsFixed(2)} '
+                            '${item.purchase?.currencyCode ?? ''}'
+                        .trim(),
+              ),
             _Fact(label: 'Status', value: item.lifecycle.label),
           ],
         ),

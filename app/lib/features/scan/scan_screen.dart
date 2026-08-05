@@ -221,37 +221,38 @@ class _Reading<T extends Object> extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
         padding: const EdgeInsets.all(12),
+        // Top-aligned, because a long fabric list wraps to two lines and a
+        // centred chip then floats beside the middle of the text it qualifies.
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-              width: 80,
-              child: Text(
-                label,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+              width: 72,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 3),
+                child: Text(
+                  label,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(show(belief.value), style: theme.textTheme.bodyLarge),
-                  // Only anything below the "act on it silently" threshold gets
-                  // the extra line. Asking the user to confirm what the system
-                  // is already sure of teaches them to confirm without reading.
-                  if (band != ConfidenceBand.high) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      'Worth checking',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.confidenceColor(band),
-                      ),
-                    ),
-                  ],
-                ],
+              child: Text(
+                show(belief.value),
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  // Uncertain readings are tinted rather than annotated. The
+                  // chip beside this already says "Please check", and adding a
+                  // second line saying the same thing made the row noisier
+                  // without making it any clearer.
+                  color: band == ConfidenceBand.high
+                      ? null
+                      : theme.colorScheme.confidenceColor(band),
+                ),
               ),
             ),
+            const SizedBox(width: 8),
             ConfidenceChip.of(belief),
           ],
         ),

@@ -70,24 +70,34 @@ class _Swatch extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     // At most two, largest coverage first. A five-way gradient on a 44-pixel
     // circle communicates nothing.
-    final shown = palette.colors.take(2).toList();
+    final shown = [
+      for (final color in palette.colors.take(2)) Color(0xFF000000 | color.rgb),
+    ];
 
+    // Three cases, and they must stay separate: a gradient needs at least two
+    // colours and asserts on one, which crashed every single-colour garment —
+    // that is, nearly all of them.
     return Container(
       width: 44,
       height: 44,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(color: scheme.outlineVariant),
-        color: shown.isEmpty ? scheme.surfaceContainerHighest : null,
-        gradient: shown.isEmpty
+        color: switch (shown.length) {
+          0 => scheme.surfaceContainerHighest,
+          1 => shown.first,
+          _ => null,
+        },
+        gradient: shown.length < 2
             ? null
             : LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  for (final color in shown) Color(0xFF000000 | color.rgb),
-                ],
-                stops: shown.length == 1 ? null : const [0.5, 0.5],
+                colors: shown,
+                // A hard split rather than a blend: the two colours are
+                // separate facts about the garment, and blending them invents
+                // a third that is on none of it.
+                stops: const [0.5, 0.5],
               ),
       ),
       child: shown.isEmpty

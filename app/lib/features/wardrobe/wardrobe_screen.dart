@@ -12,10 +12,18 @@ import 'widgets/item_tile.dart';
 class WardrobeScreen extends ConsumerWidget {
   const WardrobeScreen({super.key});
 
+  /// The view this screen returns to when filters are cleared.
+  ///
+  /// Not an empty query: the wardrobe shows what the user still owns, so the
+  /// lifecycle filter is the baseline rather than something they applied.
+  /// Clearing to a truly empty query would surface everything they have given
+  /// away, which is not what "clear filters" means to anyone.
+  static const baseline = WardrobeQuery.owned();
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(wardrobeItemsProvider);
-    final query = ref.watch(wardrobeQueryProvider);
+    final owned = ref.watch(ownedCountProvider).valueOrNull;
 
     return Scaffold(
       appBar: AppBar(
@@ -30,7 +38,7 @@ class WardrobeScreen extends ConsumerWidget {
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(56),
           child: _SearchField(
-            query: query,
+            query: ref.watch(wardrobeQueryProvider),
             onChanged: (text) => ref
                 .read(wardrobeQueryProvider.notifier)
                 .update((q) => q.copyWith(text: text)),
@@ -52,8 +60,13 @@ class WardrobeScreen extends ConsumerWidget {
           title: 'Could not load your wardrobe',
           detail: '$error',
         ),
+        // Whether filters are hiding things is answered by the wardrobe, not
+        // by inspecting the query: the default view is `.owned()`, which is a
+        // filter in shape but not in meaning, and reading it as one told a
+        // first-time user with nothing saved that "no items match the filters
+        // you have set".
         data: (list) => list.isEmpty
-            ? _EmptyState(isFiltered: !query.isUnfiltered, ref: ref)
+            ? _EmptyState(hasItems: (owned ?? 0) > 0, ref: ref)
             : _ItemList(items: list),
       ),
     );
@@ -150,21 +163,23 @@ class _SearchFieldState extends State<_SearchField> {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.isFiltered, required this.ref});
+  const _EmptyState({required this.hasItems, required this.ref});
 
-  final bool isFiltered;
+  /// Whether the user owns anything at all. If they do and the list is still
+  /// empty, filters are the reason.
+  final bool hasItems;
+
   final WidgetRef ref;
 
   @override
-  Widget build(BuildContext context) => isFiltered
+  Widget build(BuildContext context) => hasItems
       ? _Message(
           icon: Icons.filter_alt_off_outlined,
           title: 'Nothing matches',
           detail: 'No items match the filters you have set.',
           action: TextButton(
-            onPressed: () => ref
-                .read(wardrobeQueryProvider.notifier)
-                .update((q) => q.cleared()),
+            onPressed: () => ref.read(wardrobeQueryProvider.notifier).state =
+                WardrobeScreen.baseline,
             child: const Text('Clear filters'),
           ),
         )

@@ -65,7 +65,19 @@ final class InMemoryWardrobeRepository implements WardrobeRepository {
   @override
   Stream<List<WardrobeItem>> watch(WardrobeQuery query) {
     late final StreamController<List<WardrobeItem>> controller;
-    controller = StreamController<List<WardrobeItem>>.broadcast(
+
+    // Single-subscription, not broadcast. Each call already returns its own
+    // controller for one subscriber, and the difference matters: a broadcast
+    // controller delivers only to listeners attached at the moment of the
+    // `add`, so the initial snapshot pushed from `onListen` is dropped unless
+    // the consumer subscribes in exactly the right way. A single-subscription
+    // controller buffers it instead, and every consumer gets the current
+    // contents whatever order it happens to listen in.
+    //
+    // This was not theoretical: it left the wardrobe screen showing a spinner
+    // forever, because the stream it was watching never produced a first
+    // value.
+    controller = StreamController<List<WardrobeItem>>(
       onListen: () => controller.add(_apply(query, paged: true)),
       onCancel: () {
         _watchers.remove(controller);

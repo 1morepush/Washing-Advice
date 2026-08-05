@@ -442,6 +442,28 @@ void runRepositoryContractTests(String name, RepositoryFactory create) {
       expect(first, hasLength(1));
     });
 
+    test('a listener that never writes still receives the contents', () async {
+      // Subscribing and then waiting, which is what a UI framework does. The
+      // version above passes even against an implementation that drops its
+      // first event, because `.first` attaches a listener in a way that can
+      // mask it — and a dropped first event is a screen that loads forever.
+      await repository.save(buildItem(id: 'a'));
+      await repository.save(buildItem(id: 'b'));
+
+      final seen = <int>[];
+      final subscription = repository
+          .watch(const WardrobeQuery())
+          .listen((items) => seen.add(items.length));
+
+      // No write in between: the only thing that can produce an event here is
+      // the implementation volunteering its current contents.
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await subscription.cancel();
+
+      expect(seen, isNotEmpty, reason: 'the stream never produced a value');
+      expect(seen.last, 2);
+    });
+
     test('re-emits when an item is saved', () async {
       final stream = repository.watch(const WardrobeQuery());
       final results = <int>[];

@@ -183,6 +183,13 @@ enum Fiber {
   final int escalationThreshold;
 }
 
+/// The share at or above which a fibre is worth naming when describing a
+/// garment, as opposed to when deciding how to wash it.
+///
+/// See [FabricComposition.isDescribedBy] for why this is separate from
+/// [Fiber.escalationThreshold], and flat rather than per-fibre.
+const int notableFiberPercent = 5;
+
 /// What a garment is made of, as percentages by weight.
 ///
 /// Mirrors a care label: `80% Cotton, 20% Polyester`.
@@ -224,6 +231,25 @@ final class FabricComposition {
   /// True when [fiber] is present at [minPercent] or more.
   bool contains(Fiber fiber, {int minPercent = 1}) =>
       percentOf(fiber) >= minPercent;
+
+  /// True when [fiber] is present in an amount worth *describing* the garment
+  /// by — the question a wardrobe search asks.
+  ///
+  /// Deliberately not [Fiber.escalationThreshold], which answers a different
+  /// question: whether a fibre dictates the *care*. The two diverge in both
+  /// directions. An 80/20 cotton-polyester tee is a polyester blend by any
+  /// ordinary reading, but its 20% polyester changes nothing about the wash,
+  /// so its care threshold is 50 and a search that reused it would not find
+  /// the shirt. Conversely 3% elastane in a waistband rules out a hot dryer
+  /// while nobody would call the garment elastane.
+  ///
+  /// Conflating them made "show me my polyester things" miss the obvious
+  /// answers and varied the bar per fibre for reasons a searching user cannot
+  /// see. This threshold is therefore flat, at the 5% that EU textile
+  /// labelling (Regulation 1007/2011) uses to decide whether a fibre is named
+  /// on the label at all — the same "what is this made of" judgement.
+  bool isDescribedBy(Fiber fiber) =>
+      percentOf(fiber) >= notableFiberPercent;
 
   /// True when any fibre present at its escalation threshold has [test] set.
   ///

@@ -151,15 +151,13 @@ final class InMemoryWardrobeRepository implements WardrobeRepository {
       return false;
     }
 
-    // Fibre matches only in a decisive amount. A garment with 2% elastane is
-    // not what someone means by "show me my elastane clothes".
+    // Fibre matches when the garment is genuinely described by it. A trace of
+    // 2% elastane is not what someone means by "show me my elastane clothes";
+    // 20% polyester in a cotton tee is. Note this is *not* the care threshold —
+    // see `FabricComposition.isDescribedBy`.
     if (query.fibers.isNotEmpty) {
       final composition = item.composition.value;
-      final present = query.fibers.any(
-        (fiber) =>
-            composition.contains(fiber, minPercent: fiber.escalationThreshold),
-      );
-      if (!present) return false;
+      if (!query.fibers.any(composition.isDescribedBy)) return false;
     }
 
     if (query.tags.isNotEmpty && item.tags.intersection(query.tags).isEmpty) {

@@ -157,7 +157,11 @@ void runRepositoryContractTests(String name, RepositoryFactory create) {
           type: ItemType.hoodie,
           colors: [Colors.navy],
           brand: 'Nike',
-          composition: {Fiber.cotton: 80, Fiber.polyester: 20},
+          // Carries both sides of the fibre-search threshold: 20% polyester
+          // describes the garment, 2% elastane does not. The 2% is still below
+          // elastane's care threshold of 3, so this stays a plain warm wash and
+          // the fixture is not quietly testing two things at once.
+          composition: {Fiber.cotton: 78, Fiber.polyester: 20, Fiber.elastane: 2},
           isFavorite: true,
         ),
         buildItem(
@@ -219,8 +223,7 @@ void runRepositoryContractTests(String name, RepositoryFactory create) {
       );
     });
 
-    test('filters by fibre only in a decisive amount', () async {
-      // The hoodie's 20% polyester is real; a trace would not be.
+    test('filters by fibre when the garment is described by it', () async {
       expect(
         await ids(const WardrobeQuery(fibers: {Fiber.wool})),
         ['wool-jumper'],
@@ -229,6 +232,23 @@ void runRepositoryContractTests(String name, RepositoryFactory create) {
         await ids(const WardrobeQuery(fibers: {Fiber.cotton})),
         containsAll(['white-tee', 'navy-hoodie']),
       );
+    });
+
+    test('a blended fibre still describes the garment', () async {
+      // The hoodie is 20% polyester, which is a polyester blend by any ordinary
+      // reading. It is *not* enough to change how the thing is washed, and an
+      // earlier version filtered on the care threshold and so found nothing
+      // here — the bug this test exists to prevent coming back.
+      expect(
+        await ids(const WardrobeQuery(fibers: {Fiber.polyester})),
+        ['navy-hoodie'],
+      );
+    });
+
+    test('a trace fibre does not describe the garment', () async {
+      // The same hoodie has 2% elastane. Someone asking to see their elastane
+      // clothes does not mean a waistband, even though the care rules care.
+      expect(await ids(const WardrobeQuery(fibers: {Fiber.elastane})), isEmpty);
     });
 
     test('filters favourites', () async {

@@ -16,9 +16,9 @@ The backend and the Flutter app are next. See
 
 | # | Scope | Status |
 |---|---|---|
-| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 234 tests |
-| 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache | Next |
-| 3 | Flutter app shell: navigation, Drift/SQLite, theming, camera | |
+| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 247 tests |
+| 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache | **Done** — 103 tests |
+| 3 | Flutter app shell: navigation, Drift/SQLite, theming, camera | Next |
 | 4 | Wardrobe browse, item detail, care-tag scanning UI | |
 | 5 | Pile scanning and batch processing | |
 | 6 | Outfits, packing, analytics | |
@@ -28,6 +28,8 @@ The backend and the Flutter app are next. See
 
 ```
 packages/wardrobe_core/   Pure Dart domain core — zero dependencies
+server/                   FastAPI perception layer — pixels to confident facts
+contracts/                The wire format, pinned by fixtures both sides parse
 docs/ARCHITECTURE.md      Design, and the reasoning behind it
 docs/adr/                 Architecture decision records
 .claude/hooks/            Restores the Dart SDK in a fresh web session
@@ -44,6 +46,19 @@ dart pub get
 dart analyze
 dart test
 ```
+
+And the server needs only Python and `uv` — no credentials:
+
+```sh
+cd server
+uv sync --group dev
+uv run pytest
+uv run uvicorn app.main:app --reload   # http://localhost:8000/docs
+```
+
+The default vision provider is a deterministic fake, so everything runs with an
+empty environment. Set `GEMINI_API_KEY` and `VISION_PROVIDER=gemini` for the
+real model.
 
 To see the sorting engine work on a realistic pile:
 
@@ -96,3 +111,10 @@ Stated plainly because the code says so too:
   returns ranked candidates and the app asks rather than guessing.
 - **Condition detection, embeddings and the offline vision pipeline are modelled
   but not implemented.** The types and seams exist; the detection does not.
+- **The Gemini provider has never run against the live API.** It is written to
+  the documented interface and tested with a stubbed transport, but no real
+  request has been made. It stays behind the provider registry until it has been
+  smoke-tested with a key.
+- **The knowledge cache recognises an identical image, not the same label
+  re-photographed.** Matching a label shot from a different angle needs
+  embeddings.

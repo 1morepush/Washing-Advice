@@ -45,3 +45,36 @@ jobs:
         # Guards against the engine compiling and passing its unit tests while
         # throwing on a realistic end-to-end pile.
         run: dart run example/sort_demo.dart
+
+  server:
+    name: server (lint, types, test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --group dev --frozen
+
+      # No GEMINI_API_KEY is set anywhere in this job, and that is deliberate:
+      # the default provider is the deterministic fake, so the whole suite must
+      # pass with no credentials. A suite that needs a billing account is one
+      # nobody outside the project can run.
+      - name: Lint
+        run: uv run ruff check app tests
+
+      - name: Verify formatting
+        run: uv run ruff format --check app tests
+
+      - name: Type check
+        run: uv run mypy app
+
+      - name: Test
+        run: uv run pytest -q

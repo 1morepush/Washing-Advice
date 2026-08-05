@@ -30,12 +30,15 @@ sits on top of it.
 ┌──────────────────────────────────────────────┐
 │  app/          Flutter — presentation only   │   (Milestone 3)
 ├──────────────────────────────────────────────┤
-│  server/       FastAPI — perception only     │   (Milestone 2)
-│                Gemini behind a provider port │
+│  server/       FastAPI — perception only     │   (Milestone 2, done)
+│                cost-ordered vision pipeline  │
 ├──────────────────────────────────────────────┤
 │  packages/wardrobe_core   ← all the decisions│   (Milestone 1, done)
 │  pure Dart, zero dependencies                │
 └──────────────────────────────────────────────┘
+
+The two halves agree on one wire format, defined in `contracts/` and pinned by
+golden fixtures that tests in **both** languages parse.
 ```
 
 The AI layer is reduced to **perception**: turning pixels into confident facts.
@@ -140,6 +143,56 @@ The implementation is verified against all 25 published Sharma, Wu and Dalal
 reference vectors, including the four that sit on the hue-quadrant discontinuity
 and differ only in the fourth decimal place.
 
+## The perception layer
+
+`server/` turns pixels into confident facts and does nothing else. It makes no
+laundry decisions; every judgement about how to treat a garment lives in the
+core, which the app calls with these results.
+
+It is a **pipeline of stages ordered by cost** — memory, then on-device, then
+the cloud model — that stops as soon as the answer is good enough. "Check memory
+first, call the expensive model only if needed" is therefore what the ordering
+rule *does*, not a special case inside it. The knowledge cache is itself a
+free stage rather than a wrapper, so `stagesRun` in the response diagnostics
+tells the truth about where an answer came from. See
+[ADR 7](adr/0007-cost-ordered-vision-pipeline.md).
+
+Today two stages are registered: the cache and one provider. An on-device OCR
+pass is a registration away, and nothing else changes when it lands.
+
+### The contract semantic that everything depends on
+
+Every field of a scanned `CareConstraint` is optional, and an **absent** field
+means *the label did not state this*. That is categorically different from the
+label permitting it, and the difference is preserved all the way onto the wire:
+responses are serialised with `exclude_none`, so an unreadable drying symbol
+produces JSON with no `tumbleDryAllowed` key at all rather than one set to null.
+
+The core reads absence as "fill this from the rule table" and a stated value as
+"the manufacturer said so". A null in that position would turn a guess into a
+manufacturer's instruction, which is how a wool blend ends up in a tumble dryer.
+Tests on both sides assert it, from both directions.
+
+The related trap: a wash tub with **no bars** means normal agitation under ISO
+3758. That is a stated fact, not silence, and the prompt says so at length —
+because a model left to itself omits it, and every ordinary garment then
+inherits the conservative default and gets recommended a gentle cycle it does
+not need.
+
+### Running it
+
+```sh
+cd server
+uv sync --group dev
+uv run pytest
+uv run uvicorn app.main:app --reload
+```
+
+No credentials required. The default provider is a deterministic fake that
+derives its answers from a hash of the image bytes, so the same image always
+gives the same result and cache behaviour is testable. Set `GEMINI_API_KEY` and
+`VISION_PROVIDER=gemini` to use the real model.
+
 ## Honest limitations
 
 These are stated in code and must be stated in the UI too.
@@ -157,6 +210,15 @@ These are stated in code and must be stated in the UI too.
 - **Condition detection, embeddings and the offline vision pipeline are modelled
   but not implemented.** The types and seams exist; the detection does not. They
   are gated behind `FeatureFlags` and must not be presented as working.
+- **The knowledge cache keys on a hash of the image bytes.** It recognises the
+  same image being scanned again — a retry, a double-tap — but *not* the same
+  physical label photographed a second time at a different angle. That needs a
+  perceptual hash or an embedding. The brand-and-type composition prior is the
+  part that generalises today.
+- **The Gemini provider has never been executed against the live API.** It is
+  written against the documented interface and covered by tests using a stubbed
+  transport and recorded response shapes, but no request has been made without a
+  key. It stays behind the registry until it has been smoke-tested.
 
 ## Testing approach
 
@@ -182,9 +244,9 @@ dart run example/sort_demo.dart   # prints a worked plan
 
 | # | Scope | Status |
 |---|---|---|
-| 1 | Domain core: care, sorting, machines, matching, events | **Done** |
-| 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache | Next |
-| 3 | Flutter app shell: navigation, Drift/SQLite, theming, camera | |
+| 1 | Domain core: care, sorting, machines, matching, events | **Done** — 247 tests |
+| 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache | **Done** — 103 tests |
+| 3 | Flutter app shell: navigation, Drift/SQLite, theming, camera | Next |
 | 4 | Wardrobe browse, item detail, care-tag scanning UI | |
 | 5 | Pile scanning and batch processing | |
 | 6 | Outfits, packing, analytics dashboards | |

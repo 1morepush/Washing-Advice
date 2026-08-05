@@ -260,13 +260,13 @@ A few decisions worth reading about:
 
 | # | Scope | Status |
 |---|---|---|
-| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 311 tests |
+| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 349 tests |
 | 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts | **Done** — 130 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 103 tests |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 123 tests |
 | 4 | Care-label scanning, item editing, filter sheet, garment cutouts, grid view | **Done** |
 | 5 | Pile scanning, load grouping, machine profiles, wear and wash history | **Done** |
 | 6 | Outfits, packing, analytics | Next |
-| 7 | Offline sync, Supabase, store preparation | |
+| 7 | Offline verification, provenance-based sync engine | **Partly done** |
 
 `dart analyze --fatal-infos`, `flutter analyze --fatal-infos`, `ruff`, `mypy
 --strict` and every formatter run clean in CI, on all three parts.
@@ -310,6 +310,11 @@ Stated plainly, because the code says so too.
   not implemented.** The types and seams exist; the detection does not.
 - **The web build keeps images in memory**, so a browser reload loses them.
   Acceptable for trying the app; a phone writes real files.
+- **Nothing is synced anywhere yet.** The reconciliation rules are built and
+  tested — items merge by provenance, events by union, counters by replay — but
+  no hosted backend is wired up, so `SyncRemote` currently has only a fake
+  implementation. The app is offline-first regardless, and that *is* verified:
+  a suite runs the whole thing against a gateway whose every method throws.
 
 ---
 

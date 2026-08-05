@@ -237,4 +237,88 @@ void main() {
     expect(result.rationales, isNotEmpty);
     expect(result.rationales.first, contains('felt'));
   });
+
+  group('resolving from the item itself', () {
+    WardrobeItem woolJumper({Confident<CareConstraint>? label}) {
+      final now = DateTime.utc(2026, 8, 5);
+      return WardrobeItem(
+        id: const ItemId('jumper'),
+        name: 'Wool jumper',
+        type: Confident(
+          ItemType.sweater,
+          confidence: 0.95,
+          source: Provenance.aiInference,
+        ),
+        composition: Confident(
+          FabricComposition(const {Fiber.wool: 100}),
+          confidence: 0.95,
+          source: Provenance.tagScan,
+        ),
+        colors: Confident(
+          ColorPalette.empty(),
+          confidence: 0.9,
+          source: Provenance.aiInference,
+        ),
+        careLabel: label,
+        care: const CareProfile.unknown(),
+        addedAt: now,
+        updatedAt: now,
+      );
+    }
+
+    test('without a label, the wool rule decides', () {
+      final result = resolver.forItem(woolJumper());
+
+      expect(result.profile.source, Provenance.careRule);
+      expect(result.instructions.dry.tumbleDryAllowed, isFalse);
+    });
+
+    test('a stored label overrides the generic rule', () {
+      // Superwash wool: the manufacturer knows something the fibre does not.
+      final result = resolver.forItem(
+        woolJumper(
+          label: Confident(
+            const CareConstraint(
+              method: WashMethod.machine,
+              maxTempC: 40,
+              tumbleDryAllowed: true,
+              tumbleDryHeat: TumbleDryHeat.low,
+            ),
+            confidence: 0.93,
+            source: Provenance.tagScan,
+          ),
+        ),
+      );
+
+      expect(result.profile.source, Provenance.tagScan);
+      expect(result.instructions.wash.maxTempC, 40);
+      expect(result.instructions.dry.tumbleDryAllowed, isTrue);
+      expect(result.fieldsOverriddenByLabel, contains('dry.tumbleDryAllowed'));
+    });
+
+    test('correcting the fabric later does not discard the label', () {
+      // The reason the label is stored on the item as evidence rather than
+      // folded into the resolved profile. Re-resolving after an edit has to
+      // re-run the rule table, and a label lost at that point would downgrade
+      // a manufacturer's instruction to a generic rule without telling anyone.
+      final scanned = Confident(
+        const CareConstraint(tumbleDryAllowed: true),
+        confidence: 0.93,
+        source: Provenance.tagScan,
+      );
+
+      final corrected = woolJumper(label: scanned).copyWith(
+        composition: Confident(
+          FabricComposition(const {Fiber.wool: 50, Fiber.acrylic: 50}),
+          confidence: 1.0,
+          source: Provenance.userEdited,
+        ),
+      );
+
+      final result = resolver.forItem(corrected);
+
+      expect(result.instructions.dry.tumbleDryAllowed, isTrue);
+      expect(result.profile.source, Provenance.tagScan);
+    });
+  });
 }

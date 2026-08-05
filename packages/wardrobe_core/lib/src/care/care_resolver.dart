@@ -21,6 +21,7 @@
 library;
 
 import '../shared/confidence.dart';
+import '../wardrobe/model/wardrobe_item.dart';
 import 'model/care_instructions.dart';
 import 'rules/care_rule.dart';
 import 'rules/rule_evaluator.dart';
@@ -54,6 +55,22 @@ final class CareResolution {
   @override
   String toString() => 'CareResolution(${profile.source.name}, '
       '${appliedRules.length} rules)';
+}
+
+/// Resolves an item's care from everything the item itself carries.
+///
+/// The one way the app should re-derive care. Calling [CareResolver.resolve]
+/// directly means remembering to pass the scanned label, the confidence in the
+/// facts, and the user's override — and a caller who forgets the label quietly
+/// downgrades a manufacturer's instruction to a generic rule, which is exactly
+/// the failure [WardrobeItem.careLabel] exists to prevent.
+extension ResolveCareFor on CareResolver {
+  CareResolution forItem(WardrobeItem item) => resolve(
+        facts: item.facts,
+        factsConfidence: item.factsConfidence,
+        fromLabel: item.careLabel?.value,
+        labelConfidence: item.careLabel?.confidence ?? 0.9,
+      );
 }
 
 /// Combines label, rules and inference into a single care profile.

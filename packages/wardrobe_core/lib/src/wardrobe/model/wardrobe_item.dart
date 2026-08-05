@@ -39,6 +39,7 @@ final class WardrobeItem {
     required this.updatedAt,
     this.brand,
     this.pattern,
+    this.careLabel,
     this.photos = PhotoSet.empty,
     this.lifecycle = LifecycleState.active,
     this.condition = ConditionAssessment.pristine,
@@ -67,7 +68,23 @@ final class WardrobeItem {
   final Confident<Pattern>? pattern;
 
   /// How to wash it, and how much that belief can be trusted.
+  ///
+  /// A *conclusion*. [careLabel] is the evidence behind it.
   final CareProfile care;
+
+  /// What the garment's own care label said, as read from a scan.
+  ///
+  /// Kept beside the resolved [care] rather than folded into it, for the same
+  /// reason the event log is kept beside the usage counters: the conclusion is
+  /// derived and the evidence is not. Correcting the fabric later has to
+  /// re-run the rule table, and without the label preserved here that
+  /// re-resolution would silently discard the manufacturer's instruction and
+  /// fall back to a generic rule — telling someone to hand-wash a superwash
+  /// jumper their label says is machine washable.
+  ///
+  /// Partial by nature: a creased or faded label states only some fields, and
+  /// an absent field means the rule table fills the gap.
+  final Confident<CareConstraint>? careLabel;
 
   final PhotoSet photos;
   final LifecycleState lifecycle;
@@ -197,9 +214,17 @@ final class WardrobeItem {
   /// struct at each call site instead would let one caller quietly omit
   /// `timesWashed` and get different advice for the same garment.
   ///
-  /// Confidence is dropped here, not lost: the resolver tracks its own
-  /// confidence from the provenance of what it was given, and a rule asking
-  /// "is there enough wool in this?" cannot act on a maybe.
+  /// Confidence is dropped here, not lost: [factsConfidence] carries it, and a
+  /// rule asking "is there enough wool in this?" cannot act on a maybe.
+  ItemFacts get facts => ItemFacts(
+        type: type.value,
+        composition: composition.value,
+        colors: colors.value,
+        pattern: pattern?.value,
+        conditionGrade: condition.grade,
+        timesWashed: usage.timesWashed,
+      );
+
   /// How much [facts] can be trusted, for attenuating anything derived from it.
   ///
   /// The weakest link, not an average: the rules reason from type *and*
@@ -210,15 +235,6 @@ final class WardrobeItem {
   double get factsConfidence => type.confidence < composition.confidence
       ? type.confidence
       : composition.confidence;
-
-  ItemFacts get facts => ItemFacts(
-        type: type.value,
-        composition: composition.value,
-        colors: colors.value,
-        pattern: pattern?.value,
-        conditionGrade: condition.grade,
-        timesWashed: usage.timesWashed,
-      );
 
   /// A display label such as `'Nike Hoodie'`.
   String get displayName => name.isNotEmpty
@@ -233,6 +249,7 @@ final class WardrobeItem {
     Confident<String>? brand,
     Confident<Pattern>? pattern,
     CareProfile? care,
+    Confident<CareConstraint>? careLabel,
     PhotoSet? photos,
     LifecycleState? lifecycle,
     ConditionAssessment? condition,
@@ -258,6 +275,7 @@ final class WardrobeItem {
         brand: brand ?? this.brand,
         pattern: pattern ?? this.pattern,
         care: care ?? this.care,
+        careLabel: careLabel ?? this.careLabel,
         photos: photos ?? this.photos,
         lifecycle: lifecycle ?? this.lifecycle,
         condition: condition ?? this.condition,
@@ -294,6 +312,8 @@ final class WardrobeItem {
         if (brand != null) 'brand': brand!.toJson((b) => b),
         if (pattern != null) 'pattern': pattern!.toJson((p) => p.name),
         'care': care.toJson(),
+        if (careLabel != null)
+          'careLabel': careLabel!.toJson((c) => c.toJson()),
         'photos': photos.toJson(),
         'lifecycle': lifecycle.name,
         'condition': condition.toJson(),
@@ -341,6 +361,12 @@ final class WardrobeItem {
                 (raw) => Pattern.values.byName(raw! as String),
               ),
         care: CareProfile.fromJson(json['care']! as Map<String, Object?>),
+        careLabel: json['careLabel'] == null
+            ? null
+            : Confident.fromJson(
+                json['careLabel']! as Map<String, Object?>,
+                (raw) => CareConstraint.fromJson(raw! as Map<String, Object?>),
+              ),
         photos: PhotoSet.fromJson(
           json['photos'] as List<Object?>? ?? const [],
         ),

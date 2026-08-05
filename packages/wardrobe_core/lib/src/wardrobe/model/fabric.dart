@@ -254,8 +254,7 @@ final class FabricComposition {
   /// see. This threshold is therefore flat, at the 5% that EU textile
   /// labelling (Regulation 1007/2011) uses to decide whether a fibre is named
   /// on the label at all — the same "what is this made of" judgement.
-  bool isDescribedBy(Fiber fiber) =>
-      percentOf(fiber) >= notableFiberPercent;
+  bool isDescribedBy(Fiber fiber) => percentOf(fiber) >= notableFiberPercent;
 
   /// True when any fibre present at its escalation threshold has [test] set.
   ///

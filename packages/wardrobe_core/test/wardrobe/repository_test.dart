@@ -161,7 +161,11 @@ void runRepositoryContractTests(String name, RepositoryFactory create) {
           // describes the garment, 2% elastane does not. The 2% is still below
           // elastane's care threshold of 3, so this stays a plain warm wash and
           // the fixture is not quietly testing two things at once.
-          composition: {Fiber.cotton: 78, Fiber.polyester: 20, Fiber.elastane: 2},
+          composition: {
+            Fiber.cotton: 78,
+            Fiber.polyester: 20,
+            Fiber.elastane: 2
+          },
           isFavorite: true,
         ),
         buildItem(

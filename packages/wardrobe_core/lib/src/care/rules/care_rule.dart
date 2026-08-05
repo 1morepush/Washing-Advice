@@ -238,10 +238,10 @@ final class CareConstraint {
       agitation: read('agitation', (r) => Agitation.values.byName(r as String)),
       bleach: read('bleach', (r) => BleachAllowance.values.byName(r as String)),
       tumbleDryAllowed: read('tumbleDryAllowed', (r) => r as bool),
-      tumbleDryHeat:
-          read('tumbleDryHeat', (r) => TumbleDryHeat.values.byName(r as String)),
-      naturalDry:
-          read('naturalDry', (r) => NaturalDryMethod.values.byName(r as String)),
+      tumbleDryHeat: read(
+          'tumbleDryHeat', (r) => TumbleDryHeat.values.byName(r as String)),
+      naturalDry: read(
+          'naturalDry', (r) => NaturalDryMethod.values.byName(r as String)),
       dryInShade: read('dryInShade', (r) => r as bool),
       doNotWring: read('doNotWring', (r) => r as bool),
       ironTemperature: read(

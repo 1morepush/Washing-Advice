@@ -207,10 +207,9 @@ final class WardrobeItem {
   /// a shaky reading of the other. Averaging would let "definitely a jumper,
   /// possibly wool" pass as reasonably certain, which is precisely the case
   /// where the advice needs a caveat.
-  double get factsConfidence =>
-      type.confidence < composition.confidence
-          ? type.confidence
-          : composition.confidence;
+  double get factsConfidence => type.confidence < composition.confidence
+      ? type.confidence
+      : composition.confidence;
 
   ItemFacts get facts => ItemFacts(
         type: type.value,

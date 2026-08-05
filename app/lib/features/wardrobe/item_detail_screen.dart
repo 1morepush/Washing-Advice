@@ -29,6 +29,14 @@ class ItemDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         leading: BackButton(onPressed: () => context.go('/')),
         title: Text(item.valueOrNull?.displayName ?? 'Item'),
+        actions: [
+          if (item.valueOrNull != null)
+            IconButton(
+              onPressed: () => context.go('/item/${id.value}/edit'),
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Edit',
+            ),
+        ],
       ),
       body: item.when(
         loading: () => const Center(child: CircularProgressIndicator()),

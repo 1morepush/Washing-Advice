@@ -58,6 +58,7 @@ export 'src/shared/ids.dart';
 // Vision: the contract the AI layer must satisfy.
 export 'src/vision/vision_port.dart';
 // Wardrobe: what the user owns.
+export 'src/wardrobe/in_memory_repository.dart';
 export 'src/wardrobe/model/condition.dart';
 export 'src/wardrobe/model/fabric.dart';
 export 'src/wardrobe/model/item_attributes.dart';
@@ -67,3 +68,5 @@ export 'src/wardrobe/model/ownership.dart';
 export 'src/wardrobe/model/photo.dart';
 export 'src/wardrobe/model/relationship.dart';
 export 'src/wardrobe/model/wardrobe_item.dart';
+export 'src/wardrobe/query.dart';
+export 'src/wardrobe/repository.dart';

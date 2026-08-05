@@ -46,6 +46,7 @@ WardrobeItem buildItem({
   PurchaseInfo? purchase,
   String? sizeLabel,
   String? distinguishingText,
+  Set<Season> seasons = const {},
   bool isFavorite = false,
 }) {
   final palette = ColorPalette(colors ?? [Colors.grey]);
@@ -79,6 +80,7 @@ WardrobeItem buildItem({
     purchase: purchase,
     sizeLabel: sizeLabel,
     distinguishingText: distinguishingText,
+    seasons: seasons,
     isFavorite: isFavorite,
     addedAt: testNow,
     updatedAt: testNow,

@@ -322,10 +322,14 @@ final class WardrobeItem {
         if (sizeLabel != null) 'sizeLabel': sizeLabel,
         if (sleeveLength != null) 'sleeveLength': sleeveLength!.name,
         if (fit != null) 'fit': fit!.name,
-        'seasons': seasons.map((s) => s.name).toList(),
+        // Sorted, not merely listed. A `Set` has no order, so two devices
+        // holding the same tags can serialise them differently — and anything
+        // comparing the encoded form (a sync hash, a golden test) would read
+        // that as a change and reconcile the two forever.
+        'seasons': [for (final s in seasons) s.name]..sort(),
         if (styleCut != null) 'styleCut': styleCut!.name,
         'isFavorite': isFavorite,
-        'tags': tags.toList(),
+        'tags': tags.toList()..sort(),
         if (notes != null) 'notes': notes,
         if (distinguishingText != null)
           'distinguishingText': distinguishingText,

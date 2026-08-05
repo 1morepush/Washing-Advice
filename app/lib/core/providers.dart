@@ -177,3 +177,64 @@ final laundrySorterProvider = Provider<LaundrySorter>(
 final careResolverProvider = Provider<CareResolver>(
   (ref) => const CareResolver(),
 );
+
+/// Everything the user owns, unfiltered.
+///
+/// Separate from [wardrobeItemsProvider], which is deliberately narrowed by
+/// whatever the wardrobe screen's search box says. Analytics computed over a
+/// filtered list would quietly answer a different question from the one on
+/// screen — "8% of my wardrobe is wool" is wrong if it means 8% of the four
+/// things matching "jum".
+final ownedItemsProvider = StreamProvider<List<WardrobeItem>>(
+  (ref) =>
+      ref.watch(wardrobeRepositoryProvider).watch(const WardrobeQuery.owned()),
+);
+
+/// What the wardrobe adds up to.
+final wardrobeSummaryProvider = Provider<AsyncValue<WardrobeSummary>>(
+  (ref) => ref.watch(ownedItemsProvider).whenData(WardrobeSummary.new),
+);
+
+/// Suggests things to wear.
+///
+/// Built with the relationship graph left empty for now: nothing yet records
+/// `wornWith` edges, and passing an empty graph would be indistinguishable
+/// from passing none. When the wear recorder starts writing them, this is the
+/// single line that changes.
+final outfitBuilderProvider = Provider<OutfitBuilder>(
+  (ref) => const OutfitBuilder(),
+);
+
+final packingPlannerProvider = Provider<PackingPlanner>(
+  (ref) => const PackingPlanner(),
+);
+
+/// What the outfits screen is currently asking for.
+final outfitRequestProvider = StateProvider<OutfitRequest>(
+  (ref) => const OutfitRequest(),
+);
+
+final outfitSuggestionsProvider = Provider<AsyncValue<List<OutfitSuggestion>>>(
+  (ref) => ref
+      .watch(ownedItemsProvider)
+      .whenData(
+        (items) => ref
+            .watch(outfitBuilderProvider)
+            .suggest(items, ref.watch(outfitRequestProvider)),
+      ),
+);
+
+/// The trip the packing screen is planning for.
+final tripSpecProvider = StateProvider<TripSpec>(
+  (ref) => const TripSpec(days: 5),
+);
+
+final packingListProvider = Provider<AsyncValue<PackingList>>(
+  (ref) => ref
+      .watch(ownedItemsProvider)
+      .whenData(
+        (items) => ref
+            .watch(packingPlannerProvider)
+            .plan(items, ref.watch(tripSpecProvider)),
+      ),
+);

@@ -11,6 +11,10 @@ which cycle to select on *your* machine.
 |---|---|---|---|
 | ![Wardrobe](app/docs/screenshots/wardrobe-light.png) | ![Laundry plan](app/docs/screenshots/laundry-plan.png) | ![Scan review](app/docs/screenshots/scan-review.png) | ![Care label review](app/docs/screenshots/care-label-review.png) |
 
+| Outfits | Packing | Insights |
+|---|---|---|
+| ![Outfits](app/docs/screenshots/outfits.png) | ![Packing](app/docs/screenshots/packing.png) | ![Insights](app/docs/screenshots/insights-light.png) |
+
 These are captures of the real app — a web build of `app/lib/main_demo.dart`,
 which is the shipping code with storage, the camera and the backend
 substituted. Not mock-ups.
@@ -157,6 +161,52 @@ By category, colour, fabric, brand, season, favourites, never-worn, or items
 still waiting for a label scan — plus free text and six sort orders, including
 cost per wear.
 
+### Suggest something to wear
+
+Pick an occasion and get outfits built from what you own and is not currently in
+the wash. Every suggestion says why it was made — "opposite colours, which set
+each other off", "you have not worn this in 130 days" — because a suggestion
+with no explanation is either obeyed blindly or ignored.
+
+Colour is judged in CIELAB hue, which is the opponent space human vision
+actually uses rather than the wheel taught in art classes. That means red comes
+out opposite cyan, not green, and red with green is scored as the difficult
+pairing it is. The thresholds were set from measured garment swatches after the
+wheel-derived ones proved wrong, and the tests pin them against named colours.
+
+Suggestions are also deliberately made *different from each other*: ranking by
+score alone produced five variations on one outfit, which is one suggestion
+shown five times.
+
+### Pack for a trip
+
+Say how long, what kind of days, and whether there is a machine where you are
+staying. The quantities are ordinary packing arithmetic — a top a day, a bottom
+every three, underwear plus a spare — capped by the wash interval when laundry
+is available, which is the difference between a carry-on and a hold bag.
+
+The part a packing app cannot do is the note underneath:
+
+> *2 packed items need hand washing or professional care, which is awkward away
+> from home*
+>
+> *Washing this lot properly means 3 separate loads (whites, darks, brights).
+> Dropping one colour would make it fewer.*
+
+And when the wardrobe cannot supply what the trip needs, it says so rather than
+handing over a short list that looks complete.
+
+### Show what the wardrobe adds up to
+
+What it is made of, which piles it sorts into, what is never worn as against
+merely not worn lately, and cost per wear. Spend is kept per currency and never
+converted, because a total built on an invented exchange rate is worse than none
+— it looks like an answer.
+
+The figure at the top is **readiness**: the share of washable items the app can
+actually advise on. It predicts how useful a pile scan will be before you find
+out at the machine, and it links straight to the next label worth scanning.
+
 ---
 
 ## Running it
@@ -260,12 +310,12 @@ A few decisions worth reading about:
 
 | # | Scope | Status |
 |---|---|---|
-| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 349 tests |
+| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 432 core tests |
 | 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts | **Done** — 130 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 123 tests |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 137 app tests |
 | 4 | Care-label scanning, item editing, filter sheet, garment cutouts, grid view | **Done** |
 | 5 | Pile scanning, load grouping, machine profiles, wear and wash history | **Done** |
-| 6 | Outfits, packing, analytics | Next |
+| 6 | Outfit suggestions, laundry-aware packing, wardrobe insights | **Done** |
 | 7 | Offline verification, provenance-based sync engine | **Partly done** |
 
 `dart analyze --fatal-infos`, `flutter analyze --fatal-infos`, `ruff`, `mypy
@@ -304,6 +354,20 @@ Stated plainly, because the code says so too.
 - **A pile scan cannot sort garments the app has not met.** By design — it says
   which ones need identifying — but it does mean the feature is worth little
   until a wardrobe has been built up.
+- **Outfits cannot be saved yet.** The `Outfit` type, its serialisation and the
+  relationship graph all exist, but nothing writes to them: the builder proposes
+  and nothing records what was accepted. Until it does, the builder has no
+  `wornWith` edges to learn from and falls back to colour and usage alone.
+- **Occasion suitability is a default table, not a judgement about you.**
+  Whether a hoodie belongs at work depends on the workplace, so the defaults are
+  overridable per item with a tag — but nothing yet learns them from what you
+  actually wear.
+- **Outfit suggestions score colour only.** They have no opinion on pattern,
+  texture, proportion or fit, which is why every card shows its reasoning rather
+  than presenting a verdict.
+- **Packing weights are typical dry weights for the garment type**, not for your
+  particular coat. Useful for comparing two packing lists; not for an airline's
+  scales.
 - **Nothing rescans a care label automatically.** Once stored, the app trusts it
   indefinitely, including after the garment has visibly aged.
 - **Condition detection, embeddings and the on-device OCR stage are modelled but

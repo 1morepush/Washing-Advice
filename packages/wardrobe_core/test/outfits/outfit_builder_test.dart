@@ -288,6 +288,66 @@ void main() {
       expect(signatures, hasLength(suggestions.length));
     });
 
+    test('does not return five variations on one outfit', () {
+      // Found by building the screen and looking at it: ranking by score alone
+      // gave five suggestions that shared the same bottom, because the
+      // best-matching bottom pairs well with every top. That is one suggestion
+      // shown five times.
+      final wardrobe = [
+        for (var i = 0; i < 4; i++)
+          item('top-$i', type: ItemType.tShirt, hex: '#1F2A44'),
+        for (var i = 0; i < 4; i++)
+          item('bottom-$i', type: ItemType.jeans, hex: '#3C3F44'),
+      ];
+
+      final suggestions = builder.suggest(
+        wardrobe,
+        const OutfitRequest(count: 4, includeFootwear: false),
+      );
+
+      final bottoms = {
+        for (final suggestion in suggestions)
+          suggestion.items
+              .firstWhere((i) => i.category == ItemCategory.bottom)
+              .id,
+      };
+      expect(bottoms, hasLength(4));
+    });
+
+    test('still fills the list when there is only one of something', () {
+      // The penalty must discourage repetition, not refuse it: a wardrobe with
+      // one pair of shoes should still get suggestions.
+      final wardrobe = [
+        for (var i = 0; i < 3; i++) item('top-$i', type: ItemType.tShirt),
+        item('only-jeans', type: ItemType.jeans),
+      ];
+
+      final suggestions = builder.suggest(
+        wardrobe,
+        const OutfitRequest(count: 3, includeFootwear: false),
+      );
+
+      expect(suggestions, hasLength(3));
+    });
+
+    test('an anchor is exempt, because every candidate carries it', () {
+      final suggestions = builder.suggest(
+          [
+            item('skirt', type: ItemType.skirt),
+            for (var i = 0; i < 3; i++) item('top-$i', type: ItemType.blouse),
+          ],
+          const OutfitRequest(
+            mustInclude: ItemId('skirt'),
+            count: 3,
+            includeFootwear: false,
+          ));
+
+      expect(suggestions, hasLength(3));
+      for (final suggestion in suggestions) {
+        expect(suggestion.itemIds, contains(const ItemId('skirt')));
+      }
+    });
+
     test('honours the requested count', () {
       final wardrobe = [
         for (var i = 0; i < 6; i++) item('top-$i', type: ItemType.tShirt),

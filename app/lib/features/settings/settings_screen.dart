@@ -3,11 +3,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+
+import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../../core/settings.dart';
-import 'package:wardrobe_core/wardrobe_core.dart';
+import '../../widgets/app_drawer.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -54,10 +55,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        leading: BackButton(onPressed: () => context.go('/')),
-        title: const Text('Settings'),
-      ),
+      // Now a top-level destination rather than a detour from the wardrobe, so
+      // it gets the drawer instead of a back button that only ever went home.
+      drawer: const AppDrawer(current: AppDestination.settings),
+      appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

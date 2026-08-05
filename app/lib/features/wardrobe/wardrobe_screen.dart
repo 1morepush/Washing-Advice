@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
+import '../../widgets/app_drawer.dart';
 import 'filter_sheet.dart';
 import 'widgets/item_card.dart';
 import 'widgets/item_tile.dart';
@@ -28,6 +29,7 @@ class WardrobeScreen extends ConsumerWidget {
     final owned = ref.watch(ownedCountProvider).valueOrNull;
 
     return Scaffold(
+      drawer: const AppDrawer(current: AppDestination.wardrobe),
       appBar: AppBar(
         title: const Text('Wardrobe'),
         actions: [
@@ -48,11 +50,6 @@ class WardrobeScreen extends ConsumerWidget {
                 )
                 .activeFilterCount,
             onPressed: () => showFilterSheet(context),
-          ),
-          IconButton(
-            onPressed: () => context.go('/settings'),
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: 'Settings',
           ),
         ],
         bottom: PreferredSize(

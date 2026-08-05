@@ -126,7 +126,19 @@ for (const theme of ['light', 'dark']) {
     await tapText(page, 'Take a photo');
     await page.waitForTimeout(3000);
     await shot(page, 'laundry-plan');
+
+    await page.goto(`${BASE}/#/outfits`, { waitUntil: 'load' });
+    await ready(page);
+    await shot(page, 'outfits');
+
+    await page.goto(`${BASE}/#/packing`, { waitUntil: 'load' });
+    await ready(page);
+    await shot(page, 'packing');
   }
+
+  await page.goto(`${BASE}/#/insights`, { waitUntil: 'load' });
+  await ready(page);
+  await shot(page, `insights-${theme}`);
 
   await context.close();
 }

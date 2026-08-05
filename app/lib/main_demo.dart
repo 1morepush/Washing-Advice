@@ -376,7 +376,11 @@ List<WardrobeItem> _seed() {
       // Read from a photo, not a label — so this one asks to be scanned.
       compositionSource: Provenance.aiInference,
       compositionConfidence: 0.61,
-      usage: const UsageStats(timesWorn: 12, timesWashed: 4),
+      usage: UsageStats(
+        timesWorn: 12,
+        timesWashed: 4,
+        lastWornAt: now.subtract(const Duration(days: 130)),
+      ),
       addedDaysAgo: 40,
       purchase: PurchaseInfo(
         priceMinorUnits: 5990,
@@ -405,7 +409,11 @@ List<WardrobeItem> _seed() {
         confidence: 0.95,
         source: Provenance.tagScan,
       ),
-      usage: const UsageStats(timesWorn: 31, timesWashed: 22),
+      usage: UsageStats(
+        timesWorn: 31,
+        timesWashed: 22,
+        lastWornAt: now.subtract(const Duration(days: 3)),
+      ),
       addedDaysAgo: 120,
     ),
     build(
@@ -421,7 +429,11 @@ List<WardrobeItem> _seed() {
       colorName: 'Navy',
       brand: 'Nike',
       isFavorite: true,
-      usage: const UsageStats(timesWorn: 24, timesWashed: 9),
+      usage: UsageStats(
+        timesWorn: 24,
+        timesWashed: 9,
+        lastWornAt: now.subtract(const Duration(days: 6)),
+      ),
       addedDaysAgo: 15,
     ),
     build(
@@ -432,7 +444,11 @@ List<WardrobeItem> _seed() {
       hex: '#2B3A55',
       colorName: 'Indigo',
       brand: "Levi's",
-      usage: const UsageStats(timesWorn: 46, timesWashed: 6),
+      usage: UsageStats(
+        timesWorn: 46,
+        timesWashed: 6,
+        lastWornAt: now.subtract(const Duration(days: 4)),
+      ),
       addedDaysAgo: 200,
     ),
     build(
@@ -443,6 +459,11 @@ List<WardrobeItem> _seed() {
       hex: '#EFE3CE',
       colorName: 'Cream',
       addedDaysAgo: 8,
+      purchase: PurchaseInfo(
+        priceMinorUnits: 12000,
+        currencyCode: 'EUR',
+        purchasedAt: now.subtract(const Duration(days: 8)),
+      ),
     ),
     build(
       id: 'demo-red',
@@ -453,7 +474,11 @@ List<WardrobeItem> _seed() {
       colorName: 'Red',
       brand: 'Uniqlo',
       // New and saturated, so the app isolates it from a shared load.
-      usage: const UsageStats(timesWorn: 1, timesWashed: 0),
+      usage: UsageStats(
+        timesWorn: 1,
+        timesWashed: 0,
+        lastWornAt: now.subtract(const Duration(days: 1)),
+      ),
       addedDaysAgo: 2,
     ),
     build(
@@ -465,6 +490,97 @@ List<WardrobeItem> _seed() {
       colorName: 'Pale blue',
       usage: const UsageStats(timesWorn: 0, timesWashed: 3),
       addedDaysAgo: 60,
+    ),
+    build(
+      id: 'demo-chinos',
+      name: 'Stone chinos',
+      type: ItemType.chinos,
+      composition: const {Fiber.cotton: 97, Fiber.elastane: 3},
+      hex: '#C9BFA8',
+      colorName: 'Stone',
+      brand: 'Uniqlo',
+      usage: UsageStats(
+        timesWorn: 18,
+        timesWashed: 7,
+        lastWornAt: now.subtract(const Duration(days: 11)),
+      ),
+      addedDaysAgo: 300,
+    ),
+    build(
+      id: 'demo-jacket',
+      name: 'Olive field jacket',
+      type: ItemType.jacket,
+      composition: const {Fiber.cotton: 100},
+      hex: '#6B7A3A',
+      colorName: 'Olive',
+      usage: UsageStats(
+        timesWorn: 9,
+        timesWashed: 1,
+        lastWornAt: now.subtract(const Duration(days: 20)),
+      ),
+      addedDaysAgo: 500,
+    ),
+    build(
+      id: 'demo-sneakers',
+      name: 'White trainers',
+      type: ItemType.sneakers,
+      composition: const {Fiber.cotton: 60, Fiber.polyester: 40},
+      hex: '#EDEDE8',
+      colorName: 'White',
+      usage: UsageStats(
+        timesWorn: 60,
+        timesWashed: 1,
+        lastWornAt: now.subtract(const Duration(days: 2)),
+      ),
+      addedDaysAgo: 420,
+    ),
+    for (var i = 0; i < 6; i++)
+      build(
+        id: 'demo-socks-$i',
+        name: 'Black socks',
+        type: ItemType.socks,
+        composition: const {
+          Fiber.cotton: 80,
+          Fiber.polyester: 18,
+          Fiber.elastane: 2,
+        },
+        hex: '#1B1B1F',
+        colorName: 'Black',
+        usage: UsageStats(
+          timesWorn: 30 + i,
+          timesWashed: 28 + i,
+          lastWornAt: now.subtract(Duration(days: i + 1)),
+        ),
+        addedDaysAgo: 260,
+      ),
+    for (var i = 0; i < 6; i++)
+      build(
+        id: 'demo-pants-$i',
+        name: 'Grey shorts',
+        type: ItemType.underwear,
+        composition: const {Fiber.cotton: 95, Fiber.elastane: 5},
+        hex: '#5A5A60',
+        colorName: 'Grey',
+        usage: UsageStats(
+          timesWorn: 34 + i,
+          timesWashed: 33 + i,
+          lastWornAt: now.subtract(Duration(days: i + 1)),
+        ),
+        addedDaysAgo: 260,
+      ),
+    build(
+      id: 'demo-pyjamas',
+      name: 'Striped pyjamas',
+      type: ItemType.pajamas,
+      composition: const {Fiber.cotton: 100},
+      hex: '#8C9BB5',
+      colorName: 'Faded blue',
+      usage: UsageStats(
+        timesWorn: 90,
+        timesWashed: 40,
+        lastWornAt: now.subtract(const Duration(days: 1)),
+      ),
+      addedDaysAgo: 700,
     ),
   ];
 }

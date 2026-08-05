@@ -16,6 +16,8 @@
 /// can argue with.
 library;
 
+import 'dart:math' as math;
+
 import '../shared/clock.dart';
 import '../shared/ids.dart';
 import '../wardrobe/model/item_attributes.dart';
@@ -35,6 +37,17 @@ const int _shortlist = 4;
 
 /// Days after which an item counts as neglected, and gets a nudge.
 const int _neglectedAfterDays = 60;
+
+/// How much a suggestion is discounted per item it reuses from one already
+/// chosen.
+///
+/// Ranking by score alone produced five suggestions that shared the same jeans
+/// and the same shoes, because the same well-matching bottom pairs well with
+/// every top. Five variations on one outfit is one suggestion presented five
+/// times. Applied multiplicatively so reusing two items costs more than
+/// reusing one, and gently enough that a wardrobe with only one pair of shoes
+/// still gets suggestions rather than a shorter list.
+const double _repeatPenalty = 0.8;
 
 /// What the user is dressing for.
 final class OutfitRequest {
@@ -158,7 +171,44 @@ final class OutfitBuilder {
 
     final ranked = suggestions.values.toList()
       ..sort((a, b) => b.score.compareTo(a.score));
-    return ranked.take(request.count).toList();
+    return _diversify(ranked, request.count);
+  }
+
+  /// Picks [count] suggestions that are not all the same outfit.
+  ///
+  /// Greedy: take the best, then re-score what is left against what has
+  /// already been chosen. An anchored request is unaffected, because every
+  /// candidate contains the anchor and the penalty applies to all of them
+  /// equally.
+  List<OutfitSuggestion> _diversify(List<OutfitSuggestion> ranked, int count) {
+    final chosen = <OutfitSuggestion>[];
+    final used = <ItemId, int>{};
+    final pool = [...ranked];
+
+    while (chosen.length < count && pool.isNotEmpty) {
+      var bestIndex = 0;
+      var best = double.negativeInfinity;
+
+      for (var i = 0; i < pool.length; i++) {
+        final repeats = pool[i].itemIds.fold<int>(
+              0,
+              (sum, id) => sum + (used[id] ?? 0),
+            );
+        final adjusted = pool[i].score * math.pow(_repeatPenalty, repeats);
+        if (adjusted > best) {
+          best = adjusted.toDouble();
+          bestIndex = i;
+        }
+      }
+
+      final pick = pool.removeAt(bestIndex);
+      chosen.add(pick);
+      for (final id in pick.itemIds) {
+        used[id] = (used[id] ?? 0) + 1;
+      }
+    }
+
+    return chosen;
   }
 
   /// Whether the item is a legitimate choice for this request at all.

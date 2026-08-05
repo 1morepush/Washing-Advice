@@ -7,6 +7,7 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wardrobe_core/wardrobe_core.dart';
 
 /// Where the scan backend lives.
 ///
@@ -19,6 +20,8 @@ class SettingsStore {
   SettingsStore(this._prefs);
 
   static const _backendUrlKey = 'backendUrl';
+  static const _washerKey = 'washerBrand';
+  static const _dryerKey = 'dryerBrand';
 
   final SharedPreferences _prefs;
 
@@ -31,6 +34,38 @@ class SettingsStore {
       _backendUrlKey,
       trimmed.isEmpty ? defaultBackendUrl : trimmed,
     );
+  }
+
+  /// The chosen machines, by catalogue key.
+  ///
+  /// Stored as a key rather than a serialised profile so a corrected or
+  /// expanded catalogue reaches existing users. The profiles are brand
+  /// archetypes that will be refined; freezing a copy into preferences would
+  /// mean every improvement only ever applied to new installs.
+  String? get washerBrand => _readBrand(_washerKey, seededWashers);
+
+  String? get dryerBrand => _readBrand(_dryerKey, seededDryers);
+
+  Future<void> setWasherBrand(String? brand) => _write(_washerKey, brand);
+
+  Future<void> setDryerBrand(String? brand) => _write(_dryerKey, brand);
+
+  /// Reads a stored key, discarding one the catalogue no longer has.
+  ///
+  /// A brand can disappear between releases, and a dangling key would leave
+  /// the app with a machine it cannot resolve — which reads to the user as
+  /// their settings being silently ignored.
+  String? _readBrand(String key, Map<String, Object?> catalogue) {
+    final stored = _prefs.getString(key);
+    return stored != null && catalogue.containsKey(stored) ? stored : null;
+  }
+
+  Future<void> _write(String key, String? value) async {
+    if (value == null) {
+      await _prefs.remove(key);
+    } else {
+      await _prefs.setString(key, value);
+    }
   }
 }
 
@@ -45,4 +80,27 @@ final settingsStoreProvider = Provider<SettingsStore>(
 /// The current backend URL, as state so editing it rebuilds the gateway.
 final backendUrlProvider = StateProvider<String>(
   (ref) => ref.watch(settingsStoreProvider).backendUrl,
+);
+
+/// The user's machines, by catalogue key. Null means "not set up yet".
+final washerBrandProvider = StateProvider<String?>(
+  (ref) => ref.watch(settingsStoreProvider).washerBrand,
+);
+
+final dryerBrandProvider = StateProvider<String?>(
+  (ref) => ref.watch(settingsStoreProvider).dryerBrand,
+);
+
+/// The chosen washer, or null.
+///
+/// Null is a supported state throughout, not an error: `LaundrySorter` still
+/// groups items and states abstract requirements without a machine, it just
+/// cannot name a programme. Forcing setup before the app does anything useful
+/// would put a configuration screen between someone and their first answer.
+final washerProvider = Provider<WasherProfile?>(
+  (ref) => seededWashers[ref.watch(washerBrandProvider)],
+);
+
+final dryerProvider = Provider<DryerProfile?>(
+  (ref) => seededDryers[ref.watch(dryerBrandProvider)],
 );

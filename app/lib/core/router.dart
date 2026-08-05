@@ -8,6 +8,7 @@ library;
 import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
+import '../features/pile/pile_screen.dart';
 import '../features/scan/care_tag_screen.dart';
 import '../features/scan/scan_screen.dart';
 import '../features/settings/settings_screen.dart';
@@ -40,6 +41,7 @@ GoRouter buildRouter({String initialLocation = '/'}) => GoRouter(
           CareTagScreen(id: ItemId(state.pathParameters['id']!)),
     ),
     GoRoute(path: '/scan', builder: (_, _) => const ScanScreen()),
+    GoRoute(path: '/pile', builder: (_, _) => const PileScreen()),
     GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
   ],
 );

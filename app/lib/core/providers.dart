@@ -151,6 +151,24 @@ final imageStoreProvider = Provider<ImageStore>(
 /// New identifiers. Overridden in tests so ids are predictable.
 final idGeneratorProvider = Provider<IdGenerator>((ref) => RandomIdGenerator());
 
+/// Recognises a garment as something already in the wardrobe.
+///
+/// A provider rather than a constant so an embedding-based matcher can be
+/// added beside the attribute one later without the pile flow changing.
+final itemMatcherProvider = Provider<ItemMatcher>(
+  (ref) => const AttributeMatcher(),
+);
+
+/// Turns ranked candidates into recognised / confirm / new.
+final matchResolverProvider = Provider<MatchResolver>(
+  (ref) => const MatchResolver(),
+);
+
+/// Groups items into loads and names the programmes.
+final laundrySorterProvider = Provider<LaundrySorter>(
+  (ref) => const LaundrySorter(),
+);
+
 /// The care rule table.
 ///
 /// A provider rather than a bare constant so a future build can swap in extra

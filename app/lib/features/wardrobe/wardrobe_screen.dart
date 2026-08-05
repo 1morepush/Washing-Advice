@@ -65,10 +65,26 @@ class WardrobeScreen extends ConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.go('/scan'),
-        icon: const Icon(Icons.camera_alt_outlined),
-        label: const Text('Scan'),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Adding one garment is the smaller action and gets the smaller
+          // button. Sorting a pile is what the app is for.
+          FloatingActionButton.small(
+            heroTag: 'add-item',
+            onPressed: () => context.go('/scan'),
+            tooltip: 'Add a garment',
+            child: const Icon(Icons.add_a_photo_outlined),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton.extended(
+            heroTag: 'sort-pile',
+            onPressed: () => context.go('/pile'),
+            icon: const Icon(Icons.local_laundry_service_outlined),
+            label: const Text('Sort laundry'),
+          ),
+        ],
       ),
       body: items.when(
         loading: () => const Center(child: CircularProgressIndicator()),

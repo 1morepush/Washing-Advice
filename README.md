@@ -7,9 +7,9 @@ which cycle to select on *your* machine.
 > Instead of "wash cold", it says: **Delicates, 30°C, 800 rpm, extra rinse on**
 > — and tells you it chose 30°C because your new red tee bleeds.
 
-| Wardrobe | Item detail | Scan review | Care label |
+| Wardrobe | Laundry plan | Scan review | Care label |
 |---|---|---|---|
-| ![Wardrobe list](app/docs/screenshots/wardrobe-light.png) | ![Item detail](app/docs/screenshots/item-detail-light.png) | ![Scan review](app/docs/screenshots/scan-review.png) | ![Care label review](app/docs/screenshots/care-label-review.png) |
+| ![Wardrobe](app/docs/screenshots/wardrobe-light.png) | ![Laundry plan](app/docs/screenshots/laundry-plan.png) | ![Scan review](app/docs/screenshots/scan-review.png) | ![Care label review](app/docs/screenshots/care-label-review.png) |
 
 These are captures of the real app — a web build of `app/lib/main_demo.dart`,
 which is the shipping code with storage, the camera and the backend
@@ -87,6 +87,24 @@ disagreed with the rule the app had been applying.
 That is how you find out a particular wool jumper is superwash and can go in the
 machine at 40°, which is not something you learn by reading a label once and
 forgetting it.
+
+### Sort a pile of laundry
+
+Photograph the heap. The app finds each garment, recognises the ones already in
+your wardrobe, and groups them into loads with the programme, temperature and
+spin to select.
+
+Recognition is the point. A garment lying twisted in a pile is a poor subject;
+the same garment photographed properly once, with its care label read, is a
+good one. The pile scan only has to work out *which* item it is looking at —
+after that it uses what the wardrobe already knows, not what a crumpled sleeve
+suggests.
+
+**It refuses to sort what it is guessing at.** A garment it has never seen
+before gets a fabric estimated from one photo, and the app will not build a
+load on that — it says which items need identifying first. That is the same
+rule as everywhere else, applied at the last possible step: the cost of being
+wrong is a ruined jumper, and there is no undo.
 
 ### Explain itself
 
@@ -231,10 +249,10 @@ A few decisions worth reading about:
 |---|---|---|
 | 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 311 tests |
 | 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts | **Done** — 130 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 81 tests |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 93 tests |
 | 4 | Care-label scanning, item editing, filter sheet, garment cutouts, grid view | **Done** |
-| 5 | Pile scanning and load grouping | Next |
-| 6 | Outfits, packing, analytics | |
+| 5 | Pile scanning, load grouping, machine profiles | **Done** |
+| 6 | Outfits, packing, analytics | Next |
 | 7 | Offline sync, Supabase, store preparation | |
 
 `dart analyze --fatal-infos`, `flutter analyze --fatal-infos`, `ruff`, `mypy
@@ -270,6 +288,9 @@ Stated plainly, because the code says so too.
   returns ranked candidates and the app asks rather than guessing.
 - **The knowledge cache recognises an identical image, not the same label
   re-photographed** from a different angle. That needs embeddings.
+- **A pile scan cannot sort garments the app has not met.** By design — it says
+  which ones need identifying — but it does mean the feature is worth little
+  until a wardrobe has been built up.
 - **Nothing rescans a care label automatically.** Once stored, the app trusts it
   indefinitely, including after the garment has visibly aged.
 - **Condition detection, embeddings and the on-device OCR stage are modelled but

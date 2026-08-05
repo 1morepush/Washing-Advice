@@ -62,6 +62,10 @@ Future<void> main() async {
           (ref) => throw UnsupportedError('settings are disabled in the demo'),
         ),
         backendUrlProvider.overrideWith((ref) => defaultBackendUrl),
+        // A machine, so the plan names real programmes rather than stating
+        // abstract requirements. Both paths ship; this is the interesting one.
+        washerBrandProvider.overrideWith((ref) => 'Bosch'),
+        dryerBrandProvider.overrideWith((ref) => 'Bosch'),
       ],
       child: const _DemoApp(),
     ),
@@ -163,6 +167,102 @@ class _CannedGateway extends AiGateway {
         source: Provenance.aiInference,
       ),
       suggestedName: 'Slate wool jumper',
+    );
+  }
+
+  @override
+  Future<PileScanResult> scanPile(ScanImage image) async {
+    await Future<void>.delayed(const Duration(milliseconds: 900));
+
+    lastDiagnostics = ScanDiagnostics(
+      stagesRun: const ['knowledge-cache', 'gemini'],
+      stageAnswered: 'gemini',
+      elapsedMs: 1240,
+    );
+
+    // Readings of garments the demo wardrobe already holds, so the matcher
+    // recognises them and the plan is built from their *stored* care rather
+    // than from these crumpled-in-a-heap readings. That is the whole argument
+    // for building this on a wardrobe.
+    DetectedItem seen(
+      ItemType type,
+      String hex,
+      String colourName,
+      Map<Fiber, int> composition, {
+      String? brand,
+      required double left,
+      required double top,
+    }) => DetectedItem(
+      scan: GarmentScanResult(
+        type: Confident(type, confidence: 0.88, source: Provenance.aiInference),
+        colors: Confident(
+          ColorPalette([ItemColor.fromHex(hex, name: colourName)]),
+          confidence: 0.84,
+          source: Provenance.aiInference,
+        ),
+        composition: Confident(
+          FabricComposition(composition),
+          // Low on purpose: a garment lying twisted in a pile is a poor
+          // subject, which is exactly why the wardrobe's record wins.
+          confidence: 0.45,
+          source: Provenance.aiInference,
+        ),
+        brand: brand == null
+            ? null
+            : Confident(brand, confidence: 0.6, source: Provenance.aiInference),
+      ),
+      boundingBox: BoundingBox(left: left, top: top, width: 0.3, height: 0.3),
+      detectionConfidence: 0.9,
+    );
+
+    return PileScanResult(
+      items: [
+        seen(
+          ItemType.hoodie,
+          '#1F2A44',
+          'Navy',
+          const {Fiber.cotton: 78, Fiber.polyester: 20, Fiber.elastane: 2},
+          brand: 'Nike',
+          left: 0.05,
+          top: 0.10,
+        ),
+        seen(
+          ItemType.tShirt,
+          '#F4F4F2',
+          'White',
+          const {Fiber.cotton: 100},
+          brand: 'Everlane',
+          left: 0.40,
+          top: 0.08,
+        ),
+        seen(
+          ItemType.jeans,
+          '#2B3A55',
+          'Indigo',
+          const {Fiber.cotton: 98, Fiber.elastane: 2},
+          left: 0.10,
+          top: 0.52,
+        ),
+        seen(
+          ItemType.sweater,
+          '#3C3F44',
+          'Charcoal',
+          const {Fiber.wool: 100},
+          left: 0.48,
+          top: 0.48,
+        ),
+        seen(
+          ItemType.dressShirt,
+          '#B3322C',
+          'Red',
+          const {Fiber.linen: 100},
+          left: 0.70,
+          top: 0.20,
+        ),
+      ],
+      // One garment visible and unidentifiable, so the screenshot shows the
+      // honest "reshuffle and rescan" path rather than a tidy fiction.
+      partiallyObscuredCount: 1,
     );
   }
 

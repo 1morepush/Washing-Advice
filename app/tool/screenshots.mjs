@@ -119,6 +119,13 @@ for (const theme of ['light', 'dark']) {
     await page.goto(`${BASE}/#/item/demo-jumper/edit`, { waitUntil: 'load' });
     await ready(page);
     await shot(page, 'edit-item');
+
+    // The pile scan, driven to its plan — the screen everything else serves.
+    await page.goto(`${BASE}/#/pile`, { waitUntil: 'load' });
+    await ready(page);
+    await tapText(page, 'Take a photo');
+    await page.waitForTimeout(3000);
+    await shot(page, 'laundry-plan');
   }
 
   await context.close();

@@ -10,6 +10,8 @@
 /// from the one that ships.
 library;
 
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
@@ -17,18 +19,22 @@ import 'package:washing_advice/core/providers.dart';
 import 'package:washing_advice/data/api/ai_gateway.dart';
 import 'package:washing_advice/data/api/scan_dto.dart';
 import 'package:washing_advice/data/capture/image_capture_source.dart';
+import 'package:washing_advice/data/images/memory_image_store.dart';
 import 'package:washing_advice/features/scan/scan_controller.dart';
 
 void main() {
   late InMemoryWardrobeRepository repository;
   late _FakeGateway gateway;
+  late MemoryImageStore images;
   late ProviderContainer container;
 
   setUp(() {
     repository = InMemoryWardrobeRepository();
     gateway = _FakeGateway();
+    images = MemoryImageStore();
     container = ProviderContainer(
       overrides: [
+        imageStoreProvider.overrideWithValue(images),
         wardrobeRepositoryProvider.overrideWithValue(repository),
         eventLogProvider.overrideWithValue(InMemoryEventLog()),
         aiGatewayProvider.overrideWithValue(gateway),
@@ -94,6 +100,7 @@ void main() {
     container.dispose();
     container = ProviderContainer(
       overrides: [
+        imageStoreProvider.overrideWithValue(images),
         wardrobeRepositoryProvider.overrideWithValue(repository),
         eventLogProvider.overrideWithValue(InMemoryEventLog()),
         aiGatewayProvider.overrideWithValue(gateway),
@@ -119,6 +126,44 @@ void main() {
     expect((state as ScanError).isRetryable, isFalse);
   });
 
+  test('saving keeps the photo and its cutout', () async {
+    await controller().captureAndScan();
+    await controller().save();
+
+    final saved = (await repository.query(const WardrobeQuery())).single;
+    final photo = saved.photos.displayPhoto!;
+
+    expect(photo.role, PhotoRole.front);
+    expect(photo.hasCutout, isTrue);
+    // The list renders the cutout, which is the whole point of making one.
+    expect(saved.photos.displayImageUri, photo.cutoutUri);
+  });
+
+  test('a refused cutout still saves the item', () async {
+    // A missing picture is cosmetic. Losing a scan the user has already
+    // reviewed and approved, over a background that would not separate, is
+    // not — so the failure must not propagate.
+    gateway.cutoutBytes = null;
+
+    await controller().captureAndScan();
+    await controller().save();
+
+    final saved = (await repository.query(const WardrobeQuery())).single;
+    expect(saved.photos.displayPhoto?.hasCutout, isFalse);
+    expect(saved.photos.displayImageUri, isNotNull);
+  });
+
+  test('the stored bytes can be read back for rendering', () async {
+    await controller().captureAndScan();
+    await controller().save();
+
+    final saved = (await repository.query(const WardrobeQuery())).single;
+    final bytes = await images.read(saved.photos.displayImageUri!);
+
+    expect(bytes, isNotNull);
+    expect(bytes, isNotEmpty);
+  });
+
   test('saving records an event, so the history is replayable', () async {
     await controller().captureAndScan();
     await controller().save();
@@ -138,6 +183,12 @@ class _FakeGateway extends AiGateway {
   _FakeGateway() : super(baseUrl: Uri.parse('http://test.invalid/'));
 
   ScanFailure? failure;
+
+  /// Null stands for a server that refused to separate the garment.
+  Uint8List? cutoutBytes = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47]);
+
+  @override
+  Future<Uint8List?> cutout(ScanImage image) async => cutoutBytes;
 
   @override
   Future<GarmentScanResult> scanGarment(List<ScanImage> images) async {

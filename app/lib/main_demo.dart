@@ -13,7 +13,11 @@
 /// Run with: `flutter run -t lib/main_demo.dart -d chrome`
 library;
 
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
@@ -24,19 +28,24 @@ import 'core/theme.dart';
 import 'data/api/ai_gateway.dart';
 import 'data/api/scan_dto.dart';
 import 'data/capture/image_capture_source.dart';
+import 'data/images/memory_image_store.dart';
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   final repository = InMemoryWardrobeRepository();
   final ids = SequentialIdGenerator(prefix: 'demo');
+  final images = MemoryImageStore();
 
   // Awaited, so the wardrobe stream's first emission already has the seed in
   // it. Without this the list subscribes to an empty repository and the app
   // opens on the empty state before flicking to the real one.
-  await repository.saveAll(_seed());
+  await repository.saveAll(await _withCutouts(_seed(), images));
 
   runApp(
     ProviderScope(
       overrides: [
+        imageStoreProvider.overrideWithValue(images),
         wardrobeRepositoryProvider.overrideWithValue(repository),
         eventLogProvider.overrideWithValue(InMemoryEventLog()),
         idGeneratorProvider.overrideWithValue(ids),
@@ -70,6 +79,50 @@ class _DemoApp extends StatelessWidget {
     darkTheme: AppTheme.dark(),
     routerConfig: buildRouter(),
   );
+}
+
+/// Attaches the prepared cutouts to the seeded items.
+///
+/// The shapes behind these were drawn rather than photographed — there are no
+/// garments in a build container — but the *cutouts* were produced by running
+/// the shipping `BorderSampledRemover` over those drawings. What the wardrobe
+/// list shows is this project's actual background removal, not an illustration
+/// of it. See `server/tools/make_demo_cutouts.py`.
+Future<List<WardrobeItem>> _withCutouts(
+  List<WardrobeItem> items,
+  MemoryImageStore images,
+) async {
+  final Map<String, Object?> encoded =
+      jsonDecode(await rootBundle.loadString('assets/demo/cutouts.json'))
+          as Map<String, Object?>;
+
+  final now = DateTime(2026, 8, 5, 9);
+
+  return [
+    for (final item in items)
+      if (encoded[item.id.value] case final String base64Png)
+        item.copyWith(
+          photos: PhotoSet([
+            ItemPhoto(
+              // The source photograph would sit here on a real device. The
+              // demo has only the cutout, so both point at it — which is also
+              // what a rescan of a lost original would leave behind.
+              uri: await images.save(
+                base64Decode(base64Png),
+                name: '${item.id.value}-front',
+              ),
+              cutoutUri: await images.save(
+                base64Decode(base64Png),
+                name: '${item.id.value}-front-cutout',
+              ),
+              role: PhotoRole.front,
+              capturedAt: now,
+            ),
+          ]),
+        )
+      else
+        item,
+  ];
 }
 
 /// Answers a scan without a server.
@@ -111,6 +164,15 @@ class _CannedGateway extends AiGateway {
       ),
       suggestedName: 'Slate wool jumper',
     );
+  }
+
+  @override
+  Future<Uint8List?> cutout(ScanImage image) async {
+    // The demo's capture source hands back three bytes, which no remover could
+    // separate. Returning null exercises the honest path: the item saves and
+    // the row falls back to its colour swatch.
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    return null;
   }
 
   @override

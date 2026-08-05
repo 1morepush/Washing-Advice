@@ -11,6 +11,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
@@ -73,6 +74,40 @@ class AiGateway implements VisionPort {
   Future<PileScanResult> scanPile(ScanImage image) async {
     final json = await _post('scan/pile', files: [('image', image)]);
     return pileResultFromJson(json);
+  }
+
+  /// The garment with its background removed.
+  ///
+  /// Returns null when the server could not separate it — a plain refusal
+  /// rather than an exception, because a missing cutout is a cosmetic loss and
+  /// must never stop an item being saved. The wardrobe falls back to the
+  /// colour swatch and the user is none the wiser.
+  Future<Uint8List?> cutout(ScanImage image) async {
+    final request = http.MultipartRequest(
+      'POST',
+      baseUrl.resolve('v1/image/cutout'),
+    );
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'image',
+        image.bytes,
+        filename: 'garment.${image.mimeType.split('/').last}',
+        contentType: _mediaType(image.mimeType),
+      ),
+    );
+
+    try {
+      final streamed = await _client
+          .send(request)
+          .timeout(const Duration(seconds: 45));
+      if (streamed.statusCode != 200) {
+        await streamed.stream.drain<void>();
+        return null;
+      }
+      return Uint8List.fromList(await streamed.stream.toBytes());
+    } on Exception {
+      return null;
+    }
   }
 
   /// Whether the server is reachable and configured.

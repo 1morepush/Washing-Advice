@@ -7,12 +7,15 @@
 /// error at every place that has to handle it rather than a blank screen.
 library;
 
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../../data/api/ai_gateway.dart';
 import '../../data/api/scan_dto.dart';
+import '../../data/images/image_store.dart';
 
 sealed class ScanState {
   const ScanState();
@@ -35,8 +38,15 @@ final class ScanReviewing extends ScanState {
   const ScanReviewing({
     required this.draft,
     required this.result,
+    required this.images,
     this.diagnostics,
   });
+
+  /// The photographs the reading came from.
+  ///
+  /// Held so they can be stored when the user commits. Uploading them again
+  /// for the cutout would be a second transfer of bytes already in hand.
+  final List<ScanImage> images;
 
   /// The item as it would be saved, already run through the care resolver.
   final WardrobeItem draft;
@@ -47,8 +57,12 @@ final class ScanReviewing extends ScanState {
 
   final ScanDiagnostics? diagnostics;
 
-  ScanReviewing withDraft(WardrobeItem draft) =>
-      ScanReviewing(draft: draft, result: result, diagnostics: diagnostics);
+  ScanReviewing withDraft(WardrobeItem draft) => ScanReviewing(
+    draft: draft,
+    result: result,
+    images: images,
+    diagnostics: diagnostics,
+  );
 }
 
 /// The item was written to the wardrobe.
@@ -106,6 +120,7 @@ class ScanController extends StateNotifier<ScanState> {
       state = ScanReviewing(
         draft: _draftFrom(result),
         result: result,
+        images: images,
         diagnostics: gateway.lastDiagnostics,
       );
     } on ScanFailure catch (failure) {
@@ -134,8 +149,8 @@ class ScanController extends StateNotifier<ScanState> {
   /// Writes the reviewed item to the wardrobe.
   Future<void> save() async {
     if (state case final ScanReviewing reviewing) {
-      final item = reviewing.draft;
       final ids = _ref.read(idGeneratorProvider);
+      final item = await _withPhotos(reviewing.draft, reviewing.images);
 
       await _ref.read(wardrobeRepositoryProvider).save(item);
       // The item row and the event are two records of the same happening. The
@@ -156,6 +171,66 @@ class ScanController extends StateNotifier<ScanState> {
   }
 
   void reset() => state = const ScanIdle();
+
+  /// Stores the captured photographs and asks the server for a cutout.
+  ///
+  /// Failures here are swallowed on purpose. A missing picture is a cosmetic
+  /// loss; refusing to save the garment over it would throw away a scan the
+  /// user has already reviewed and approved, which is a far worse outcome than
+  /// a row that falls back to its colour swatch.
+  Future<WardrobeItem> _withPhotos(
+    WardrobeItem item,
+    List<ScanImage> images,
+  ) async {
+    if (images.isEmpty) return item;
+
+    final store = _ref.read(imageStoreProvider);
+    final gateway = _ref.read(aiGatewayProvider);
+    final now = DateTime.now();
+
+    var photos = item.photos;
+
+    for (final (index, image) in images.indexed) {
+      // The first shot is the front; anything after it is the back. More than
+      // two would need the user to say, and the capture flow does not ask.
+      final role = index == 0 ? PhotoRole.front : PhotoRole.back;
+
+      try {
+        final uri = await store.save(
+          Uint8List.fromList(image.bytes),
+          name: imageName(item.id, role),
+        );
+
+        String? cutoutUri;
+        if (role == PhotoRole.front) {
+          final cutout = await gateway.cutout(image);
+          if (cutout != null) {
+            cutoutUri = await store.save(
+              cutout,
+              name: imageName(item.id, role, cutout: true),
+            );
+          }
+        }
+
+        photos = photos.add(
+          ItemPhoto(
+            uri: uri,
+            cutoutUri: cutoutUri,
+            role: role,
+            capturedAt: now,
+            width: image.width,
+            height: image.height,
+          ),
+        );
+      } on Exception {
+        // Storage full, permission revoked, disk error. Keep going: the other
+        // photographs and the item itself are still worth saving.
+        continue;
+      }
+    }
+
+    return item.copyWith(photos: photos);
+  }
 
   /// Turns a scan result into a saveable item.
   ///

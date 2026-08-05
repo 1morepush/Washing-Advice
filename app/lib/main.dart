@@ -9,9 +9,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'core/providers.dart';
 import 'core/router.dart';
 import 'core/settings.dart';
 import 'core/theme.dart';
+import 'data/images/image_store.dart';
+import 'data/images/store_factory.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,11 +23,13 @@ Future<void> main() async {
   // provider, so no screen has to render a spinner while waiting to find out
   // where the backend is.
   final prefs = await SharedPreferences.getInstance();
+  final ImageStore images = await openImageStore();
 
   runApp(
     ProviderScope(
       overrides: [
         settingsStoreProvider.overrideWithValue(SettingsStore(prefs)),
+        imageStoreProvider.overrideWithValue(images),
       ],
       child: const WashingAdviceApp(),
     ),

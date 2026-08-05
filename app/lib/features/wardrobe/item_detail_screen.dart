@@ -14,6 +14,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../../widgets/confidence_chip.dart';
+import '../../widgets/item_thumbnail.dart';
 import 'care_text.dart';
 
 class ItemDetailScreen extends ConsumerWidget {
@@ -61,6 +62,14 @@ class _Details extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.only(bottom: 32),
       children: [
+        // Only when there is a real picture. A 160-pixel colour swatch is a
+        // large coloured circle telling the user nothing they cannot already
+        // see in the list, so the space goes to the facts instead.
+        if (item.photos.displayImageUri != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: Center(child: ItemThumbnail(item: item, size: 160)),
+          ),
         if (item.needsCareTagScan) _ScanPrompt(id: item.id),
         _Section(
           title: 'What it is',

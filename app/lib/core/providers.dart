@@ -18,6 +18,7 @@ import '../data/api/ai_gateway.dart';
 import '../data/capture/image_capture_source.dart';
 import '../data/drift/connection.dart';
 import '../data/drift/database.dart';
+import '../data/images/image_store.dart';
 import '../data/drift/drift_event_log.dart';
 import '../data/drift/drift_wardrobe_repository.dart';
 import 'settings.dart';
@@ -120,6 +121,17 @@ final wardrobeRecorderProvider = Provider<WardrobeRecorder>(
 
 final eventLogProvider = Provider<EventLog>(
   (ref) => DriftEventLog(ref.watch(databaseProvider)),
+);
+
+/// Where photographs and cutouts are kept.
+///
+/// Overridden in `main()` with a platform store, and in tests and the demo
+/// with an in-memory one. Unoverridden it throws rather than silently writing
+/// files, for the same reason the database provider does.
+final imageStoreProvider = Provider<ImageStore>(
+  (ref) => throw StateError(
+    'imageStoreProvider must be overridden in main() with a platform store',
+  ),
 );
 
 /// New identifiers. Overridden in tests so ids are predictable.

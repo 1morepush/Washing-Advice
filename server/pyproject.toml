@@ -1,0 +1,66 @@
+[project]
+name = "washing-advice-server"
+version = "0.1.0"
+description = "Perception layer for Washing Advice: turns photographs into confident facts."
+requires-python = ">=3.11"
+
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "httpx>=0.27",
+    "python-multipart>=0.0.12",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.7",
+    "mypy>=1.13",
+    "jsonschema>=4.23",
+    "referencing>=0.35",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = ["error"]
+
+[tool.ruff]
+# 100 rather than 88: this codebase carries a lot of explanatory prose in
+# docstrings and in the model-facing prompt descriptions, and wrapping those at
+# 88 breaks sentences mid-clause for no readability gain.
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W",   # pycodestyle, pyflakes
+    "I",             # import sorting
+    "N",             # naming
+    "UP",            # pyupgrade
+    "B",             # bugbear
+    "A",             # builtin shadowing
+    "C4",            # comprehensions
+    "RUF",
+]
+ignore = ["B008"]  # FastAPI's Depends() in argument defaults is the documented idiom.
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unreachable = true
+
+[[tool.mypy.overrides]]
+# Test bodies are exercised by pytest; the contract that matters is app/.
+module = "tests.*"
+disallow_untyped_defs = false
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]

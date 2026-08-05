@@ -9,26 +9,42 @@ told exactly which loads to run — and which cycle to select on *your* machine.
 
 ## Status
 
-Milestone 1 is complete: the domain core that makes every laundry decision.
-The backend and the Flutter app are next. See
+The domain core, the perception backend and the Flutter app all run. See
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the design and
 [`docs/adr/`](docs/adr) for the decisions behind it.
 
 | # | Scope | Status |
 |---|---|---|
-| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 247 tests |
-| 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache | **Done** — 103 tests |
-| 3 | Flutter app shell: navigation, Drift/SQLite, theming, camera | Next |
-| 4 | Wardrobe browse, item detail, care-tag scanning UI | |
+| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 297 tests |
+| 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache | **Done** — 112 tests |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 50 tests |
+| 4 | Care-tag scanning UI, filter sheet, item editing | Next |
 | 5 | Pile scanning and batch processing | |
 | 6 | Outfits, packing, analytics | |
 | 7 | Offline sync, Supabase, store preparation | |
+
+## What it looks like
+
+| Wardrobe | Item detail | Scan review |
+|---|---|---|
+| ![Wardrobe list](app/docs/screenshots/wardrobe-light.png) | ![Item detail](app/docs/screenshots/item-detail-light.png) | ![Scan review](app/docs/screenshots/scan-review.png) |
+
+These are captures of the real app, not mock-ups — a web build of
+`app/lib/main_demo.dart`, which is the shipping code with storage, the camera
+and the backend substituted. See [ADR 8](docs/adr/0008-app-layering-and-the-capture-seam.md).
+
+Note what the middle screenshot is doing. The fabric was read from a
+photograph, so it is marked *"Please check · from a photo"*, and the care
+derived from it is marked *"Unsure · from the fabric"* with a prompt to scan
+the label. A care instruction the app is guessing at looks different from one
+it read off the garment, because acting on the wrong one shrinks a jumper.
 
 ## Layout
 
 ```
 packages/wardrobe_core/   Pure Dart domain core — zero dependencies
 server/                   FastAPI perception layer — pixels to confident facts
+app/                      Flutter app — presentation only, no laundry logic
 contracts/                The wire format, pinned by fixtures both sides parse
 docs/ARCHITECTURE.md      Design, and the reasoning behind it
 docs/adr/                 Architecture decision records
@@ -55,6 +71,19 @@ uv sync --group dev
 uv run pytest
 uv run uvicorn app.main:app --reload   # http://localhost:8000/docs
 ```
+
+The app needs Flutter. It runs against the seeded demo data with no backend
+at all:
+
+```sh
+cd app
+flutter pub get
+flutter test
+flutter run -t lib/main_demo.dart -d chrome   # or any device
+```
+
+`flutter run` (without `-t`) starts the real app, which expects the server at
+`http://localhost:8000` — editable in Settings.
 
 The default vision provider is a deterministic fake, so everything runs with an
 empty environment. Set `GEMINI_API_KEY` and `VISION_PROVIDER=gemini` for the
@@ -118,3 +147,9 @@ Stated plainly because the code says so too:
 - **The knowledge cache recognises an identical image, not the same label
   re-photographed.** Matching a label shot from a different angle needs
   embeddings.
+- **The camera has only ever been exercised through the web file picker.** It
+  sits behind `ImageCaptureSource` precisely so everything downstream of it is
+  tested, but no photograph has been taken on a physical device.
+- **The app cannot yet scan a care label, edit an item, or filter beyond free
+  text.** The care-tag endpoint and the query type both support it; the screens
+  do not exist.

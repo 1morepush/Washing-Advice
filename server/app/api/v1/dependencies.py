@@ -21,6 +21,18 @@ from app.services.ai.knowledge_cache import (
 from app.services.ai.pipeline import VisionPipeline
 from app.services.ai.registry import registry
 from app.services.ai.stages import ProviderStage
+from app.services.images.cutout import BackgroundRemover, BorderSampledRemover
+
+
+@lru_cache
+def get_background_remover() -> BackgroundRemover:
+    """The background remover.
+
+    Cached because it is stateless and cheap to hold, and behind the interface
+    so a learned matting model can replace it without any caller changing —
+    the same seam `VisionProvider` gives the scan stages.
+    """
+    return BorderSampledRemover()
 
 
 @lru_cache
@@ -91,5 +103,6 @@ def reset_wiring() -> None:
     """
     get_pipeline.cache_clear()
     get_knowledge_cache.cache_clear()
+    get_background_remover.cache_clear()
     _live_providers.clear()
     get_settings.cache_clear()

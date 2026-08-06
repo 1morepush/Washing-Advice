@@ -64,6 +64,58 @@ class WearRecorder {
     }
   }
 
+  /// Records an observed problem with a garment.
+  ///
+  /// The event is the record, and the item's [ConditionAssessment] is the
+  /// projection of it — the same relationship wears and washes have, so it is
+  /// kept the same way rather than invented afresh here.
+  ///
+  /// This is what finally reaches `warrantsGentlerCare`. That rule, and the
+  /// fabric-class downgrade beside it, have been written and tested since M1
+  /// with nothing in the app able to trigger them: a pilling jumper was
+  /// treated exactly like a new one because there was no way to say it was
+  /// pilling.
+  Future<void> recordCondition(
+    ItemId id, {
+    required WearType type,
+    required WearSeverity severity,
+    String? note,
+  }) async {
+    final now = DateTime.now();
+    final observation = WearObservation(
+      type: type,
+      severity: severity,
+      observedAt: now,
+      note: note,
+    );
+
+    await _record(
+      ConditionObserved(
+        id: EventId(_ref.read(idGeneratorProvider).next()),
+        itemId: id,
+        occurredAt: now,
+        recordedAt: now,
+        observation: observation,
+      ),
+    );
+
+    // `WardrobeRecorder` rebuilds usage counters, which is all it knows about;
+    // the condition is a different projection and is folded in here. Read back
+    // after the append so this builds on whatever the recorder just wrote.
+    final item = await _ref.read(wardrobeRepositoryProvider).byId(id);
+    if (item == null) return;
+
+    await _ref
+        .read(wardrobeRepositoryProvider)
+        .save(
+          item.copyWith(
+            condition: item.condition.record(observation),
+            updatedAt: now,
+          ),
+        );
+    _ref.invalidate(itemProvider(id));
+  }
+
   /// Records that every item in [load] was washed, with the settings used.
   ///
   /// One event per item rather than one per load, because the log is keyed by

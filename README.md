@@ -135,6 +135,17 @@ LOAD 4: Darks (delicates) — cold, hand wash
     · Air dry this load: Wool sweater must not be tumble dried.
 ```
 
+### Notice that clothes age
+
+A care label describes a new garment. Report that something is pilling, fading
+or has a loose seam and the app washes it cooler and gentler than the label
+says, stops tumble drying it, and drops it a fabric class so it sorts into a
+gentler load.
+
+The sheet says what the report will do *before* you make it, and says when it
+will do nothing — a broken zip is a repair, not a laundry decision, and slight
+fading is worth recording without changing a cycle.
+
 ### Correct it
 
 Anything the camera got wrong can be fixed, and a correction outranks every
@@ -443,8 +454,12 @@ Stated plainly, because the code says so too.
 - **Packing weights are typical dry weights for the garment type**, not for your
   particular coat. Useful for comparing two packing lists; not for an airline's
   scales.
-- **Nothing rescans a care label automatically.** Once stored, the app trusts it
-  indefinitely, including after the garment has visibly aged.
+- **Nothing rescans a care label automatically** — deliberately, because labels
+  do not change. What changes is the garment, and that is now reportable: tell
+  the app something is pilling or has a loose seam and it washes cooler and
+  gentler from the next load onward, and drops a fabric class so it sorts into a
+  gentler pile. What is still missing is *detecting* that automatically, which
+  is the condition-detection gap below.
 - **Condition detection, embeddings and the on-device OCR stage are modelled but
   not implemented.** The types and seams exist; the detection does not.
 - **The web build keeps images in memory**, so a browser reload loses them.

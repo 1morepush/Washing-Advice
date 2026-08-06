@@ -18,6 +18,7 @@ import '../../widgets/item_thumbnail.dart';
 import '../history/wear_recorder.dart';
 import 'cutout_controller.dart';
 import 'care_text.dart';
+import 'report_wear_sheet.dart';
 
 class ItemDetailScreen extends ConsumerWidget {
   const ItemDetailScreen({required this.id, super.key});
@@ -33,12 +34,18 @@ class ItemDetailScreen extends ConsumerWidget {
         leading: BackButton(onPressed: () => context.go('/')),
         title: Text(item.valueOrNull?.displayName ?? 'Item'),
         actions: [
-          if (item.valueOrNull != null)
+          if (item.valueOrNull case final WardrobeItem value) ...[
+            IconButton(
+              onPressed: () => showReportWearSheet(context, value),
+              icon: const Icon(Icons.report_problem_outlined),
+              tooltip: 'Report wear',
+            ),
             IconButton(
               onPressed: () => context.go('/item/${id.value}/edit'),
               icon: const Icon(Icons.edit_outlined),
               tooltip: 'Edit',
             ),
+          ],
         ],
       ),
       body: item.when(

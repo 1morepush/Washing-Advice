@@ -120,6 +120,7 @@ for (const theme of ['light', 'dark']) {
     await ready(page);
     await shot(page, 'edit-item');
 
+
     // The pile scan, driven to its plan — the screen everything else serves.
     await page.goto(`${BASE}/#/pile`, { waitUntil: 'load' });
     await ready(page);

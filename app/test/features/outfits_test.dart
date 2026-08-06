@@ -17,14 +17,24 @@ import '../support/fixtures.dart';
 
 void main() {
   late InMemoryWardrobeRepository repository;
+  late InMemoryEventLog events;
   late ProviderContainer container;
 
   setUp(() {
     repository = InMemoryWardrobeRepository();
+    events = InMemoryEventLog();
     container = ProviderContainer(
       overrides: [
         wardrobeRepositoryProvider.overrideWithValue(repository),
         imageStoreProvider.overrideWithValue(MemoryImageStore()),
+        // Overridden for every test in this file, not just the one that
+        // writes: without it the screen reaches the real Drift database, and
+        // a widget test that opens a file on disk passes on one machine and
+        // fails on another.
+        eventLogProvider.overrideWithValue(events),
+        idGeneratorProvider.overrideWithValue(
+          SequentialIdGenerator(prefix: 'ev'),
+        ),
       ],
     );
   });
@@ -98,6 +108,28 @@ void main() {
     // showing it anyway.
     expect(find.text('Grey hoodie'), findsNothing);
     expect(find.textContaining('Nothing for formal'), findsOneWidget);
+  });
+
+  testWidgets('wearing a suggestion records every item in it at once', (
+    tester,
+  ) async {
+    // The action that closes the loop: one occasion in the log, which is what
+    // the co-wear projection reads to learn the pairing.
+    await repository.saveAll([
+      confidentItem(id: 'tee', name: 'Cream tee', hex: '#F2E8D5'),
+      confidentItem(id: 'jeans', name: 'Navy jeans', type: ItemType.jeans),
+    ]);
+
+    await pump(tester);
+    await tester.tap(find.widgetWithText(TextButton, 'Wearing this').first);
+    await tester.pumpAndSettle();
+
+    final logged = await events.all();
+    expect(logged, hasLength(2));
+    expect(logged.every((e) => e is ItemWorn), isTrue);
+    // One instant, so the log reads as one outfit rather than two coincidences.
+    expect(logged.map((e) => e.occurredAt).toSet(), hasLength(1));
+    expect(find.textContaining('worn together'), findsOneWidget);
   });
 
   testWidgets('a tagged item overrides the occasion default', (tester) async {

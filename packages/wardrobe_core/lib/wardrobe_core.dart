@@ -33,6 +33,7 @@ export 'src/care/rules/care_rule.dart';
 export 'src/care/rules/default_rules.dart';
 export 'src/care/rules/rule_evaluator.dart';
 // Events: the append-only history and its projections.
+export 'src/events/co_wear.dart';
 export 'src/events/event_log.dart';
 export 'src/events/projections.dart';
 export 'src/events/wardrobe_event.dart';

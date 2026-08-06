@@ -195,14 +195,26 @@ final wardrobeSummaryProvider = Provider<AsyncValue<WardrobeSummary>>(
   (ref) => ref.watch(ownedItemsProvider).whenData(WardrobeSummary.new),
 );
 
+/// What the wardrobe has been observed being worn together.
+///
+/// Derived from the event log rather than stored, so there is no second source
+/// of truth to keep in step and it applies to history the app already has —
+/// someone who has been logging wears for a month has a graph immediately.
+final coWearGraphProvider = FutureProvider<RelationshipGraph>(
+  (ref) async =>
+      CoWearProjection.graphFrom(await ref.watch(eventLogProvider).all()),
+);
+
 /// Suggests things to wear.
 ///
-/// Built with the relationship graph left empty for now: nothing yet records
-/// `wornWith` edges, and passing an empty graph would be indistinguishable
-/// from passing none. When the wear recorder starts writing them, this is the
-/// single line that changes.
+/// Fed by [coWearGraphProvider], which closes the loop the feature was missing:
+/// the app records what is worn, and that changes what it suggests next.
+/// Before the graph resolves the builder runs without it, which is exactly its
+/// documented no-history behaviour — suggestions arrive immediately from
+/// colour and usage, then improve.
 final outfitBuilderProvider = Provider<OutfitBuilder>(
-  (ref) => const OutfitBuilder(),
+  (ref) =>
+      OutfitBuilder(relationships: ref.watch(coWearGraphProvider).valueOrNull),
 );
 
 final packingPlannerProvider = Provider<PackingPlanner>(

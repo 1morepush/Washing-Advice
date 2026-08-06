@@ -24,16 +24,36 @@ class WearRecorder {
   final Ref _ref;
 
   /// Records that [id] was worn.
-  Future<void> recordWear(ItemId id, {String? occasion}) async {
+  ///
+  /// [at] defaults to now but is a parameter because `WardrobeEvent` has
+  /// carried `occurredAt` from the start for exactly this reason — people log
+  /// yesterday evening's outfit this morning. Hardcoding the clock here made
+  /// that impossible and, worse, made every batch of taps look like one
+  /// occasion to anything reading the log.
+  Future<void> recordWear(ItemId id, {String? occasion, DateTime? at}) async {
     await _record(
       ItemWorn(
         id: EventId(_ref.read(idGeneratorProvider).next()),
         itemId: id,
-        occurredAt: DateTime.now(),
+        occurredAt: at ?? DateTime.now(),
         occasion: occasion,
       ),
     );
     _ref.invalidate(itemProvider(id));
+  }
+
+  /// Records that several items were worn together.
+  ///
+  /// Every event gets the *same* instant rather than each getting its own
+  /// `now`, which is what makes them one occasion to anything reading the log.
+  /// Recording them one at a time would still land inside the co-wear window
+  /// today, but it would rely on the loop finishing quickly — a correctness
+  /// property resting on how fast a for-loop runs is not one worth having.
+  Future<void> recordOutfit(Iterable<ItemId> ids, {String? occasion}) async {
+    final at = DateTime.now();
+    for (final id in ids) {
+      await recordWear(id, occasion: occasion, at: at);
+    }
   }
 
   /// Records that every item in [load] was washed, with the settings used.
@@ -87,8 +107,16 @@ class WearRecorder {
   /// the case for a pile-scan draft: the garment was washed, but there is no
   /// row to update and no history worth keeping for something the app has
   /// never been told about.
-  Future<void> _record(WardrobeEvent event) =>
-      _ref.read(wardrobeRecorderProvider).record(event);
+  ///
+  /// Also drops the co-wear graph, which is a fold over the whole log and so
+  /// is stale the moment anything is appended. Invalidated here rather than in
+  /// each caller: every write goes through this method, and a derived value
+  /// that some writes refresh and others do not is worse than one that is
+  /// never refreshed at all.
+  Future<void> _record(WardrobeEvent event) async {
+    await _ref.read(wardrobeRecorderProvider).record(event);
+    _ref.invalidate(coWearGraphProvider);
+  }
 }
 
 final wearRecorderProvider = Provider<WearRecorder>(WearRecorder.new);

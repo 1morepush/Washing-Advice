@@ -14,6 +14,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../core/providers.dart';
 import '../../widgets/app_drawer.dart';
 import '../../widgets/item_thumbnail.dart';
+import '../history/wear_recorder.dart';
 
 class OutfitsScreen extends ConsumerWidget {
   const OutfitsScreen({super.key});
@@ -45,8 +46,10 @@ class OutfitsScreen extends ConsumerWidget {
             : ListView.builder(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                 itemCount: list.length,
-                itemBuilder: (_, index) =>
-                    _SuggestionCard(suggestion: list[index]),
+                itemBuilder: (_, index) => _SuggestionCard(
+                  suggestion: list[index],
+                  occasion: request.occasion,
+                ),
               ),
       ),
       bottomNavigationBar: _Options(
@@ -104,13 +107,14 @@ class _OccasionBar extends StatelessWidget {
   );
 }
 
-class _SuggestionCard extends StatelessWidget {
-  const _SuggestionCard({required this.suggestion});
+class _SuggestionCard extends ConsumerWidget {
+  const _SuggestionCard({required this.suggestion, required this.occasion});
 
   final OutfitSuggestion suggestion;
+  final Occasion occasion;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
     return Card(
@@ -159,6 +163,34 @@ class _SuggestionCard extends StatelessWidget {
                   ),
                 ),
             ],
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerRight,
+              // What closes the loop. Recording an outfit as worn is the only
+              // way the app finds out its suggestion was any good, and every
+              // such record teaches the builder a pairing it did not know.
+              child: TextButton.icon(
+                onPressed: () async {
+                  await ref
+                      .read(wearRecorderProvider)
+                      .recordOutfit(
+                        suggestion.itemIds,
+                        occasion: occasion.name,
+                      );
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Recorded. These now count as worn '
+                        'together.',
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.checkroom_outlined, size: 18),
+                label: const Text('Wearing this'),
+              ),
+            ),
           ],
         ),
       ),

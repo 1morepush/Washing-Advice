@@ -178,6 +178,19 @@ Suggestions are also deliberately made *different from each other*: ranking by
 score alone produced five variations on one outfit, which is one suggestion
 shown five times.
 
+Tap **Wearing this** and every item in the suggestion is logged at the same
+instant, which the app reads back as one occasion. Pairings that recur become
+`wornWith` links, and those links feed the next round of suggestions — so the
+app gets better at your wardrobe by being used. The links are *derived* from
+the event log rather than stored, which means no second source of truth to keep
+in step and no cold start for anyone who has already been logging wears.
+
+The inference is deliberately narrow, because a wrong link is worse than a
+missing one: a pair must recur before it counts at all, and the strength is a
+conditional rate — "when you wear the blazer, you wear those trousers" — shrunk
+toward zero when there is little evidence, so two observations out of two does
+not claim the same certainty as twenty out of twenty.
+
 ### Pack for a trip
 
 Say how long, what kind of days, and whether there is a machine where you are
@@ -310,12 +323,13 @@ A few decisions worth reading about:
 
 | # | Scope | Status |
 |---|---|---|
-| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 432 core tests |
+| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 445 core tests |
 | 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts | **Done** — 130 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 137 app tests |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 143 app tests |
 | 4 | Care-label scanning, item editing, filter sheet, garment cutouts, grid view | **Done** |
 | 5 | Pile scanning, load grouping, machine profiles, wear and wash history | **Done** |
 | 6 | Outfit suggestions, laundry-aware packing, wardrobe insights | **Done** |
+| 6a | Closing the loop: wears recorded become links the builder learns from | **Done** |
 | 7 | Offline verification, provenance-based sync engine | **Partly done** |
 
 `dart analyze --fatal-infos`, `flutter analyze --fatal-infos`, `ruff`, `mypy
@@ -354,14 +368,19 @@ Stated plainly, because the code says so too.
 - **A pile scan cannot sort garments the app has not met.** By design — it says
   which ones need identifying — but it does mean the feature is worth little
   until a wardrobe has been built up.
-- **Outfits cannot be saved yet.** The `Outfit` type, its serialisation and the
-  relationship graph all exist, but nothing writes to them: the builder proposes
-  and nothing records what was accepted. Until it does, the builder has no
-  `wornWith` edges to learn from and falls back to colour and usage alone.
+- **Outfits cannot be saved under a name yet.** The `Outfit` type and its
+  serialisation exist and nothing writes to them. Recording one as worn is
+  wired up and does feed the suggestion engine, but there is no list of named
+  outfits to return to.
 - **Occasion suitability is a default table, not a judgement about you.**
   Whether a hoodie belongs at work depends on the workplace, so the defaults are
   overridable per item with a tag — but nothing yet learns them from what you
-  actually wear.
+  actually wear, even though the log now records which occasion each wear was
+  for.
+- **Co-wear links need history to exist.** A new wardrobe has none, so early
+  suggestions rest on colour and usage alone. That is the designed behaviour
+  rather than a failure state, but it does mean the feature is at its weakest
+  exactly when someone first tries it.
 - **Outfit suggestions score colour only.** They have no opinion on pattern,
   texture, proportion or fit, which is why every card shows its reasoning rather
   than presenting a verdict.

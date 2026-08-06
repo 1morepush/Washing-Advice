@@ -421,9 +421,11 @@ Stated plainly, because the code says so too.
   It exercises all three stages and reports which the API accepted. The key is
   read from the environment and never printed, and no error path echoes a
   response body — those can contain the image that was sent.
-- **The camera has only been exercised through a web file picker.** It sits
-  behind an interface precisely so everything downstream is tested, but no
-  photograph has been taken on a physical device.
+- **No photograph has been taken on a physical device.** The app opens the
+  phone's own camera (`ImageSource.camera`), iOS and Android are both declared
+  for it, and the refusal paths are tested — but a container has no camera, so
+  the happy path is unverified until someone runs it on a handset. That is the
+  one thing here that needs hardware rather than code.
 - **Background removal assumes a plain background.** It measures distance from
   the colours at the frame's border, which handles a garment on a bed or a table
   and will not handle one on a patterned rug. A learned matting model is the

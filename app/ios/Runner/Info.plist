@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Washing Advice uses the camera to photograph your clothes and their care labels, so it can identify each garment and tell you how to wash it.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Washing Advice can read photographs you have already taken, so you can add clothes without photographing them again.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

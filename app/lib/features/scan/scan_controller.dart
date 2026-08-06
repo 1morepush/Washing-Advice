@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
+import '../../data/capture/image_capture_source.dart';
 import '../../data/api/ai_gateway.dart';
 import '../../data/api/scan_dto.dart';
 import '../../data/images/image_store.dart';
@@ -93,6 +94,12 @@ class ScanController extends StateNotifier<ScanState> {
       images = fromGallery
           ? await capture.pickMultiple()
           : [?await capture.capture()];
+    } on CaptureFailure catch (failure) {
+      // The capture layer already decided whether trying again could work, so
+      // this passes that through rather than assuming every camera problem is
+      // temporary — a denied permission is not.
+      state = ScanError(failure.message, isRetryable: failure.isRetryable);
+      return;
     } on Exception catch (error) {
       state = ScanError('The camera could not be opened. $error');
       return;

@@ -36,10 +36,33 @@
          https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <!-- The camera is how garments and care labels get into the app, but the
+         app is still useful without one: an existing photo can be picked, and
+         a wardrobe already built is fully usable. Declared not-required so
+         Google Play does not hide the app from devices without a camera, which
+         is the default assumption once anything in the manifest mentions one. -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+
+    <!-- Deliberately NOT declaring android.permission.CAMERA.
+
+         `image_picker` hands off to whatever camera app the device has, via an
+         intent, and needs no permission of its own. Declaring CAMERA anyway
+         would make Android demand a *runtime* grant that `image_picker` never
+         requests — so adding the permission is what breaks the camera, not
+         what enables it. -->
+
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Android 11 hides other apps from view unless they are declared
+             here, so without this the device's camera cannot be resolved and
+             taking a photo silently does nothing. -->
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE"/>
         </intent>
     </queries>
 </manifest>

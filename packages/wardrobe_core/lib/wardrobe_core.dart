@@ -57,6 +57,7 @@ export 'src/outfits/color_harmony.dart';
 export 'src/outfits/model/occasion.dart';
 export 'src/outfits/model/outfit.dart';
 export 'src/outfits/outfit_builder.dart';
+export 'src/outfits/outfit_repository.dart';
 export 'src/outfits/packing.dart';
 // Shared kernel.
 export 'src/shared/clock.dart';

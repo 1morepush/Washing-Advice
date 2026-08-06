@@ -398,9 +398,18 @@ Stated plainly, because the code says so too.
 - **Machine profiles are brand archetypes, not model-exact.** Every seeded
   profile is flagged `isVerifiedModel: false` and is meant to be corrected.
 - **The Gemini provider has never run against the live API.** It is written to
-  the documented interface and tested with a stubbed transport, but no real
-  request has been made. It stays behind the provider registry until it has been
-  smoke-tested with a key.
+  the documented interface and tested with a stubbed transport, which proves the
+  code does what it was written to do and says nothing about whether the API
+  agrees. Only a key settles that:
+
+  ```sh
+  cd server
+  GEMINI_API_KEY=... uv run python -m tools.smoke_gemini
+  ```
+
+  It exercises all three stages and reports which the API accepted. The key is
+  read from the environment and never printed, and no error path echoes a
+  response body — those can contain the image that was sent.
 - **The camera has only been exercised through a web file picker.** It sits
   behind an interface precisely so everything downstream is tested, but no
   photograph has been taken on a physical device.

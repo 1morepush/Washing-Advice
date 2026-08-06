@@ -462,8 +462,10 @@ Stated plainly, because the code says so too.
   is the condition-detection gap below.
 - **Condition detection, embeddings and the on-device OCR stage are modelled but
   not implemented.** The types and seams exist; the detection does not.
-- **The web build keeps images in memory**, so a browser reload loses them.
-  Acceptable for trying the app; a phone writes real files.
+- **The web build has never been used in anger.** It persists now — images live
+  in a small database of their own that Drift keeps in IndexedDB or OPFS — but
+  the target is phones, and the browser build exists mainly for trying the app
+  and taking these screenshots.
 - **Sync has no hosted deployment.** The endpoints, the client and the
   reconciliation all exist and are exercised end to end against a real server in
   CI, but nobody is running that server anywhere. You point the app at your own.

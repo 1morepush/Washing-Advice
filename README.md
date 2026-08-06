@@ -434,6 +434,11 @@ Stated plainly, because the code says so too.
 - **Item matching cannot distinguish visually identical garments.** Three
   identical black t-shirts all match each other, which is why the matcher
   returns ranked candidates and the app asks rather than guessing.
+- **Nor does the wardrobe group them.** Six identical socks are six tiles, and
+  they crowd out everything interesting — visible in the screenshot above, which
+  is how it was noticed. `RelationKind.duplicateOf` is modelled for exactly this
+  and nothing consumes it yet. Grouping touches selection, counts, filtering and
+  the pile flow, so it is a piece of work rather than a tweak.
 - **The knowledge cache recognises an identical image, not the same label
   re-photographed** from a different angle. That needs embeddings.
 - **A pile scan cannot sort garments the app has not met.** By design — it says

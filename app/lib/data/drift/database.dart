@@ -106,6 +106,12 @@ class Events extends Table {
   TextColumn get id => text()();
   TextColumn get itemId => text()();
   DateTimeColumn get occurredAt => dateTime()();
+
+  /// When this device wrote the event down, as against when the thing
+  /// happened. Lifted because *sync* filters on it, and decoding every payload
+  /// to find out what to send would defeat the point of lifting anything.
+  DateTimeColumn get recordedAt => dateTime()();
+
   TextColumn get payload => text()();
 
   @override
@@ -122,7 +128,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -145,6 +151,10 @@ class AppDatabase extends _$AppDatabase {
         'CREATE INDEX IF NOT EXISTS idx_events_item ON events (item_id)',
       );
       await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_events_recorded '
+        'ON events (recorded_at)',
+      );
+      await customStatement(
         'CREATE INDEX IF NOT EXISTS idx_outfits_occasion '
         'ON outfits (occasion)',
       );
@@ -160,6 +170,18 @@ class AppDatabase extends _$AppDatabase {
           'ON outfits (occasion)',
         );
       }
+      if (from < 3) {
+        // Backfilled from `occurred_at`, which is the only defensible guess:
+        // an event cannot have been recorded before the thing it describes.
+        // The consequence is that existing events look freshly recorded once
+        // and are sent again, which is harmless — merging is idempotent.
+        await m.addColumn(events, events.recordedAt);
+        await customStatement('UPDATE events SET recorded_at = occurred_at');
+      }
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_events_recorded '
+        'ON events (recorded_at)',
+      );
     },
   );
 }

@@ -1112,6 +1112,17 @@ class $EventsTable extends Events with TableInfo<$EventsTable, Event> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _recordedAtMeta = const VerificationMeta(
+    'recordedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> recordedAt = GeneratedColumn<DateTime>(
+    'recorded_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _payloadMeta = const VerificationMeta(
     'payload',
   );
@@ -1124,7 +1135,13 @@ class $EventsTable extends Events with TableInfo<$EventsTable, Event> {
     requiredDuringInsert: true,
   );
   @override
-  List<GeneratedColumn> get $columns => [id, itemId, occurredAt, payload];
+  List<GeneratedColumn> get $columns => [
+    id,
+    itemId,
+    occurredAt,
+    recordedAt,
+    payload,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1158,6 +1175,14 @@ class $EventsTable extends Events with TableInfo<$EventsTable, Event> {
     } else if (isInserting) {
       context.missing(_occurredAtMeta);
     }
+    if (data.containsKey('recorded_at')) {
+      context.handle(
+        _recordedAtMeta,
+        recordedAt.isAcceptableOrUnknown(data['recorded_at']!, _recordedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_recordedAtMeta);
+    }
     if (data.containsKey('payload')) {
       context.handle(
         _payloadMeta,
@@ -1187,6 +1212,10 @@ class $EventsTable extends Events with TableInfo<$EventsTable, Event> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}occurred_at'],
       )!,
+      recordedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}recorded_at'],
+      )!,
       payload: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}payload'],
@@ -1204,11 +1233,17 @@ class Event extends DataClass implements Insertable<Event> {
   final String id;
   final String itemId;
   final DateTime occurredAt;
+
+  /// When this device wrote the event down, as against when the thing
+  /// happened. Lifted because *sync* filters on it, and decoding every payload
+  /// to find out what to send would defeat the point of lifting anything.
+  final DateTime recordedAt;
   final String payload;
   const Event({
     required this.id,
     required this.itemId,
     required this.occurredAt,
+    required this.recordedAt,
     required this.payload,
   });
   @override
@@ -1217,6 +1252,7 @@ class Event extends DataClass implements Insertable<Event> {
     map['id'] = Variable<String>(id);
     map['item_id'] = Variable<String>(itemId);
     map['occurred_at'] = Variable<DateTime>(occurredAt);
+    map['recorded_at'] = Variable<DateTime>(recordedAt);
     map['payload'] = Variable<String>(payload);
     return map;
   }
@@ -1226,6 +1262,7 @@ class Event extends DataClass implements Insertable<Event> {
       id: Value(id),
       itemId: Value(itemId),
       occurredAt: Value(occurredAt),
+      recordedAt: Value(recordedAt),
       payload: Value(payload),
     );
   }
@@ -1239,6 +1276,7 @@ class Event extends DataClass implements Insertable<Event> {
       id: serializer.fromJson<String>(json['id']),
       itemId: serializer.fromJson<String>(json['itemId']),
       occurredAt: serializer.fromJson<DateTime>(json['occurredAt']),
+      recordedAt: serializer.fromJson<DateTime>(json['recordedAt']),
       payload: serializer.fromJson<String>(json['payload']),
     );
   }
@@ -1249,6 +1287,7 @@ class Event extends DataClass implements Insertable<Event> {
       'id': serializer.toJson<String>(id),
       'itemId': serializer.toJson<String>(itemId),
       'occurredAt': serializer.toJson<DateTime>(occurredAt),
+      'recordedAt': serializer.toJson<DateTime>(recordedAt),
       'payload': serializer.toJson<String>(payload),
     };
   }
@@ -1257,11 +1296,13 @@ class Event extends DataClass implements Insertable<Event> {
     String? id,
     String? itemId,
     DateTime? occurredAt,
+    DateTime? recordedAt,
     String? payload,
   }) => Event(
     id: id ?? this.id,
     itemId: itemId ?? this.itemId,
     occurredAt: occurredAt ?? this.occurredAt,
+    recordedAt: recordedAt ?? this.recordedAt,
     payload: payload ?? this.payload,
   );
   Event copyWithCompanion(EventsCompanion data) {
@@ -1271,6 +1312,9 @@ class Event extends DataClass implements Insertable<Event> {
       occurredAt: data.occurredAt.present
           ? data.occurredAt.value
           : this.occurredAt,
+      recordedAt: data.recordedAt.present
+          ? data.recordedAt.value
+          : this.recordedAt,
       payload: data.payload.present ? data.payload.value : this.payload,
     );
   }
@@ -1281,13 +1325,14 @@ class Event extends DataClass implements Insertable<Event> {
           ..write('id: $id, ')
           ..write('itemId: $itemId, ')
           ..write('occurredAt: $occurredAt, ')
+          ..write('recordedAt: $recordedAt, ')
           ..write('payload: $payload')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, itemId, occurredAt, payload);
+  int get hashCode => Object.hash(id, itemId, occurredAt, recordedAt, payload);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1295,6 +1340,7 @@ class Event extends DataClass implements Insertable<Event> {
           other.id == this.id &&
           other.itemId == this.itemId &&
           other.occurredAt == this.occurredAt &&
+          other.recordedAt == this.recordedAt &&
           other.payload == this.payload);
 }
 
@@ -1302,12 +1348,14 @@ class EventsCompanion extends UpdateCompanion<Event> {
   final Value<String> id;
   final Value<String> itemId;
   final Value<DateTime> occurredAt;
+  final Value<DateTime> recordedAt;
   final Value<String> payload;
   final Value<int> rowid;
   const EventsCompanion({
     this.id = const Value.absent(),
     this.itemId = const Value.absent(),
     this.occurredAt = const Value.absent(),
+    this.recordedAt = const Value.absent(),
     this.payload = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -1315,16 +1363,19 @@ class EventsCompanion extends UpdateCompanion<Event> {
     required String id,
     required String itemId,
     required DateTime occurredAt,
+    required DateTime recordedAt,
     required String payload,
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        itemId = Value(itemId),
        occurredAt = Value(occurredAt),
+       recordedAt = Value(recordedAt),
        payload = Value(payload);
   static Insertable<Event> custom({
     Expression<String>? id,
     Expression<String>? itemId,
     Expression<DateTime>? occurredAt,
+    Expression<DateTime>? recordedAt,
     Expression<String>? payload,
     Expression<int>? rowid,
   }) {
@@ -1332,6 +1383,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
       if (id != null) 'id': id,
       if (itemId != null) 'item_id': itemId,
       if (occurredAt != null) 'occurred_at': occurredAt,
+      if (recordedAt != null) 'recorded_at': recordedAt,
       if (payload != null) 'payload': payload,
       if (rowid != null) 'rowid': rowid,
     });
@@ -1341,6 +1393,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
     Value<String>? id,
     Value<String>? itemId,
     Value<DateTime>? occurredAt,
+    Value<DateTime>? recordedAt,
     Value<String>? payload,
     Value<int>? rowid,
   }) {
@@ -1348,6 +1401,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
       id: id ?? this.id,
       itemId: itemId ?? this.itemId,
       occurredAt: occurredAt ?? this.occurredAt,
+      recordedAt: recordedAt ?? this.recordedAt,
       payload: payload ?? this.payload,
       rowid: rowid ?? this.rowid,
     );
@@ -1365,6 +1419,9 @@ class EventsCompanion extends UpdateCompanion<Event> {
     if (occurredAt.present) {
       map['occurred_at'] = Variable<DateTime>(occurredAt.value);
     }
+    if (recordedAt.present) {
+      map['recorded_at'] = Variable<DateTime>(recordedAt.value);
+    }
     if (payload.present) {
       map['payload'] = Variable<String>(payload.value);
     }
@@ -1380,6 +1437,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
           ..write('id: $id, ')
           ..write('itemId: $itemId, ')
           ..write('occurredAt: $occurredAt, ')
+          ..write('recordedAt: $recordedAt, ')
           ..write('payload: $payload, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -2341,6 +2399,7 @@ typedef $$EventsTableCreateCompanionBuilder =
       required String id,
       required String itemId,
       required DateTime occurredAt,
+      required DateTime recordedAt,
       required String payload,
       Value<int> rowid,
     });
@@ -2349,6 +2408,7 @@ typedef $$EventsTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> itemId,
       Value<DateTime> occurredAt,
+      Value<DateTime> recordedAt,
       Value<String> payload,
       Value<int> rowid,
     });
@@ -2374,6 +2434,11 @@ class $$EventsTableFilterComposer
 
   ColumnFilters<DateTime> get occurredAt => $composableBuilder(
     column: $table.occurredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get recordedAt => $composableBuilder(
+    column: $table.recordedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2407,6 +2472,11 @@ class $$EventsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get recordedAt => $composableBuilder(
+    column: $table.recordedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get payload => $composableBuilder(
     column: $table.payload,
     builder: (column) => ColumnOrderings(column),
@@ -2430,6 +2500,11 @@ class $$EventsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get occurredAt => $composableBuilder(
     column: $table.occurredAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get recordedAt => $composableBuilder(
+    column: $table.recordedAt,
     builder: (column) => column,
   );
 
@@ -2468,12 +2543,14 @@ class $$EventsTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> itemId = const Value.absent(),
                 Value<DateTime> occurredAt = const Value.absent(),
+                Value<DateTime> recordedAt = const Value.absent(),
                 Value<String> payload = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => EventsCompanion(
                 id: id,
                 itemId: itemId,
                 occurredAt: occurredAt,
+                recordedAt: recordedAt,
                 payload: payload,
                 rowid: rowid,
               ),
@@ -2482,12 +2559,14 @@ class $$EventsTableTableManager
                 required String id,
                 required String itemId,
                 required DateTime occurredAt,
+                required DateTime recordedAt,
                 required String payload,
                 Value<int> rowid = const Value.absent(),
               }) => EventsCompanion.insert(
                 id: id,
                 itemId: itemId,
                 occurredAt: occurredAt,
+                recordedAt: recordedAt,
                 payload: payload,
                 rowid: rowid,
               ),

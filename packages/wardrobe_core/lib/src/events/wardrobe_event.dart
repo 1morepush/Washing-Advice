@@ -23,7 +23,8 @@ sealed class WardrobeEvent {
     required this.id,
     required this.itemId,
     required this.occurredAt,
-  });
+    DateTime? recordedAt,
+  }) : _recordedAt = recordedAt;
 
   final EventId id;
   final ItemId itemId;
@@ -31,6 +32,22 @@ sealed class WardrobeEvent {
   /// When the event actually happened, which may be earlier than when it was
   /// recorded — people log yesterday's wash this morning.
   final DateTime occurredAt;
+
+  final DateTime? _recordedAt;
+
+  /// When this was written down, on the device that wrote it.
+  ///
+  /// Distinct from [occurredAt] because the two answer different questions and
+  /// conflating them loses data. History is ordered by when things *happened*;
+  /// sync selects what to send by when things were *recorded*. Using
+  /// [occurredAt] for the second means a wear logged today for yesterday is
+  /// older than the sync cursor and is never sent — silently, permanently, and
+  /// only on the devices that did not record it.
+  ///
+  /// Defaults to [occurredAt] when absent, which is the right backfill for
+  /// events stored before this field existed: their recording time is unknown
+  /// and cannot have been earlier than the thing they describe.
+  DateTime get recordedAt => _recordedAt ?? occurredAt;
 
   /// Short machine-readable type name, used in storage and JSON.
   String get typeName;
@@ -40,6 +57,7 @@ sealed class WardrobeEvent {
         'id': id.value,
         'itemId': itemId.value,
         'occurredAt': occurredAt.toIso8601String(),
+        'recordedAt': recordedAt.toIso8601String(),
         ...payload,
       };
 
@@ -51,27 +69,41 @@ sealed class WardrobeEvent {
     final id = EventId(json['id']! as String);
     final itemId = ItemId(json['itemId']! as String);
     final occurredAt = DateTime.parse(json['occurredAt']! as String);
+    // Absent on anything written before the field existed. `recordedAt` falls
+    // back to `occurredAt`, so those events sync once more and then settle.
+    final recordedAt = switch (json['recordedAt']) {
+      final String text => DateTime.parse(text),
+      _ => null,
+    };
 
     return switch (json['type']! as String) {
       'purchased' => ItemPurchased(
           id: id,
           itemId: itemId,
           occurredAt: occurredAt,
+          recordedAt: recordedAt,
           purchase: PurchaseInfo.fromJson(
             json['purchase']! as Map<String, Object?>,
           ),
         ),
-      'added' => ItemAdded(id: id, itemId: itemId, occurredAt: occurredAt),
+      'added' => ItemAdded(
+          id: id,
+          itemId: itemId,
+          occurredAt: occurredAt,
+          recordedAt: recordedAt,
+        ),
       'worn' => ItemWorn(
           id: id,
           itemId: itemId,
           occurredAt: occurredAt,
+          recordedAt: recordedAt,
           occasion: json['occasion'] as String?,
         ),
       'washed' => ItemWashed(
           id: id,
           itemId: itemId,
           occurredAt: occurredAt,
+          recordedAt: recordedAt,
           record: LaundryRecord.fromJson(
             json['record']! as Map<String, Object?>,
           ),
@@ -80,12 +112,14 @@ sealed class WardrobeEvent {
           id: id,
           itemId: itemId,
           occurredAt: occurredAt,
+          recordedAt: recordedAt,
           description: json['description'] as String?,
         ),
       'conditionObserved' => ConditionObserved(
           id: id,
           itemId: itemId,
           occurredAt: occurredAt,
+          recordedAt: recordedAt,
           observation: WearObservation.fromJson(
             json['observation']! as Map<String, Object?>,
           ),
@@ -94,6 +128,7 @@ sealed class WardrobeEvent {
           id: id,
           itemId: itemId,
           occurredAt: occurredAt,
+          recordedAt: recordedAt,
           to: LifecycleState.values.byName(json['to']! as String),
           note: json['note'] as String?,
         ),
@@ -121,6 +156,7 @@ final class ItemPurchased extends WardrobeEvent {
     required super.id,
     required super.itemId,
     required super.occurredAt,
+    super.recordedAt,
     required this.purchase,
   });
 
@@ -139,6 +175,7 @@ final class ItemAdded extends WardrobeEvent {
     required super.id,
     required super.itemId,
     required super.occurredAt,
+    super.recordedAt,
   });
 
   @override
@@ -151,6 +188,7 @@ final class ItemWorn extends WardrobeEvent {
     required super.id,
     required super.itemId,
     required super.occurredAt,
+    super.recordedAt,
     this.occasion,
   });
 
@@ -172,6 +210,7 @@ final class ItemWashed extends WardrobeEvent {
     required super.id,
     required super.itemId,
     required super.occurredAt,
+    super.recordedAt,
     required this.record,
   });
 
@@ -190,6 +229,7 @@ final class ItemRepaired extends WardrobeEvent {
     required super.id,
     required super.itemId,
     required super.occurredAt,
+    super.recordedAt,
     this.description,
   });
 
@@ -210,6 +250,7 @@ final class ConditionObserved extends WardrobeEvent {
     required super.id,
     required super.itemId,
     required super.occurredAt,
+    super.recordedAt,
     required this.observation,
   });
 
@@ -228,6 +269,7 @@ final class LifecycleChanged extends WardrobeEvent {
     required super.id,
     required super.itemId,
     required super.occurredAt,
+    super.recordedAt,
     required this.to,
     this.note,
   });

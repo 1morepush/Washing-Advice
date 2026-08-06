@@ -114,20 +114,44 @@ final class SyncReport {
 
 /// Where the last successful sync got to.
 abstract interface class SyncCursor {
+  /// The remote's clock, as of the last successful run. Used to ask the remote
+  /// what has changed.
   Future<DateTime?> lastSyncedAt();
 
-  Future<void> record(DateTime at);
+  /// This device's own clock, as of the last successful push. Used to decide
+  /// what to send.
+  ///
+  /// Two cursors rather than one, and the distinction is not pedantry. The
+  /// remote's timestamps and this device's are different clocks, and comparing
+  /// across them loses data: a device running a few minutes behind the server
+  /// stamps its edits *earlier* than the cursor it was just handed, so those
+  /// edits are never selected and never sent. Nothing reports an error —
+  /// the changes simply stay on one phone forever.
+  ///
+  /// Keeping each comparison inside one clock domain removes the whole class
+  /// of problem, and costs one extra stored timestamp.
+  Future<DateTime?> lastPushedAt();
+
+  /// Records both: [at] from the remote, [localAt] from this device's clock.
+  Future<void> record(DateTime at, {DateTime? localAt});
 }
 
 /// An in-memory cursor, for tests and for a first run.
 final class InMemorySyncCursor implements SyncCursor {
   DateTime? _at;
+  DateTime? _localAt;
 
   @override
   Future<DateTime?> lastSyncedAt() async => _at;
 
   @override
-  Future<void> record(DateTime at) async => _at = at;
+  Future<DateTime?> lastPushedAt() async => _localAt;
+
+  @override
+  Future<void> record(DateTime at, {DateTime? localAt}) async {
+    _at = at;
+    if (localAt != null) _localAt = localAt;
+  }
 }
 
 class SyncEngine {
@@ -153,6 +177,11 @@ class SyncEngine {
   /// remote would then have to merge, which puts the merge rule in two places.
   Future<SyncReport> sync() async {
     final since = await cursor.lastSyncedAt();
+    final pushedSince = await cursor.lastPushedAt();
+    // Read *before* anything is gathered, so a change written while this run is
+    // in flight is newer than the mark and is caught by the next run rather
+    // than skipped by it.
+    final startedAt = clock.now();
 
     final SyncPayload incoming;
     try {
@@ -192,7 +221,7 @@ class SyncEngine {
       touched.add(id);
     }
 
-    final outgoing = await _localChangesSince(since);
+    final outgoing = await _localChangesSince(pushedSince);
 
     final DateTime acceptedAt;
     try {
@@ -205,7 +234,7 @@ class SyncEngine {
       return SyncReport.failed('$error', at: clock.now());
     }
 
-    await cursor.record(acceptedAt);
+    await cursor.record(acceptedAt, localAt: startedAt);
 
     return SyncReport(
       pulled: incoming.length,
@@ -230,14 +259,23 @@ class SyncEngine {
   /// Selected by `updatedAt` rather than by a dirty flag, because a flag is a
   /// second source of truth that can disagree with the data — and after a
   /// crash mid-write, it will.
+  /// What this device has changed since it last pushed.
+  ///
+  /// Both comparisons are against *this device's* clock — `updatedAt` and
+  /// `recordedAt` are both stamped locally — which is the point of tracking a
+  /// separate local mark. Events are selected by when they were recorded, not
+  /// by when they happened, so a wear logged today for last week is still sent.
+  ///
+  /// Inclusive on both, for the same reason the server's `since` is: sending a
+  /// record the remote already has is free, and missing one is not.
   Future<SyncPayload> _localChangesSince(DateTime? since) async {
     final all = await items.query(const WardrobeQuery());
     return SyncPayload(
       items: [
         for (final item in all)
-          if (since == null || item.updatedAt.isAfter(since)) item,
+          if (since == null || !item.updatedAt.isBefore(since)) item,
       ],
-      events: await events.all(since: since),
+      events: await events.all(recordedSince: since),
     );
   }
 }

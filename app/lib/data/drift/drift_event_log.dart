@@ -46,7 +46,11 @@ class DriftEventLog implements EventLog {
   }
 
   @override
-  Future<List<WardrobeEvent>> all({DateTime? since, DateTime? until}) async {
+  Future<List<WardrobeEvent>> all({
+    DateTime? since,
+    DateTime? until,
+    DateTime? recordedSince,
+  }) async {
     final select = _db.select(_db.events)
       ..orderBy([(t) => OrderingTerm(expression: t.occurredAt)]);
 
@@ -55,6 +59,9 @@ class DriftEventLog implements EventLog {
     }
     if (until != null) {
       select.where((t) => t.occurredAt.isSmallerThanValue(until));
+    }
+    if (recordedSince != null) {
+      select.where((t) => t.recordedAt.isBiggerOrEqualValue(recordedSince));
     }
 
     final rows = await select.get();
@@ -65,6 +72,7 @@ class DriftEventLog implements EventLog {
     id: event.id.value,
     itemId: event.itemId.value,
     occurredAt: event.occurredAt,
+    recordedAt: event.recordedAt,
     payload: jsonEncode(event.toJson()),
   );
 

@@ -36,6 +36,10 @@ class WearRecorder {
         id: EventId(_ref.read(idGeneratorProvider).next()),
         itemId: id,
         occurredAt: at ?? DateTime.now(),
+        // Always now, even when the wear itself is backdated. This is what
+        // sync selects on, and stamping it with the backdated time would put
+        // the event behind the push cursor and strand it on this device.
+        recordedAt: DateTime.now(),
         occasion: occasion,
       ),
     );
@@ -98,6 +102,7 @@ class WearRecorder {
           id: EventId(ids.next()),
           itemId: item.id,
           occurredAt: now,
+          recordedAt: now,
           record: record,
         ),
       );

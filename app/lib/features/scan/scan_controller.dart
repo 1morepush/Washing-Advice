@@ -164,6 +164,7 @@ class ScanController extends StateNotifier<ScanState> {
               id: EventId(ids.next()),
               itemId: item.id,
               occurredAt: item.addedAt,
+              recordedAt: DateTime.now(),
             ),
           );
       state = ScanSaved(item);

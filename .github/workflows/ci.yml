@@ -83,7 +83,47 @@ jobs:
         run: flutter analyze --fatal-infos --fatal-warnings
 
       - name: Test
-        run: flutter test --reporter=expanded
+        # The end-to-end sync suite is excluded here and run in its own job:
+        # it needs Python and uv, which this job deliberately does not install.
+        run: flutter test --reporter=expanded --exclude-tags e2e
+
+  sync-e2e:
+    # The cross-language contract, exercised rather than assumed. Both halves
+    # of sync pass their own unit tests while the wire between them is broken —
+    # a renamed field, a timestamp one side cannot parse, a cursor that skips a
+    # record. This job is the only place that would notice.
+    name: sync end to end (Dart client against the real server)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          # Matched to the server job for the reason documented there.
+          python-version: "3.11"
+
+      - name: Install server dependencies
+        working-directory: server
+        run: uv sync --group dev --frozen
+
+      - name: Resolve app dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Test
+        working-directory: app
+        # Fails rather than skips if uv is somehow absent: a silently skipped
+        # integration test verifies nothing, and this job exists only for it.
+        run: |
+          uv --version
+          flutter test test/sync_e2e_test.dart --reporter=expanded
 
   server:
     name: server (lint, types, test)

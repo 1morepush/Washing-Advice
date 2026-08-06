@@ -166,6 +166,55 @@ void main() {
     });
   });
 
+  group('what gets selected to send', () {
+    // Both of these were found by running the engine against the real server
+    // rather than against a fake, and both were silent: no error, no report,
+    // just changes that stayed on one device forever.
+
+    test('a wear logged today for last week is still sent', () async {
+      // Events are selected by when they were *recorded*, not by when they
+      // happened. Selecting by `occurredAt` strands every retrospective entry,
+      // which is a feature the event model explicitly supports.
+      await items.save(_jumper(updatedAt: monday));
+      await engine.sync();
+      remote.received.clear();
+
+      final lastMonth = DateTime.utc(2026, 7, 1);
+      await events.append(
+        ItemWorn(
+          id: const EventId('retro'),
+          itemId: const ItemId('jumper'),
+          occurredAt: lastMonth,
+          recordedAt: tuesday.add(const Duration(hours: 1)),
+        ),
+      );
+
+      await engine.sync();
+      expect(remote.received.single.events, hasLength(1));
+    });
+
+    test('an edit on a device whose clock trails the server is still sent',
+        () async {
+      // The cursor the remote hands back is in the remote's clock. Comparing a
+      // locally stamped `updatedAt` against it means a device running a few
+      // minutes slow never selects its own edits.
+      await items.save(_jumper(updatedAt: monday));
+      await engine.sync();
+      remote.received.clear();
+
+      // The remote accepted at a time well ahead of this device's clock.
+      remote.acceptAt = DateTime.utc(2026, 8, 4, 12);
+      await engine.sync();
+      remote.received.clear();
+
+      // A local edit stamped by the trailing local clock.
+      await items.save(_jumper(updatedAt: tuesday, name: 'Renamed'));
+
+      await engine.sync();
+      expect(remote.received.single.items, hasLength(1));
+    });
+  });
+
   test('syncing twice changes nothing the second time', () async {
     // Idempotence at the level of a whole run: a device that reconnects
     // repeatedly must not drift.
@@ -221,6 +270,9 @@ class _FakeRemote implements SyncRemote {
   SyncPayload available = const SyncPayload();
   final List<SyncPayload> received = [];
 
+  /// The remote's clock, which is deliberately not the device's.
+  DateTime acceptAt = DateTime.utc(2026, 8, 4);
+
   bool failPull = false;
   bool failPush = false;
 
@@ -234,7 +286,7 @@ class _FakeRemote implements SyncRemote {
   Future<DateTime> push(SyncPayload payload) async {
     if (failPush) throw const _Offline();
     received.add(payload);
-    return DateTime.utc(2026, 8, 4);
+    return acceptAt;
   }
 }
 

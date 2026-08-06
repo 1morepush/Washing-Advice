@@ -67,6 +67,40 @@ class Items extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// Saved outfits.
+///
+/// The same JSON-plus-lifted-columns shape as [Items], for the same reason.
+/// The item ids are lifted into a packed column so "which outfits contain this
+/// garment" is a `LIKE` against an indexed string rather than a decode of
+/// every row — and they are stored delimited on both ends (`|a|b|`) so that
+/// matching `|a|` cannot also match an id ending in `a`.
+///
+/// Named explicitly because Drift would otherwise generate a row class called
+/// `Outfit`, which is the core's domain type. Two different `Outfit`s in one
+/// file is the kind of collision that gets resolved with an import prefix and
+/// then quietly confuses everyone who reads it.
+@DataClassName('OutfitRow')
+class Outfits extends Table {
+  TextColumn get id => text()();
+
+  /// The full `Outfit`, as the core serialises it.
+  TextColumn get payload => text()();
+
+  // --- Lifted for querying. Derived from the payload by [outfitRowFor]. ---
+
+  TextColumn get name => text()();
+  TextColumn get occasion => text()();
+
+  /// `|id|id|` — see the note above about the delimiters.
+  TextColumn get itemIds => text()();
+
+  BoolColumn get isFavorite => boolean()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 /// The append-only event log.
 class Events extends Table {
   TextColumn get id => text()();
@@ -78,7 +112,7 @@ class Events extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Items, Events])
+@DriftDatabase(tables: [Items, Events, Outfits])
 class AppDatabase extends _$AppDatabase {
   /// Takes its executor rather than opening one.
   ///
@@ -88,7 +122,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -110,9 +144,43 @@ class AppDatabase extends _$AppDatabase {
       await customStatement(
         'CREATE INDEX IF NOT EXISTS idx_events_item ON events (item_id)',
       );
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_outfits_occasion '
+        'ON outfits (occasion)',
+      );
+    },
+    // Version 2 adds saved outfits. A new table only, so existing wardrobes
+    // migrate without touching a single stored item — which is the whole
+    // reason the payload is JSON and only filterable fields are lifted.
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.createTable(outfits);
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_outfits_occasion '
+          'ON outfits (occasion)',
+        );
+      }
     },
   );
 }
+
+/// Builds the storage row for an outfit.
+///
+/// The single place the lifted columns are derived from the payload, so the
+/// two cannot disagree — the same rule [rowFor] follows.
+OutfitsCompanion outfitRowFor(Outfit outfit) => OutfitsCompanion.insert(
+  id: outfit.id.value,
+  payload: jsonEncode(outfit.toJson()),
+  name: outfit.name,
+  occasion: outfit.occasion.name,
+  itemIds: packedItemIds(outfit.itemIds),
+  isFavorite: outfit.isFavorite,
+  updatedAt: outfit.updatedAt,
+);
+
+/// `|a|b|c|`, delimited at both ends so a `LIKE '%|a|%'` cannot match `|xa|`.
+String packedItemIds(Iterable<ItemId> ids) =>
+    ids.isEmpty ? '|' : '|${ids.map((i) => i.value).join('|')}|';
 
 /// Builds the storage row for an item.
 ///

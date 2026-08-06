@@ -1387,16 +1387,480 @@ class EventsCompanion extends UpdateCompanion<Event> {
   }
 }
 
+class $OutfitsTable extends Outfits with TableInfo<$OutfitsTable, OutfitRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OutfitsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _occasionMeta = const VerificationMeta(
+    'occasion',
+  );
+  @override
+  late final GeneratedColumn<String> occasion = GeneratedColumn<String>(
+    'occasion',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _itemIdsMeta = const VerificationMeta(
+    'itemIds',
+  );
+  @override
+  late final GeneratedColumn<String> itemIds = GeneratedColumn<String>(
+    'item_ids',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isFavoriteMeta = const VerificationMeta(
+    'isFavorite',
+  );
+  @override
+  late final GeneratedColumn<bool> isFavorite = GeneratedColumn<bool>(
+    'is_favorite',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_favorite" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    payload,
+    name,
+    occasion,
+    itemIds,
+    isFavorite,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'outfits';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<OutfitRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('occasion')) {
+      context.handle(
+        _occasionMeta,
+        occasion.isAcceptableOrUnknown(data['occasion']!, _occasionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_occasionMeta);
+    }
+    if (data.containsKey('item_ids')) {
+      context.handle(
+        _itemIdsMeta,
+        itemIds.isAcceptableOrUnknown(data['item_ids']!, _itemIdsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_itemIdsMeta);
+    }
+    if (data.containsKey('is_favorite')) {
+      context.handle(
+        _isFavoriteMeta,
+        isFavorite.isAcceptableOrUnknown(data['is_favorite']!, _isFavoriteMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_isFavoriteMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  OutfitRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return OutfitRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      occasion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}occasion'],
+      )!,
+      itemIds: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}item_ids'],
+      )!,
+      isFavorite: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_favorite'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $OutfitsTable createAlias(String alias) {
+    return $OutfitsTable(attachedDatabase, alias);
+  }
+}
+
+class OutfitRow extends DataClass implements Insertable<OutfitRow> {
+  final String id;
+
+  /// The full `Outfit`, as the core serialises it.
+  final String payload;
+  final String name;
+  final String occasion;
+
+  /// `|id|id|` — see the note above about the delimiters.
+  final String itemIds;
+  final bool isFavorite;
+  final DateTime updatedAt;
+  const OutfitRow({
+    required this.id,
+    required this.payload,
+    required this.name,
+    required this.occasion,
+    required this.itemIds,
+    required this.isFavorite,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['payload'] = Variable<String>(payload);
+    map['name'] = Variable<String>(name);
+    map['occasion'] = Variable<String>(occasion);
+    map['item_ids'] = Variable<String>(itemIds);
+    map['is_favorite'] = Variable<bool>(isFavorite);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  OutfitsCompanion toCompanion(bool nullToAbsent) {
+    return OutfitsCompanion(
+      id: Value(id),
+      payload: Value(payload),
+      name: Value(name),
+      occasion: Value(occasion),
+      itemIds: Value(itemIds),
+      isFavorite: Value(isFavorite),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory OutfitRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return OutfitRow(
+      id: serializer.fromJson<String>(json['id']),
+      payload: serializer.fromJson<String>(json['payload']),
+      name: serializer.fromJson<String>(json['name']),
+      occasion: serializer.fromJson<String>(json['occasion']),
+      itemIds: serializer.fromJson<String>(json['itemIds']),
+      isFavorite: serializer.fromJson<bool>(json['isFavorite']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'payload': serializer.toJson<String>(payload),
+      'name': serializer.toJson<String>(name),
+      'occasion': serializer.toJson<String>(occasion),
+      'itemIds': serializer.toJson<String>(itemIds),
+      'isFavorite': serializer.toJson<bool>(isFavorite),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  OutfitRow copyWith({
+    String? id,
+    String? payload,
+    String? name,
+    String? occasion,
+    String? itemIds,
+    bool? isFavorite,
+    DateTime? updatedAt,
+  }) => OutfitRow(
+    id: id ?? this.id,
+    payload: payload ?? this.payload,
+    name: name ?? this.name,
+    occasion: occasion ?? this.occasion,
+    itemIds: itemIds ?? this.itemIds,
+    isFavorite: isFavorite ?? this.isFavorite,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  OutfitRow copyWithCompanion(OutfitsCompanion data) {
+    return OutfitRow(
+      id: data.id.present ? data.id.value : this.id,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      name: data.name.present ? data.name.value : this.name,
+      occasion: data.occasion.present ? data.occasion.value : this.occasion,
+      itemIds: data.itemIds.present ? data.itemIds.value : this.itemIds,
+      isFavorite: data.isFavorite.present
+          ? data.isFavorite.value
+          : this.isFavorite,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OutfitRow(')
+          ..write('id: $id, ')
+          ..write('payload: $payload, ')
+          ..write('name: $name, ')
+          ..write('occasion: $occasion, ')
+          ..write('itemIds: $itemIds, ')
+          ..write('isFavorite: $isFavorite, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, payload, name, occasion, itemIds, isFavorite, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OutfitRow &&
+          other.id == this.id &&
+          other.payload == this.payload &&
+          other.name == this.name &&
+          other.occasion == this.occasion &&
+          other.itemIds == this.itemIds &&
+          other.isFavorite == this.isFavorite &&
+          other.updatedAt == this.updatedAt);
+}
+
+class OutfitsCompanion extends UpdateCompanion<OutfitRow> {
+  final Value<String> id;
+  final Value<String> payload;
+  final Value<String> name;
+  final Value<String> occasion;
+  final Value<String> itemIds;
+  final Value<bool> isFavorite;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const OutfitsCompanion({
+    this.id = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.name = const Value.absent(),
+    this.occasion = const Value.absent(),
+    this.itemIds = const Value.absent(),
+    this.isFavorite = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  OutfitsCompanion.insert({
+    required String id,
+    required String payload,
+    required String name,
+    required String occasion,
+    required String itemIds,
+    required bool isFavorite,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       payload = Value(payload),
+       name = Value(name),
+       occasion = Value(occasion),
+       itemIds = Value(itemIds),
+       isFavorite = Value(isFavorite),
+       updatedAt = Value(updatedAt);
+  static Insertable<OutfitRow> custom({
+    Expression<String>? id,
+    Expression<String>? payload,
+    Expression<String>? name,
+    Expression<String>? occasion,
+    Expression<String>? itemIds,
+    Expression<bool>? isFavorite,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (payload != null) 'payload': payload,
+      if (name != null) 'name': name,
+      if (occasion != null) 'occasion': occasion,
+      if (itemIds != null) 'item_ids': itemIds,
+      if (isFavorite != null) 'is_favorite': isFavorite,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  OutfitsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? payload,
+    Value<String>? name,
+    Value<String>? occasion,
+    Value<String>? itemIds,
+    Value<bool>? isFavorite,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return OutfitsCompanion(
+      id: id ?? this.id,
+      payload: payload ?? this.payload,
+      name: name ?? this.name,
+      occasion: occasion ?? this.occasion,
+      itemIds: itemIds ?? this.itemIds,
+      isFavorite: isFavorite ?? this.isFavorite,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (occasion.present) {
+      map['occasion'] = Variable<String>(occasion.value);
+    }
+    if (itemIds.present) {
+      map['item_ids'] = Variable<String>(itemIds.value);
+    }
+    if (isFavorite.present) {
+      map['is_favorite'] = Variable<bool>(isFavorite.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OutfitsCompanion(')
+          ..write('id: $id, ')
+          ..write('payload: $payload, ')
+          ..write('name: $name, ')
+          ..write('occasion: $occasion, ')
+          ..write('itemIds: $itemIds, ')
+          ..write('isFavorite: $isFavorite, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $ItemsTable items = $ItemsTable(this);
   late final $EventsTable events = $EventsTable(this);
+  late final $OutfitsTable outfits = $OutfitsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [items, events];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [items, events, outfits];
 }
 
 typedef $$ItemsTableCreateCompanionBuilder =
@@ -2049,6 +2513,240 @@ typedef $$EventsTableProcessedTableManager =
       Event,
       PrefetchHooks Function()
     >;
+typedef $$OutfitsTableCreateCompanionBuilder =
+    OutfitsCompanion Function({
+      required String id,
+      required String payload,
+      required String name,
+      required String occasion,
+      required String itemIds,
+      required bool isFavorite,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$OutfitsTableUpdateCompanionBuilder =
+    OutfitsCompanion Function({
+      Value<String> id,
+      Value<String> payload,
+      Value<String> name,
+      Value<String> occasion,
+      Value<String> itemIds,
+      Value<bool> isFavorite,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$OutfitsTableFilterComposer
+    extends Composer<_$AppDatabase, $OutfitsTable> {
+  $$OutfitsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get occasion => $composableBuilder(
+    column: $table.occasion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get itemIds => $composableBuilder(
+    column: $table.itemIds,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$OutfitsTableOrderingComposer
+    extends Composer<_$AppDatabase, $OutfitsTable> {
+  $$OutfitsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get occasion => $composableBuilder(
+    column: $table.occasion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get itemIds => $composableBuilder(
+    column: $table.itemIds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$OutfitsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $OutfitsTable> {
+  $$OutfitsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get occasion =>
+      $composableBuilder(column: $table.occasion, builder: (column) => column);
+
+  GeneratedColumn<String> get itemIds =>
+      $composableBuilder(column: $table.itemIds, builder: (column) => column);
+
+  GeneratedColumn<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$OutfitsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $OutfitsTable,
+          OutfitRow,
+          $$OutfitsTableFilterComposer,
+          $$OutfitsTableOrderingComposer,
+          $$OutfitsTableAnnotationComposer,
+          $$OutfitsTableCreateCompanionBuilder,
+          $$OutfitsTableUpdateCompanionBuilder,
+          (OutfitRow, BaseReferences<_$AppDatabase, $OutfitsTable, OutfitRow>),
+          OutfitRow,
+          PrefetchHooks Function()
+        > {
+  $$OutfitsTableTableManager(_$AppDatabase db, $OutfitsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$OutfitsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$OutfitsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$OutfitsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> payload = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> occasion = const Value.absent(),
+                Value<String> itemIds = const Value.absent(),
+                Value<bool> isFavorite = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => OutfitsCompanion(
+                id: id,
+                payload: payload,
+                name: name,
+                occasion: occasion,
+                itemIds: itemIds,
+                isFavorite: isFavorite,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String payload,
+                required String name,
+                required String occasion,
+                required String itemIds,
+                required bool isFavorite,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => OutfitsCompanion.insert(
+                id: id,
+                payload: payload,
+                name: name,
+                occasion: occasion,
+                itemIds: itemIds,
+                isFavorite: isFavorite,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$OutfitsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $OutfitsTable,
+      OutfitRow,
+      $$OutfitsTableFilterComposer,
+      $$OutfitsTableOrderingComposer,
+      $$OutfitsTableAnnotationComposer,
+      $$OutfitsTableCreateCompanionBuilder,
+      $$OutfitsTableUpdateCompanionBuilder,
+      (OutfitRow, BaseReferences<_$AppDatabase, $OutfitsTable, OutfitRow>),
+      OutfitRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2057,4 +2755,6 @@ class $AppDatabaseManager {
       $$ItemsTableTableManager(_db, _db.items);
   $$EventsTableTableManager get events =>
       $$EventsTableTableManager(_db, _db.events);
+  $$OutfitsTableTableManager get outfits =>
+      $$OutfitsTableTableManager(_db, _db.outfits);
 }

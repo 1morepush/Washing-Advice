@@ -51,7 +51,5 @@ def account_for(token: str) -> str:
     """
     cleaned = token.strip()
     if len(cleaned) < MIN_TOKEN_LENGTH:
-        raise InvalidTokenError(
-            f"a sync token must be at least {MIN_TOKEN_LENGTH} characters"
-        )
+        raise InvalidTokenError(f"a sync token must be at least {MIN_TOKEN_LENGTH} characters")
     return hashlib.sha256(cleaned.encode("utf-8")).hexdigest()

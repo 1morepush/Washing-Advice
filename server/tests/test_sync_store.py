@@ -99,9 +99,7 @@ class TestAccountIsolation:
         assert [i["id"] for i in mine.items] == ["mine"]
         assert [e["id"] for e in mine.events] == ["e1"]
 
-    def test_the_same_id_in_two_accounts_does_not_collide(
-        self, store: SyncStore
-    ) -> None:
+    def test_the_same_id_in_two_accounts_does_not_collide(self, store: SyncStore) -> None:
         store.push(ACCOUNT, items=[item("tee", name="mine")], events=[])
         store.push(OTHER, items=[item("tee", name="theirs")], events=[])
 
@@ -138,9 +136,7 @@ class TestTheSinceFilter:
         changed = store.pull(ACCOUNT, since=second).items
         assert [i["id"] for i in changed] == ["new"]
 
-    def test_a_naive_cursor_is_not_compared_against_an_aware_stamp(
-        self, store: SyncStore
-    ) -> None:
+    def test_a_naive_cursor_is_not_compared_against_an_aware_stamp(self, store: SyncStore) -> None:
         # The endpoint normalises naive input to UTC before it reaches here;
         # this pins that the store itself is only ever handed aware datetimes,
         # because comparing the two raises rather than merely being wrong.

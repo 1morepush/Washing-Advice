@@ -110,9 +110,7 @@ class TestTheRoundTrip:
         accepted_at = push(client, TOKEN_A, items=[{"id": "tee"}]).json()["acceptedAt"]
 
         # Exactly what a device does next: pull with the cursor it was given.
-        pulled = client.get(
-            "/v1/sync", params={"since": accepted_at}, headers=auth(TOKEN_A)
-        )
+        pulled = client.get("/v1/sync", params={"since": accepted_at}, headers=auth(TOKEN_A))
         assert pulled.status_code == 200
         assert [i["id"] for i in pulled.json()["items"]] == ["tee"]
 
@@ -120,9 +118,7 @@ class TestTheRoundTrip:
         push(client, TOKEN_A, items=[{"id": "tee"}])
         server_time = client.get("/v1/sync", headers=auth(TOKEN_A)).json()["serverTime"]
 
-        later = client.get(
-            "/v1/sync", params={"since": server_time}, headers=auth(TOKEN_A)
-        ).json()
+        later = client.get("/v1/sync", params={"since": server_time}, headers=auth(TOKEN_A)).json()
         assert later["items"] == []
 
     def test_an_empty_push_is_accepted(self, client: TestClient) -> None:
@@ -147,9 +143,7 @@ class TestLimits:
         reset_wiring()
 
         with TestClient(create_app()) as fresh:
-            response = push(
-                fresh, TOKEN_A, items=[{"id": f"i{n}"} for n in range(5)]
-            )
+            response = push(fresh, TOKEN_A, items=[{"id": f"i{n}"} for n in range(5)])
 
         assert response.status_code == 413
 

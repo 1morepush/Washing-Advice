@@ -130,6 +130,21 @@ class _FormState extends ConsumerState<_Form> {
     setState(() => _saving = true);
     final saved = _edited;
     await ref.read(wardrobeRepositoryProvider).save(saved);
+
+    // A garment that has left the wardrobe for good cannot stay in an outfit.
+    // The repository already knows how — drop the item, and delete any outfit
+    // left with fewer than two — and nothing was calling it, so retiring
+    // something left saved outfits quietly pointing at it.
+    //
+    // `isOwned`, emphatically not `isWearable`: an item in the laundry basket
+    // is not wearable this minute and is coming back on Tuesday. Tearing it
+    // out of every saved outfit because it is in the wash would be a far worse
+    // bug than the one being fixed, and the two predicates are one word apart.
+    if (widget.original.lifecycle.isOwned && !saved.lifecycle.isOwned) {
+      await ref.read(outfitRepositoryProvider).removeItem(saved.id);
+      ref.invalidate(savedOutfitsProvider);
+    }
+
     // The detail screen reads through a FutureProvider, which caches. Without
     // this the user returns to the values they just changed.
     ref.invalidate(itemProvider(saved.id));

@@ -56,6 +56,30 @@ class Settings(BaseSettings):
     knowledge_cache_enabled: bool = True
     knowledge_cache_max_entries: int = 2_048
 
+    # --- Sync ---------------------------------------------------------------
+
+    sync_enabled: bool = Field(
+        default=True,
+        description=(
+            "Serve the sync endpoints. Off makes them 404 rather than 401, so "
+            "a deployment that does not offer sync does not advertise it."
+        ),
+    )
+
+    sync_db_path: str = Field(
+        default="data/sync.db",
+        description="Where synced records are kept. ':memory:' for a disposable server.",
+    )
+
+    max_sync_records_per_request: int = Field(
+        default=2_000,
+        description=(
+            "Cap on one push. Exceeding it is refused rather than truncated: a "
+            "truncated push would advance the client's cursor past records the "
+            "server never stored."
+        ),
+    )
+
     # --- Request limits -----------------------------------------------------
 
     max_image_bytes: int = Field(

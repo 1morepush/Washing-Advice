@@ -22,6 +22,7 @@ from app.services.ai.pipeline import VisionPipeline
 from app.services.ai.registry import registry
 from app.services.ai.stages import ProviderStage
 from app.services.images.cutout import BackgroundRemover, BorderSampledRemover
+from app.services.sync.store import InMemorySyncStore, SqliteSyncStore, SyncStore
 
 
 @lru_cache
@@ -33,6 +34,20 @@ def get_background_remover() -> BackgroundRemover:
     the same seam `VisionProvider` gives the scan stages.
     """
     return BorderSampledRemover()
+
+
+@lru_cache
+def get_sync_store() -> SyncStore:
+    """The sync store, built once per process.
+
+    Cached because SQLite connections are not free and because the in-memory
+    variant would otherwise lose everything between requests — which would look
+    exactly like a server that silently drops data.
+    """
+    settings = get_settings()
+    if settings.sync_db_path == ":memory:":
+        return InMemorySyncStore()
+    return SqliteSyncStore(settings.sync_db_path)
 
 
 @lru_cache
@@ -104,5 +119,11 @@ def reset_wiring() -> None:
     get_pipeline.cache_clear()
     get_knowledge_cache.cache_clear()
     get_background_remover.cache_clear()
+    # Closed before it is dropped: a SQLite store left to the garbage collector
+    # holds its file handle and its WAL, and the next test opening the same
+    # path inherits both.
+    if get_sync_store.cache_info().currsize:
+        get_sync_store().close()
+    get_sync_store.cache_clear()
     _live_providers.clear()
     get_settings.cache_clear()

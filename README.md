@@ -11,9 +11,9 @@ which cycle to select on *your* machine.
 |---|---|---|---|
 | ![Wardrobe](app/docs/screenshots/wardrobe-light.png) | ![Laundry plan](app/docs/screenshots/laundry-plan.png) | ![Scan review](app/docs/screenshots/scan-review.png) | ![Care label review](app/docs/screenshots/care-label-review.png) |
 
-| Outfits | Packing | Insights |
-|---|---|---|
-| ![Outfits](app/docs/screenshots/outfits.png) | ![Packing](app/docs/screenshots/packing.png) | ![Insights](app/docs/screenshots/insights-light.png) |
+| Outfits | Saved outfits | Packing | Insights |
+|---|---|---|---|
+| ![Outfits](app/docs/screenshots/outfits.png) | ![Saved outfits](app/docs/screenshots/outfits-saved.png) | ![Packing](app/docs/screenshots/packing.png) | ![Insights](app/docs/screenshots/insights-light.png) |
 
 These are captures of the real app — a web build of `app/lib/main_demo.dart`,
 which is the shipping code with storage, the camera and the backend
@@ -178,7 +178,13 @@ Suggestions are also deliberately made *different from each other*: ranking by
 score alone produced five variations on one outfit, which is one suggestion
 shown five times.
 
-Tap **Wearing this** and every item in the suggestion is logged at the same
+**Save** one you like and it is kept under a name, with a count of how often
+you actually wear it — the one number a per-garment history cannot produce,
+since the log knows the tee and the jeans were worn on the same day but not
+that they were worn together *as that outfit*. Saving and wearing are separate
+acts, because "keep this" is not "I am wearing it today".
+
+Tap **Wearing this** and every item in the outfit is logged at the same
 instant, which the app reads back as one occasion. Pairings that recur become
 `wornWith` links, and those links feed the next round of suggestions — so the
 app gets better at your wardrobe by being used. The links are *derived* from
@@ -323,13 +329,14 @@ A few decisions worth reading about:
 
 | # | Scope | Status |
 |---|---|---|
-| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 445 core tests |
+| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 466 core tests |
 | 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts | **Done** — 130 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 143 app tests |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 179 app tests |
 | 4 | Care-label scanning, item editing, filter sheet, garment cutouts, grid view | **Done** |
 | 5 | Pile scanning, load grouping, machine profiles, wear and wash history | **Done** |
 | 6 | Outfit suggestions, laundry-aware packing, wardrobe insights | **Done** |
 | 6a | Closing the loop: wears recorded become links the builder learns from | **Done** |
+| 6b | Saving outfits under a name, with their own wear counts | **Done** |
 | 7 | Offline verification, provenance-based sync engine | **Partly done** |
 
 `dart analyze --fatal-infos`, `flutter analyze --fatal-infos`, `ruff`, `mypy
@@ -368,15 +375,15 @@ Stated plainly, because the code says so too.
 - **A pile scan cannot sort garments the app has not met.** By design — it says
   which ones need identifying — but it does mean the feature is worth little
   until a wardrobe has been built up.
-- **Outfits cannot be saved under a name yet.** The `Outfit` type and its
-  serialisation exist and nothing writes to them. Recording one as worn is
-  wired up and does feed the suggestion engine, but there is no list of named
-  outfits to return to.
 - **Occasion suitability is a default table, not a judgement about you.**
   Whether a hoodie belongs at work depends on the workplace, so the defaults are
   overridable per item with a tag — but nothing yet learns them from what you
   actually wear, even though the log now records which occasion each wear was
   for.
+- **A saved outfit does not follow its garments out of the wardrobe
+  automatically.** `removeItem` exists and is tested — it drops the garment and
+  deletes any outfit left with fewer than two items — but nothing calls it yet
+  when an item's lifecycle changes.
 - **Co-wear links need history to exist.** A new wardrobe has none, so early
   suggestions rest on colour and usage alone. That is the designed behaviour
   rather than a failure state, but it does mean the feature is at its weakest

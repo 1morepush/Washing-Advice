@@ -131,6 +131,13 @@ for (const theme of ['light', 'dark']) {
     await ready(page);
     await shot(page, 'outfits');
 
+    // The saved tab, reached by its own address rather than by tapping — a
+    // Flutter TabBar label is not reliably in the accessibility tree, and the
+    // route exists precisely so screens are drivable without one.
+    await page.goto(`${BASE}/#/outfits/saved`, { waitUntil: 'load' });
+    await ready(page);
+    await shot(page, 'outfits-saved');
+
     await page.goto(`${BASE}/#/packing`, { waitUntil: 'load' });
     await ready(page);
     await shot(page, 'packing');

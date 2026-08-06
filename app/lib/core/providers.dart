@@ -20,6 +20,7 @@ import '../data/drift/connection.dart';
 import '../data/drift/database.dart';
 import '../data/images/image_store.dart';
 import '../data/drift/drift_event_log.dart';
+import '../data/drift/drift_outfit_repository.dart';
 import '../data/drift/drift_wardrobe_repository.dart';
 import 'settings.dart';
 
@@ -219,6 +220,37 @@ final outfitBuilderProvider = Provider<OutfitBuilder>(
 
 final packingPlannerProvider = Provider<PackingPlanner>(
   (ref) => const PackingPlanner(),
+);
+
+/// Saved outfits.
+final outfitRepositoryProvider = Provider<OutfitRepository>(
+  (ref) => DriftOutfitRepository(ref.watch(databaseProvider)),
+);
+
+/// The saved outfits, kept live so saving one makes it appear.
+final savedOutfitsProvider = StreamProvider<List<Outfit>>(
+  (ref) => ref.watch(outfitRepositoryProvider).watch(),
+);
+
+/// A saved outfit resolved to the items it references.
+///
+/// Items are looked up rather than stored on the outfit, so an edited or
+/// deleted garment is reflected immediately. Anything missing is dropped from
+/// the result rather than rendered as a gap: the repository already deletes
+/// outfits that fall below two items, so a missing one here means a race, not
+/// a state worth drawing.
+final outfitItemsProvider = FutureProvider.family<List<WardrobeItem>, OutfitId>(
+  (ref, id) async {
+    final outfit = await ref.watch(outfitRepositoryProvider).byId(id);
+    if (outfit == null) return const [];
+
+    final items = <WardrobeItem>[];
+    for (final itemId in outfit.itemIds) {
+      final item = await ref.watch(wardrobeRepositoryProvider).byId(itemId);
+      if (item != null) items.add(item);
+    }
+    return items;
+  },
 );
 
 /// What the outfits screen is currently asking for.

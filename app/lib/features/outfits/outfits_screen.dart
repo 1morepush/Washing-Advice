@@ -15,47 +15,85 @@ import '../../core/providers.dart';
 import '../../widgets/app_drawer.dart';
 import '../../widgets/item_thumbnail.dart';
 import '../history/wear_recorder.dart';
+import 'outfit_controller.dart';
+import 'saved_outfits.dart';
 
 class OutfitsScreen extends ConsumerWidget {
-  const OutfitsScreen({super.key});
+  const OutfitsScreen({this.initialTab = 0, super.key});
+
+  /// Which tab to open on.
+  ///
+  /// A parameter rather than internal state so `/outfits/saved` is a real
+  /// address. That is the same reason every other screen is addressable: it
+  /// makes the app drivable from a browser, which is how it gets screenshotted
+  /// without an emulator — and it means a link to someone's saved outfits is a
+  /// link, not an instruction to tap twice.
+  final int initialTab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final suggestions = ref.watch(outfitSuggestionsProvider);
     final request = ref.watch(outfitRequestProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Outfits'),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(56),
-          child: _OccasionBar(
-            selected: request.occasion,
-            onChanged: (occasion) => ref
-                .read(outfitRequestProvider.notifier)
-                .update((r) => _copy(r, occasion: occasion)),
+    return DefaultTabController(
+      length: 2,
+      initialIndex: initialTab,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Outfits'),
+          // Two tabs rather than two destinations in the drawer: suggestions
+          // and saved outfits are the same subject seen two ways, and someone
+          // deciding what to wear moves between them constantly.
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Suggested'),
+              Tab(text: 'Saved'),
+            ],
           ),
         ),
-      ),
-      drawer: const AppDrawer(current: AppDestination.outfits),
-      body: suggestions.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('$error')),
-        data: (list) => list.isEmpty
-            ? _Empty(occasion: request.occasion)
-            : ListView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                itemCount: list.length,
-                itemBuilder: (_, index) => _SuggestionCard(
-                  suggestion: list[index],
-                  occasion: request.occasion,
+        drawer: const AppDrawer(current: AppDestination.outfits),
+        body: TabBarView(
+          children: [
+            Column(
+              children: [
+                _OccasionBar(
+                  selected: request.occasion,
+                  onChanged: (occasion) => ref
+                      .read(outfitRequestProvider.notifier)
+                      .update((r) => _copy(r, occasion: occasion)),
                 ),
-              ),
-      ),
-      bottomNavigationBar: _Options(
-        request: request,
-        onChanged: (updated) =>
-            ref.read(outfitRequestProvider.notifier).state = updated,
+                Expanded(
+                  child: suggestions.when(
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (error, _) => Center(child: Text('$error')),
+                    data: (list) => list.isEmpty
+                        ? _Empty(occasion: request.occasion)
+                        : ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                            itemCount: list.length,
+                            itemBuilder: (_, index) => _SuggestionCard(
+                              suggestion: list[index],
+                              occasion: request.occasion,
+                            ),
+                          ),
+                  ),
+                ),
+                // Inside the Suggested tab rather than in a bottomNavigationBar
+                // shared by both. Season and "with a layer" shape the
+                // suggestions and mean nothing for saved outfits; leaving them
+                // under the Saved tab offered controls that quietly did
+                // nothing, which is worse than not offering them.
+                _Options(
+                  request: request,
+                  onChanged: (updated) =>
+                      ref.read(outfitRequestProvider.notifier).state = updated,
+                ),
+              ],
+            ),
+            const SavedOutfitsTab(),
+          ],
+        ),
       ),
     );
   }
@@ -164,32 +202,61 @@ class _SuggestionCard extends ConsumerWidget {
                 ),
             ],
             const SizedBox(height: 4),
-            Align(
-              alignment: Alignment.centerRight,
-              // What closes the loop. Recording an outfit as worn is the only
-              // way the app finds out its suggestion was any good, and every
-              // such record teaches the builder a pairing it did not know.
-              child: TextButton.icon(
-                onPressed: () async {
-                  await ref
-                      .read(wearRecorderProvider)
-                      .recordOutfit(
-                        suggestion.itemIds,
-                        occasion: occasion.name,
-                      );
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Recorded. These now count as worn '
-                        'together.',
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                // Saving and wearing are different acts, and both are offered.
+                // "I like this, keep it" is not "I am wearing it today", and
+                // collapsing them would make the wear count on a saved outfit
+                // mean nothing.
+                TextButton.icon(
+                  onPressed: () async {
+                    final name = await askForOutfitName(
+                      context,
+                      title: 'Save this outfit',
+                    );
+                    if (name == null || !context.mounted) return;
+
+                    final saved = await ref
+                        .read(outfitControllerProvider)
+                        .saveSuggestion(
+                          suggestion,
+                          name: name,
+                          occasion: occasion,
+                        );
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Saved as ${saved.name}.')),
+                    );
+                  },
+                  icon: const Icon(Icons.bookmark_border, size: 18),
+                  label: const Text('Save'),
+                ),
+                const SizedBox(width: 8),
+                // What closes the loop. Recording an outfit as worn is the only
+                // way the app finds out its suggestion was any good, and every
+                // such record teaches the builder a pairing it did not know.
+                TextButton.icon(
+                  onPressed: () async {
+                    await ref
+                        .read(wearRecorderProvider)
+                        .recordOutfit(
+                          suggestion.itemIds,
+                          occasion: occasion.name,
+                        );
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Recorded. These now count as worn together.',
+                        ),
                       ),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.checkroom_outlined, size: 18),
-                label: const Text('Wearing this'),
-              ),
+                    );
+                  },
+                  icon: const Icon(Icons.checkroom_outlined, size: 18),
+                  label: const Text('Wearing this'),
+                ),
+              ],
             ),
           ],
         ),

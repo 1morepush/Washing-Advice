@@ -44,6 +44,10 @@ GoRouter buildRouter({String initialLocation = '/'}) => GoRouter(
           CareTagScreen(id: ItemId(state.pathParameters['id']!)),
     ),
     GoRoute(path: '/outfits', builder: (_, _) => const OutfitsScreen()),
+    GoRoute(
+      path: '/outfits/saved',
+      builder: (_, _) => const OutfitsScreen(initialTab: 1),
+    ),
     GoRoute(path: '/packing', builder: (_, _) => const PackingScreen()),
     GoRoute(path: '/insights', builder: (_, _) => const InsightsScreen()),
     GoRoute(path: '/scan', builder: (_, _) => const ScanScreen()),

@@ -48,6 +48,11 @@ Future<void> main() async {
         imageStoreProvider.overrideWithValue(images),
         wardrobeRepositoryProvider.overrideWithValue(repository),
         eventLogProvider.overrideWithValue(InMemoryEventLog()),
+        // Two saved outfits, one already worn a few times, so the Saved tab
+        // shows what it looks like in use rather than its empty state.
+        outfitRepositoryProvider.overrideWithValue(
+          InMemoryOutfitRepository(_demoOutfits()),
+        ),
         idGeneratorProvider.overrideWithValue(ids),
         aiGatewayProvider.overrideWithValue(_CannedGateway()),
         imageCaptureProvider.overrideWithValue(
@@ -581,6 +586,44 @@ List<WardrobeItem> _seed() {
         lastWornAt: now.subtract(const Duration(days: 1)),
       ),
       addedDaysAgo: 700,
+    ),
+  ];
+}
+
+/// A couple of outfits someone would plausibly have kept.
+List<Outfit> _demoOutfits() {
+  final now = DateTime.now();
+  return [
+    Outfit(
+      id: const OutfitId('demo-outfit-weekend'),
+      name: 'Weekend',
+      itemIds: const [
+        ItemId('demo-hoodie'),
+        ItemId('demo-jeans'),
+        ItemId('demo-sneakers'),
+      ],
+      usage: UsageStats(
+        timesWorn: 9,
+        lastWornAt: now.subtract(const Duration(days: 4)),
+      ),
+      createdAt: now.subtract(const Duration(days: 90)),
+      updatedAt: now.subtract(const Duration(days: 4)),
+    ),
+    Outfit(
+      id: const OutfitId('demo-outfit-office'),
+      name: 'Monday office',
+      occasion: Occasion.work,
+      itemIds: const [
+        ItemId('demo-tee'),
+        ItemId('demo-chinos'),
+        ItemId('demo-jacket'),
+      ],
+      usage: UsageStats(
+        timesWorn: 3,
+        lastWornAt: now.subtract(const Duration(days: 11)),
+      ),
+      createdAt: now.subtract(const Duration(days: 40)),
+      updatedAt: now.subtract(const Duration(days: 11)),
     ),
   ];
 }

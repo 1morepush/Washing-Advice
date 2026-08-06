@@ -49,10 +49,14 @@ class WearRecorder {
   /// Recording them one at a time would still land inside the co-wear window
   /// today, but it would rely on the loop finishing quickly — a correctness
   /// property resting on how fast a for-loop runs is not one worth having.
-  Future<void> recordOutfit(Iterable<ItemId> ids, {String? occasion}) async {
-    final at = DateTime.now();
+  Future<void> recordOutfit(
+    Iterable<ItemId> ids, {
+    String? occasion,
+    DateTime? at,
+  }) async {
+    final instant = at ?? DateTime.now();
     for (final id in ids) {
-      await recordWear(id, occasion: occasion, at: at);
+      await recordWear(id, occasion: occasion, at: instant);
     }
   }
 

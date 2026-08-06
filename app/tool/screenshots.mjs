@@ -141,6 +141,10 @@ for (const theme of ['light', 'dark']) {
     await page.goto(`${BASE}/#/packing`, { waitUntil: 'load' });
     await ready(page);
     await shot(page, 'packing');
+
+    await page.goto(`${BASE}/#/settings`, { waitUntil: 'load' });
+    await ready(page);
+    await shot(page, 'settings');
   }
 
   await page.goto(`${BASE}/#/insights`, { waitUntil: 'load' });

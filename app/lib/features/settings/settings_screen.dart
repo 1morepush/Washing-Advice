@@ -9,6 +9,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../core/providers.dart';
 import '../../core/settings.dart';
 import '../../widgets/app_drawer.dart';
+import '../sync/sync_section.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -102,6 +103,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SizedBox(height: 16),
             _HealthResult(health: health),
           ],
+
+          const SizedBox(height: 32),
+          const SyncSection(),
 
           const SizedBox(height: 32),
           Text('Your machines', style: theme.textTheme.titleSmall),

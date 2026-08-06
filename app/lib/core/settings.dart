@@ -22,6 +22,9 @@ class SettingsStore {
   static const _backendUrlKey = 'backendUrl';
   static const _washerKey = 'washerBrand';
   static const _dryerKey = 'dryerBrand';
+  static const _syncTokenKey = 'syncToken';
+  static const _syncCursorKey = 'syncCursorRemote';
+  static const _syncLocalCursorKey = 'syncCursorLocal';
 
   final SharedPreferences _prefs;
 
@@ -49,6 +52,56 @@ class SettingsStore {
   Future<void> setWasherBrand(String? brand) => _write(_washerKey, brand);
 
   Future<void> setDryerBrand(String? brand) => _write(_dryerKey, brand);
+
+  /// The sync credential, or null when sync has not been set up.
+  ///
+  /// A bearer token: whoever holds it owns the wardrobe on the server. Kept in
+  /// the same preferences as everything else, which is honest about the level
+  /// of protection — this is not a secure enclave, and pretending otherwise by
+  /// hiding it somewhere marginally less obvious would be worse than saying so.
+  String? get syncToken {
+    final stored = _prefs.getString(_syncTokenKey)?.trim();
+    return stored == null || stored.isEmpty ? null : stored;
+  }
+
+  Future<void> setSyncToken(String? value) {
+    final trimmed = value?.trim() ?? '';
+    return _write(_syncTokenKey, trimmed.isEmpty ? null : trimmed);
+  }
+
+  /// The two sync cursors, persisted so a restart does not re-pull everything.
+  ///
+  /// Two rather than one because they are in different clocks — see the note
+  /// on `SyncCursor` in the core. Storing them under one key would recreate
+  /// exactly the bug that separating them fixed.
+  DateTime? get syncedAt => _readTime(_syncCursorKey);
+
+  DateTime? get pushedAt => _readTime(_syncLocalCursorKey);
+
+  Future<void> setCursors({required DateTime at, DateTime? localAt}) async {
+    await _prefs.setString(_syncCursorKey, at.toUtc().toIso8601String());
+    if (localAt != null) {
+      await _prefs.setString(
+        _syncLocalCursorKey,
+        localAt.toUtc().toIso8601String(),
+      );
+    }
+  }
+
+  /// Forgets both cursors, so the next run pulls the whole wardrobe again.
+  ///
+  /// What "sign out" and "change token" both need: cursors belong to an
+  /// account, and carrying one across a change of credential would make the
+  /// new account look like it had already been synced.
+  Future<void> clearCursors() async {
+    await _prefs.remove(_syncCursorKey);
+    await _prefs.remove(_syncLocalCursorKey);
+  }
+
+  DateTime? _readTime(String key) {
+    final stored = _prefs.getString(key);
+    return stored == null ? null : DateTime.tryParse(stored)?.toUtc();
+  }
 
   /// Reads a stored key, discarding one the catalogue no longer has.
   ///
@@ -103,4 +156,9 @@ final washerProvider = Provider<WasherProfile?>(
 
 final dryerProvider = Provider<DryerProfile?>(
   (ref) => seededDryers[ref.watch(dryerBrandProvider)],
+);
+
+/// The configured sync token, as state so saving one rebuilds the engine.
+final syncTokenProvider = StateProvider<String?>(
+  (ref) => ref.watch(settingsStoreProvider).syncToken,
 );

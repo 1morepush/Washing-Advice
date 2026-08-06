@@ -27,6 +27,8 @@ import 'core/settings.dart';
 import 'core/theme.dart';
 import 'data/api/ai_gateway.dart';
 import 'data/api/scan_dto.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'data/capture/image_capture_source.dart';
 import 'data/images/memory_image_store.dart';
 
@@ -41,6 +43,16 @@ Future<void> main() async {
   // it. Without this the list subscribes to an empty repository and the app
   // opens on the empty state before flicking to the real one.
   await repository.saveAll(await _withCutouts(_seed(), images));
+
+  // A real settings store. The sync section reads it while building — which is
+  // correct, it needs to know whether sync is configured — and the previous
+  // override threw on every read, so the section rendered as an error box in
+  // the demo build and nowhere else. Making the controller tolerate a missing
+  // store would have hidden a genuine wiring mistake rather than fixed one.
+  //
+  // On web this is backed by local storage, so a machine picked in the demo
+  // survives a reload. That is what the real app does, which is the point.
+  final settings = SettingsStore(await SharedPreferences.getInstance());
 
   runApp(
     ProviderScope(
@@ -60,12 +72,7 @@ Future<void> main() async {
             const ScanImage(bytes: [0xFF, 0xD8, 0xFF]),
           ]),
         ),
-        // The settings screen writes here. Nothing in a demo build should
-        // persist, so it is given a store that reads the default and is never
-        // asked to save.
-        settingsStoreProvider.overrideWith(
-          (ref) => throw UnsupportedError('settings are disabled in the demo'),
-        ),
+        settingsStoreProvider.overrideWithValue(settings),
         backendUrlProvider.overrideWith((ref) => defaultBackendUrl),
         // A machine, so the plan names real programmes rather than stating
         // abstract requirements. Both paths ship; this is the interesting one.

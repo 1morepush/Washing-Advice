@@ -215,6 +215,27 @@ The part a packing app cannot do is the note underneath:
 And when the wardrobe cannot supply what the trip needs, it says so rather than
 handing over a short list that looks complete.
 
+### Sync between your own devices
+
+Optional, and off until you turn it on — the app is offline-first and stays
+fully usable without it.
+
+Reconciliation happens **on the device**, not on the server. Items merge by
+provenance, so a scanned care label beats a photo guess whichever arrived
+later. Events merge by union, because two phones that each recorded a wash have
+each recorded a real wash. Counters are then rebuilt by replaying the combined
+log rather than being merged, which is why events are pulled before items are
+reconciled.
+
+The server is deliberately a relay that knows nothing about garments. Putting
+the merge rules there too would mean maintaining the same subtle logic in two
+languages, and the copy that matters is the one that has to work on a train.
+
+There is a suite that starts the real server and drives two independent devices
+against it, because that is the only place a cross-language wire break shows up
+— both halves pass their own unit tests happily while a renamed field silently
+drops data between them. It found two such bugs the first time it ran.
+
 ### Show what the wardrobe adds up to
 
 What it is made of, which piles it sorts into, what is never worn as against
@@ -281,6 +302,28 @@ flutter run -t lib/main_demo.dart -d chrome   # or any connected device
 `http://localhost:8000` — editable in Settings, because a phone cannot reach a
 development machine's localhost.
 
+### Turning on sync
+
+Sync is off until you configure it, and the app is fully usable without it.
+
+1. Run the server somewhere both devices can reach. It stores synced records in
+   `data/sync.db` by default; set `SYNC_DB_PATH` to move it, or `SYNC_ENABLED=false`
+   to serve no sync endpoints at all.
+2. In the app: **Settings → Sync between devices → Generate**, then **Save**.
+3. Copy that same token into the other device and save it there too. The token
+   *is* the account — there is no signup.
+
+**Put it behind TLS if it leaves your own network.** The token is a bearer
+credential, so anything that can read the traffic can read the wardrobe.
+
+To check the whole thing works, the end-to-end suite starts the real server and
+drives two devices against it:
+
+```sh
+cd app
+flutter test test/sync_e2e_test.dart      # needs `uv` on the PATH
+```
+
 ---
 
 ## How it is built
@@ -329,15 +372,16 @@ A few decisions worth reading about:
 
 | # | Scope | Status |
 |---|---|---|
-| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 466 core tests |
-| 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts | **Done** — 130 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 179 app tests |
+| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 468 core tests |
+| 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts | **Done** — 178 tests |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 216 app tests |
 | 4 | Care-label scanning, item editing, filter sheet, garment cutouts, grid view | **Done** |
 | 5 | Pile scanning, load grouping, machine profiles, wear and wash history | **Done** |
 | 6 | Outfit suggestions, laundry-aware packing, wardrobe insights | **Done** |
 | 6a | Closing the loop: wears recorded become links the builder learns from | **Done** |
 | 6b | Saving outfits under a name, with their own wear counts | **Done** |
-| 7 | Offline verification, provenance-based sync engine | **Partly done** |
+| 7 | Offline verification, provenance-based sync engine | **Done** |
+| 7a | Sync endpoints, HTTP client, and a two-device test against the real server | **Done** |
 
 `dart analyze --fatal-infos`, `flutter analyze --fatal-infos`, `ruff`, `mypy
 --strict` and every formatter run clean in CI, on all three parts.
@@ -380,10 +424,6 @@ Stated plainly, because the code says so too.
   overridable per item with a tag — but nothing yet learns them from what you
   actually wear, even though the log now records which occasion each wear was
   for.
-- **A saved outfit does not follow its garments out of the wardrobe
-  automatically.** `removeItem` exists and is tested — it drops the garment and
-  deletes any outfit left with fewer than two items — but nothing calls it yet
-  when an item's lifecycle changes.
 - **Co-wear links need history to exist.** A new wardrobe has none, so early
   suggestions rest on colour and usage alone. That is the designed behaviour
   rather than a failure state, but it does mean the feature is at its weakest
@@ -400,11 +440,17 @@ Stated plainly, because the code says so too.
   not implemented.** The types and seams exist; the detection does not.
 - **The web build keeps images in memory**, so a browser reload loses them.
   Acceptable for trying the app; a phone writes real files.
-- **Nothing is synced anywhere yet.** The reconciliation rules are built and
-  tested — items merge by provenance, events by union, counters by replay — but
-  no hosted backend is wired up, so `SyncRemote` currently has only a fake
-  implementation. The app is offline-first regardless, and that *is* verified:
-  a suite runs the whole thing against a gateway whose every method throws.
+- **Sync has no hosted deployment.** The endpoints, the client and the
+  reconciliation all exist and are exercised end to end against a real server in
+  CI, but nobody is running that server anywhere. You point the app at your own.
+- **The sync credential is a capability token, not an account.** No password, no
+  recovery, no revocation, and whoever holds it can read that wardrobe. This is
+  written on the settings screen rather than buried here, because assuming an
+  account is the natural mistake and the cost of it is someone's data.
+- **The server cannot reject nonsense.** It stores opaque JSON keyed by id and
+  has no opinion about garments, which is what keeps the domain in one language.
+  That is right while every client is this codebase and wrong the moment a third
+  party can write to it.
 
 ---
 

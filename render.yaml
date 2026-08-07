@@ -1,0 +1,33 @@
+# Render Blueprint for the perception-layer server (server/).
+#
+# In the Render dashboard: New + -> Blueprint -> connect this repo -> Apply.
+# Render reads this file, provisions the service on the free plan, and
+# rebuilds it on every push to main. The app's Settings screen then just
+# needs the resulting https://<name>.onrender.com URL.
+#
+# GEMINI_API_KEY is deliberately not set here (sync: false means Render asks
+# for it once in the dashboard rather than storing it in this file). Until
+# it's set, VISION_PROVIDER stays "fake" so the service is live and usable
+# for wardrobe browsing immediately, with real scanning added later just by
+# setting the two env vars below in the Render dashboard.
+services:
+  - type: web
+    name: washing-advice-server
+    runtime: python
+    plan: free
+    rootDir: server
+    region: oregon
+    buildCommand: pip install .
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /v1/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: VISION_PROVIDER
+        value: fake
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SYNC_DB_PATH
+        value: ":memory:"
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://1morepush.github.io

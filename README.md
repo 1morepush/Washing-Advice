@@ -298,6 +298,25 @@ For real identification, set a [Gemini API key](https://aistudio.google.com/apik
 GEMINI_API_KEY=... VISION_PROVIDER=gemini uv run uvicorn app.main:app
 ```
 
+#### Deploying it
+
+A phone cannot reach a development machine's `localhost`, so a real device
+needs the server reachable over the internet. `render.yaml` at the repo root
+is a [Render](https://render.com) Blueprint: **New + → Blueprint**, connect
+this repo, **Apply**. It provisions a free web service that rebuilds on every
+push to `main`, starts with the fake provider so the service is live
+immediately, and only needs `GEMINI_API_KEY` set in the Render dashboard to
+switch on real identification (`VISION_PROVIDER=gemini` alongside it).
+
+Free-tier services spin down after 15 minutes idle and take up to a minute to
+wake back up — a "could not reach the server" on the first scan after a while
+away is usually just that; trying again a minute later works.
+
+`CORS_ALLOWED_ORIGINS` controls which browser origins may call the API
+(`app/main.py` adds `CORSMiddleware`); it defaults to the project's GitHub
+Pages origin, and `http://localhost:*` is always allowed for local
+development.
+
 ### The app
 
 Flutter. It runs against seeded demo data with no backend at all:

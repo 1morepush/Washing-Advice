@@ -118,7 +118,7 @@ class AiGateway implements VisionPort {
   Future<({bool reachable, String status, String? problem})> health() async {
     try {
       final response = await _client
-          .get(baseUrl.resolve('health'))
+          .get(baseUrl.resolve('v1/health'))
           .timeout(const Duration(seconds: 5));
       final json = jsonDecode(response.body) as Map<String, Object?>;
       return (

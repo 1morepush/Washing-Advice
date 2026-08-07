@@ -88,6 +88,21 @@ class Settings(BaseSettings):
     )
     max_images_per_request: int = 6
 
+    # --- CORS -----------------------------------------------------------
+
+    cors_allowed_origins: str = Field(
+        default="https://1morepush.github.io",
+        description=(
+            "Comma-separated browser origins allowed to call this API. "
+            "Local development origins (http://localhost:*) are always allowed "
+            "in addition to this list."
+        ),
+    )
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_allowed_origins.split(",") if origin.strip()]
+
     @property
     def gemini_configured(self) -> bool:
         return bool(self.gemini_api_key)

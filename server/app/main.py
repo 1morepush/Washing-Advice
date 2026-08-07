@@ -15,6 +15,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.dependencies import close_providers
 from app.api.v1.router import api_router
@@ -51,6 +52,17 @@ def create_app() -> FastAPI:
             "with these results."
         ),
         lifespan=lifespan,
+    )
+
+    # The app is a browser page (a GitHub Pages PWA) calling this API from a
+    # different origin, so without this every request is blocked by the
+    # browser before it ever reaches a route.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=get_settings().cors_origins,
+        allow_origin_regex=r"http://localhost(:\d+)?",
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     install_error_handlers(app)

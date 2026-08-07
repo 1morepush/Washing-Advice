@@ -8,6 +8,8 @@ behind it at all (the knowledge cache is exactly that).
 
 from __future__ import annotations
 
+import logging
+
 from app.schemas.scan import ScanKind
 from app.services.ai.base import (
     ProviderError,
@@ -17,6 +19,8 @@ from app.services.ai.base import (
     VisionProvider,
 )
 from app.services.ai.knowledge_cache import KnowledgeCache, image_signature
+
+logger = logging.getLogger(__name__)
 
 
 class ProviderStage:
@@ -62,6 +66,11 @@ class ProviderStage:
         except ProviderError as error:
             # A provider failing is an ordinary outcome for a stage: the
             # pipeline should carry on and let another stage try, not collapse.
+            # Logged rather than surfaced to the client — the client sees a
+            # uniform "could not be identified" either way, but an operator
+            # reading Render's logs needs to tell "bad photo" apart from
+            # "bad API key" or "quota exceeded".
+            logger.warning("stage %s declined: %s", self.name, error)
             return StageOutcome.declined(self.name, str(error))
 
     async def _garment(self, request: ScanRequest) -> StageOutcome:

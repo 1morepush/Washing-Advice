@@ -1,0 +1,62 @@
+name: Deploy web app to GitHub Pages
+
+# The real app (lib/main.dart), not the demo: wardrobe data persists on web
+# through the same IndexedDB-backed Drift storage the image store uses, so
+# there is a genuine app to try here, not a canned walkthrough.
+#
+# Runs on an ordinary Linux runner — cheap, unlike the macOS runner the iOS
+# sideload workflow needs — so it is fine to redeploy on every push to main
+# rather than requiring a manual trigger each time.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Only one deploy in flight; a second push while one is running should
+# supersede it rather than queue behind it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      # --base-href matches this being a GitHub Pages *project* site, served
+      # from https://<owner>.github.io/<repo>/ rather than the domain root.
+      # Getting this wrong is the classic symptom of a page that loads with a
+      # blank white screen and 404s in the console for every asset.
+      - name: Build web (release)
+        run: flutter build web --release --no-web-resources-cdn --base-href /${{ github.event.repository.name }}/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

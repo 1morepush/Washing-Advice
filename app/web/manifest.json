@@ -1,11 +1,11 @@
 {
-    "name": "washing_advice",
-    "short_name": "washing_advice",
+    "name": "Washing Advice",
+    "short_name": "Washing Advice",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#3F5B8C",
+    "theme_color": "#3F5B8C",
+    "description": "An AI wardrobe and laundry assistant: photograph your clothes, scan their care labels, and get told exactly which loads to run.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

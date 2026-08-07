@@ -6,12 +6,15 @@
 /// care profile that needs a label says so before anything gets washed.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/theme.dart';
+import '../../data/api/ai_gateway.dart';
 import '../../data/api/scan_dto.dart';
 import '../../widgets/confidence_chip.dart';
 import 'scan_controller.dart';
@@ -98,25 +101,70 @@ class _Capture extends StatelessWidget {
   );
 }
 
-class _Analysing extends StatelessWidget {
+/// The wait, with an explanation once it stops looking like a normal one.
+///
+/// A free-tier server sleeps when idle, so the first scan after a quiet spell
+/// spends tens of seconds waking it before any reading happens. A spinner
+/// alone makes that look like a hang and invites the user to kill the app
+/// mid-request; saying so costs nothing and is true.
+class _Analysing extends StatefulWidget {
   const _Analysing({required this.imageCount});
 
   final int imageCount;
 
   @override
+  State<_Analysing> createState() => _AnalysingState();
+}
+
+class _AnalysingState extends State<_Analysing> {
+  bool _slow = false;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(wakingAfter, () {
+      if (mounted) setState(() => _slow = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    // A scan that finishes quickly disposes this while the timer is pending;
+    // left running it would call setState on a dead State.
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const CircularProgressIndicator(),
-        const SizedBox(height: 24),
-        Text(
-          imageCount == 1
-              ? 'Reading the photo…'
-              : 'Reading $imageCount photos…',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-      ],
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: 24),
+          Text(
+            widget.imageCount == 1
+                ? 'Reading the photo…'
+                : 'Reading ${widget.imageCount} photos…',
+            style: Theme.of(context).textTheme.titleMedium,
+            textAlign: TextAlign.center,
+          ),
+          if (_slow) ...[
+            const SizedBox(height: 12),
+            Text(
+              'The server sleeps when it is not in use, so the first scan in a '
+              'while takes longer while it wakes up.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ],
+      ),
     ),
   );
 }

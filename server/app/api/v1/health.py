@@ -22,6 +22,14 @@ class HealthResponse(WireModel):
     gemini_configured: bool
     """Whether a credential is present — never the credential itself."""
 
+    gemini_model: str | None = None
+    """Which model the Gemini provider will call, when it is the one selected.
+
+    A model name is configuration, not a secret, and it is the field a 404 from
+    the API turns on: "no such model for this API version" is unanswerable
+    without knowing which name was sent.
+    """
+
     available_providers: list[str]
     pipeline_stages: list[str]
 
@@ -53,6 +61,9 @@ async def health(settings: Settings = Depends(get_settings)) -> HealthResponse:
         "version": "0.1.0",
         "vision_provider": settings.vision_provider,
         "gemini_configured": settings.gemini_configured,
+        # Omitted when no key is set, so it appears only where it means
+        # something: the model that will actually be called.
+        "gemini_model": settings.gemini_model if settings.gemini_configured else None,
         "available_providers": registry.names,
     }
 

@@ -88,6 +88,31 @@ class TestDegraded:
         assert body["geminiConfigured"] is False
         assert body["availableProviders"] == ["fake", "gemini"]
 
+    def test_reports_which_model_will_be_called(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A 404 from the API is unanswerable without the model name.
+
+        "No such model for this API version" only becomes actionable once the
+        name that was sent is visible from outside the process.
+        """
+        with configured(
+            monkeypatch,
+            VISION_PROVIDER="gemini",
+            GEMINI_API_KEY="k",
+            GEMINI_MODEL="gemini-9-ultra",
+        ) as client:
+            body = client.get("/v1/health").json()
+
+        assert body["geminiModel"] == "gemini-9-ultra"
+
+    def test_omits_the_model_when_there_is_no_credential(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Reported only where it means something — the model that gets called."""
+        with configured(monkeypatch, VISION_PROVIDER="fake", GEMINI_API_KEY=None) as client:
+            body = client.get("/v1/health").json()
+
+        assert "geminiModel" not in body
+
     def test_the_credential_never_appears_in_the_response(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:

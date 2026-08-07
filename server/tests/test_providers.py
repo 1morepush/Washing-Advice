@@ -323,6 +323,58 @@ class TestGeminiTransport:
         assert "400" in str(caught.value)
         assert "echo of your image bytes" not in str(caught.value)
 
+    async def test_an_http_error_reports_googles_own_explanation(self) -> None:
+        """A status code alone cannot be acted on; the reason names the fix.
+
+        A 404 says which model was not found, which is the difference between
+        an operator correcting one environment variable and guessing at it.
+        """
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                404,
+                json={
+                    "error": {
+                        "code": 404,
+                        "message": (
+                            "models/gemini-9-ultra is not found for API version "
+                            "v1beta, or is not supported for generateContent."
+                        ),
+                        "status": "NOT_FOUND",
+                    }
+                },
+            )
+
+        with pytest.raises(ProviderError) as caught:
+            await self._provider(handler).scan_garment([scan_image()])
+
+        assert "404" in str(caught.value)
+        assert "gemini-9-ultra is not found" in str(caught.value)
+
+    async def test_an_error_body_that_is_not_googles_envelope_is_ignored(self) -> None:
+        """Only `error.message` is trusted, so an odd body contributes nothing."""
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(500, json={"error": {"detail": "image bytes here"}})
+
+        with pytest.raises(ProviderError) as caught:
+            await self._provider(handler).scan_garment([scan_image()])
+
+        assert "500" in str(caught.value)
+        assert "image bytes here" not in str(caught.value)
+
+    async def test_a_non_json_error_body_is_survivable(self) -> None:
+        """A proxy's HTML error page must not turn into a crash."""
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(502, text="<html>Bad Gateway</html>")
+
+        with pytest.raises(ProviderError) as caught:
+            await self._provider(handler).scan_garment([scan_image()])
+
+        assert "502" in str(caught.value)
+        assert "html" not in str(caught.value).lower()
+
     async def test_an_unexpected_response_shape_is_reported_clearly(self) -> None:
         def handler(request: httpx.Request) -> httpx.Response:
             return httpx.Response(200, json={"unexpected": True})

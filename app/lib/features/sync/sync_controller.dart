@@ -102,9 +102,12 @@ class SyncController extends StateNotifier<SyncState> {
       ).sync();
 
       if (!report.succeeded) {
+        // Taken from the report rather than assumed: a server that does not
+        // offer sync at all, or a rejected token, must not be handed a "Try
+        // again" that will fail identically every time.
         state = SyncFailed(
           report.failure ?? 'Sync did not complete.',
-          isRetryable: true,
+          isRetryable: report.isRetryable,
         );
         return false;
       }

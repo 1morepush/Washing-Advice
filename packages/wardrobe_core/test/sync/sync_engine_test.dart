@@ -153,6 +153,31 @@ void main() {
       expect(await cursor.lastSyncedAt(), isNull);
     });
 
+    test('an ordinary failure is reported as worth retrying', () async {
+      // A dropped connection is the failure this engine sees most, and a
+      // device that is briefly offline must not be told to give up.
+      remote.failPull = true;
+
+      final report = await engine.sync();
+
+      expect(report.succeeded, isFalse);
+      expect(report.isRetryable, isTrue);
+    });
+
+    test('a failure that says not to retry is carried out intact', () async {
+      // A server with no sync endpoint, or a rejected token, will fail
+      // identically forever. The flag is set carefully at the transport and
+      // used to decide whether a screen offers "Try again" — so losing it
+      // here would put a button on screen that cannot ever work.
+      remote.failPullWith = const _NotOffered();
+
+      final report = await engine.sync();
+
+      expect(report.succeeded, isFalse);
+      expect(report.isRetryable, isFalse);
+      expect(report.failure, contains('does not offer sync'));
+    });
+
     test('a pull that already applied is kept when the push fails', () async {
       // Re-pulling costs nothing — appending a held event is a no-op — and
       // discarding work that succeeded to punish a later failure would be
@@ -276,8 +301,13 @@ class _FakeRemote implements SyncRemote {
   bool failPull = false;
   bool failPush = false;
 
+  /// A specific failure to throw from `pull`, for cases where *which* failure
+  /// it is changes the outcome rather than merely that one happened.
+  Exception? failPullWith;
+
   @override
   Future<SyncPayload> pull({DateTime? since}) async {
+    if (failPullWith case final failure?) throw failure;
     if (failPull) throw const _Offline();
     return available;
   }
@@ -295,4 +325,15 @@ class _Offline implements Exception {
 
   @override
   String toString() => 'the network is unavailable';
+}
+
+/// Stands in for what the HTTP remote throws on a 404 from `/v1/sync`.
+class _NotOffered implements Exception, RetryableFailure {
+  const _NotOffered();
+
+  @override
+  bool get isRetryable => false;
+
+  @override
+  String toString() => 'This server does not offer sync.';
 }

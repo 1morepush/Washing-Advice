@@ -18,7 +18,12 @@ import 'package:http/http.dart' as http;
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 /// A sync could not be completed.
-class SyncFailure implements Exception {
+///
+/// Implements [RetryableFailure] so `SyncEngine` — which catches this and
+/// reports it as a result rather than rethrowing — can carry the distinction
+/// out to the screen. Without that the flag below would be set carefully here
+/// and thrown away one layer up.
+class SyncFailure implements Exception, RetryableFailure {
   const SyncFailure(this.message, {this.isRetryable = true});
 
   final String message;
@@ -27,6 +32,7 @@ class SyncFailure implements Exception {
   ///
   /// A dropped connection is retryable; a rejected token is not, and telling
   /// someone to try again when their credential is wrong wastes their evening.
+  @override
   final bool isRetryable;
 
   @override

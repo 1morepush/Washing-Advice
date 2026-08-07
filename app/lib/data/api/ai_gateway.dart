@@ -33,6 +33,14 @@ class ScanFailure implements Exception {
   String toString() => message;
 }
 
+/// How long a request runs before it is worth saying the server is asleep.
+///
+/// A free-tier host stops itself when idle and takes tens of seconds to come
+/// back. That is normal rather than broken, but a spinner cannot say so, and
+/// a wait with no explanation reads as a hang. Past this point a screen should
+/// say what is happening; before it, the request is simply in flight.
+const wakingAfter = Duration(seconds: 8);
+
 class AiGateway implements VisionPort {
   AiGateway({required this.baseUrl, http.Client? client})
     : _client = client ?? http.Client();
@@ -115,11 +123,18 @@ class AiGateway implements VisionPort {
   /// `/health` reports `degraded` at 200 rather than failing, so a
   /// misconfigured provider can be told apart from an unreachable host — which
   /// is the difference between "check your settings" and "check your wifi".
+  ///
+  /// The timeout is generous because a free-tier host sleeps when idle and
+  /// takes the better part of a minute to wake. Five seconds — long enough for
+  /// any server that is actually running — reported a correctly configured
+  /// backend as unreachable, which is the one answer this call exists to rule
+  /// out. Waiting is the honest behaviour; [wakingAfter] is how the screen
+  /// explains the wait.
   Future<({bool reachable, String status, String? problem})> health() async {
     try {
       final response = await _client
           .get(baseUrl.resolve('v1/health'))
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 60));
       final json = jsonDecode(response.body) as Map<String, Object?>;
       return (
         reachable: true,
@@ -151,9 +166,13 @@ class AiGateway implements VisionPort {
 
     final http.Response response;
     try {
+      // A cold start on a sleeping host can take most of a minute on its own,
+      // before the model has been called at all. Sixty seconds covered the
+      // model but not the wait in front of it, so a scan could time out having
+      // never actually failed.
       final streamed = await _client
           .send(request)
-          .timeout(const Duration(seconds: 60));
+          .timeout(const Duration(seconds: 90));
       response = await http.Response.fromStream(streamed);
     } on Exception catch (error) {
       throw ScanFailure('Could not reach the server. $error');

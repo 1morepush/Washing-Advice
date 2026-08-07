@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -41,6 +41,32 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-2.5-flash"
     gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
     gemini_timeout_seconds: float = 45.0
+
+    @field_validator("vision_provider", "gemini_model", "gemini_base_url", mode="before")
+    @classmethod
+    def _trim(cls, value: object) -> object:
+        """Strips surrounding whitespace from values typed into a dashboard.
+
+        These arrive from a web form, where a trailing space is invisible and
+        survives a copy-paste. Untrimmed, `VISION_PROVIDER=" gemini"` misses an
+        exact dict lookup and reports "unknown vision provider", and a space in
+        the model name becomes `%20` in a URL and returns a 404 — both of which
+        read as "the service is broken" rather than "there is a stray space".
+        """
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("gemini_model", mode="after")
+    @classmethod
+    def _bare_model_name(cls, value: str) -> str:
+        """Accepts a model name with or without the `models/` prefix.
+
+        Google's documentation and its own ListModels response both name models
+        as `models/gemini-2.5-flash`, so that is the form anyone copying from
+        either will paste. The request path already supplies `models/`, so the
+        prefix would be doubled and the API answers 404 — naming a model that
+        looks right in the dashboard and is wrong only in the URL.
+        """
+        return value.removeprefix("models/").strip("/")
 
     # --- Pipeline -----------------------------------------------------------
 

@@ -99,10 +99,38 @@ class TestSeparation:
         assert alpha.getpixel((width // 2, height // 2)) == 255
         assert alpha.getpixel((2, 2)) == 0
 
-    def test_the_output_keeps_the_source_dimensions(self, remover):
+    def test_an_image_within_the_cap_keeps_its_dimensions(self, remover):
         result = remover.remove(photo(WHITE, NAVY, size=(640, 480)))
         assert (result.width, result.height) == (640, 480)
         assert Image.open(io.BytesIO(result.png)).size == (640, 480)
+
+    def test_a_large_photograph_comes_back_sized_for_display(self, remover):
+        """A cutout is only ever drawn, and never larger than about 540px.
+
+        Returned at a phone photo's full size it was a multi-megabyte RGBA PNG
+        per garment — sent over mobile data, then kept forever in browser
+        storage — for roughly nine times the pixels anything draws.
+        """
+        result = remover.remove(photo(WHITE, NAVY, size=(1600, 1200)))
+
+        assert max(result.width, result.height) == 768
+        # The aspect ratio has to survive, or every garment is subtly stretched.
+        assert (result.width, result.height) == (768, 576)
+        assert Image.open(io.BytesIO(result.png)).size == (768, 576)
+
+    def test_a_small_photograph_is_not_inflated_to_the_cap(self, remover):
+        """Upscaling would add bytes and no detail."""
+        result = remover.remove(photo(WHITE, NAVY, size=(300, 200)))
+        assert (result.width, result.height) == (300, 200)
+
+    def test_the_cap_makes_a_large_cutout_substantially_smaller(self, remover):
+        """The point of the cap is bytes, so the bytes are what is asserted."""
+        large = remover.remove(photo(WHITE, NAVY, size=(1600, 1200)))
+        within = remover.remove(photo(WHITE, NAVY, size=(768, 576)))
+
+        # Same pixel dimensions out, so the encoded sizes should be comparable
+        # rather than the source's size leaking through.
+        assert len(large.png) < 2 * len(within.png)
 
     def test_jpeg_input_is_accepted(self, remover):
         result = remover.remove(photo(WHITE, NAVY, fmt="JPEG"))

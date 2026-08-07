@@ -1,6 +1,8 @@
 /// Settings.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,6 +10,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../../core/settings.dart';
+import '../../data/api/ai_gateway.dart';
 import '../../widgets/app_drawer.dart';
 import '../sync/sync_section.dart';
 
@@ -26,8 +29,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   ({bool reachable, String status, String? problem})? _health;
   bool _checking = false;
 
+  /// Whether the check has been running long enough to need explaining.
+  ///
+  /// A sleeping free-tier host takes tens of seconds to answer its first
+  /// request. Silence for that long reads as a failure, and the user's next
+  /// move is to change a setting that was never wrong.
+  bool _waking = false;
+  Timer? _wakingTimer;
+
   @override
   void dispose() {
+    _wakingTimer?.cancel();
     _url.dispose();
     super.dispose();
   }
@@ -41,12 +53,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _check() async {
-    setState(() => _checking = true);
+    setState(() {
+      _checking = true;
+      _waking = false;
+    });
+
+    _wakingTimer?.cancel();
+    _wakingTimer = Timer(wakingAfter, () {
+      if (mounted) setState(() => _waking = true);
+    });
+
     final result = await ref.read(aiGatewayProvider).health();
+
+    _wakingTimer?.cancel();
     if (mounted) {
       setState(() {
         _health = result;
         _checking = false;
+        _waking = false;
       });
     }
   }
@@ -99,6 +123,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
             ],
           ),
+          if (_waking) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Still waiting. A server that sleeps when idle can take up to a '
+              'minute to wake, and this is the request that wakes it.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
           if (_health case final health?) ...[
             const SizedBox(height: 16),
             _HealthResult(health: health),

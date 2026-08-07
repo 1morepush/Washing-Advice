@@ -69,19 +69,46 @@ class ItemThumbnail extends ConsumerWidget {
         ),
         child: Padding(
           padding: EdgeInsets.all(size.isFinite ? size * 0.06 : 6),
-          child: Image.memory(
-            bytes,
-            // `contain`, never `cover`: a cutout has transparent margins and
-            // the shape *is* the information. Cropping to fill a square would
-            // cut the sleeves off the thing being recognised.
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.medium,
-            errorBuilder: (_, _, _) =>
-                _Swatch(palette: item.colors.value, size: size),
+          child: LayoutBuilder(
+            builder: (context, constraints) => Image.memory(
+              bytes,
+              // Decoded at the size it is drawn at, not the size it was
+              // stored at. A scan is capped at 1600px, which is right for a
+              // model reading a care label and about thirty times the pixels a
+              // 56dp row needs — and an undecoded hint is the difference
+              // between ~10MB of RGBA per row and a few hundred kilobytes.
+              // Flutter's image cache is 100MB, so a wardrobe of any size
+              // would otherwise evict and re-decode while the user scrolls.
+              cacheWidth: _decodeExtent(context, constraints),
+              cacheHeight: _decodeExtent(context, constraints),
+              // `contain`, never `cover`: a cutout has transparent margins and
+              // the shape *is* the information. Cropping to fill a square would
+              // cut the sleeves off the thing being recognised.
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.medium,
+              errorBuilder: (_, _, _) =>
+                  _Swatch(palette: item.colors.value, size: size),
+            ),
           ),
         ),
       ),
     );
+  }
+
+  /// The pixel extent to decode to for the box this is being drawn in.
+  ///
+  /// Multiplied by the device pixel ratio because the box is in logical pixels
+  /// and decoding to those would be visibly soft on any phone — every one of
+  /// which has a ratio of 2 or 3.
+  ///
+  /// Returns null when the box is unbounded, which asks for the image at its
+  /// stored size: guessing an extent for a box of unknown size risks decoding
+  /// something smaller than it is about to be drawn.
+  static int? _decodeExtent(BuildContext context, BoxConstraints constraints) {
+    final extent = constraints.biggest.shortestSide;
+    if (!extent.isFinite || extent <= 0) return null;
+    final ratio = MediaQuery.devicePixelRatioOf(context);
+    return (extent * ratio).ceil();
   }
 
   /// A tone that the garment will stand out against.

@@ -68,6 +68,18 @@ abstract interface class SyncRemote {
   Future<DateTime> push(SyncPayload payload);
 }
 
+/// A failure that knows whether trying again could ever help.
+///
+/// Implemented by whatever a [SyncRemote] throws, so the engine can carry the
+/// distinction out to the caller without the core having to know what a socket
+/// or an HTTP status is. Without it every failure looks alike, and a server
+/// that does not offer sync at all gets a "Try again" that will fail
+/// identically forever.
+abstract interface class RetryableFailure {
+  /// Whether trying again later is worth the user's time.
+  bool get isRetryable;
+}
+
 /// What one sync run did.
 final class SyncReport {
   const SyncReport({
@@ -76,10 +88,14 @@ final class SyncReport {
     required this.merged,
     required this.at,
     this.failure,
+    this.isRetryable = true,
   });
 
-  const SyncReport.failed(this.failure, {required this.at})
-      : pulled = 0,
+  const SyncReport.failed(
+    this.failure, {
+    required this.at,
+    this.isRetryable = true,
+  })  : pulled = 0,
         pushed = 0,
         merged = const {};
 
@@ -101,6 +117,13 @@ final class SyncReport {
   /// down is the expected case for an offline-first app, and a caller should
   /// not have to wrap every sync in a try/catch to handle the ordinary.
   final String? failure;
+
+  /// Whether [failure] is worth retrying.
+  ///
+  /// Defaults to true because the ordinary failure is a dropped connection.
+  /// A rejected token or a server with no sync endpoint sets it false, so the
+  /// screen can stop offering an action that cannot work.
+  final bool isRetryable;
 
   bool get succeeded => failure == null;
 
@@ -187,7 +210,11 @@ class SyncEngine {
     try {
       incoming = await remote.pull(since: since);
     } on Exception catch (error) {
-      return SyncReport.failed('$error', at: clock.now());
+      return SyncReport.failed(
+        '$error',
+        at: clock.now(),
+        isRetryable: _isRetryable(error),
+      );
     }
 
     // Events first. They are the source of truth for the counters, so folding
@@ -231,7 +258,11 @@ class SyncEngine {
       // re-pulls the same events, which is harmless because appending an event
       // already held is a no-op — and far better than recording a cursor for a
       // push that never landed.
-      return SyncReport.failed('$error', at: clock.now());
+      return SyncReport.failed(
+        '$error',
+        at: clock.now(),
+        isRetryable: _isRetryable(error),
+      );
     }
 
     await cursor.record(acceptedAt, localAt: startedAt);
@@ -279,3 +310,11 @@ class SyncEngine {
     );
   }
 }
+
+/// Whether a failure from the remote is worth retrying.
+///
+/// Anything that does not declare itself is assumed retryable, because the
+/// failure this engine sees most is a dropped connection and refusing to retry
+/// that would strand a device that is merely briefly offline.
+bool _isRetryable(Object error) =>
+    error is! RetryableFailure || error.isRetryable;

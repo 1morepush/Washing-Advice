@@ -43,6 +43,20 @@ from PIL import Image, ImageFilter
 # downscaled copy; only the final alpha is resized back.
 _WORK_EDGE = 512
 
+# The longest edge of the cutout that gets returned.
+#
+# A cutout is only ever *displayed* — it is the picture in a wardrobe row, a
+# grid cell, or the 160dp image on an item's page, so about 540 device pixels
+# at its very largest on a phone. Returning it at the source's full size meant
+# a PNG with an alpha channel at up to 1600px: several megabytes per garment,
+# sent over mobile data and then kept forever in a browser's storage, for
+# roughly nine times the pixels anything draws.
+#
+# 768 leaves comfortable headroom over that 540 while cutting the stored bytes
+# several-fold. The identification pipeline is unaffected — it reads the
+# original photograph, never this.
+_MAX_CUTOUT_EDGE = 768
+
 # How wide a border strip counts as "definitely background", as a fraction of
 # the shorter edge. Narrow enough to exclude a garment that fills the frame,
 # wide enough to survive a slightly off-centre shot.
@@ -115,13 +129,18 @@ class BorderSampledRemover:
 
         coverage = float(mask.mean())
 
+        # Sized for what will actually be drawn rather than for what arrived.
+        out_size = _display_size(full_size)
+
         alpha = Image.fromarray((mask * 255).astype(np.uint8), mode="L")
-        # Feathering before the upscale, so the blur is in working-resolution
+        # Feathering before the resize, so the blur is in working-resolution
         # pixels and the edge stays proportionate whatever the source size.
         alpha = alpha.filter(ImageFilter.GaussianBlur(radius=1.2))
-        alpha = alpha.resize(full_size, Image.Resampling.BILINEAR)
+        alpha = alpha.resize(out_size, Image.Resampling.BILINEAR)
 
-        cut = rgb.convert("RGBA")
+        cut = (
+            rgb if out_size == full_size else rgb.resize(out_size, Image.Resampling.LANCZOS)
+        ).convert("RGBA")
         cut.putalpha(alpha)
 
         buffer = io.BytesIO()
@@ -130,9 +149,27 @@ class BorderSampledRemover:
         return Cutout(
             png=buffer.getvalue(),
             coverage=coverage,
-            width=full_size[0],
-            height=full_size[1],
+            # The returned image's own size, which is what a caller laying it
+            # out needs — not the size of the photograph it came from.
+            width=out_size[0],
+            height=out_size[1],
         )
+
+
+def _display_size(size: tuple[int, int]) -> tuple[int, int]:
+    """The size to return a cutout at, capped to [_MAX_CUTOUT_EDGE].
+
+    Never upscales: a small photograph stays its own size rather than being
+    inflated to a cap, which would add bytes and no detail. Aspect ratio is
+    preserved, and neither edge is allowed to round down to zero.
+    """
+    width, height = size
+    longest = max(width, height)
+    if longest <= _MAX_CUTOUT_EDGE:
+        return size
+
+    scale = _MAX_CUTOUT_EDGE / longest
+    return (max(1, round(width * scale)), max(1, round(height * scale)))
 
 
 def _to_lab(rgb: np.ndarray) -> np.ndarray:

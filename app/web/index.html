@@ -22,8 +22,23 @@
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!--
+    `default`, not `black-translucent`. Translucent asks the page to extend
+    under the status bar, which only works if the page knows where the notch
+    is — and that needs `viewport-fit=cover`, which Flutter's engine does not
+    put in the viewport it injects. The result was the status bar sitting on a
+    strip that ignored the app's own light/dark theme.
+  -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Washing Advice">
+  <!--
+    Two values, so the browser chrome follows the theme the app is actually
+    rendering. A single fixed colour is wrong half the time: this app follows
+    the system, because a laundry app is used in a utility room at night as
+    often as in daylight.
+  -->
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9ff">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#111318">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->

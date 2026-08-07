@@ -100,15 +100,17 @@ void main() {
       );
     }
 
-    ScanImage image() => ScanImage(
-      bytes: Uint8List.fromList([1, 2, 3]),
-      mimeType: 'image/jpeg',
-    );
+    ScanImage image() =>
+        ScanImage(bytes: Uint8List.fromList([1, 2, 3]), mimeType: 'image/jpeg');
 
     test('scanGarment posts to v1/scan/garment', () async {
       await gatewayReturning({
         'result': {
-          'type': {'value': 'tShirt', 'confidence': 0.9, 'source': 'aiInference'},
+          'type': {
+            'value': 'tShirt',
+            'confidence': 0.9,
+            'source': 'aiInference',
+          },
         },
       }).scanGarment([image()]);
 
@@ -155,21 +157,27 @@ void main() {
       expect(method, 'POST');
     });
 
-    test('a base URL without a trailing slash still resolves correctly', () async {
-      // What someone actually types into Settings. `resolve` replaces the last
-      // path segment, so a missing slash is a real way to lose the prefix.
-      final client = MockClient((request) async {
-        requested = request.url;
-        return http.Response(jsonEncode({'status': 'ok'}), 200);
-      });
-      final gateway = AiGateway(
-        baseUrl: Uri.parse('https://washing-advice.onrender.com'),
-        client: client,
-      );
+    test(
+      'a base URL without a trailing slash still resolves correctly',
+      () async {
+        // What someone actually types into Settings. `resolve` replaces the last
+        // path segment, so a missing slash is a real way to lose the prefix.
+        final client = MockClient((request) async {
+          requested = request.url;
+          return http.Response(jsonEncode({'status': 'ok'}), 200);
+        });
+        final gateway = AiGateway(
+          baseUrl: Uri.parse('https://washing-advice.onrender.com'),
+          client: client,
+        );
 
-      await gateway.health();
+        await gateway.health();
 
-      expect(requested.toString(), 'https://washing-advice.onrender.com/v1/health');
-    });
+        expect(
+          requested.toString(),
+          'https://washing-advice.onrender.com/v1/health',
+        );
+      },
+    );
   });
 }

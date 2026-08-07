@@ -50,7 +50,9 @@ Future<void> main() async {
   try {
     images = await openImageStore();
   } catch (error, stack) {
-    debugPrint('Washing Advice could not open its picture store: $error\n$stack');
+    debugPrint(
+      'Washing Advice could not open its picture store: $error\n$stack',
+    );
     images = MemoryImageStore();
   }
 

@@ -1,0 +1,8 @@
+# Tags used by this package's suites.
+#
+# `e2e` marks tests that start the FastAPI server as a child process. They are
+# real integration tests and are worth running, but they need `uv` on the PATH,
+# so they are declared here rather than left as an unrecognised tag warning.
+tags:
+  e2e:
+    timeout: 2x

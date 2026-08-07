@@ -1,0 +1,55 @@
+name: iOS sideload build
+
+# Manual only. This does not run on every push: it needs a macOS runner, which
+# costs far more Actions minutes than the Linux jobs in ci.yml, and nobody
+# needs a fresh iOS build on every commit — only when there is something on a
+# phone worth updating.
+on:
+  workflow_dispatch:
+
+jobs:
+  build-unsigned-ipa:
+    name: Build an unsigned .ipa for sideloading
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      # --no-codesign is the whole reason this job needs neither an Apple
+      # Developer account nor any secrets: it produces Runner.app without
+      # asking Xcode to sign it. Signing happens later, on your own computer,
+      # when a sideloading tool re-signs it with your own Apple ID.
+      - name: Build iOS (release, unsigned)
+        run: flutter build ios --release --no-codesign
+
+      # An .ipa is just a zip of a specific shape: a top-level `Payload/`
+      # folder containing the .app bundle. `flutter build ipa` normally does
+      # this step too, but it also insists on a signing identity, which
+      # --no-codesign deliberately has none of — so it is done by hand here.
+      - name: Package Runner.app into an .ipa
+        run: |
+          set -euo pipefail
+          cd build/ios/iphoneos
+          mkdir -p Payload
+          cp -r Runner.app Payload/
+          zip -qr washing-advice-unsigned.ipa Payload
+          mv washing-advice-unsigned.ipa "$GITHUB_WORKSPACE/"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: washing-advice-unsigned-ipa
+          path: washing-advice-unsigned.ipa
+          # Free Apple ID signing expires after 7 days regardless, so an
+          # artifact that outlives a couple of re-sideloads is not useful.
+          retention-days: 14

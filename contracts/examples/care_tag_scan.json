@@ -1,0 +1,28 @@
+{
+  "result": {
+    "instructions": {
+      "method": "machine",
+      "maxTempC": 30,
+      "agitation": "normal",
+      "bleach": "none",
+      "tumbleDryAllowed": true,
+      "tumbleDryHeat": "low",
+      "warnings": ["washInsideOut", "doNotUseSoftener"]
+    },
+    "confidence": 0.88,
+    "composition": {
+      "value": { "cotton": 95, "elastane": 5 },
+      "confidence": 0.97,
+      "source": "tagScan"
+    },
+    "symbolsFound": ["wash.30", "bleach.none", "tumbleDry.low"],
+    "unreadableSymbolCount": 1,
+    "rawText": "95% COTTON 5% ELASTANE / MACHINE WASH COLD / WASH INSIDE OUT"
+  },
+  "diagnostics": {
+    "stagesRun": ["knowledge-cache", "gemini"],
+    "stageAnswered": "gemini",
+    "servedFromCache": false,
+    "elapsedMs": 2150
+  }
+}

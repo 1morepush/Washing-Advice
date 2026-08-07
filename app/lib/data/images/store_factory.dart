@@ -24,6 +24,14 @@ Future<ImageStore> openImageStore() async {
   // A separate database file from the wardrobe's, so the wardrobe stays small
   // and nothing that reads an item ever opens this.
   return DriftImageStore(
-    ImageDatabase(driftDatabase(name: 'washing_advice_images')),
+    ImageDatabase(
+      driftDatabase(
+        name: 'washing_advice_images',
+        web: DriftWebOptions(
+          sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+          driftWorker: Uri.parse('drift_worker.js'),
+        ),
+      ),
+    ),
   );
 }

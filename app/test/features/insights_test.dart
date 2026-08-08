@@ -130,4 +130,66 @@ void main() {
     expect(find.text('NEVER WORN (1)'), findsOneWidget);
     expect(find.text('NOT WORN IN THREE MONTHS'), findsOneWidget);
   });
+
+  group('the figures line up as one band', () {
+    /// The card behind a stat's label.
+    Size cardAround(WidgetTester tester, String label) => tester.getSize(
+      find.ancestor(of: find.text(label), matching: find.byType(Card)).first,
+    );
+
+    testWidgets('the three counts are the same height', (tester) async {
+      // Only one of these labels wraps to a second line — "wears recorded" —
+      // and a `Row` centres children of different heights rather than
+      // levelling them, so that one card grew and the row read as misaligned.
+      await repository.saveAll([
+        confidentItem(id: 'a', name: 'A'),
+        confidentItem(id: 'b', name: 'B'),
+      ]);
+      tester.view.physicalSize = const Size(390, 3000);
+
+      await pump(tester);
+
+      expect(
+        cardAround(tester, 'items').height,
+        cardAround(tester, 'wears recorded').height,
+      );
+      expect(
+        cardAround(tester, 'washes').height,
+        cardAround(tester, 'wears recorded').height,
+      );
+    });
+
+    testWidgets('a single currency fills the width like every other row', (
+      tester,
+    ) async {
+      // The gap between cards used to be emitted after each one including the
+      // last, leaving this row a gap short of the right edge while the cards
+      // above and below it ran the full width.
+      await repository.saveAll([
+        confidentItem(
+          id: 'priced',
+          name: 'Priced',
+          usage: const UsageStats(timesWorn: 2),
+          purchase: PurchaseInfo(
+            priceMinorUnits: 4500,
+            currencyCode: 'EUR',
+            purchasedAt: DateTime.now(),
+          ),
+        ),
+      ]);
+      tester.view.physicalSize = const Size(390, 3000);
+
+      await pump(tester);
+
+      expect(
+        cardAround(tester, 'spent').width,
+        // The full-width card directly above it, made of three cards and two
+        // gaps — the same span this one row should cover on its own.
+        cardAround(tester, 'items').width +
+            cardAround(tester, 'wears recorded').width +
+            cardAround(tester, 'washes').width +
+            24,
+      );
+    });
+  });
 }

@@ -23,13 +23,33 @@
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <!--
-    `default`, not `black-translucent`. Translucent asks the page to extend
-    under the status bar, which only works if the page knows where the notch
-    is — and that needs `viewport-fit=cover`, which Flutter's engine does not
-    put in the viewport it injects. The result was the status bar sitting on a
-    strip that ignored the app's own light/dark theme.
+    Both spellings. The standard one above is what Flutter's template emits and
+    what puts the app in standalone mode; the Apple-prefixed one is what Safari
+    requires before it will read the status bar style below at all.
   -->
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <!--
+    iOS offers exactly three status bar styles for an installed web app, and
+    none of them follows the page's theme:
+
+      default           white background, dark text
+      black             black background, light text
+      black-translucent light text over the page, which must then extend under
+                        the notch itself
+
+    `default` is the white strip that sat above this app's dark theme and read
+    as a rendering fault. `black-translucent` cannot work here: extending under
+    the notch needs `viewport-fit=cover`, and Flutter's engine deletes any
+    viewport tag this file provides and injects its own without it — and even
+    with it, Flutter web reports no safe-area insets, so the app bar would draw
+    beneath the clock. Its always-light text would also be invisible against a
+    light theme.
+
+    So `black`: the one static choice that is never illegible and never looks
+    broken. It is exactly right in the dark theme and a deliberate-looking dark
+    strip in the light one.
+  -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Washing Advice">
   <!--
     Two values, so the browser chrome follows the theme the app is actually
@@ -46,6 +66,30 @@
 
   <title>Washing Advice</title>
   <link rel="manifest" href="manifest.json">
+
+  <!--
+    The colour behind the app before Flutter has painted anything, and the
+    colour of an overscroll. Unset, both are white, so opening the installed
+    app in the dark theme began with a white flash — the same wrong-colour
+    problem as the status bar, a few hundred milliseconds earlier.
+
+    These match `AppTheme`'s surface in each brightness. They are only ever
+    visible in that first moment: Flutter's engine pins the body and paints
+    the scaffold over all of it.
+  -->
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9f9ff;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      html, body {
+        background-color: #111318;
+      }
+    }
+  </style>
 </head>
 <body>
   <!--

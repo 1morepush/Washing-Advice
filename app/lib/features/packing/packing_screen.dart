@@ -135,6 +135,7 @@ class _TripForm extends StatelessWidget {
                 Expanded(
                   child: DropdownButtonFormField<Season>(
                     initialValue: trip.season,
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Season',
                       isDense: true,
@@ -340,10 +341,20 @@ class _Bag extends StatelessWidget {
                       style: theme.textTheme.labelLarge,
                     ),
                   ),
-                  Text(
-                    entry.value.first.reason,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                  const SizedBox(width: 8),
+                  // Flexible, because this one is not a fixed phrase. The
+                  // reason for footwear and for anything uncategorised is
+                  // "For " plus every occasion the trip covers, joined — so a
+                  // trip that is a bit of everything produces a line several
+                  // times wider than a phone. Unflexed, that overflowed the
+                  // row rather than wrapping.
+                  Flexible(
+                    child: Text(
+                      entry.value.first.reason,
+                      textAlign: TextAlign.end,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 ],

@@ -202,8 +202,16 @@ class _SuggestionCard extends ConsumerWidget {
                 ),
             ],
             const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            // A `Wrap`, not a `Row`. Both labels are words rather than bare
+            // icons on purpose — "bookmark" and "checkroom" are not glyphs
+            // anyone reads the same way — but two labelled buttons stop
+            // fitting a narrow phone's card once the system text size is
+            // turned up, which is an ordinary setting rather than an exotic
+            // one. In a `Row` that overflowed; here the second button drops
+            // to its own line instead.
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
               children: [
                 // Saving and wearing are different acts, and both are offered.
                 // "I like this, keep it" is not "I am wearing it today", and
@@ -232,7 +240,6 @@ class _SuggestionCard extends ConsumerWidget {
                   icon: const Icon(Icons.bookmark_border, size: 18),
                   label: const Text('Save'),
                 ),
-                const SizedBox(width: 8),
                 // What closes the loop. Recording an outfit as worn is the only
                 // way the app finds out its suggestion was any good, and every
                 // such record teaches the builder a pairing it did not know.
@@ -323,6 +330,11 @@ class _Options extends StatelessWidget {
             Expanded(
               child: DropdownButtonFormField<Season>(
                 initialValue: request.season,
+                // Without this the selected value keeps its natural width and
+                // overflows its own field once the chip beside it and larger
+                // system text have taken the room. Expanded lets it ellipsise
+                // instead, which is what the machine pickers already do.
+                isExpanded: true,
                 decoration: const InputDecoration(
                   labelText: 'Season',
                   isDense: true,

@@ -166,14 +166,25 @@ class _Totals extends StatelessWidget {
 
     return Column(
       children: [
-        Row(
-          children: [
-            _Stat(value: '${summary.itemCount}', label: 'items'),
-            const SizedBox(width: 12),
-            _Stat(value: '${summary.totalWears}', label: 'wears recorded'),
-            const SizedBox(width: 12),
-            _Stat(value: '${summary.totalWashes}', label: 'washes'),
-          ],
+        // `IntrinsicHeight` so the three cards are one band rather than three
+        // cards of different heights sitting on a shared centre line. Only one
+        // of these labels wraps — "wears recorded" — and left alone that card
+        // grew taller than the two beside it and the row read as misaligned.
+        //
+        // It is what makes `stretch` legal here: this row is inside a
+        // `ListView`, so its height is unbounded, and stretching against an
+        // unbounded cross axis is an error rather than a layout.
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _Stat(value: '${summary.itemCount}', label: 'items'),
+              const SizedBox(width: 12),
+              _Stat(value: '${summary.totalWears}', label: 'wears recorded'),
+              const SizedBox(width: 12),
+              _Stat(value: '${summary.totalWashes}', label: 'washes'),
+            ],
+          ),
         ),
         // Spend gets its own row rather than a fourth column. Per currency and
         // never converted — a total built on an invented exchange rate is
@@ -184,12 +195,16 @@ class _Totals extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              for (final entry in spend.entries) ...[
+              // The gap goes *between* the cards, not after each one. Trailing
+              // it left the row a gap short of the right edge, so a single
+              // currency — which is the usual case — sat visibly narrower than
+              // every other card on the screen.
+              for (final (index, entry) in spend.entries.indexed) ...[
+                if (index > 0) const SizedBox(width: 12),
                 _Stat(
                   value: '${(entry.value / 100).round()} ${entry.key}',
                   label: 'spent',
                 ),
-                const SizedBox(width: 12),
               ],
             ],
           ),

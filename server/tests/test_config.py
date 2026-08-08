@@ -23,7 +23,7 @@ class TestWhitespace:
 
     def test_the_model_name_is_trimmed(self) -> None:
         # A space here becomes %20 in the request path and returns a 404.
-        assert Settings(gemini_model="  gemini-2.5-flash  ").gemini_model == "gemini-2.5-flash"
+        assert Settings(gemini_model="  gemini-3.6-flash  ").gemini_model == "gemini-3.6-flash"
 
     def test_the_base_url_is_trimmed(self) -> None:
         settings = Settings(gemini_base_url=" https://example.test/v1beta ")
@@ -31,20 +31,20 @@ class TestWhitespace:
 
 
 class TestModelPrefix:
-    """`models/gemini-2.5-flash` is how Google names its own models."""
+    """`models/gemini-3.6-flash` is how Google names its own models."""
 
     @pytest.mark.parametrize(
         "raw",
-        ["gemini-2.5-flash", "models/gemini-2.5-flash", " models/gemini-2.5-flash "],
+        ["gemini-3.6-flash", "models/gemini-3.6-flash", " models/gemini-3.6-flash "],
     )
     def test_the_prefix_is_accepted_and_removed(self, raw: str) -> None:
         # The request path supplies `models/` itself, so keeping it here would
-        # double it and produce .../models/models/gemini-2.5-flash -> 404.
-        assert Settings(gemini_model=raw).gemini_model == "gemini-2.5-flash"
+        # double it and produce .../models/models/gemini-3.6-flash -> 404.
+        assert Settings(gemini_model=raw).gemini_model == "gemini-3.6-flash"
 
     def test_a_name_merely_containing_models_is_untouched(self) -> None:
         """Only a leading prefix is a mistake; the word elsewhere is a name."""
         assert Settings(gemini_model="my-models-tuned").gemini_model == "my-models-tuned"
 
     def test_the_default_is_already_bare(self) -> None:
-        assert Settings().gemini_model == "gemini-2.5-flash"
+        assert Settings().gemini_model == "gemini-3.6-flash"

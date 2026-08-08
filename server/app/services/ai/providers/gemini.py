@@ -67,7 +67,10 @@ class GeminiVisionProvider:
         self,
         api_key: str,
         *,
-        model: str = "gemini-2.5-flash",
+        # Kept in step with `Settings.gemini_model`'s default; `from_settings`
+        # always passes one explicitly, so this is reached only by a direct
+        # construction, e.g. in a test.
+        model: str = "gemini-3.6-flash",
         base_url: str = "https://generativelanguage.googleapis.com/v1beta",
         timeout_seconds: float = 45.0,
         client: httpx.AsyncClient | None = None,

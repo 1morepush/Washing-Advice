@@ -38,7 +38,11 @@ class Settings(BaseSettings):
         default=None,
         description="Set to enable the Gemini provider. Never logged.",
     )
-    gemini_model: str = "gemini-2.5-flash"
+    # gemini-2.5-flash was the default until Google stopped issuing it to new
+    # API keys — a deprecation on Google's side, not a name this app got
+    # wrong; ai.google.dev/gemini-api/docs/latest-model names the current
+    # generally-available replacement.
+    gemini_model: str = "gemini-3.6-flash"
     gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
     gemini_timeout_seconds: float = 45.0
 

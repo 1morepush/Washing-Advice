@@ -45,6 +45,32 @@ class ItemDetailScreen extends ConsumerWidget {
               icon: const Icon(Icons.edit_outlined),
               tooltip: 'Edit',
             ),
+            // Behind an overflow menu rather than an icon beside the others:
+            // this is the one action here with no undo, and it should never
+            // be one accidental tap away from "Edit".
+            PopupMenuButton<String>(
+              onSelected: (choice) => _confirmAndDelete(context, ref, value),
+              itemBuilder: (menuContext) => [
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.delete_outline,
+                        color: Theme.of(menuContext).colorScheme.error,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Delete',
+                        style: TextStyle(
+                          color: Theme.of(menuContext).colorScheme.error,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ],
         ],
       ),
@@ -57,6 +83,78 @@ class ItemDetailScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Asks, then removes an item for good.
+///
+/// Separate from retiring — the lifecycle states on the edit screen (donated,
+/// sold, discarded) that keep an item's history for statistics while taking it
+/// out of the active wardrobe. This is for the record that should never have
+/// existed at all: a duplicate, a scan of the wrong garment, a test entry.
+/// There is no lifecycle to move it to, because nothing is being kept.
+Future<void> _confirmAndDelete(
+  BuildContext context,
+  WidgetRef ref,
+  WardrobeItem item,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Delete this item?'),
+      content: Text(
+        '"${item.displayName}" and its photos will be gone for good. This '
+        "can't be undone.",
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton.tonal(
+          style: FilledButton.styleFrom(
+            backgroundColor: Theme.of(dialogContext).colorScheme.errorContainer,
+            foregroundColor: Theme.of(
+              dialogContext,
+            ).colorScheme.onErrorContainer,
+          ),
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          child: const Text('Delete'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmed != true) return;
+  if (!context.mounted) return;
+
+  // Every file this item ever produced: the originals and any cutout made
+  // from them. Left behind, they are bytes nothing will ever read again —
+  // and on a platform that already has a storage-quota problem, an orphaned
+  // photo per deleted item is exactly the kind of thing that adds up.
+  final images = ref.read(imageStoreProvider);
+  for (final photo in item.photos.photos) {
+    await images.delete(photo.uri);
+    if (photo.cutoutUri case final String cutoutUri) {
+      await images.delete(cutoutUri);
+    }
+  }
+
+  // A garment that no longer exists cannot stay in a saved outfit — the same
+  // cleanup retiring an item already relies on, including dropping an outfit
+  // left with fewer than two members.
+  await ref.read(outfitRepositoryProvider).removeItem(item.id);
+
+  await ref.read(wardrobeRepositoryProvider).delete(item.id);
+
+  ref
+    ..invalidate(ownedItemsProvider)
+    ..invalidate(ownedCountProvider)
+    ..invalidate(coWearGraphProvider)
+    ..invalidate(savedOutfitsProvider)
+    ..invalidate(knownBrandsProvider);
+
+  if (!context.mounted) return;
+  context.go('/');
 }
 
 class _Details extends StatelessWidget {

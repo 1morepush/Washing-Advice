@@ -35,54 +35,69 @@ class CutoutController extends StateNotifier<CutoutStatus> {
     return photo != null && !photo.hasCutout;
   }
 
+  /// Every failure lands on [CutoutStatus.failed], including the ones nothing
+  /// here predicts.
+  ///
+  /// The gateway already answers `null` rather than throwing when the server
+  /// is unreachable, but the storage either side of it can still fail — a
+  /// browser refusing a write because the origin is out of quota is the
+  /// realistic one, and it happens precisely when saving an image. Left
+  /// uncaught the state stayed `working`, which replaces the button with a
+  /// spinner: the screen would have spun forever with nothing left to press.
+  /// Every other controller in the app ends its risky work on a failure state
+  /// for the same reason.
   Future<void> generate(ItemId id) async {
     state = CutoutStatus.working;
 
-    final repository = _ref.read(wardrobeRepositoryProvider);
-    final item = await repository.byId(id);
-    final photo = item?.photos.displayPhoto;
+    try {
+      final repository = _ref.read(wardrobeRepositoryProvider);
+      final item = await repository.byId(id);
+      final photo = item?.photos.displayPhoto;
 
-    if (item == null || photo == null) {
+      if (item == null || photo == null) {
+        state = CutoutStatus.failed;
+        return;
+      }
+
+      final store = _ref.read(imageStoreProvider);
+      final source = await store.read(photo.uri);
+      if (source == null || source.isEmpty) {
+        // The row survived but the file did not — a restored backup, or
+        // storage cleared. Nothing to re-cut, and no amount of retrying will
+        // change it. Empty counts as gone: zero bytes is not an image, and
+        // uploading it would spend a round trip to be told so.
+        state = CutoutStatus.failed;
+        return;
+      }
+
+      final cutout = await _ref
+          .read(aiGatewayProvider)
+          .cutout(ScanImage(bytes: source));
+
+      if (cutout == null) {
+        state = CutoutStatus.failed;
+        return;
+      }
+
+      final cutoutUri = await store.save(
+        cutout,
+        name: imageName(item.id, photo.role, cutout: true),
+      );
+
+      await repository.save(
+        item.copyWith(
+          photos: item.photos.withCutout(photo.uri, cutoutUri),
+          updatedAt: DateTime.now(),
+        ),
+      );
+
+      // The detail screen reads through a cached future; without this the user
+      // watches the button succeed and the picture not change.
+      _ref.invalidate(itemProvider(id));
+      state = CutoutStatus.done;
+    } on Exception {
       state = CutoutStatus.failed;
-      return;
     }
-
-    final store = _ref.read(imageStoreProvider);
-    final source = await store.read(photo.uri);
-    if (source == null || source.isEmpty) {
-      // The row survived but the file did not — a restored backup, or storage
-      // cleared. Nothing to re-cut, and no amount of retrying will change it.
-      // Empty counts as gone: zero bytes is not an image, and uploading it
-      // would spend a round trip to be told so.
-      state = CutoutStatus.failed;
-      return;
-    }
-
-    final cutout = await _ref
-        .read(aiGatewayProvider)
-        .cutout(ScanImage(bytes: source));
-
-    if (cutout == null) {
-      state = CutoutStatus.failed;
-      return;
-    }
-
-    final cutoutUri = await store.save(
-      cutout,
-      name: imageName(item.id, photo.role, cutout: true),
-    );
-
-    await repository.save(
-      item.copyWith(
-        photos: item.photos.withCutout(photo.uri, cutoutUri),
-        updatedAt: DateTime.now(),
-      ),
-    );
-
-    // The detail screen reads through a cached future; without this the user
-    // watches the button succeed and the picture not change.
-    _ref.invalidate(itemProvider(id));
-    state = CutoutStatus.done;
   }
 
   void reset() => state = CutoutStatus.idle;

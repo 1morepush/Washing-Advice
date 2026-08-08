@@ -236,6 +236,24 @@ class _SearchField extends StatefulWidget {
 class _SearchFieldState extends State<_SearchField> {
   late final _controller = TextEditingController(text: widget.query.text);
 
+  /// Follows the query when something other than this field changes it.
+  ///
+  /// The field owns its controller but not the query, and two other controls
+  /// reset that query wholesale: "Clear all" in the filter sheet and "Clear
+  /// filters" on the empty state. Without this the wardrobe went back to
+  /// showing everything while the box still displayed the search that was no
+  /// longer being applied — a list that visibly disagrees with the filter
+  /// above it.
+  ///
+  /// Guarded on inequality so it never fights typing: a keystroke updates the
+  /// query, which rebuilds this widget with the text it already holds.
+  @override
+  void didUpdateWidget(_SearchField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final text = widget.query.text ?? '';
+    if (text != _controller.text) _controller.text = text;
+  }
+
   @override
   void dispose() {
     _controller.dispose();

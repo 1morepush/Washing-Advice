@@ -126,6 +126,19 @@ class SyncController extends StateNotifier<SyncState> {
     } on SyncFailure catch (failure) {
       state = SyncFailed(failure.message, isRetryable: failure.isRetryable);
       return false;
+    } on Exception catch (error) {
+      // Not only the transport can fail. A sync reads and rewrites local
+      // storage throughout — merging items, appending events, replaying
+      // counters — and a browser origin that has run out of quota throws
+      // there rather than over the wire. Uncaught, the state stayed
+      // `SyncRunning`, which is what disables the "Sync now" button: the
+      // section would have sat on "Syncing…" with nothing left to press.
+      //
+      // Not marked retryable. That wording promises the app will try again
+      // by itself, and for a failure nothing here recognises that is a
+      // guess; the button comes back either way.
+      state = SyncFailed('Sync could not finish. $error', isRetryable: false);
+      return false;
     } finally {
       remote.close();
     }

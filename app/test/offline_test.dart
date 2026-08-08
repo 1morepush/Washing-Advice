@@ -53,6 +53,10 @@ void main() {
         ),
         washerBrandProvider.overrideWith((ref) => 'Bosch'),
         dryerBrandProvider.overrideWith((ref) => null),
+        // washerProvider/dryerProvider also read these now, and there is no
+        // settingsStoreProvider override here for them to fall back to.
+        customWasherProvider.overrideWith((ref) => null),
+        customDryerProvider.overrideWith((ref) => null),
       ],
     );
   });

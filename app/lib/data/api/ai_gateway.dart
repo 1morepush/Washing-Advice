@@ -84,6 +84,33 @@ class AiGateway implements VisionPort {
     return pileResultFromJson(json);
   }
 
+  /// Identifies a washing machine's real programme line-up from its brand and
+  /// model alone — built once, from the AI's own knowledge of the appliance,
+  /// rather than asked again for every garment. The result is stored exactly
+  /// like a chosen brand archetype: same type, same [ProgramMatcher].
+  Future<WasherProfile> identifyWasher({
+    required String brand,
+    required String model,
+  }) async {
+    final json = await _postJson('machine/washer', {
+      'brand': brand,
+      'model': model,
+    });
+    return WasherProfile.fromJson(json);
+  }
+
+  /// The dryer counterpart of [identifyWasher].
+  Future<DryerProfile> identifyDryer({
+    required String brand,
+    required String model,
+  }) async {
+    final json = await _postJson('machine/dryer', {
+      'brand': brand,
+      'model': model,
+    });
+    return DryerProfile.fromJson(json);
+  }
+
   /// The garment with its background removed.
   ///
   /// Returns null when the server could not separate it — a plain refusal
@@ -178,6 +205,36 @@ class AiGateway implements VisionPort {
       throw ScanFailure('Could not reach the server. $error');
     }
 
+    return _decodeResult(response);
+  }
+
+  /// The same request as [_post], for a call with no file to upload — brand
+  /// and model text, not an image.
+  Future<Map<String, Object?>> _postJson(
+    String path,
+    Map<String, Object?> body,
+  ) async {
+    final http.Response response;
+    try {
+      response = await _client
+          .post(
+            baseUrl.resolve('v1/$path'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 90));
+    } on Exception catch (error) {
+      throw ScanFailure('Could not reach the server. $error');
+    }
+
+    return _decodeResult(response);
+  }
+
+  /// The tail every call shares once a response has actually arrived: fail on
+  /// a bad status, record diagnostics, and hand back the `result` object.
+  /// Factored out because [_postJson] needed it a second time — [_post] and
+  /// [_postJson] differ only in how the request is built and sent.
+  Map<String, Object?> _decodeResult(http.Response response) {
     if (response.statusCode != 200) {
       throw _failureFor(response);
     }

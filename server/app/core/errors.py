@@ -72,6 +72,20 @@ class ScanFailedError(ApiError):
     code = "scan_failed"
 
 
+class MachineNotIdentifiedError(ApiError):
+    """The model has no reliable, specific knowledge of this exact appliance.
+
+    A distinct code from `ScanFailedError`, not a reuse of it: this is not a
+    scan and did not fail for the same reason a blurry photo does — there is
+    no photo, and the request was answered honestly rather than badly. A 422
+    for the same reason as a scan failure: the request was well-formed, there
+    is simply nothing to return.
+    """
+
+    status_code = 422  # Unprocessable Content
+    code = "machine_not_identified"
+
+
 def install_error_handlers(app: FastAPI) -> None:
     """Registers the handlers that turn exceptions into the error envelope."""
 

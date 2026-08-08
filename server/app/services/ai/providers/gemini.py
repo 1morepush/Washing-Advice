@@ -50,6 +50,7 @@ from app.schemas.wardrobe import (
 )
 from app.services.ai.base import ProviderError, ScanImage
 from app.services.ai.color import hex_to_lab
+from app.services.ai.gemini_errors import gemini_error_reason
 from app.services.ai.prompts import (
     CARE_TAG_PROMPT,
     CARE_TAG_SCHEMA,
@@ -201,7 +202,7 @@ class GeminiVisionProvider:
             # field, so exactly that field is taken and nothing else.
             raise ProviderError(
                 self.name,
-                f"HTTP {response.status_code} from the Gemini API{_reason(response)}",
+                f"HTTP {response.status_code} from the Gemini API{gemini_error_reason(response)}",
             )
 
         payload = response.json()
@@ -232,29 +233,6 @@ class GeminiVisionProvider:
             return _parse_pile(data)
         except (ValidationError, ValueError, KeyError) as error:
             raise ProviderError(self.name, f"invalid pile scan: {error}") from error
-
-
-def _reason(response: httpx.Response) -> str:
-    """Google's own explanation for a failed call, if it gave one.
-
-    Reads only `error.message` from the documented error envelope — a short
-    diagnostic string such as "models/gemini-9 is not found for API version
-    v1beta". Anything else in the body is ignored rather than trusted, so a
-    response that is not that envelope contributes nothing.
-    """
-    try:
-        error = response.json().get("error")
-    except (ValueError, AttributeError):
-        return ""
-
-    if not isinstance(error, dict):
-        return ""
-
-    message = error.get("message")
-    if not isinstance(message, str) or not message.strip():
-        return ""
-
-    return f": {message.strip()[:300]}"
 
 
 # --- Parsing ----------------------------------------------------------------

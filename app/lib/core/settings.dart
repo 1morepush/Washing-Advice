@@ -5,6 +5,8 @@
 /// it into the item store would mean a schema migration to change a URL.
 library;
 
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
@@ -22,6 +24,8 @@ class SettingsStore {
   static const _backendUrlKey = 'backendUrl';
   static const _washerKey = 'washerBrand';
   static const _dryerKey = 'dryerBrand';
+  static const _customWasherKey = 'customWasherProfile';
+  static const _customDryerKey = 'customDryerProfile';
   static const _syncTokenKey = 'syncToken';
   static const _syncCursorKey = 'syncCursorRemote';
   static const _syncLocalCursorKey = 'syncCursorLocal';
@@ -52,6 +56,29 @@ class SettingsStore {
   Future<void> setWasherBrand(String? brand) => _write(_washerKey, brand);
 
   Future<void> setDryerBrand(String? brand) => _write(_dryerKey, brand);
+
+  /// A machine AI identified from its exact brand and model, if one was ever
+  /// built.
+  ///
+  /// The opposite kind of storage from [washerBrand]: that is a lookup key
+  /// into a catalogue that keeps improving, so a fresh copy is read from it
+  /// every time. This *is* a frozen copy — the entire point of asking AI for
+  /// one exact machine's programme list is to keep the answer for that
+  /// machine, not to look anything up again. A corrupted or outdated record
+  /// is read as absent rather than thrown, the same reasoning `ImageStore`
+  /// already applies to a photo that no longer decodes: a wardrobe that
+  /// crashes on a bad cache entry is worse than one that quietly falls back.
+  WasherProfile? get customWasher =>
+      _readProfile(_customWasherKey, WasherProfile.fromJson);
+
+  DryerProfile? get customDryer =>
+      _readProfile(_customDryerKey, DryerProfile.fromJson);
+
+  Future<void> setCustomWasher(WasherProfile? profile) =>
+      _writeProfile(_customWasherKey, profile?.toJson());
+
+  Future<void> setCustomDryer(DryerProfile? profile) =>
+      _writeProfile(_customDryerKey, profile?.toJson());
 
   /// The sync credential, or null when sync has not been set up.
   ///
@@ -113,6 +140,30 @@ class SettingsStore {
     return stored != null && catalogue.containsKey(stored) ? stored : null;
   }
 
+  T? _readProfile<T>(String key, T Function(Map<String, Object?>) fromJson) {
+    final stored = _prefs.getString(key);
+    if (stored == null) return null;
+    try {
+      return fromJson(jsonDecode(stored) as Map<String, Object?>);
+    } on FormatException {
+      return null;
+    } on TypeError {
+      // A shape from an older or newer version of the app that this one
+      // cannot read. Treated the same as absent, not as corruption to fix —
+      // there is nothing here worth trying to repair.
+      return null;
+    } on ArgumentError {
+      // `WashProgramKind.values.byName` and its siblings throw this for an
+      // enum member this build no longer knows, which is the same "an older
+      // or newer install wrote this" case as the cast failures above.
+      return null;
+    }
+  }
+
+  Future<void> _writeProfile(String key, Map<String, Object?>? json) {
+    return _write(key, json == null ? null : jsonEncode(json));
+  }
+
   Future<void> _write(String key, String? value) async {
     if (value == null) {
       await _prefs.remove(key);
@@ -144,18 +195,37 @@ final dryerBrandProvider = StateProvider<String?>(
   (ref) => ref.watch(settingsStoreProvider).dryerBrand,
 );
 
+/// A machine AI identified from its exact brand and model, as state so
+/// building or removing one rebuilds everything that reads [washerProvider].
+final customWasherProvider = StateProvider<WasherProfile?>(
+  (ref) => ref.watch(settingsStoreProvider).customWasher,
+);
+
+final customDryerProvider = StateProvider<DryerProfile?>(
+  (ref) => ref.watch(settingsStoreProvider).customDryer,
+);
+
 /// The chosen washer, or null.
 ///
 /// Null is a supported state throughout, not an error: `LaundrySorter` still
 /// groups items and states abstract requirements without a machine, it just
 /// cannot name a programme. Forcing setup before the app does anything useful
 /// would put a configuration screen between someone and their first answer.
+///
+/// A machine AI built from an exact model wins outright over a seeded brand
+/// archetype — it is the more specific answer, and the whole reason someone
+/// went to the trouble of typing their exact model in was to stop getting the
+/// generic one.
 final washerProvider = Provider<WasherProfile?>(
-  (ref) => seededWashers[ref.watch(washerBrandProvider)],
+  (ref) =>
+      ref.watch(customWasherProvider) ??
+      seededWashers[ref.watch(washerBrandProvider)],
 );
 
 final dryerProvider = Provider<DryerProfile?>(
-  (ref) => seededDryers[ref.watch(dryerBrandProvider)],
+  (ref) =>
+      ref.watch(customDryerProvider) ??
+      seededDryers[ref.watch(dryerBrandProvider)],
 );
 
 /// The configured sync token, as state so saving one rebuilds the engine.

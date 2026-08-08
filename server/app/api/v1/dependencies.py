@@ -22,6 +22,9 @@ from app.services.ai.pipeline import VisionPipeline
 from app.services.ai.registry import registry
 from app.services.ai.stages import ProviderStage
 from app.services.images.cutout import BackgroundRemover, BorderSampledRemover
+from app.services.machines.base import MachineIdentifier
+from app.services.machines.fake import FakeMachineIdentifier
+from app.services.machines.gemini_identifier import GeminiMachineIdentifier
 from app.services.sync.store import InMemorySyncStore, SqliteSyncStore, SyncStore
 
 
@@ -100,14 +103,49 @@ Tracked here rather than reached for through the pipeline's stages, which would
 mean the shutdown path depended on the pipeline's internal shape.
 """
 
+_live_identifiers: list[MachineIdentifier] = []
+"""The same idea as `_live_providers`, for machine identifiers.
+
+Kept separate rather than sharing that list: `MachineIdentifier` does not
+structurally satisfy `VisionProvider` (different methods entirely), so typing
+`_live_providers` to accept both would widen it for a shutdown-bookkeeping
+convenience that only this module needs.
+"""
+
+
+@lru_cache
+def get_machine_identifier() -> MachineIdentifier:
+    """The machine identifier described by the current settings.
+
+    Reuses `VISION_PROVIDER` rather than adding a second setting: there is one
+    AI backend either way, and `/health`'s existing `geminiConfigured` /
+    `visionProvider` fields already describe accurately whether this will
+    work — a separate setting would only ever move in lockstep with this one.
+    """
+    settings = get_settings()
+    if settings.vision_provider == "fake":
+        identifier: MachineIdentifier = FakeMachineIdentifier()
+    else:
+        try:
+            identifier = GeminiMachineIdentifier.from_settings(settings)
+        except ProviderError as error:
+            raise ProviderUnavailableError(
+                str(error),
+                hint="set GEMINI_API_KEY, or set VISION_PROVIDER=fake",
+            ) from error
+
+    _live_identifiers.append(identifier)
+    return identifier
+
 
 async def close_providers() -> None:
-    """Releases every live provider's resources, at application shutdown."""
-    for provider in _live_providers:
+    """Releases every live provider's and identifier's resources, at shutdown."""
+    for provider in (*_live_providers, *_live_identifiers):
         closer = getattr(provider, "aclose", None)
         if closer is not None:
             await closer()
     _live_providers.clear()
+    _live_identifiers.clear()
 
 
 def reset_wiring() -> None:
@@ -117,6 +155,7 @@ def reset_wiring() -> None:
     process and would otherwise get the first pipeline every time.
     """
     get_pipeline.cache_clear()
+    get_machine_identifier.cache_clear()
     get_knowledge_cache.cache_clear()
     get_background_remover.cache_clear()
     # Closed before it is dropped: a SQLite store left to the garbage collector
@@ -126,4 +165,5 @@ def reset_wiring() -> None:
         get_sync_store().close()
     get_sync_store.cache_clear()
     _live_providers.clear()
+    _live_identifiers.clear()
     get_settings.cache_clear()

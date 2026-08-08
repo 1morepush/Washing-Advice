@@ -180,4 +180,120 @@ void main() {
       },
     );
   });
+
+  group('identifying a washer or dryer', () {
+    // Brand and model text, not a photo — the request has no file to upload,
+    // which is why AiGateway needed a second POST shape (_postJson) alongside
+    // the multipart one every other call uses.
+
+    late Uri requested;
+    late String method;
+    late Map<String, Object?> sentBody;
+
+    AiGateway gatewayReturning(Object body) {
+      final client = MockClient((request) async {
+        requested = request.url;
+        method = request.method;
+        sentBody = jsonDecode(request.body) as Map<String, Object?>;
+        return http.Response(jsonEncode(body), 200);
+      });
+      return AiGateway(
+        baseUrl: Uri.parse('https://washing-advice.onrender.com/'),
+        client: client,
+      );
+    }
+
+    test('identifyWasher posts brand and model to v1/machine/washer', () async {
+      await gatewayReturning({
+        'result': {
+          'id': 'ai.washer.samsung.wf45t6000aw',
+          'brand': 'Samsung',
+          'model': 'WF45T6000AW',
+          'capacityKg': 9.0,
+          'programs': <Object?>[],
+        },
+      }).identifyWasher(brand: 'Samsung', model: 'WF45T6000AW');
+
+      expect(requested.path, '/v1/machine/washer');
+      expect(method, 'POST');
+      expect(sentBody, {'brand': 'Samsung', 'model': 'WF45T6000AW'});
+    });
+
+    test('identifyDryer posts brand and model to v1/machine/dryer', () async {
+      await gatewayReturning({
+        'result': {
+          'id': 'ai.dryer.lg.dlex3900w',
+          'brand': 'LG',
+          'model': 'DLEX3900W',
+          'capacityKg': 7.5,
+          'programs': <Object?>[],
+        },
+      }).identifyDryer(brand: 'LG', model: 'DLEX3900W');
+
+      expect(requested.path, '/v1/machine/dryer');
+      expect(sentBody, {'brand': 'LG', 'model': 'DLEX3900W'});
+    });
+
+    test('a recognised washer decodes into a real WasherProfile', () async {
+      // Captured directly from a run of the real server (fake provider), not
+      // hand-written — this is the actual shape it sends, not a guess at it.
+      const captured = '''
+        {"result":{"id":"ai.washer.samsung-wf45t6000aw","brand":"Samsung",
+        "model":"WF45T6000AW","capacityKg":11.0,"programs":[{"id":
+        "ai.washer.samsung-wf45t6000aw.program-0","displayName":"Cotton",
+        "kind":"cotton","availableTempsC":[0,30,40,60],"defaultTempC":40,
+        "agitation":"normal","spinSpeedsRpm":[0,600,800,1200],"suitableFor":
+        ["normal","heavy"],"maxLoadFraction":1.0,"typicalDurationMinutes":120}],
+        "options":[],"isVerifiedModel":false},
+        "diagnostics":{"stagesRun":["fake"],"stageAnswered":"fake",
+        "servedFromCache":false,"elapsedMs":0}}
+      ''';
+      final client = MockClient(
+        (request) async => http.Response(captured, 200),
+      );
+      final gateway = AiGateway(
+        baseUrl: Uri.parse('https://washing-advice.onrender.com/'),
+        client: client,
+      );
+
+      final profile = await gateway.identifyWasher(
+        brand: 'Samsung',
+        model: 'WF45T6000AW',
+      );
+
+      expect(profile.brand, 'Samsung');
+      expect(profile.model, 'WF45T6000AW');
+      expect(profile.programs, hasLength(1));
+      expect(profile.programs.single.displayName, 'Cotton');
+      expect(profile.isVerifiedModel, isFalse);
+    });
+
+    test('a machine the model does not recognise is a ScanFailure', () async {
+      final client = MockClient(
+        (request) async => http.Response(
+          jsonEncode({
+            'error': 'machine_not_identified',
+            'detail': 'no reliable knowledge of this exact make and model',
+            'hint': 'Try just the brand, or use the generic profile instead.',
+          }),
+          422,
+        ),
+      );
+      final gateway = AiGateway(
+        baseUrl: Uri.parse('https://washing-advice.onrender.com/'),
+        client: client,
+      );
+
+      await expectLater(
+        gateway.identifyWasher(brand: 'Nonesuch', model: 'XY9000'),
+        throwsA(
+          isA<ScanFailure>().having(
+            (f) => f.message,
+            'message',
+            contains('no reliable knowledge'),
+          ),
+        ),
+      );
+    });
+  });
 }

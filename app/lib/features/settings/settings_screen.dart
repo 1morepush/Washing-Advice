@@ -6,13 +6,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:wardrobe_core/wardrobe_core.dart';
-
 import '../../core/providers.dart';
 import '../../core/settings.dart';
 import '../../data/api/ai_gateway.dart';
 import '../../widgets/app_drawer.dart';
 import '../sync/sync_section.dart';
+import 'machine_section.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -153,71 +152,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          _MachinePicker(
-            label: 'Washing machine',
-            brands: seededWashers.keys.toList(),
-            selected: ref.watch(washerBrandProvider),
-            onChanged: (brand) async {
-              await ref.read(settingsStoreProvider).setWasherBrand(brand);
-              ref.read(washerBrandProvider.notifier).state = brand;
-            },
-          ),
-          const SizedBox(height: 12),
-          _MachinePicker(
-            label: 'Tumble dryer',
-            brands: seededDryers.keys.toList(),
-            selected: ref.watch(dryerBrandProvider),
-            onChanged: (brand) async {
-              await ref.read(settingsStoreProvider).setDryerBrand(brand);
-              ref.read(dryerBrandProvider.notifier).state = brand;
-            },
-          ),
-          const SizedBox(height: 8),
-          Text(
-            // Said here rather than only in the README. A user who takes these
-            // for model-exact specifications will trust a programme name that
-            // may not exist on their machine.
-            'These are brand archetypes, not exact models. Check the programme '
-            'against your own machine the first time.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
+          const MachineSection(kind: MachineKind.washer),
+          const SizedBox(height: 20),
+          const MachineSection(kind: MachineKind.dryer),
         ],
       ),
     );
   }
-}
-
-/// Chooses a machine brand, or none.
-class _MachinePicker extends StatelessWidget {
-  const _MachinePicker({
-    required this.label,
-    required this.brands,
-    required this.selected,
-    required this.onChanged,
-  });
-
-  final String label;
-  final List<String> brands;
-  final String? selected;
-  final ValueChanged<String?> onChanged;
-
-  @override
-  Widget build(BuildContext context) => DropdownButtonFormField<String?>(
-    initialValue: selected,
-    isExpanded: true,
-    decoration: InputDecoration(labelText: label),
-    items: [
-      // "Not set" is a real choice, not an empty state. Someone without a
-      // dryer should be able to say so rather than leave a field looking
-      // unfinished.
-      const DropdownMenuItem(value: null, child: Text('Not set')),
-      for (final brand in brands)
-        DropdownMenuItem(value: brand, child: Text(brand)),
-    ],
-    onChanged: onChanged,
-  );
 }
 
 /// What `/health` said.

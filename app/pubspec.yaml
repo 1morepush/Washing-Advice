@@ -37,6 +37,11 @@ dependencies:
   # Small preferences: chosen machines, backend URL.
   shared_preferences: ^2.3.3
 
+  # Direct, not just transitive (already pulled in by other packages): the
+  # "check for updates" flow talks to the service worker and Cache Storage
+  # APIs itself.
+  web: ^1.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

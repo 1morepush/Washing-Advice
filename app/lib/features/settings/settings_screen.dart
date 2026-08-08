@@ -3,6 +3,7 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -12,6 +13,7 @@ import '../../data/api/ai_gateway.dart';
 import '../../widgets/app_drawer.dart';
 import '../sync/sync_section.dart';
 import 'machine_section.dart';
+import 'update_section.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -155,6 +157,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const MachineSection(kind: MachineKind.washer),
           const SizedBox(height: 20),
           const MachineSection(kind: MachineKind.dryer),
+
+          // Only where there is a service worker to clear — a native build,
+          // should one ever exist, has no stale cache to get past.
+          if (kIsWeb) ...[const SizedBox(height: 32), const UpdateSection()],
         ],
       ),
     );

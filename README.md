@@ -226,6 +226,18 @@ The part a packing app cannot do is the note underneath:
 And when the wardrobe cannot supply what the trip needs, it says so rather than
 handing over a short list that looks complete.
 
+### Know your exact machine, not just its brand
+
+Settings lets you pick from nine seeded brand archetypes — a plausible
+programme line-up for that manufacturer's machines in general, labelled
+`isVerifiedModel: false` from the start. Or type your machine's exact brand
+and model and AI builds its real programme list from its own knowledge of
+that specific appliance, once, when you set it up — not on every scan. If it
+has no reliable knowledge of that exact machine it says so rather than
+inventing programmes, the same honesty rule as everywhere else in this app.
+Either way, the result runs through the identical matcher that turns "40°C,
+gentle, low spin" into whatever your dial actually calls it.
+
 ### Sync between your own devices
 
 Optional, and off until you turn it on — the app is offline-first and stays
@@ -317,6 +329,13 @@ away is usually just that; trying again a minute later works.
 Pages origin, and `http://localhost:*` is always allowed for local
 development.
 
+A web build saved to a phone's home screen as a PWA does not reliably notice
+a new deployment on its own — Safari's background service-worker checks are
+particularly unreliable. **Settings → App updates → Check for updates**
+forces a fresh copy from inside the app: it unregisters the service worker,
+clears what the browser cached, and reloads — the same result as deleting the
+icon and re-adding it, without doing either.
+
 ### The app
 
 Flutter. It runs against seeded demo data with no backend at all:
@@ -402,9 +421,9 @@ A few decisions worth reading about:
 
 | # | Scope | Status |
 |---|---|---|
-| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 468 core tests |
-| 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts | **Done** — 178 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 216 app tests |
+| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 470 core tests |
+| 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts, machine identification | **Done** — 222 tests |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 306 app tests |
 | 4 | Care-label scanning, item editing, filter sheet, garment cutouts, grid view | **Done** |
 | 5 | Pile scanning, load grouping, machine profiles, wear and wash history | **Done** |
 | 6 | Outfit suggestions, laundry-aware packing, wardrobe insights | **Done** |
@@ -425,8 +444,11 @@ nothing has been published to an app store.
 
 Stated plainly, because the code says so too.
 
-- **Machine profiles are brand archetypes, not model-exact.** Every seeded
-  profile is flagged `isVerifiedModel: false` and is meant to be corrected.
+- **Machine profiles, seeded or AI-identified, are still not verified against
+  a manual.** A seeded brand archetype is flagged `isVerifiedModel: false`
+  from the start; an AI-identified exact model is only as good as its own
+  knowledge of that appliance. Both are meant to be corrected the first time
+  a programme does not match the dial.
 - **The Gemini provider has never run against the live API.** It is written to
   the documented interface and tested with a stubbed transport, which proves the
   code does what it was written to do and says nothing about whether the API

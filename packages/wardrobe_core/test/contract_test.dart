@@ -332,9 +332,8 @@ void main() {
             .readAsStringSync(),
       ) as Map<String, Object?>;
       final properties = schema['properties']! as Map<String, Object?>;
-      final items =
-          (properties['warnings']! as Map<String, Object?>)['items']!
-              as Map<String, Object?>;
+      final items = (properties['warnings']! as Map<String, Object?>)['items']!
+          as Map<String, Object?>;
       final listed = {
         for (final value in items['enum']! as List<Object?>) value! as String,
       };

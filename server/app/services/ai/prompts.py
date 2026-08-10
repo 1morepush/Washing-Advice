@@ -67,7 +67,21 @@ _COLORS = {
 
 _COMPOSITION = {
     "type": "array",
-    "description": "Fibre percentages, only if actually legible.",
+    # Shared by the garment schema and the care-tag schema, so the synonym
+    # guidance below reaches both. The fibre list is a closed enum, and a
+    # label printing a trade name the enum has no member for — American
+    # labels say RAYON and SPANDEX, never viscose and elastane — leaves the
+    # model with nowhere to put a fibre it read perfectly well. Dropping 5%
+    # elastane is not cosmetic: its escalation threshold is what rules out a
+    # hot dryer.
+    "description": (
+        "Fibre percentages, only if actually legible. Map trade and American "
+        "names onto the enum: rayon is viscose, spandex and Lycra are "
+        "elastane, polyamide is nylon, Tencel is lyocell, merino and "
+        "lambswool are wool. Use `other` only when the fibre genuinely is not "
+        "in the list — an `other` fibre matches no care rule at all, so a "
+        "mis-mapped one is worse than a correct one."
+    ),
     "items": {
         "type": "object",
         "properties": {
@@ -207,6 +221,34 @@ Count every symbol that is visibly present but which you could not decode in
 `unreadableSymbolCount`. The app uses it to tell the user that part of their
 label could not be read, which is far better than silently returning a partial
 answer as though it were complete.
+
+A THIRD RULE, ABOUT WORDS RATHER THAN SYMBOLS: labels print handling
+instructions in prose beside the symbols, and those sentences carry
+requirements the symbols cannot express. Report each one you can actually read
+in `warnings`:
+
+  washInsideOut        "wash inside out", "turn garment inside out to wash"
+  washSeparately       "wash separately", "wash alone before first wear"
+  washWithLikeColours  "wash with like colors", "wash with similar colours"
+  doNotSoak            "do not soak"
+  useMeshBag           "use a mesh laundry bag", "wash in a net"
+  closeFastenings      "close zips before washing", "fasten hooks"
+  removePromptly       "remove promptly", "do not leave in the machine"
+  reshapeWhileDamp     "reshape while damp", "pull back into shape damp"
+  doNotUseSoftener     "do not use fabric softener"
+  ironOnReverse        "iron on reverse", "iron on the wrong side"
+  doNotIronDecoration  "do not iron decoration", "do not iron the print",
+                       "avoid ironing the design or transfer"
+
+Note that `doNotIronDecoration` is not the same as forbidding ironing. A shirt
+whose print must not be ironed is still an ironable shirt, so report the iron
+symbol's temperature as normal and add the warning beside it.
+
+The first rule governs here too: report only what is printed. Do not add
+`washSeparately` because a garment looks like it might run, and do not add
+`doNotUseSoftener` because the fabric appears technical. An invented warning is
+an instruction the manufacturer never gave, exactly like an invented drying
+symbol.
 
 Transcribe fibre percentages only if they are printed and legible.
 """

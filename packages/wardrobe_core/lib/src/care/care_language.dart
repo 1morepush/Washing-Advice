@@ -247,8 +247,7 @@ final class CareLanguage {
           CareSentence(
             topic: CareTopic.handling,
             text: warning.label,
-            isProhibition: warning == CareWarning.doNotSoak ||
-                warning == CareWarning.doNotUseSoftener,
+            isProhibition: warning.isProhibition,
           ),
       ];
 }

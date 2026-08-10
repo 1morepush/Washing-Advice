@@ -35,7 +35,7 @@ void main() {
   tearDown(() => container.dispose());
 
   CutoutController controller() =>
-      container.read(cutoutControllerProvider.notifier);
+      container.read(cutoutControllerProvider(id).notifier);
 
   /// An item with a photograph and no cutout — what everything scanned before
   /// the feature existed looks like.
@@ -67,7 +67,12 @@ void main() {
       expect(CutoutController.isAvailableFor(_item()), isFalse);
     });
 
-    test('an item that already has one is not offered it again', () async {
+    test('an item that already has one is offered it again', () async {
+      // It used to be withheld, on the reasoning that the button should not
+      // offer work already done. But the app has no other way to say "that
+      // came out wrong", and a bad cutout is worse than none: `displayPhoto`
+      // prefers whichever photo has one and `displayUri` returns it, so a mask
+      // that ate a sleeve outranks the untouched original everywhere.
       final item = (await withPhoto());
       final done = item.copyWith(
         photos: item.photos.withCutout(
@@ -76,19 +81,19 @@ void main() {
         ),
       );
 
-      expect(CutoutController.isAvailableFor(done), isFalse);
+      expect(CutoutController.isAvailableFor(done), isTrue);
     });
   });
 
   group('generating', () {
     test('attaches the cutout and keeps the original photo', () async {
       final before = await withPhoto();
-      await controller().generate(id);
+      await controller().generate();
 
       final after = (await repository.byId(id))!;
       final photo = after.photos.displayPhoto!;
 
-      expect(container.read(cutoutControllerProvider), CutoutStatus.done);
+      expect(container.read(cutoutControllerProvider(id)), CutoutStatus.done);
       expect(photo.hasCutout, isTrue);
       // The source survives, so a better remover can redo this later.
       expect(photo.uri, before.photos.displayPhoto!.uri);
@@ -99,7 +104,7 @@ void main() {
       're-reads the stored photo rather than asking for a new one',
       () async {
         await withPhoto();
-        await controller().generate(id);
+        await controller().generate();
 
         // Making someone re-photograph a garment to fix a background is asking
         // them to do the app's work.
@@ -112,9 +117,9 @@ void main() {
       gateway.result = null;
       await withPhoto();
 
-      await controller().generate(id);
+      await controller().generate();
 
-      expect(container.read(cutoutControllerProvider), CutoutStatus.failed);
+      expect(container.read(cutoutControllerProvider(id)), CutoutStatus.failed);
       expect(
         (await repository.byId(id))!.photos.displayPhoto!.hasCutout,
         isFalse,
@@ -136,13 +141,21 @@ void main() {
         ),
       );
 
-      await controller().generate(id);
-      expect(container.read(cutoutControllerProvider), CutoutStatus.failed);
+      await controller().generate();
+      expect(container.read(cutoutControllerProvider(id)), CutoutStatus.failed);
     });
 
     test('an item that no longer exists fails quietly', () async {
-      await controller().generate(const ItemId('deleted'));
-      expect(container.read(cutoutControllerProvider), CutoutStatus.failed);
+      const deleted = ItemId('deleted');
+
+      await container
+          .read(cutoutControllerProvider(deleted).notifier)
+          .generate();
+
+      expect(
+        container.read(cutoutControllerProvider(deleted)),
+        CutoutStatus.failed,
+      );
     });
   });
 }

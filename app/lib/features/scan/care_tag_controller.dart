@@ -7,12 +7,15 @@
 /// the app can hold short of the user typing it in themselves.
 library;
 
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../../data/api/ai_gateway.dart';
 import '../../data/api/scan_dto.dart';
+import '../../data/images/image_store.dart';
 
 sealed class CareTagState {
   const CareTagState();
@@ -33,10 +36,18 @@ final class CareTagReviewing extends CareTagState {
     required this.updated,
     required this.resolution,
     required this.previous,
+    this.image,
   });
 
   /// What the label scan returned, including how much of it was legible.
   final CareTagScanResult reading;
+
+  /// The photograph the reading came from, kept so it can be filed against the
+  /// item on save.
+  ///
+  /// Null only when a reading arrived without one, which is how the tests
+  /// drive this controller directly.
+  final ScanImage? image;
 
   /// The item as it would be saved, with the label attached and care
   /// re-resolved from it.
@@ -124,11 +135,15 @@ class CareTagController extends StateNotifier<CareTagState> {
       return;
     }
 
-    state = _review(item, reading);
+    state = _review(item, reading, image);
   }
 
   /// Attaches the label to the item and re-resolves its care.
-  CareTagReviewing _review(WardrobeItem item, CareTagScanResult reading) {
+  CareTagReviewing _review(
+    WardrobeItem item,
+    CareTagScanResult reading, [
+    ScanImage? image,
+  ]) {
     // The composition printed on the label outranks whatever was guessed from
     // a photograph of the garment, so it is taken too when the label carries
     // one. `Confident.resolve` picks by provenance first, which is precisely
@@ -157,13 +172,66 @@ class CareTagController extends StateNotifier<CareTagState> {
       updated: withLabel.copyWith(care: resolution.profile),
       resolution: resolution,
       previous: item.care.instructions,
+      image: image,
     );
+  }
+
+  /// Files the label photograph against the item.
+  ///
+  /// `PhotoSet.careTagPhoto` exists so instructions can be re-read without
+  /// digging the garment back out of the wardrobe, and nothing had ever put a
+  /// photo there — the accessor and the role were both dead.
+  ///
+  /// Failures are swallowed, on the same reasoning the garment scan already
+  /// documents: a label picture that will not store is a convenience lost,
+  /// and refusing to save over it would throw away a care reading the user has
+  /// just reviewed and approved. No cutout is requested — a label is text, not
+  /// a garment to lift off its background.
+  Future<WardrobeItem> _withLabelPhoto(
+    WardrobeItem item,
+    ScanImage image,
+  ) async {
+    try {
+      final uri = await _ref
+          .read(imageStoreProvider)
+          .save(
+            Uint8List.fromList(image.bytes),
+            name: imageName(item.id, PhotoRole.careTag),
+          );
+
+      return item.copyWith(
+        photos: item.photos.add(
+          ItemPhoto(
+            uri: uri,
+            role: PhotoRole.careTag,
+            capturedAt: DateTime.now(),
+            width: image.width,
+            height: image.height,
+          ),
+        ),
+      );
+    } on Exception {
+      return item;
+    }
   }
 
   Future<void> save() async {
     if (state case final CareTagReviewing reviewing) {
-      await _ref.read(wardrobeRepositoryProvider).save(reviewing.updated);
-      state = CareTagSaved(reviewing.updated);
+      final item = reviewing.image == null
+          ? reviewing.updated
+          : await _withLabelPhoto(reviewing.updated, reviewing.image!);
+
+      await _ref.read(wardrobeRepositoryProvider).save(item);
+
+      // The detail screen reads the item through a cached future that nothing
+      // re-queries on its own. Without this the user scans a label, taps
+      // Done, and lands back on the garment exactly as it was before —
+      // yesterday's care instructions, "Unknown composition" where the label
+      // just supplied one, and a banner asking them to scan the label they
+      // are holding. The write was fine; only the screen was old.
+      _ref.invalidate(itemProvider(itemId));
+
+      state = CareTagSaved(item);
     }
   }
 

@@ -48,6 +48,29 @@ String ironSummary(IronCare iron) {
       : '${iron.temperature.label}, no steam';
 }
 
+/// What the label said about professional cleaning, or null when it said
+/// nothing.
+///
+/// Delegates to [CareLanguage] rather than phrasing this again. That renderer
+/// already distinguishes "Do not dry clean" from "Professional dry clean
+/// (hydrocarbon solvent only)", and a second wording of one fact reads to a
+/// user as a second fact — the reason everything else in this file is shared
+/// between the two care screens.
+///
+/// Null, not "allowed", when nothing was stated. A garment whose label is
+/// silent about dry cleaning has not been given permission to be dry cleaned,
+/// and printing one would invent a manufacturer's instruction — the same
+/// absent-versus-false distinction `CareConstraint` keeps at the wire.
+String? dryCleanSummary(CareInstructions care) {
+  final sentences = const CareLanguage()
+      .describe(care)
+      .where((sentence) => sentence.topic == CareTopic.professional);
+
+  return sentences.isEmpty
+      ? null
+      : sentences.map((sentence) => sentence.text).join(', ');
+}
+
 /// A user-facing name for one of the resolver's field identifiers.
 ///
 /// The identifiers in [CareResolution.fieldsOverriddenByLabel] are dotted paths
@@ -66,6 +89,7 @@ String careFieldLabel(String field) => switch (field) {
   'iron.temperature' => 'Ironing',
   'iron.steamAllowed' => 'Steam',
   'professional.doNotDryClean' => 'Dry cleaning',
+  'professional.solvent' => 'Dry-clean solvent',
   _ => field,
 };
 
@@ -97,5 +121,14 @@ String careFieldValue(CareInstructions instructions, String field) =>
         instructions.iron.steamAllowed ? 'allowed' : 'not allowed',
       'professional.doNotDryClean' =>
         instructions.professional.doNotDryClean ? 'not allowed' : 'allowed',
+      // A diff cell, so a short phrase rather than the full sentence
+      // [dryCleanSummary] renders — "Ironing: Low heat → Medium heat" beside
+      // "Dry-clean solvent: hydrocarbon only" reads as one table.
+      'professional.solvent' => switch (instructions.professional.solvent) {
+        null => 'unspecified',
+        CleaningSolvent.perchloroethylene => 'standard solvents',
+        CleaningSolvent.hydrocarbon => 'hydrocarbon only',
+        CleaningSolvent.wetClean => 'professional wet clean',
+      },
       _ => '—',
     };

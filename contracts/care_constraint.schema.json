@@ -62,7 +62,8 @@
           "removePromptly",
           "reshapeWhileDamp",
           "doNotUseSoftener",
-          "ironOnReverse"
+          "ironOnReverse",
+          "doNotIronDecoration"
         ]
       },
       "uniqueItems": true

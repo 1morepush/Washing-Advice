@@ -83,6 +83,7 @@ final class CareConstraint {
     this.ironTemperature,
     this.steamAllowed,
     this.doNotDryClean,
+    this.solvent,
     this.warnings = const {},
   });
 
@@ -107,6 +108,16 @@ final class CareConstraint {
   final IronTemperature? ironTemperature;
   final bool? steamAllowed;
   final bool? doNotDryClean;
+
+  /// The letter inside the dry-cleaning circle.
+  ///
+  /// Only a label can state this — no fibre rule infers which solvent a
+  /// cleaner should use — so in practice it arrives from a scan or not at all.
+  /// The server has always read it and the JSON contract has always carried
+  /// it; this field was missing, so it was decoded into nothing and
+  /// `ProfessionalCare.solvent` could only ever be null.
+  final CleaningSolvent? solvent;
+
   final Set<CareWarning> warnings;
 
   /// Folds this constraint into [base], keeping whichever is safer per field.
@@ -130,7 +141,7 @@ final class CareConstraint {
         steamAllowed: steamAllowed ?? base.iron.steamAllowed,
       ),
       professional: ProfessionalCare(
-        solvent: base.professional.solvent,
+        solvent: solvent ?? base.professional.solvent,
         gentleCycle: base.professional.gentleCycle,
         doNotDryClean: doNotDryClean ?? base.professional.doNotDryClean,
       ),
@@ -138,7 +149,8 @@ final class CareConstraint {
     );
     // Merging rather than returning `constrained` directly guarantees the rule
     // can only tighten: if the base was already stricter on some field, the
-    // base value survives.
+    // base value survives. That is what keeps the solvent above safe to fold
+    // in here — a rule can fill an unstated one, never contradict a stated one.
     return base.restrictiveMerge(constrained);
   }
 
@@ -169,7 +181,7 @@ final class CareConstraint {
           steamAllowed: steamAllowed ?? base.iron.steamAllowed,
         ),
         professional: ProfessionalCare(
-          solvent: base.professional.solvent,
+          solvent: solvent ?? base.professional.solvent,
           gentleCycle: base.professional.gentleCycle,
           doNotDryClean: doNotDryClean ?? base.professional.doNotDryClean,
         ),
@@ -193,6 +205,7 @@ final class CareConstraint {
         if (ironTemperature != null) 'iron.temperature',
         if (steamAllowed != null) 'iron.steamAllowed',
         if (doNotDryClean != null) 'professional.doNotDryClean',
+        if (solvent != null) 'professional.solvent',
       };
 
   bool get statesNothing => statedFields.isEmpty && warnings.isEmpty;
@@ -210,6 +223,7 @@ final class CareConstraint {
         if (ironTemperature != null) 'ironTemperature': ironTemperature!.name,
         if (steamAllowed != null) 'steamAllowed': steamAllowed,
         if (doNotDryClean != null) 'doNotDryClean': doNotDryClean,
+        if (solvent != null) 'solvent': solvent!.name,
         if (warnings.isNotEmpty)
           'warnings': [for (final warning in warnings) warning.name],
       };
@@ -250,6 +264,8 @@ final class CareConstraint {
       ),
       steamAllowed: read('steamAllowed', (r) => r as bool),
       doNotDryClean: read('doNotDryClean', (r) => r as bool),
+      solvent:
+          read('solvent', (r) => CleaningSolvent.values.byName(r as String)),
       warnings: {
         for (final raw in (json['warnings'] as List<Object?>?) ?? const [])
           CareWarning.values.byName(raw! as String),

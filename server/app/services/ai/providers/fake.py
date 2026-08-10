@@ -124,7 +124,18 @@ class FakeVisionProvider:
                 tumble_dry_allowed=None if unreadable else True,
                 tumble_dry_heat=None if unreadable else TumbleDryHeat.LOW,
                 iron_temperature=IronTemperature.LOW,
-                warnings=[CareWarning.WASH_INSIDE_OUT],
+                # A printed tee: ironable fabric, un-ironable graphic. Both
+                # warnings are here so the whole pipeline — schema, wire,
+                # Dart enum, care language — carries a prohibition that is
+                # narrower than "do not iron" without a test having to ask.
+                warnings=[
+                    CareWarning.WASH_INSIDE_OUT,
+                    CareWarning.DO_NOT_IRON_DECORATION,
+                ],
+                # Only ever stated by a label; no fibre rule infers it. Until
+                # the Dart constraint carried a `solvent` field this was
+                # decoded into nothing on arrival.
+                do_not_dry_clean=True,
             ),
             confidence=0.7 if unreadable else 0.92,
             composition=Confident[FabricComposition](

@@ -178,6 +178,25 @@ class _Review extends StatelessWidget {
                       _Line(label: 'Dry', value: drySummary(care.dry)),
                       _Line(label: 'Iron', value: ironSummary(care.iron)),
                       _Line(label: 'Bleach', value: care.bleach.label),
+                      // The diff above would announce "Dry cleaning: allowed →
+                      // not allowed" and then this summary never mentioned it
+                      // again, which is how a label whose only news was "do
+                      // not dry clean" appeared to change nothing.
+                      if (dryCleanSummary(care) case final String line)
+                        _Line(
+                          label: careFieldLabel('professional.doNotDryClean'),
+                          value: line,
+                        ),
+                      // Warnings are the label's printed words rather than its
+                      // symbols — "wash inside out", "with like colours". The
+                      // server only started reporting them reliably once the
+                      // prompt asked for them, so before that this row would
+                      // always have been empty.
+                      if (care.warnings.isNotEmpty)
+                        _Line(
+                          label: 'Take care',
+                          value: care.warnings.map((w) => w.label).join(', '),
+                        ),
                     ],
                   ),
                 ),
@@ -386,7 +405,10 @@ class _Line extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 72,
+            // Wide enough for "Dry cleaning" and "Take care". At 72 this fit
+            // the four short labels it was written for and wrapped the two
+            // added later onto a second line.
+            width: 92,
             child: Text(
               label,
               style: theme.textTheme.bodySmall?.copyWith(

@@ -99,6 +99,11 @@ class CareWarning(StrEnum):
     RESHAPE_WHILE_DAMP = "reshapeWhileDamp"
     DO_NOT_USE_SOFTENER = "doNotUseSoftener"
     IRON_ON_REVERSE = "ironOnReverse"
+    # "Do not iron decoration", printed on anything with a transfer or a
+    # print. Distinct from IRON_ON_REVERSE, which says how to iron the whole
+    # garment, and from an absent ironTemperature, which would forbid ironing
+    # the fabric as well. The garment is ironable; the graphic is not.
+    DO_NOT_IRON_DECORATION = "doNotIronDecoration"
 
 
 class CareConstraint(WireModel):

@@ -21,19 +21,27 @@ import '../../data/images/image_store.dart';
 enum CutoutStatus { idle, working, failed, done }
 
 class CutoutController extends StateNotifier<CutoutStatus> {
-  CutoutController(this._ref) : super(CutoutStatus.idle);
+  CutoutController(this._ref, this.itemId) : super(CutoutStatus.idle);
 
   final Ref _ref;
 
+  /// Which garment this controller belongs to.
+  ///
+  /// The provider used to be a single app-wide notifier, so one failed cutout
+  /// left every *other* garment's screen showing "could not be told apart from
+  /// its background" in error red until the app was restarted.
+  final ItemId itemId;
+
   /// Whether [item] could have a cutout made for it.
   ///
-  /// False when there is no photograph to work from, and false when one
-  /// already exists — the button should not offer to do something that is
-  /// already done.
-  static bool isAvailableFor(WardrobeItem item) {
-    final photo = item.photos.displayPhoto;
-    return photo != null && !photo.hasCutout;
-  }
+  /// Only requires a photograph to work from. It used to also require that no
+  /// cutout existed yet — "the button should not offer to do something that is
+  /// already done" — but that made a *bad* cutout permanent, and a bad cutout
+  /// is worse than none: `PhotoSet.displayPhoto` prefers a photo that has one
+  /// and `ItemPhoto.displayUri` returns it, so a mask that ate half the
+  /// garment outranks the good original everywhere in the app.
+  static bool isAvailableFor(WardrobeItem item) =>
+      item.photos.displayPhoto != null;
 
   /// Every failure lands on [CutoutStatus.failed], including the ones nothing
   /// here predicts.
@@ -46,14 +54,15 @@ class CutoutController extends StateNotifier<CutoutStatus> {
   /// spinner: the screen would have spun forever with nothing left to press.
   /// Every other controller in the app ends its risky work on a failure state
   /// for the same reason.
-  Future<void> generate(ItemId id) async {
+  Future<void> generate() async {
     state = CutoutStatus.working;
 
     try {
       final repository = _ref.read(wardrobeRepositoryProvider);
-      final item = await repository.byId(id);
+      final item = await repository.byId(itemId);
       final photo = item?.photos.displayPhoto;
 
+      if (!mounted) return;
       if (item == null || photo == null) {
         state = CutoutStatus.failed;
         return;
@@ -61,6 +70,7 @@ class CutoutController extends StateNotifier<CutoutStatus> {
 
       final store = _ref.read(imageStoreProvider);
       final source = await store.read(photo.uri);
+      if (!mounted) return;
       if (source == null || source.isEmpty) {
         // The row survived but the file did not — a restored backup, or
         // storage cleared. Nothing to re-cut, and no amount of retrying will
@@ -74,11 +84,15 @@ class CutoutController extends StateNotifier<CutoutStatus> {
           .read(aiGatewayProvider)
           .cutout(ScanImage(bytes: source));
 
+      if (!mounted) return;
       if (cutout == null) {
         state = CutoutStatus.failed;
         return;
       }
 
+      // The name is a pure function of the item and role, and both stores key
+      // by name, so re-cutting overwrites the previous mask rather than
+      // leaking a file per attempt.
       final cutoutUri = await store.save(
         cutout,
         name: imageName(item.id, photo.role, cutout: true),
@@ -91,9 +105,10 @@ class CutoutController extends StateNotifier<CutoutStatus> {
         ),
       );
 
+      if (!mounted) return;
       // The detail screen reads through a cached future; without this the user
       // watches the button succeed and the picture not change.
-      _ref.invalidate(itemProvider(id));
+      _ref.invalidate(itemProvider(itemId));
       state = CutoutStatus.done;
     } on Exception {
       state = CutoutStatus.failed;
@@ -103,5 +118,13 @@ class CutoutController extends StateNotifier<CutoutStatus> {
   void reset() => state = CutoutStatus.idle;
 }
 
+/// Keyed by item, so one garment's failure is not another garment's error.
+///
+/// Not `autoDispose`: a status is one enum value, and disposing the notifier
+/// while a cutout is in flight would mean writing to a disposed notifier the
+/// moment the request came back. Keeping it costs nothing and removes a whole
+/// class of race.
 final cutoutControllerProvider =
-    StateNotifierProvider<CutoutController, CutoutStatus>(CutoutController.new);
+    StateNotifierProvider.family<CutoutController, CutoutStatus, ItemId>(
+      CutoutController.new,
+    );

@@ -177,7 +177,11 @@ class _Details extends StatelessWidget {
             padding: const EdgeInsets.only(top: 16),
             child: Center(child: ItemThumbnail(item: item, size: 160)),
           ),
-        if (CutoutController.isAvailableFor(item)) _CutoutPrompt(id: item.id),
+        if (CutoutController.isAvailableFor(item))
+          _CutoutPrompt(
+            id: item.id,
+            hasCutout: item.photos.displayPhoto?.hasCutout ?? false,
+          ),
         if (item.needsCareTagScan) _ScanPrompt(id: item.id),
         _Section(
           title: 'What it is',
@@ -217,6 +221,16 @@ class _Details extends StatelessWidget {
             _Fact(label: 'Dry', value: drySummary(care.dry)),
             _Fact(label: 'Iron', value: ironSummary(care.iron)),
             _Fact(label: 'Bleach', value: care.bleach.label),
+            // Shown only when the label actually said something. A garment
+            // whose label is silent about dry cleaning would otherwise grow a
+            // row asserting a permission nobody gave. The label comes from
+            // `careFieldLabel` so this row and the review screen's diff cannot
+            // drift into two words for one thing.
+            if (dryCleanSummary(care) case final String line)
+              _Fact(
+                label: careFieldLabel('professional.doNotDryClean'),
+                value: line,
+              ),
             if (care.warnings.isNotEmpty)
               _Fact(
                 label: 'Take care',
@@ -363,13 +377,19 @@ class _ScanPrompt extends StatelessWidget {
 /// cutout. Items scanned since the feature arrived already have one and never
 /// see this.
 class _CutoutPrompt extends ConsumerWidget {
-  const _CutoutPrompt({required this.id});
+  const _CutoutPrompt({required this.id, required this.hasCutout});
 
   final ItemId id;
 
+  /// Whether there is already a mask, which changes this from an offer into a
+  /// second chance. Both are worth having: a cutout the remover got wrong
+  /// outranks the untouched photograph everywhere, so "it looks wrong" needs
+  /// somewhere to go.
+  final bool hasCutout;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final status = ref.watch(cutoutControllerProvider);
+    final status = ref.watch(cutoutControllerProvider(id));
     final theme = Theme.of(context);
 
     return Padding(
@@ -382,6 +402,9 @@ class _CutoutPrompt extends ConsumerWidget {
                 CutoutStatus.working => 'Removing the background…',
                 CutoutStatus.failed =>
                   'The garment could not be told apart from its background.',
+                _ when hasCutout =>
+                  "If the background removal took part of the garment with "
+                      "it, run it again.",
                 _ => 'Remove the background to make this easier to spot.',
               },
               style: theme.textTheme.bodySmall?.copyWith(
@@ -401,10 +424,12 @@ class _CutoutPrompt extends ConsumerWidget {
           else
             TextButton(
               onPressed: () =>
-                  ref.read(cutoutControllerProvider.notifier).generate(id),
-              child: Text(
-                status == CutoutStatus.failed ? 'Try again' : 'Clean up',
-              ),
+                  ref.read(cutoutControllerProvider(id).notifier).generate(),
+              child: Text(switch (status) {
+                CutoutStatus.failed => 'Try again',
+                _ when hasCutout => 'Redo',
+                _ => 'Clean up',
+              }),
             ),
         ],
       ),

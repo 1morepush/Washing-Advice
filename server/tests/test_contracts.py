@@ -143,3 +143,51 @@ class TestUnstatedFieldsAreAbsent:
             )
 
         assert found_incomplete, "no seed produced an incomplete reading to check"
+
+
+class TestTheWarningVocabularyIsOneVocabulary:
+    """`CareWarning` exists three times — here, in the JSON Schema, and in Dart.
+
+    The wire carries the identifier and Dart's `values.byName` matches on it,
+    so a member spelled differently in one place is not a mismatch anyone sees
+    reported: it is a decode failure on a real phone reading a real label.
+    This repo has shipped that bug before, in a different enum.
+
+    The Dart half of this pair lives in `packages/wardrobe_core/test/`, which
+    parses these same identifiers out of the same file.
+    """
+
+    def _schema_warnings(self) -> list[str]:
+        schema = json.loads((CONTRACTS / "care_constraint.schema.json").read_text())
+        return list(schema["properties"]["warnings"]["items"]["enum"])
+
+    def test_the_contract_lists_exactly_the_enum(self) -> None:
+        from app.schemas.care import CareWarning
+
+        assert sorted(self._schema_warnings()) == sorted(w.value for w in CareWarning)
+
+    def test_neither_side_has_a_duplicate_hiding_a_missing_member(self) -> None:
+        # Sorted-set equality above would pass if one side listed a member
+        # twice and omitted another. Length is what rules that out.
+        from app.schemas.care import CareWarning
+
+        listed = self._schema_warnings()
+        assert len(listed) == len(set(listed))
+        assert len(listed) == len(CareWarning)
+
+
+class TestThePromptAsksForEveryWarning:
+    """A warning nothing asks for is a warning no label ever reports.
+
+    `CareWarning` had ten members and `CARE_TAG_PROMPT` mentioned none of
+    them, so a label printing "wash inside out, with like colors" in plain
+    English produced an empty `warnings` list — the field existed at every
+    layer and was never populated by anything but a fixture.
+    """
+
+    def test_every_member_appears_in_the_prompt(self) -> None:
+        from app.schemas.care import CareWarning
+        from app.services.ai.prompts import CARE_TAG_PROMPT
+
+        missing = [w.value for w in CareWarning if w.value not in CARE_TAG_PROMPT]
+        assert not missing, f"the care-tag prompt never asks for: {missing}"

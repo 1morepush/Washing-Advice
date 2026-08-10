@@ -321,5 +321,24 @@ void main() {
           'solvent', {for (final v in CleaningSolvent.values) v.name});
       checkProperty('warnings', {for (final v in CareWarning.values) v.name});
     });
+
+    test('and the schema knows every care warning Dart has', () {
+      // The check above only walks the schema, so a member added to Dart and
+      // forgotten in the contract passes it. That is the likelier direction:
+      // the enum is where a new warning gets written first, and a warning the
+      // contract has never heard of is one the server can never send.
+      final schema = jsonDecode(
+        File('${findContracts().path}/care_constraint.schema.json')
+            .readAsStringSync(),
+      ) as Map<String, Object?>;
+      final properties = schema['properties']! as Map<String, Object?>;
+      final items = (properties['warnings']! as Map<String, Object?>)['items']!
+          as Map<String, Object?>;
+      final listed = {
+        for (final value in items['enum']! as List<Object?>) value! as String,
+      };
+
+      expect(listed, {for (final v in CareWarning.values) v.name});
+    });
   });
 }

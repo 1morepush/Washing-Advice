@@ -203,7 +203,7 @@ void _tests() {
             confidence: 0.95,
             source: Provenance.tagScan,
           ),
-          updatedAt: DateTime.utc(2026, 8, 1),
+          updatedAt: _later(1),
         ),
       );
       await a.engine.sync();
@@ -216,7 +216,7 @@ void _tests() {
             confidence: 0.5,
             source: Provenance.aiInference,
           ),
-          updatedAt: DateTime.utc(2026, 8, 9),
+          updatedAt: _later(2),
         ),
       );
       await b.engine.sync();
@@ -285,6 +285,24 @@ ItemWorn _worn(String id, DateTime occurredAt) => ItemWorn(
   recordedAt: DateTime.now(),
 );
 
+/// When this run started, and the base for every timestamp in it.
+///
+/// Not a fixed date. A device pushes the items whose `updatedAt` is at or
+/// after its own `lastPushedAt` mark, and that mark is stamped from the real
+/// clock — so an `updatedAt` hard-coded in the past is silently never pushed.
+/// The provenance test below was written with dates a few days ahead, passed
+/// while they were still in the future, and began failing on 9 August 2026
+/// when the wall clock caught up: neither device pushed its change, so each
+/// kept its own and the weaker one "won" on the device that made it.
+///
+/// A calendar is not a fixture. Everything here is relative to this instant
+/// instead, which keeps the ordering the tests actually care about.
+final _startedAt = DateTime.now().toUtc();
+
+/// [minutes] after the run started — far enough ahead of any cursor stamped
+/// during it that a change is always eligible to be pushed.
+DateTime _later(int minutes) => _startedAt.add(Duration(minutes: minutes));
+
 WardrobeItem _item({required String id, required String name}) => WardrobeItem(
   id: ItemId(id),
   name: name,
@@ -304,8 +322,8 @@ WardrobeItem _item({required String id, required String name}) => WardrobeItem(
     source: Provenance.aiInference,
   ),
   care: const CareProfile.unknown(),
-  addedAt: DateTime.utc(2026, 1, 1),
-  updatedAt: DateTime.utc(2026, 8, 1),
+  addedAt: _startedAt.subtract(const Duration(days: 200)),
+  updatedAt: _startedAt,
 );
 
 /// A distinct account per test, so one test's wardrobe cannot leak into

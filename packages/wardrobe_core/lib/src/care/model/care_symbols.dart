@@ -417,19 +417,41 @@ final class ProfessionalCare {
 }
 
 /// Extra handling instructions that labels print as words rather than symbols.
+///
+/// Every member must exist under the same identifier in the server's
+/// `CareWarning` and in `contracts/care_constraint.schema.json`: the wire
+/// carries the identifier and `values.byName` matches on it, so a member that
+/// differs by a letter is a decode failure rather than a mismatch anyone sees.
 enum CareWarning {
   washInsideOut('Wash inside out'),
   washSeparately('Wash separately'),
   washWithLikeColours('Wash with like colours'),
-  doNotSoak('Do not soak'),
+  doNotSoak('Do not soak', isProhibition: true),
   useMeshBag('Use a mesh laundry bag'),
   closeFastenings('Close zips and fastenings'),
   removePromptly('Remove promptly to avoid creasing'),
   reshapeWhileDamp('Reshape while damp'),
-  doNotUseSoftener('Do not use fabric softener'),
-  ironOnReverse('Iron on reverse');
+  doNotUseSoftener('Do not use fabric softener', isProhibition: true),
+  ironOnReverse('Iron on reverse'),
 
-  const CareWarning(this.label);
+  /// The printed graphic must not be ironed, though the garment may be.
+  ///
+  /// Not [ironOnReverse], which says how to iron the whole garment, and not an
+  /// absent iron temperature, which would forbid ironing the fabric too.
+  doNotIronDecoration(
+    'Do not iron the print or decoration',
+    isProhibition: true,
+  );
+
+  const CareWarning(this.label, {this.isProhibition = false});
 
   final String label;
+
+  /// Whether this forbids something, so the UI can mark it clearly.
+  ///
+  /// Declared per member rather than tested for by name at the call site. The
+  /// renderer used to hard-code two of them, so a third prohibition added
+  /// later rendered as a neutral suggestion — and "do not" advice that does
+  /// not look like a prohibition is the kind that gets skimmed past.
+  final bool isProhibition;
 }

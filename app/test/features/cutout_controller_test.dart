@@ -60,9 +60,9 @@ void main() {
     final container = build();
     final id = await photographedItem();
 
-    await container.read(cutoutControllerProvider.notifier).generate(id);
+    await container.read(cutoutControllerProvider(id).notifier).generate();
 
-    expect(container.read(cutoutControllerProvider), CutoutStatus.done);
+    expect(container.read(cutoutControllerProvider(id)), CutoutStatus.done);
     expect((await repository.byId(id))!.photos.displayPhoto!.hasCutout, isTrue);
   });
 
@@ -72,9 +72,9 @@ void main() {
       final container = build(gateway: _RefusingGateway());
       final id = await photographedItem();
 
-      await container.read(cutoutControllerProvider.notifier).generate(id);
+      await container.read(cutoutControllerProvider(id).notifier).generate();
 
-      expect(container.read(cutoutControllerProvider), CutoutStatus.failed);
+      expect(container.read(cutoutControllerProvider(id)), CutoutStatus.failed);
     },
   );
 
@@ -85,9 +85,46 @@ void main() {
     final container = build(store: _FullImageStore(images));
     final id = await photographedItem();
 
-    await container.read(cutoutControllerProvider.notifier).generate(id);
+    await container.read(cutoutControllerProvider(id).notifier).generate();
 
-    expect(container.read(cutoutControllerProvider), CutoutStatus.failed);
+    expect(container.read(cutoutControllerProvider(id)), CutoutStatus.failed);
+  });
+
+  test('one garment failing leaves every other garment alone', () async {
+    // The status used to live in a single app-wide notifier, so a cutout that
+    // failed on one item painted "could not be told apart from its
+    // background" in error red across every item opened afterwards, for the
+    // rest of the session.
+    final container = build(gateway: _RefusingGateway());
+    final failing = await photographedItem();
+    final untouched = confidentItem(id: 'other', name: 'Another garment');
+    await repository.save(untouched);
+
+    await container.read(cutoutControllerProvider(failing).notifier).generate();
+
+    expect(
+      container.read(cutoutControllerProvider(failing)),
+      CutoutStatus.failed,
+    );
+    expect(
+      container.read(cutoutControllerProvider(untouched.id)),
+      CutoutStatus.idle,
+    );
+  });
+
+  test('a cutout that came out wrong can be redone', () async {
+    // `isAvailableFor` used to go false the moment a cutout existed, on the
+    // reasoning that the button should not offer work already done. But a bad
+    // mask is worse than none — `displayPhoto` prefers the photo that has one
+    // — so that made a ruined cutout permanent.
+    final container = build();
+    final id = await photographedItem();
+    await container.read(cutoutControllerProvider(id).notifier).generate();
+
+    final withCutout = (await repository.byId(id))!;
+    expect(withCutout.photos.displayPhoto!.hasCutout, isTrue);
+
+    expect(CutoutController.isAvailableFor(withCutout), isTrue);
   });
 
   test('an item whose photograph is gone is a failure, not a hang', () async {
@@ -95,9 +132,12 @@ void main() {
     final item = confidentItem(id: 'bare', name: 'No photo');
     await repository.save(item);
 
-    await container.read(cutoutControllerProvider.notifier).generate(item.id);
+    await container.read(cutoutControllerProvider(item.id).notifier).generate();
 
-    expect(container.read(cutoutControllerProvider), CutoutStatus.failed);
+    expect(
+      container.read(cutoutControllerProvider(item.id)),
+      CutoutStatus.failed,
+    );
   });
 }
 

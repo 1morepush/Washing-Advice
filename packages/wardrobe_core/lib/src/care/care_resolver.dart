@@ -177,6 +177,12 @@ final class CareResolver {
         'iron.temperature' => instructions.iron.temperature,
         'iron.steamAllowed' => instructions.iron.steamAllowed,
         'professional.doNotDryClean' => instructions.professional.doNotDryClean,
+        'professional.solvent' => instructions.professional.solvent,
+        // A path this switch does not know returns null for *both* sides, so
+        // the field compares equal and silently looks unchanged. Adding a
+        // field to `CareConstraint` without adding it here therefore fails by
+        // omission rather than loudly — which is what
+        // `care_constraint_fields_test.dart` exists to catch.
         _ => null,
       };
 

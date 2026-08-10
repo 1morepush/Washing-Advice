@@ -176,10 +176,13 @@ void main() {
       await repository.save(withPhoto);
 
       await container
-          .read(cutoutControllerProvider.notifier)
-          .generate(const ItemId('jumper'));
+          .read(cutoutControllerProvider(const ItemId('jumper')).notifier)
+          .generate();
 
-      expect(container.read(cutoutControllerProvider), CutoutStatus.failed);
+      expect(
+        container.read(cutoutControllerProvider(const ItemId('jumper'))),
+        CutoutStatus.failed,
+      );
       // The photograph is still there; only the cutout is missing.
       expect((await repository.byId(const ItemId('jumper')))!.photos.length, 1);
     });

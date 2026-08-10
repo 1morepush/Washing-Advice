@@ -1,12 +1,16 @@
 /// Scanning a care label, end to end without a camera or a server.
 library;
 
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 import 'package:washing_advice/core/providers.dart';
 import 'package:washing_advice/data/api/ai_gateway.dart';
 import 'package:washing_advice/data/capture/image_capture_source.dart';
+import 'package:washing_advice/data/images/image_store.dart';
+import 'package:washing_advice/data/images/memory_image_store.dart';
 import 'package:washing_advice/features/scan/care_tag_controller.dart';
 
 void main() {
@@ -26,6 +30,7 @@ void main() {
         wardrobeRepositoryProvider.overrideWithValue(repository),
         eventLogProvider.overrideWithValue(InMemoryEventLog()),
         aiGatewayProvider.overrideWithValue(gateway),
+        imageStoreProvider.overrideWithValue(MemoryImageStore()),
         imageCaptureProvider.overrideWithValue(
           FixedImageCaptureSource([
             const ScanImage(bytes: [1, 2, 3]),
@@ -75,6 +80,73 @@ void main() {
     final saved = (await repository.byId(itemId))!;
     expect(saved.needsCareTagScan, isFalse);
     expect(saved.careLabel, isNotNull);
+  });
+
+  test(
+    'what the detail screen will read is the scanned item, not the old one',
+    () async {
+      // Everything above asserts against the repository, and all of it passed
+      // while the app was visibly broken: the detail screen reads `itemProvider`,
+      // a cached future that no repository write pushes to. Someone scanned a
+      // label, tapped Done, and got back the garment as it was before — the old
+      // care, "Unknown composition", and a banner asking for the label they had
+      // just scanned. Reading through the provider is the only assertion that
+      // could have caught it, so this test does.
+      await container.read(itemProvider(itemId).future);
+
+      await controller().captureAndRead();
+      await controller().save();
+
+      final shown = (await container.read(itemProvider(itemId).future))!;
+      expect(shown.needsCareTagScan, isFalse);
+      expect(shown.careLabel, isNotNull);
+      expect(shown.effectiveCare.wash.maxTempC, 40);
+      expect(shown.composition.value.percentOf(Fiber.wool), 80);
+    },
+  );
+
+  test('the label photograph is kept, so it can be re-read later', () async {
+    // `PhotoSet.careTagPhoto` exists to let someone check the instructions
+    // without digging the garment back out of the wardrobe, and nothing had
+    // ever filed a photo under that role — the accessor and the role were
+    // both dead code.
+    await controller().captureAndRead();
+    await controller().save();
+
+    final saved = (await repository.byId(itemId))!;
+    final label = saved.photos.careTagPhoto;
+
+    expect(label, isNotNull);
+    expect(label!.role, PhotoRole.careTag);
+    // A label is text to re-read, not a garment to lift off its background.
+    expect(label.hasCutout, isFalse);
+  });
+
+  test('a label photo that will not store still saves the reading', () async {
+    // The reading is the thing the user reviewed and approved. Losing it
+    // because a browser is out of quota would be trading the valuable half of
+    // this flow for the convenient half.
+    container = ProviderContainer(
+      overrides: [
+        wardrobeRepositoryProvider.overrideWithValue(repository),
+        eventLogProvider.overrideWithValue(InMemoryEventLog()),
+        aiGatewayProvider.overrideWithValue(gateway),
+        imageStoreProvider.overrideWithValue(const _FullImageStore()),
+        imageCaptureProvider.overrideWithValue(
+          FixedImageCaptureSource([
+            const ScanImage(bytes: [1, 2, 3]),
+          ]),
+        ),
+      ],
+    );
+
+    await controller().captureAndRead();
+    await controller().save();
+
+    final saved = (await repository.byId(itemId))!;
+    expect(saved.careLabel, isNotNull);
+    expect(saved.needsCareTagScan, isFalse);
+    expect(saved.photos.careTagPhoto, isNull);
   });
 
   test('the label survives a later correction to the fabric', () async {
@@ -192,4 +264,26 @@ class _FakeGateway extends AiGateway {
         ),
         symbolsFound: const ['wash_40', 'tumble_low', 'iron_low'],
       );
+}
+
+/// Reads fine, refuses every write — a browser origin out of quota.
+class _FullImageStore implements ImageStore {
+  const _FullImageStore();
+
+  @override
+  Future<Uint8List?> read(String uri) async => null;
+
+  @override
+  Future<String> save(List<int> bytes, {required String name}) async =>
+      throw const _QuotaExceeded();
+
+  @override
+  Future<void> delete(String uri) async {}
+}
+
+class _QuotaExceeded implements Exception {
+  const _QuotaExceeded();
+
+  @override
+  String toString() => 'QuotaExceededError';
 }

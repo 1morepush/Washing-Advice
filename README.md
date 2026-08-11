@@ -15,6 +15,10 @@ which cycle to select on *your* machine.
 |---|---|---|---|
 | ![Outfits](app/docs/screenshots/outfits.png) | ![Saved outfits](app/docs/screenshots/outfits-saved.png) | ![Packing](app/docs/screenshots/packing.png) | ![Insights](app/docs/screenshots/insights-light.png) |
 
+| Item detail | Cutout editor | Edit an item | Settings |
+|---|---|---|---|
+| ![Item detail](app/docs/screenshots/item-detail-light.png) | ![Cutout editor](app/docs/screenshots/cutout-editor.png) | ![Edit an item](app/docs/screenshots/edit-item.png) | ![Settings](app/docs/screenshots/settings.png) |
+
 These are captures of the real app — a web build of `app/lib/main_demo.dart`,
 which is the shipping code with storage, the camera and the backend
 substituted. Not mock-ups.
@@ -80,6 +84,13 @@ it shows the full fabric composition that a grid cell has no room for.
 Anything added before the feature existed, or whose background defeated the
 remover on the day, can have a cutout made from the photograph already stored —
 without re-photographing the garment.
+
+When the remover gets it wrong, you fix it with a finger rather than arguing
+with it. **Remove** rubs out what it left behind; **Restore** paints back what
+it ate, and paints back the photograph's own pixels rather than a colour, so a
+repaired edge carries the garment's real colour. Running the remover again is
+not offered once a mask exists, because it is deterministic — the same
+photograph gives the same wrong answer, and only a finger changes it.
 
 ### Read care labels
 
@@ -471,6 +482,7 @@ Stated plainly, because the code says so too.
   the colours at the frame's border, which handles a garment on a bed or a table
   and will not handle one on a patterned rug. A learned matting model is the
   upgrade, and the remover sits behind an interface so one can be dropped in.
+  Until then the fallback is the hand editor, which is a fix rather than a cure.
 - **The demo cutouts are of drawn shapes, not photographs.** There are no
   garments in a build container. The *cutouts* are genuine output from the
   shipping remover; the things it was run on are illustrations.

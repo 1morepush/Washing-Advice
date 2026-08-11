@@ -98,6 +98,24 @@ for (const theme of ['light', 'dark']) {
   await shot(page, `item-detail-${theme}`);
 
   if (theme === 'light') {
+    // The cutout editor, with a stroke actually drawn on it. An empty editor
+    // would show the chrome and none of the point, and the drag is also the
+    // only check that CanvasKit composites the mask the way the pixel tests
+    // say it does.
+    await page.goto(`${BASE}/#/item/demo-jumper/mask`, { waitUntil: 'load' });
+    await ready(page);
+    const { width, height } = VIEWPORT;
+    const mid = { x: width / 2, y: height * 0.42 };
+    await page.mouse.move(mid.x - 70, mid.y);
+    await page.mouse.down();
+    for (let dx = -70; dx <= 70; dx += 10) {
+      await page.mouse.move(mid.x + dx, mid.y + Math.sin(dx / 20) * 12);
+      await page.waitForTimeout(16);
+    }
+    await page.mouse.up();
+    await page.waitForTimeout(800);
+    await shot(page, 'cutout-editor');
+
     await page.goto(`${BASE}/#/scan`, { waitUntil: 'load' });
     await ready(page);
     await shot(page, 'scan-capture');

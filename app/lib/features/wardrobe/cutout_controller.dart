@@ -90,13 +90,14 @@ class CutoutController extends StateNotifier<CutoutStatus> {
         return;
       }
 
-      // The name is a pure function of the item and role, and both stores key
-      // by name, so re-cutting overwrites the previous mask rather than
-      // leaking a file per attempt.
+      // The name is a pure function of the photo, and both stores key by name,
+      // so re-cutting the same photograph overwrites the previous mask rather
+      // than leaking a file per attempt.
       final cutoutUri = await store.save(
         cutout,
-        name: imageName(item.id, photo.role, cutout: true),
+        name: cutoutNameFor(item.id, photo),
       );
+      await discardSupersededCutout(store, photo.cutoutUri, cutoutUri);
 
       await repository.save(
         item.copyWith(
@@ -116,6 +117,26 @@ class CutoutController extends StateNotifier<CutoutStatus> {
   }
 
   void reset() => state = CutoutStatus.idle;
+}
+
+/// Deletes a cutout the new one has replaced under a different name.
+///
+/// Cutouts written before names carried a timestamp do not collide with the
+/// ones written now, so overwriting no longer cleans up after itself. Failures
+/// are swallowed: an orphaned file is a few hundred kilobytes, and refusing to
+/// record a mask the user can see because a stale one would not delete is a
+/// much worse trade.
+Future<void> discardSupersededCutout(
+  ImageStore store,
+  String? previous,
+  String current,
+) async {
+  if (previous == null || previous == current) return;
+  try {
+    await store.delete(previous);
+  } on Exception {
+    return;
+  }
 }
 
 /// Keyed by item, so one garment's failure is not another garment's error.

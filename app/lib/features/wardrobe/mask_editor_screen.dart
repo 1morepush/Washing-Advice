@@ -18,6 +18,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../core/providers.dart';
 import '../../data/images/image_store.dart';
 import '../../widgets/status_message.dart';
+import 'cutout_controller.dart';
 import 'mask_edit.dart';
 
 /// The paint surface itself.
@@ -167,13 +168,14 @@ class _EditorState extends ConsumerState<_Editor> {
       );
 
       final store = ref.read(imageStoreProvider);
-      // The name is a pure function of the item and role and both stores key
-      // by name, so repeated edits overwrite rather than leaving a file per
-      // save — and the item's `cutoutUri` does not have to change at all.
+      // The name is a pure function of the photo and both stores key by name,
+      // so repeated edits of the same photograph overwrite rather than leaving
+      // a file per save.
       final uri = await store.save(
         bytes,
-        name: imageName(widget.item.id, widget.photo.role, cutout: true),
+        name: cutoutNameFor(widget.item.id, widget.photo),
       );
+      await discardSupersededCutout(store, widget.photo.cutoutUri, uri);
 
       await ref
           .read(wardrobeRepositoryProvider)

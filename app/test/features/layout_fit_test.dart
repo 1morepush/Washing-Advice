@@ -30,7 +30,12 @@ import 'package:washing_advice/core/settings.dart';
 import 'package:washing_advice/core/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:washing_advice/data/images/memory_image_store.dart';
+import 'dart:typed_data';
+
+import 'package:washing_advice/data/api/ai_gateway.dart';
+import 'package:washing_advice/data/capture/image_capture_source.dart';
 import 'package:washing_advice/features/insights/insights_screen.dart';
+import 'package:washing_advice/features/scan/retake_screen.dart';
 import 'package:washing_advice/features/outfits/outfits_screen.dart';
 import 'package:washing_advice/features/packing/packing_screen.dart';
 import 'package:washing_advice/features/settings/settings_screen.dart';
@@ -222,6 +227,51 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  group('taking the photograph again', () {
+    /// Driven through the real flow rather than by building the state, so the
+    /// review being tested is the one the user would see. Every field differs
+    /// and every value is long, because the row that overflows is the one with
+    /// a struck-out old value, an arrow and a new value side by side.
+    Future<void> pumpReview(
+      WidgetTester tester, {
+      TextScaler textScaler = TextScaler.noScaling,
+    }) async {
+      await repository.save(
+        confidentItem(
+          id: 'tee',
+          name: 'White cotton tee',
+        ).copyWith(brand: Confident.fromUser('A very long brand name indeed')),
+      );
+
+      await pump(
+        tester,
+        const RetakeScreen(id: ItemId('tee')),
+        overrides: [
+          imageStoreProvider.overrideWithValue(MemoryImageStore()),
+          imageCaptureProvider.overrideWithValue(const _FakeCamera()),
+          aiGatewayProvider.overrideWithValue(_DisagreeingGateway()),
+        ],
+        textScaler: textScaler,
+      );
+
+      await tester.tap(find.text('Take a photo'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the retake review fits', (tester) async {
+      await pumpReview(tester);
+
+      expect(find.text('Use this photo'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the retake review fits with larger text', (tester) async {
+      await pumpReview(tester, textScaler: enlarged);
+
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   group('one garment', () {
     /// The most fact-dense screen in the app, and the one most likely to be
     /// read on a phone held in one hand at a machine. Given a garment that
@@ -343,4 +393,52 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   });
+}
+
+/// Answers with a picture without touching a camera.
+class _FakeCamera implements ImageCaptureSource {
+  const _FakeCamera();
+
+  @override
+  Future<ScanImage?> capture() async =>
+      ScanImage(bytes: const [1, 2, 3], width: 900, height: 1200);
+
+  @override
+  Future<List<ScanImage>> pickMultiple() async => const [];
+}
+
+/// Disagrees with the stored item about everything it can, so the review has
+/// a row for each field rather than the empty state.
+class _DisagreeingGateway extends AiGateway {
+  _DisagreeingGateway() : super(baseUrl: Uri.parse('http://test.invalid/'));
+
+  @override
+  Future<GarmentScanResult> scanGarment(List<ScanImage> images) async =>
+      GarmentScanResult(
+        type: Confident(
+          ItemType.sweater,
+          confidence: 0.99,
+          source: Provenance.aiInference,
+        ),
+        colors: Confident(
+          ColorPalette([
+            ItemColor.fromHex('#3B3B3B', name: 'Deep charcoal heather'),
+          ]),
+          confidence: 0.99,
+          source: Provenance.aiInference,
+        ),
+        composition: Confident(
+          FabricComposition(const {Fiber.wool: 70, Fiber.polyester: 30}),
+          confidence: 0.99,
+          source: Provenance.aiInference,
+        ),
+        pattern: Confident(
+          Pattern.checked,
+          confidence: 0.99,
+          source: Provenance.aiInference,
+        ),
+      );
+
+  @override
+  Future<Uint8List?> cutout(ScanImage image) async => null;
 }

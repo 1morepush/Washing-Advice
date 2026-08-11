@@ -92,6 +92,13 @@ repaired edge carries the garment's real colour. Running the remover again is
 not offered once a mask exists, because it is deterministic — the same
 photograph gives the same wrong answer, and only a finger changes it.
 
+And when the photograph itself was the problem — the garment held against a
+wall its own colour, with a hand and a shadow in shot — no mask rescues it.
+**New photo** takes another and asks what the garment is a second time. The
+review shows only what the new answer *changes*, and anything you set by hand
+survives it: a corrected brand is not reverted because you retook the picture.
+The old photograph is kept, in case the second attempt is worse.
+
 ### Read care labels
 
 Scan the tag and the app reads the ISO 3758 symbols. The review screen shows

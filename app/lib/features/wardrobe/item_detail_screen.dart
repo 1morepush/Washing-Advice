@@ -451,6 +451,14 @@ class _CutoutPrompt extends ConsumerWidget {
                   onPressed: () => context.go('/item/${id.value}/mask'),
                   child: Text(hasCutout ? 'Tidy by hand' : 'Mark out by hand'),
                 ),
+                // The last resort, and sometimes the only one that works: no
+                // mask rescues a garment photographed against a wall its own
+                // colour, with a hand and a shadow in shot. A different
+                // photograph is the only thing that changes the answer.
+                TextButton(
+                  onPressed: () => context.go('/item/${id.value}/retake'),
+                  child: const Text('New photo'),
+                ),
               ],
             ],
           ),

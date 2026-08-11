@@ -13,6 +13,7 @@ import '../../data/api/ai_gateway.dart';
 import '../../widgets/app_drawer.dart';
 import '../sync/sync_section.dart';
 import 'machine_section.dart';
+import 'patch_notes.dart';
 import 'update_section.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -161,6 +162,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           // Only where there is a service worker to clear — a native build,
           // should one ever exist, has no stale cache to get past.
           if (kIsWeb) ...[const SizedBox(height: 32), const UpdateSection()],
+
+          // Directly under the update button, and not behind the same
+          // `kIsWeb`: the notes are how anyone tells which version they have,
+          // which is worth having whether or not there is a cache to clear.
+          const SizedBox(height: 32),
+          const PatchNotes(),
         ],
       ),
     );

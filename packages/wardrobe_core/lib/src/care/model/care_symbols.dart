@@ -46,12 +46,37 @@ enum Agitation {
   Agitation gentler(Agitation other) => index >= other.index ? this : other;
 }
 
+/// The word a label prints instead of a number.
+///
+/// American labels say "machine wash warm"; European ones print a number in
+/// the tub. Both mean something, and only the number can drive a machine — but
+/// showing a user "up to 40°C" when their label says "warm" makes the app look
+/// like it read a different garment. So the word is carried alongside the
+/// number rather than converted away.
+///
+/// The Celsius values are the conventional readings of each word, and they are
+/// what the server is told to report in `maxTempC`. They live here so the
+/// convention is stated once, in the core, rather than implied by a prompt.
+enum WashTemperature {
+  cold('Cold', 30),
+  warm('Warm', 40),
+  hot('Hot', 60);
+
+  const WashTemperature(this.label, this.conventionalMaxC);
+
+  final String label;
+
+  /// What this word is normally taken to mean, in Celsius.
+  final int conventionalMaxC;
+}
+
 /// The wash-tub symbol.
 final class WashCare {
   const WashCare({
     required this.method,
     this.maxTempC,
     this.agitation = Agitation.normal,
+    this.statedAs,
   });
 
   /// The safe assumption when nothing is known: a cool, gentle machine wash.
@@ -62,7 +87,8 @@ final class WashCare {
   const WashCare.unknown()
       : method = WashMethod.machine,
         maxTempC = 30,
-        agitation = Agitation.mild;
+        agitation = Agitation.mild,
+        statedAs = null;
 
   final WashMethod method;
 
@@ -70,6 +96,13 @@ final class WashCare {
   final int? maxTempC;
 
   final Agitation agitation;
+
+  /// The word the label printed, when it printed one rather than a number.
+  ///
+  /// Presentation only — [maxTempC] is what any machine decision reads. This
+  /// exists so the app can repeat the manufacturer's own wording back to the
+  /// user instead of silently replacing "warm" with a figure they never saw.
+  final WashTemperature? statedAs;
 
   bool get isWashable => method != WashMethod.doNotWash;
 
@@ -82,20 +115,35 @@ final class WashCare {
           (final a?, final b?) => a < b ? a : b,
         },
         agitation: agitation.gentler(other.agitation),
+        // Kept only while it still describes the temperature in force. A
+        // "warm" carried onto a load the rules have since capped at 30 would
+        // be repeating a manufacturer's word about a wash that is no longer
+        // the one being recommended.
+        statedAs: switch ((maxTempC, other.maxTempC)) {
+          (null, _) => other.statedAs,
+          (_, null) => statedAs,
+          (final a?, final b?) => a <= b ? statedAs : other.statedAs,
+        },
       );
 
-  WashCare copyWith(
-          {WashMethod? method, int? maxTempC, Agitation? agitation}) =>
+  WashCare copyWith({
+    WashMethod? method,
+    int? maxTempC,
+    Agitation? agitation,
+    WashTemperature? statedAs,
+  }) =>
       WashCare(
         method: method ?? this.method,
         maxTempC: maxTempC ?? this.maxTempC,
         agitation: agitation ?? this.agitation,
+        statedAs: statedAs ?? this.statedAs,
       );
 
   Map<String, Object?> toJson() => {
         'method': method.name,
         if (maxTempC != null) 'maxTempC': maxTempC,
         'agitation': agitation.name,
+        if (statedAs != null) 'statedAs': statedAs!.name,
       };
 
   static WashCare fromJson(Map<String, Object?> json) => WashCare(
@@ -104,6 +152,9 @@ final class WashCare {
         agitation: json['agitation'] == null
             ? Agitation.normal
             : Agitation.values.byName(json['agitation']! as String),
+        statedAs: json['statedAs'] == null
+            ? null
+            : WashTemperature.values.byName(json['statedAs']! as String),
       );
 
   @override
@@ -112,10 +163,11 @@ final class WashCare {
       other is WashCare &&
           other.method == method &&
           other.maxTempC == maxTempC &&
-          other.agitation == agitation;
+          other.agitation == agitation &&
+          other.statedAs == statedAs;
 
   @override
-  int get hashCode => Object.hash(method, maxTempC, agitation);
+  int get hashCode => Object.hash(method, maxTempC, agitation, statedAs);
 
   @override
   String toString() => 'WashCare(${method.name}, ${maxTempC ?? "any"}C, '

@@ -14,7 +14,14 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 String washSummary(WashCare wash) {
   if (wash.method == WashMethod.doNotWash) return 'Do not wash';
   return [
-    wash.method.label,
+    // The label's own word first, when it printed one. An American label says
+    // "machine wash cold" and never a number, and answering that with "up to
+    // 30°C" alone reads as though the app looked at a different garment — so
+    // the wording is repeated back and the figure it acts on shown beside it.
+    if (wash.statedAs case final WashTemperature stated)
+      '${wash.method.label} ${stated.label.toLowerCase()}'
+    else
+      wash.method.label,
     if (wash.maxTempC case final int temp) 'up to $temp°C',
     if (wash.agitation != Agitation.normal) wash.agitation.label.toLowerCase(),
   ].join(', ');
@@ -79,6 +86,7 @@ String? dryCleanSummary(CareInstructions care) {
 String careFieldLabel(String field) => switch (field) {
   'wash.method' => 'Wash method',
   'wash.maxTempC' => 'Temperature',
+  'wash.statedAs' => 'Label says',
   'wash.agitation' => 'Cycle',
   'bleach' => 'Bleach',
   'dry.tumbleDryAllowed' => 'Tumble drying',
@@ -106,6 +114,7 @@ String careFieldValue(CareInstructions instructions, String field) =>
         instructions.wash.maxTempC == null
             ? 'no limit'
             : '${instructions.wash.maxTempC}°C',
+      'wash.statedAs' => instructions.wash.statedAs?.label ?? 'not stated',
       'wash.agitation' => instructions.wash.agitation.label,
       'bleach' => instructions.bleach.label,
       'dry.tumbleDryAllowed' =>

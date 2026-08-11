@@ -121,6 +121,42 @@ void main() {
     });
   });
 
+  group('a label that prints a word instead of a number', () {
+    testWidgets('the wording is shown, not just the figure', (tester) async {
+      // American labels say "machine wash cold" and never give a number. The
+      // app answered "Machine wash, up to 30°C" — correct, and unrecognisable
+      // to someone holding the garment. Both now.
+      await withLabel(
+        const CareConstraint(
+          method: WashMethod.machine,
+          maxTempC: 30,
+          washTemperature: WashTemperature.cold,
+        ),
+      );
+
+      await pump(tester, const ItemDetailScreen(id: itemId));
+
+      expect(find.textContaining('Machine wash cold'), findsOneWidget);
+      expect(find.textContaining('up to 30°C'), findsOneWidget);
+    });
+
+    testWidgets('a label giving only a number says only the number', (
+      tester,
+    ) async {
+      // European labels print the figure in the tub. Inventing "cold" for it
+      // would be putting a word in the manufacturer's mouth.
+      await withLabel(
+        const CareConstraint(method: WashMethod.machine, maxTempC: 30),
+      );
+
+      await pump(tester, const ItemDetailScreen(id: itemId));
+
+      expect(find.textContaining('up to 30°C'), findsOneWidget);
+      expect(find.textContaining('Machine wash cold'), findsNothing);
+      expect(find.textContaining('Machine wash warm'), findsNothing);
+    });
+  });
+
   group('the care-label review screen', () {
     testWidgets('shows the prohibition it just announced in the diff', (
       tester,

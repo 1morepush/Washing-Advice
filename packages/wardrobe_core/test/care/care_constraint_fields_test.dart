@@ -32,6 +32,7 @@ void main() {
   const everything = CareConstraint(
     method: WashMethod.hand,
     maxTempC: 60,
+    washTemperature: WashTemperature.hot,
     agitation: Agitation.normal,
     bleach: BleachAllowance.nonChlorineOnly,
     tumbleDryAllowed: true,
@@ -51,6 +52,7 @@ void main() {
   const expectedFields = {
     'wash.method',
     'wash.maxTempC',
+    'wash.statedAs',
     'wash.agitation',
     'bleach',
     'dry.tumbleDryAllowed',

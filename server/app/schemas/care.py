@@ -22,6 +22,7 @@ from app.schemas.base import WireModel
 _STATED_FIELDS: tuple[str, ...] = (
     "method",
     "max_temp_c",
+    "wash_temperature",
     "agitation",
     "bleach",
     "tumble_dry_allowed",
@@ -88,6 +89,20 @@ class CleaningSolvent(StrEnum):
     WET_CLEAN = "wetClean"
 
 
+class WashTemperature(StrEnum):
+    """The word a label prints instead of a number.
+
+    American labels say "machine wash warm" and never give a figure. The word
+    is reported alongside `max_temp_c` rather than converted away, so the app
+    can show the manufacturer's own wording instead of a number the user never
+    saw on the garment.
+    """
+
+    COLD = "cold"
+    WARM = "warm"
+    HOT = "hot"
+
+
 class CareWarning(StrEnum):
     WASH_INSIDE_OUT = "washInsideOut"
     WASH_SEPARATELY = "washSeparately"
@@ -115,6 +130,7 @@ class CareConstraint(WireModel):
 
     method: WashMethod | None = None
     max_temp_c: int | None = Field(default=None, ge=0, le=95)
+    wash_temperature: WashTemperature | None = None
     agitation: Agitation | None = None
     bleach: BleachAllowance | None = None
     tumble_dry_allowed: bool | None = Field(default=None)

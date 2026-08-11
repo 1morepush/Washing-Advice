@@ -167,6 +167,7 @@ final class CareResolver {
       switch (field) {
         'wash.method' => instructions.wash.method,
         'wash.maxTempC' => instructions.wash.maxTempC,
+        'wash.statedAs' => instructions.wash.statedAs,
         'wash.agitation' => instructions.wash.agitation,
         'bleach' => instructions.bleach,
         'dry.tumbleDryAllowed' => instructions.dry.tumbleDryAllowed,

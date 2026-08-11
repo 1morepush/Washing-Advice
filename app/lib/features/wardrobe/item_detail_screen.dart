@@ -450,14 +450,19 @@ class _Section extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        // A `Wrap`, for the same reason `_Fact` uses one: the trailing widget
+        // is a confidence chip whose text runs to "Confident · from the care
+        // label", and unflexed beside a heading it overflowed once the system
+        // text size went up. Here it drops below the heading instead.
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Expanded(
-              child: Text(
-                title,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             if (trailing case final Widget trailing) trailing,
@@ -498,11 +503,30 @@ class _Fact extends StatelessWidget {
               ),
             ),
           ),
-          Expanded(child: Text(value, style: theme.textTheme.bodyMedium)),
-          if (belief case final Confident<Object> belief) ...[
-            const SizedBox(width: 8),
-            ConfidenceChip.of(belief),
-          ],
+          // A `Wrap` rather than the value and the chip as two more children
+          // of the row. A chip reading "Confident · from the care label" is
+          // nearly 200dp wide, and unflexed beside a 110dp label column it
+          // overflowed a 320dp phone outright — and a 393dp one as soon as
+          // the system text size went up a notch, which is the case this
+          // screen is most likely to be read in.
+          //
+          // The cost is that the chip now sits after the value rather than
+          // flush right, so the chips down the screen no longer line up. That
+          // is worth it: the alternative is content that cannot be seen at
+          // all, and no flex arrangement can say "take your natural width if
+          // it fits, shrink if it does not" without measuring the text.
+          Expanded(
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(value, style: theme.textTheme.bodyMedium),
+                if (belief case final Confident<Object> belief)
+                  ConfidenceChip.of(belief),
+              ],
+            ),
+          ),
         ],
       ),
     );

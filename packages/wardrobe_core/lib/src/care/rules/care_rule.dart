@@ -73,6 +73,7 @@ final class CareConstraint {
   const CareConstraint({
     this.method,
     this.maxTempC,
+    this.washTemperature,
     this.agitation,
     this.bleach,
     this.tumbleDryAllowed,
@@ -89,6 +90,14 @@ final class CareConstraint {
 
   final WashMethod? method;
   final int? maxTempC;
+
+  /// The word the label printed for the wash temperature, when it printed one.
+  ///
+  /// American labels say "wash cold" and never a number; the server reports
+  /// the conventional Celsius reading in [maxTempC] and the word here, so the
+  /// app can show the manufacturer's own wording rather than a figure the user
+  /// never saw on the garment.
+  final WashTemperature? washTemperature;
 
   /// The cycle the label calls for.
   ///
@@ -127,6 +136,7 @@ final class CareConstraint {
         method: method ?? base.wash.method,
         maxTempC: maxTempC ?? base.wash.maxTempC,
         agitation: agitation ?? base.wash.agitation,
+        statedAs: washTemperature ?? base.wash.statedAs,
       ),
       bleach: bleach ?? base.bleach,
       dry: DryCare(
@@ -167,6 +177,7 @@ final class CareConstraint {
           method: method ?? base.wash.method,
           maxTempC: maxTempC ?? base.wash.maxTempC,
           agitation: agitation ?? base.wash.agitation,
+          statedAs: washTemperature ?? base.wash.statedAs,
         ),
         bleach: bleach ?? base.bleach,
         dry: DryCare(
@@ -195,6 +206,7 @@ final class CareConstraint {
   Set<String> get statedFields => {
         if (method != null) 'wash.method',
         if (maxTempC != null) 'wash.maxTempC',
+        if (washTemperature != null) 'wash.statedAs',
         if (agitation != null) 'wash.agitation',
         if (bleach != null) 'bleach',
         if (tumbleDryAllowed != null) 'dry.tumbleDryAllowed',
@@ -213,6 +225,7 @@ final class CareConstraint {
   Map<String, Object?> toJson() => {
         if (method != null) 'method': method!.name,
         if (maxTempC != null) 'maxTempC': maxTempC,
+        if (washTemperature != null) 'washTemperature': washTemperature!.name,
         if (agitation != null) 'agitation': agitation!.name,
         if (bleach != null) 'bleach': bleach!.name,
         if (tumbleDryAllowed != null) 'tumbleDryAllowed': tumbleDryAllowed,
@@ -249,6 +262,10 @@ final class CareConstraint {
     return CareConstraint(
       method: read('method', (r) => WashMethod.values.byName(r as String)),
       maxTempC: read('maxTempC', (r) => (r as num).toInt()),
+      washTemperature: read(
+        'washTemperature',
+        (r) => WashTemperature.values.byName(r as String),
+      ),
       agitation: read('agitation', (r) => Agitation.values.byName(r as String)),
       bleach: read('bleach', (r) => BleachAllowance.values.byName(r as String)),
       tumbleDryAllowed: read('tumbleDryAllowed', (r) => r as bool),

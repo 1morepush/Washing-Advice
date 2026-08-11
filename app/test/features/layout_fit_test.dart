@@ -381,6 +381,20 @@ void main() {
       );
     }
 
+    testWidgets('the folded-away release notes fit once opened', (
+      tester,
+    ) async {
+      // Collapsed, only the newest entry is measured. The older ones are the
+      // longest text on the screen and are never built until this is tapped,
+      // so without it they would be the one part of Settings nothing checks.
+      await pumpSettings(tester, textScaler: enlarged);
+
+      await tester.tap(find.text('Earlier changes'));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('settings fit', (tester) async {
       await pumpSettings(tester);
 

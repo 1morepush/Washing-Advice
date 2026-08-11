@@ -120,4 +120,52 @@ void main() {
       expect(PhotoSet.empty.displayImageUri, isNull);
     });
   });
+
+  group('choosing which photo is shown', () {
+    ItemPhoto shot(String uri, {String? cutout, bool primary = false}) =>
+        ItemPhoto(
+          uri: uri,
+          cutoutUri: cutout,
+          role: PhotoRole.front,
+          capturedAt: DateTime.utc(2026, 1, 1),
+          isPrimary: primary,
+        );
+
+    test('a retaken photo can be promoted over one that has a cutout', () {
+      // The case this exists for. `displayPhoto` prefers whichever photo has a
+      // cutout, which is right until the cutout is the reason the user took
+      // another picture — without a way to say "show this one" they would keep
+      // seeing the bad mask.
+      final set = PhotoSet([shot('old', cutout: 'old-cut'), shot('new')]);
+      expect(set.displayPhoto!.uri, 'old');
+
+      expect(set.withPrimary('new').displayPhoto!.uri, 'new');
+    });
+
+    test('promoting one demotes the other', () {
+      final set = PhotoSet([shot('a', primary: true), shot('b')]);
+
+      final promoted = set.withPrimary('b');
+
+      expect(
+          promoted.photos.where((p) => p.isPrimary).map((p) => p.uri), ['b']);
+    });
+
+    test('the old photo is kept, not replaced', () {
+      // Sync unions photos by URI and would re-add anything deleted on the
+      // next round trip, so a retake adds and promotes rather than removing.
+      final set = PhotoSet([shot('old', cutout: 'old-cut')]);
+
+      final after = set.add(shot('new')).withPrimary('new');
+
+      expect(after.length, 2);
+      expect(after.photos.first.cutoutUri, 'old-cut');
+    });
+
+    test('promoting a photo that is not there changes nothing', () {
+      final set = PhotoSet([shot('a')]);
+
+      expect(set.withPrimary('missing'), same(set));
+    });
+  });
 }

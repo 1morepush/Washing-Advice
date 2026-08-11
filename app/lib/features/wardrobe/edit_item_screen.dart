@@ -19,6 +19,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../../widgets/confidence_chip.dart';
+import '../../widgets/status_message.dart';
 import 'care_text.dart';
 
 class EditItemScreen extends ConsumerWidget {
@@ -37,7 +38,10 @@ class EditItemScreen extends ConsumerWidget {
       ),
       body: item.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('$error')),
+        error: (error, _) => StatusMessage.failure(
+          title: 'Could not open this item',
+          error: error,
+        ),
         data: (value) => value == null
             ? const Center(child: Text('This item no longer exists.'))
             : _Form(original: value),

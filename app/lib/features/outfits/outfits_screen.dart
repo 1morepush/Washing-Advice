@@ -14,6 +14,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../core/providers.dart';
 import '../../widgets/app_drawer.dart';
 import '../../widgets/item_thumbnail.dart';
+import '../../widgets/status_message.dart';
 import '../history/wear_recorder.dart';
 import 'outfit_controller.dart';
 import 'saved_outfits.dart';
@@ -66,7 +67,10 @@ class OutfitsScreen extends ConsumerWidget {
                   child: suggestions.when(
                     loading: () =>
                         const Center(child: CircularProgressIndicator()),
-                    error: (error, _) => Center(child: Text('$error')),
+                    error: (error, _) => StatusMessage.failure(
+                      title: 'Could not suggest an outfit',
+                      error: error,
+                    ),
                     data: (list) => list.isEmpty
                         ? _Empty(occasion: request.occasion)
                         : ListView.builder(

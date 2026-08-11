@@ -217,6 +217,27 @@ final class PhotoSet {
 
   PhotoSet add(ItemPhoto photo) => PhotoSet([..._photos, photo]);
 
+  /// Makes the photo at [uri] the one this item shows, clearing any previous
+  /// choice.
+  ///
+  /// Needed because [displayPhoto] otherwise prefers whichever photo has a
+  /// cutout — which is right until the cutout is the problem. Someone who has
+  /// just retaken a photograph because the old one cut out badly would
+  /// otherwise keep seeing the old one, since it is the one with a mask.
+  ///
+  /// Additive rather than a replacement of the old photo, deliberately: sync
+  /// unions photos by URI and would simply re-add anything deleted on the next
+  /// round trip. The old shot stays, unpicked.
+  ///
+  /// An unknown [uri] leaves the set alone, like [withCutout] — a photo the
+  /// user deleted between capture and save is not worth raising.
+  PhotoSet withPrimary(String uri) {
+    if (!_photos.any((photo) => photo.uri == uri)) return this;
+    return PhotoSet([
+      for (final photo in _photos) photo.copyWith(isPrimary: photo.uri == uri),
+    ]);
+  }
+
   List<Object?> toJson() => _photos.map((p) => p.toJson()).toList();
 
   static PhotoSet fromJson(List<Object?> json) => PhotoSet([

@@ -15,6 +15,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../core/providers.dart';
 import '../../widgets/confidence_chip.dart';
 import '../../widgets/item_thumbnail.dart';
+import '../../widgets/status_message.dart';
 import '../history/wear_recorder.dart';
 import 'cutout_controller.dart';
 import 'care_text.dart';
@@ -76,7 +77,10 @@ class ItemDetailScreen extends ConsumerWidget {
       ),
       body: item.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('$error')),
+        error: (error, _) => StatusMessage.failure(
+          title: 'Could not open this item',
+          error: error,
+        ),
         data: (value) => value == null
             ? const Center(child: Text('This item no longer exists.'))
             : _Details(item: value),

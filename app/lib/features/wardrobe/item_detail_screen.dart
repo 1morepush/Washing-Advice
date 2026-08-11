@@ -15,6 +15,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../core/providers.dart';
 import '../../widgets/confidence_chip.dart';
 import '../../widgets/item_thumbnail.dart';
+import '../../widgets/status_message.dart';
 import '../history/wear_recorder.dart';
 import 'cutout_controller.dart';
 import 'care_text.dart';
@@ -76,7 +77,10 @@ class ItemDetailScreen extends ConsumerWidget {
       ),
       body: item.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('$error')),
+        error: (error, _) => StatusMessage.failure(
+          title: 'Could not open this item',
+          error: error,
+        ),
         data: (value) => value == null
             ? const Center(child: Text('This item no longer exists.'))
             : _Details(item: value),
@@ -394,43 +398,70 @@ class _CutoutPrompt extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Text(
-              switch (status) {
-                CutoutStatus.working => 'Removing the background…',
-                CutoutStatus.failed =>
-                  'The garment could not be told apart from its background.',
-                _ when hasCutout =>
-                  "If the background removal took part of the garment with "
-                      "it, run it again.",
-                _ => 'Remove the background to make this easier to spot.',
-              },
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: status == CutoutStatus.failed
-                    ? theme.colorScheme.error
-                    : theme.colorScheme.onSurfaceVariant,
-              ),
+          Text(
+            switch (status) {
+              CutoutStatus.working => 'Removing the background…',
+              CutoutStatus.failed =>
+                'The garment could not be told apart from its background. '
+                    'You can still mark it out by hand.',
+              _ when hasCutout =>
+                'If the background removal took part of the garment with it, '
+                    'tidy it by hand.',
+              _ => 'Remove the background to make this easier to spot.',
+            },
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: status == CutoutStatus.failed
+                  ? theme.colorScheme.error
+                  : theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(width: 8),
-          if (status == CutoutStatus.working)
-            const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          else
-            TextButton(
-              onPressed: () =>
-                  ref.read(cutoutControllerProvider(id).notifier).generate(),
-              child: Text(switch (status) {
-                CutoutStatus.failed => 'Try again',
-                _ when hasCutout => 'Redo',
-                _ => 'Clean up',
-              }),
-            ),
+          Wrap(
+            spacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              if (status == CutoutStatus.working)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else ...[
+                // Running the remover again is only worth offering when it has
+                // not run yet, or when it failed and might do better on a
+                // second attempt at a different moment. Once a mask exists,
+                // re-running is pointless — the remover is deterministic, so
+                // the same photograph gives the same wrong answer — and the
+                // only thing that changes the result is a finger.
+                if (!hasCutout)
+                  TextButton(
+                    onPressed: () => ref
+                        .read(cutoutControllerProvider(id).notifier)
+                        .generate(),
+                    child: Text(
+                      status == CutoutStatus.failed ? 'Try again' : 'Clean up',
+                    ),
+                  ),
+                TextButton(
+                  onPressed: () => context.go('/item/${id.value}/mask'),
+                  child: Text(hasCutout ? 'Tidy by hand' : 'Mark out by hand'),
+                ),
+                // The last resort, and sometimes the only one that works: no
+                // mask rescues a garment photographed against a wall its own
+                // colour, with a hand and a shadow in shot. A different
+                // photograph is the only thing that changes the answer.
+                TextButton(
+                  onPressed: () => context.go('/item/${id.value}/retake'),
+                  child: const Text('New photo'),
+                ),
+              ],
+            ],
+          ),
         ],
       ),
     );

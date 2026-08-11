@@ -13,6 +13,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../../widgets/item_thumbnail.dart';
+import '../../widgets/status_message.dart';
 import 'outfit_controller.dart';
 
 class SavedOutfitsTab extends ConsumerWidget {
@@ -24,7 +25,10 @@ class SavedOutfitsTab extends ConsumerWidget {
 
     return saved.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => Center(child: Text('$error')),
+      error: (error, _) => StatusMessage.failure(
+        title: 'Could not load your saved outfits',
+        error: error,
+      ),
       data: (outfits) => outfits.isEmpty
           ? const _Empty()
           : ListView.builder(
@@ -96,7 +100,10 @@ class _SavedCard extends ConsumerWidget {
               height: 84,
               child: items.when(
                 loading: () => const SizedBox.shrink(),
-                error: (error, _) => Text('$error'),
+                error: (error, _) => Text(
+                  'Could not load these garments.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
                 data: (list) => ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: list.length,

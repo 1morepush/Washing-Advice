@@ -38,5 +38,31 @@ abstract interface class ImageStore {
 ///
 /// Derived from the item and role rather than random, so re-running a cutout
 /// overwrites the old one instead of leaking a file per attempt.
-String imageName(ItemId id, PhotoRole role, {bool cutout = false}) =>
-    '${id.value}-${role.name}${cutout ? '-cutout' : ''}';
+///
+/// [takenAt] separates photographs that share a role. A retaken front shot must
+/// not be written over the one it replaces: the item keeps each photo's own
+/// `width` and `height`, so overwriting the bytes and leaving the record
+/// would leave the old dimensions describing the new picture. It also keeps the
+/// original, which the user may want back if the second attempt is worse.
+///
+/// Omitted, the name is what it always was — images stored before retaking
+/// existed keep their URIs, and nothing has to be migrated.
+String imageName(
+  ItemId id,
+  PhotoRole role, {
+  DateTime? takenAt,
+  bool cutout = false,
+}) =>
+    '${id.value}-${role.name}'
+    '${takenAt == null ? '' : '-${takenAt.toUtc().microsecondsSinceEpoch}'}'
+    '${cutout ? '-cutout' : ''}';
+
+/// The name for [photo]'s cutout.
+///
+/// Always timestamped, including for photographs whose own name is not — the
+/// only requirement is that one photo's cutout does not collide with another's.
+/// Regenerating a cutout for a photo stored before this existed therefore
+/// writes a new file, so callers delete the superseded one rather than leaving
+/// it behind.
+String cutoutNameFor(ItemId id, ItemPhoto photo) =>
+    imageName(id, photo.role, takenAt: photo.capturedAt, cutout: true);

@@ -67,6 +67,7 @@ export 'src/shared/ids.dart';
 export 'src/sync/merge.dart';
 export 'src/sync/sync_engine.dart';
 // Vision: the contract the AI layer must satisfy.
+export 'src/vision/scan_merge.dart';
 export 'src/vision/vision_port.dart';
 // Wardrobe: what the user owns.
 export 'src/wardrobe/analytics.dart';

@@ -192,11 +192,16 @@ class CareTagController extends StateNotifier<CareTagState> {
     ScanImage image,
   ) async {
     try {
+      // One instant for both, because the name is derived from it: a second
+      // reading of the same label would otherwise be written over the first and
+      // added to the set again, leaving two records pointing at one file with
+      // the earlier one's dimensions.
+      final capturedAt = DateTime.now();
       final uri = await _ref
           .read(imageStoreProvider)
           .save(
             Uint8List.fromList(image.bytes),
-            name: imageName(item.id, PhotoRole.careTag),
+            name: imageName(item.id, PhotoRole.careTag, takenAt: capturedAt),
           );
 
       return item.copyWith(
@@ -204,7 +209,7 @@ class CareTagController extends StateNotifier<CareTagState> {
           ItemPhoto(
             uri: uri,
             role: PhotoRole.careTag,
-            capturedAt: DateTime.now(),
+            capturedAt: capturedAt,
             width: image.width,
             height: image.height,
           ),

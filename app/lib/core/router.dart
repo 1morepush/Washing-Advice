@@ -13,10 +13,12 @@ import '../features/outfits/outfits_screen.dart';
 import '../features/packing/packing_screen.dart';
 import '../features/pile/pile_screen.dart';
 import '../features/scan/care_tag_screen.dart';
+import '../features/scan/retake_screen.dart';
 import '../features/scan/scan_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/wardrobe/edit_item_screen.dart';
 import '../features/wardrobe/item_detail_screen.dart';
+import '../features/wardrobe/mask_editor_screen.dart';
 import '../features/wardrobe/wardrobe_screen.dart';
 
 /// Builds the app's router.
@@ -37,6 +39,16 @@ GoRouter buildRouter({String initialLocation = '/'}) => GoRouter(
       path: '/item/:id/edit',
       builder: (_, state) =>
           EditItemScreen(id: ItemId(state.pathParameters['id']!)),
+    ),
+    GoRoute(
+      path: '/item/:id/retake',
+      builder: (_, state) =>
+          RetakeScreen(id: ItemId(state.pathParameters['id']!)),
+    ),
+    GoRoute(
+      path: '/item/:id/mask',
+      builder: (_, state) =>
+          MaskEditorScreen(id: ItemId(state.pathParameters['id']!)),
     ),
     GoRoute(
       path: '/item/:id/care-label',

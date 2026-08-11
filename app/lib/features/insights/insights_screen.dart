@@ -17,6 +17,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../../widgets/app_drawer.dart';
+import '../../widgets/status_message.dart';
 
 class InsightsScreen extends ConsumerWidget {
   const InsightsScreen({super.key});
@@ -30,7 +31,10 @@ class InsightsScreen extends ConsumerWidget {
       drawer: const AppDrawer(current: AppDestination.insights),
       body: summary.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('$error')),
+        error: (error, _) => StatusMessage.failure(
+          title: 'Could not measure your wardrobe',
+          error: error,
+        ),
         data: (data) => data.isEmpty
             ? const _Empty()
             : ListView(

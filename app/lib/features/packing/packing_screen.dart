@@ -13,6 +13,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../core/providers.dart';
 import '../../widgets/app_drawer.dart';
 import '../../widgets/item_thumbnail.dart';
+import '../../widgets/status_message.dart';
 
 class PackingScreen extends ConsumerWidget {
   const PackingScreen({super.key});
@@ -30,7 +31,10 @@ class PackingScreen extends ConsumerWidget {
       drawer: const AppDrawer(current: AppDestination.packing),
       body: list.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('$error')),
+        error: (error, _) => StatusMessage.failure(
+          title: 'Could not work out what to pack',
+          error: error,
+        ),
         data: (plan) => ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [

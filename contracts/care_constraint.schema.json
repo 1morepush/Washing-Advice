@@ -10,6 +10,10 @@
       "description": "How the garment may be washed.",
       "enum": ["machine", "hand", "doNotWash"]
     },
+    "washTemperature": {
+      "description": "The word the label printed, when it printed one rather than a number.",
+      "enum": ["cold", "warm", "hot"]
+    },
     "maxTempC": {
       "description": "Maximum wash temperature in Celsius, as printed in the tub.",
       "type": "integer",

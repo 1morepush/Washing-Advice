@@ -28,9 +28,14 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import 'package:washing_advice/core/providers.dart';
 import 'package:washing_advice/core/settings.dart';
 import 'package:washing_advice/core/theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:washing_advice/data/images/memory_image_store.dart';
 import 'package:washing_advice/features/insights/insights_screen.dart';
 import 'package:washing_advice/features/outfits/outfits_screen.dart';
 import 'package:washing_advice/features/packing/packing_screen.dart';
+import 'package:washing_advice/features/settings/settings_screen.dart';
+import 'package:washing_advice/features/wardrobe/edit_item_screen.dart';
+import 'package:washing_advice/features/wardrobe/item_detail_screen.dart';
 import 'package:washing_advice/features/wardrobe/wardrobe_screen.dart';
 
 import '../support/fixtures.dart';
@@ -215,5 +220,127 @@ void main() {
     );
 
     expect(tester.takeException(), isNull);
+  });
+
+  group('one garment', () {
+    /// The most fact-dense screen in the app, and the one most likely to be
+    /// read on a phone held in one hand at a machine. Given a garment that
+    /// states everything it can — a scanned label with warnings, a price, a
+    /// size, a long name — every row has something in it.
+    Future<void> pumpDetail(
+      WidgetTester tester, {
+      TextScaler textScaler = TextScaler.noScaling,
+    }) async {
+      final base = confidentItem(
+        id: 'loaded',
+        name: 'Charcoal merino crew-neck jumper',
+        type: ItemType.sweater,
+        composition: const {
+          Fiber.wool: 70,
+          Fiber.polyester: 25,
+          Fiber.nylon: 5,
+        },
+        purchase: PurchaseInfo(
+          priceMinorUnits: 12999,
+          currencyCode: 'EUR',
+          purchasedAt: DateTime.utc(2026, 1, 1),
+        ),
+      );
+      final labelled = base.copyWith(
+        brand: Confident.fromUser('Uniqlo'),
+        sizeLabel: 'XL',
+        careLabel: Confident(
+          const CareConstraint(
+            method: WashMethod.hand,
+            maxTempC: 30,
+            doNotDryClean: true,
+            warnings: {
+              CareWarning.washInsideOut,
+              CareWarning.washWithLikeColours,
+              CareWarning.doNotIronDecoration,
+            },
+          ),
+          confidence: 0.95,
+          source: Provenance.tagScan,
+        ),
+      );
+      await repository.save(
+        labelled.copyWith(care: const CareResolver().forItem(labelled).profile),
+      );
+
+      await pump(
+        tester,
+        const ItemDetailScreen(id: ItemId('loaded')),
+        overrides: [imageStoreProvider.overrideWithValue(MemoryImageStore())],
+        textScaler: textScaler,
+      );
+    }
+
+    testWidgets('the detail screen fits', (tester) async {
+      await pumpDetail(tester);
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the detail screen fits with larger text', (tester) async {
+      await pumpDetail(tester, textScaler: enlarged);
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the edit screen fits', (tester) async {
+      await pump(
+        tester,
+        const EditItemScreen(id: ItemId('jeans')),
+        overrides: [imageStoreProvider.overrideWithValue(MemoryImageStore())],
+      );
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the edit screen fits with larger text', (tester) async {
+      await pump(
+        tester,
+        const EditItemScreen(id: ItemId('jeans')),
+        overrides: [imageStoreProvider.overrideWithValue(MemoryImageStore())],
+        textScaler: enlarged,
+      );
+
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('settings', () {
+    Future<void> pumpSettings(
+      WidgetTester tester, {
+      TextScaler textScaler = TextScaler.noScaling,
+    }) async {
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsStore(await SharedPreferences.getInstance());
+
+      await pump(
+        tester,
+        const SettingsScreen(),
+        overrides: [
+          settingsStoreProvider.overrideWithValue(settings),
+          // The section is only built on web, which is what the installed app
+          // is — so it has to be measured, not skipped.
+          imageStoreProvider.overrideWithValue(MemoryImageStore()),
+        ],
+        textScaler: textScaler,
+      );
+    }
+
+    testWidgets('settings fit', (tester) async {
+      await pumpSettings(tester);
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('settings fit with larger text', (tester) async {
+      await pumpSettings(tester, textScaler: enlarged);
+
+      expect(tester.takeException(), isNull);
+    });
   });
 }

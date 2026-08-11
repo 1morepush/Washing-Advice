@@ -430,13 +430,17 @@ class _CarePreview extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            // Wrapped rather than a row: the chip reads "Confident · from the
+            // care label" at its longest, which does not fit beside this
+            // heading on a narrow phone once the system text size is raised.
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Expanded(
-                  child: Text(
-                    'How it will be washed',
-                    style: theme.textTheme.titleSmall,
-                  ),
+                Text(
+                  'How it will be washed',
+                  style: theme.textTheme.titleSmall,
                 ),
                 ConfidenceChip(
                   confidence: item.care.confidence,

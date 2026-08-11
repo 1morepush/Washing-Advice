@@ -23,6 +23,7 @@ from app.schemas.care import (
     NaturalDryMethod,
     TumbleDryHeat,
     WashMethod,
+    WashTemperature,
 )
 from app.schemas.wardrobe import (
     Fiber,
@@ -161,6 +162,7 @@ CARE_TAG_SCHEMA: dict[str, Any] = {
             "properties": {
                 "method": {"type": "string", "enum": _values(WashMethod)},
                 "maxTempC": {"type": "integer"},
+                "washTemperature": {"type": "string", "enum": _values(WashTemperature)},
                 "agitation": {"type": "string", "enum": _values(Agitation)},
                 "bleach": {"type": "string", "enum": _values(BleachAllowance)},
                 "tumbleDryAllowed": {"type": "boolean"},
@@ -211,6 +213,18 @@ you supply means "the manufacturer stated this", and it overrides those rules. A
 guessed `tumbleDryAllowed: true` is therefore not a small inaccuracy — it is the
 app being told the manufacturer approved a tumble dryer, and it is how a wool
 blend gets ruined.
+
+LABELS THAT PRINT A WORD RATHER THAN A NUMBER: American labels almost never
+show a figure — they say "machine wash cold", "wash warm", "hot". Report both
+when they do. Put the word in `washTemperature`, and put its conventional
+reading in `maxTempC`: cold is 30, warm is 40, hot is 60.
+
+Both, not one. `maxTempC` is the only field any machine decision reads, so
+omitting it would leave a stated temperature to be filled in by a rule that
+knows nothing about this garment; omitting the word would make the app answer
+"up to 40°C" to someone holding a label that says "warm", which reads as
+though it had scanned something else. A label printing an actual number states
+no word — leave `washTemperature` out then.
 
 A SECOND RULE THAT IS EASY TO GET WRONG: a wash tub with NO bars beneath it
 means normal agitation. That is a stated fact, not an absent one, so report

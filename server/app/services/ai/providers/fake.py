@@ -22,6 +22,7 @@ from app.schemas.care import (
     IronTemperature,
     TumbleDryHeat,
     WashMethod,
+    WashTemperature,
 )
 from app.schemas.common import BoundingBox, Confident, Provenance
 from app.schemas.scan import (
@@ -116,6 +117,10 @@ class FakeVisionProvider:
             instructions=CareConstraint(
                 method=WashMethod.MACHINE,
                 max_temp_c=30,
+                # A US label: the word is what is printed, the number is the
+                # convention it stands for. Both, so the app can show the
+                # manufacturer's wording and still drive a machine.
+                wash_temperature=WashTemperature.COLD,
                 # A bar-less tub means normal, and the scan says so explicitly.
                 agitation=Agitation.NORMAL,
                 bleach=BleachAllowance.NONE,

@@ -68,7 +68,7 @@ class _Capture extends ConsumerWidget {
             const SizedBox(height: 8),
             Text(
               'Spread it out so each item is visible. Anything the app already '
-              'knows will be recognised, and its care label used instead of a '
+              'knows will be recognized, and its care label used instead of a '
               'guess from a crumpled sleeve.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -89,7 +89,7 @@ class _Capture extends ConsumerWidget {
               // answer is how an app gets deleted.
               TextButton(
                 onPressed: () => context.go('/settings'),
-                child: const Text('Set your machine to get exact programmes'),
+                child: const Text('Set your machine to get exact programs'),
               ),
             ],
           ],
@@ -167,7 +167,7 @@ class _Plan extends ConsumerWidget {
             icon: Icons.settings_outlined,
             text:
                 'No machine is set, so these say what each load needs rather '
-                'than which programme to select.',
+                'than which program to select.',
             onTap: () => context.go('/settings'),
           ),
         ],
@@ -200,9 +200,9 @@ class _Plan extends ConsumerWidget {
   String _summary(PilePlanned state) {
     final parts = <String>[
       '${state.detections.length} items found',
-      if (state.recognisedCount > 0)
-        '${state.recognisedCount} recognised from your wardrobe',
-      if (state.unrecognisedCount > 0) '${state.unrecognisedCount} new',
+      if (state.recognizedCount > 0)
+        '${state.recognizedCount} recognized from your wardrobe',
+      if (state.unrecognizedCount > 0) '${state.unrecognizedCount} new',
     ];
     return parts.join(' · ');
   }
@@ -279,7 +279,7 @@ class _NothingSortable extends StatelessWidget {
               'A garment seen once in a heap is a guess, and the app will not '
               'put a load together on a guess — that is how a jumper gets '
               'shrunk. Add each one properly, or scan its care label, and it '
-              'will be recognised in every pile after that.',
+              'will be recognized in every pile after that.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

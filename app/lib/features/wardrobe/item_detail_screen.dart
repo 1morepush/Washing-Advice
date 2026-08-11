@@ -203,7 +203,7 @@ class _Details extends StatelessWidget {
               belief: item.composition,
             ),
             _Fact(
-              label: 'Colour',
+              label: 'Color',
               value: item.colors.value.colors
                   .map((c) => c.name ?? c.hex)
                   .join(', '),

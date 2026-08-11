@@ -75,7 +75,7 @@ class FilterSheet extends ConsumerWidget {
                 ),
               ),
               _Section(
-                title: 'Colour',
+                title: 'Color',
                 child: _ChipGroup<ColorClass>(
                   values: ColorClass.values,
                   selected: query.colorClasses,
@@ -121,10 +121,10 @@ class FilterSheet extends ConsumerWidget {
                   runSpacing: 8,
                   children: [
                     FilterChip(
-                      label: const Text('Favourites'),
-                      selected: query.favouritesOnly,
+                      label: const Text('Favorites'),
+                      selected: query.favoritesOnly,
                       onSelected: (on) =>
-                          update((q) => q.copyWith(favouritesOnly: on)),
+                          update((q) => q.copyWith(favoritesOnly: on)),
                     ),
                     FilterChip(
                       // The "why do I own this?" view.

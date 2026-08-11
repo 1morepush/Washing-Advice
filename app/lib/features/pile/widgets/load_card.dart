@@ -176,7 +176,7 @@ class _Settings extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        _Row(label: 'Programme', value: setting.programName),
+        _Row(label: 'Program', value: setting.programName),
         _Row(
           label: 'Temperature',
           // Zero is the cold tap, not "no temperature". Printing "0°C" would
@@ -232,7 +232,7 @@ class _DrySettings extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        _Row(label: 'Programme', value: setting.programName),
+        _Row(label: 'Program', value: setting.programName),
         for (final note in setting.notes)
           Padding(
             padding: const EdgeInsets.only(top: 6),

@@ -82,7 +82,7 @@ final class ProgramMatcher {
         const SettingNote.warning(
           'This item should be hand washed and your machine has no hand-wash '
           'cycle. Wash it by hand, or accept some risk on the gentlest '
-          'programme below.',
+          'program below.',
         ),
       );
     } else if (spec.method == WashMethod.hand &&
@@ -98,7 +98,7 @@ final class ProgramMatcher {
     if (spec.maxTempC != null && best.temperatureC > spec.maxTempC!) {
       notes.add(
         SettingNote.warning(
-          'The coldest setting on this programme is ${best.temperatureC}°C, '
+          'The coldest setting on this program is ${best.temperatureC}°C, '
           'above the ${spec.maxTempC}°C this load needs.',
         ),
       );
@@ -119,7 +119,7 @@ final class ProgramMatcher {
         SettingNote(
           'Fill the drum to no more than '
           '${(best.program.maxLoadFraction * 100).round()}% on this '
-          'programme — gentle cycles cannot move a full drum.',
+          'program — gentle cycles cannot move a full drum.',
         ),
       );
     }
@@ -248,13 +248,13 @@ final class ProgramMatcher {
     final fallback = candidates.isEmpty ? null : candidates.first;
     if (fallback == null) {
       return const WasherSetting(
-        programName: 'No suitable programme',
+        programName: 'No suitable program',
         temperatureC: 0,
         spinRpm: 0,
         isCompromise: true,
         notes: [
           SettingNote.warning(
-            'This machine has no programme that can wash this load safely. '
+            'This machine has no program that can wash this load safely. '
             'Wash it by hand.',
           ),
         ],
@@ -269,7 +269,7 @@ final class ProgramMatcher {
       estimatedDuration: fallback.program.typicalDuration,
       notes: [
         SettingNote.warning(
-          'No programme on your ${washer.displayName} matches what this load '
+          'No program on your ${washer.displayName} matches what this load '
           'needs (${fallback.reasons.join('; ')}). Washing by hand is safer.',
         ),
       ],
@@ -344,7 +344,7 @@ final class ProgramMatcher {
     if (best.program.control == DrynessControl.timed) {
       notes.add(
         const SettingNote(
-          'This is a timed programme — check the load before it finishes so it '
+          'This is a timed program — check the load before it finishes so it '
           'is not over-dried.',
         ),
       );

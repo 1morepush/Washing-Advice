@@ -56,7 +56,7 @@ final class WardrobeQuery {
     this.lifecycleStates = const {},
     this.tags = const {},
     this.text,
-    this.favouritesOnly = false,
+    this.favoritesOnly = false,
     this.neverWorn = false,
     this.needsCareTagScan = false,
     this.wornSince,
@@ -103,7 +103,7 @@ final class WardrobeQuery {
   /// Free text over name, brand and any text printed on the garment.
   final String? text;
 
-  final bool favouritesOnly;
+  final bool favoritesOnly;
 
   /// Only items never worn — the "why do I own this?" view.
   final bool neverWorn;
@@ -134,7 +134,7 @@ final class WardrobeQuery {
       lifecycleStates.isEmpty &&
       tags.isEmpty &&
       (text == null || text!.trim().isEmpty) &&
-      !favouritesOnly &&
+      !favoritesOnly &&
       !neverWorn &&
       !needsCareTagScan &&
       wornSince == null &&
@@ -151,7 +151,7 @@ final class WardrobeQuery {
         fibers.isNotEmpty,
         tags.isNotEmpty,
         text != null && text!.trim().isNotEmpty,
-        favouritesOnly,
+        favoritesOnly,
         neverWorn,
         needsCareTagScan,
         wornSince != null,
@@ -169,7 +169,7 @@ final class WardrobeQuery {
     Set<LifecycleState>? lifecycleStates,
     Set<String>? tags,
     String? text,
-    bool? favouritesOnly,
+    bool? favoritesOnly,
     bool? neverWorn,
     bool? needsCareTagScan,
     DateTime? wornSince,
@@ -189,7 +189,7 @@ final class WardrobeQuery {
         lifecycleStates: lifecycleStates ?? this.lifecycleStates,
         tags: tags ?? this.tags,
         text: text ?? this.text,
-        favouritesOnly: favouritesOnly ?? this.favouritesOnly,
+        favoritesOnly: favoritesOnly ?? this.favoritesOnly,
         neverWorn: neverWorn ?? this.neverWorn,
         needsCareTagScan: needsCareTagScan ?? this.needsCareTagScan,
         wornSince: wornSince ?? this.wornSince,
@@ -220,7 +220,7 @@ final class WardrobeQuery {
           _setEquals(other.lifecycleStates, lifecycleStates) &&
           _setEquals(other.tags, tags) &&
           other.text == text &&
-          other.favouritesOnly == favouritesOnly &&
+          other.favoritesOnly == favoritesOnly &&
           other.neverWorn == neverWorn &&
           other.needsCareTagScan == needsCareTagScan &&
           other.wornSince == wornSince &&
@@ -241,7 +241,7 @@ final class WardrobeQuery {
         Object.hashAllUnordered(lifecycleStates),
         Object.hashAllUnordered(tags),
         text,
-        favouritesOnly,
+        favoritesOnly,
         neverWorn,
         needsCareTagScan,
         wornSince,

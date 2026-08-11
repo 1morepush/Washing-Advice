@@ -36,7 +36,7 @@ const List<CareRule> defaultCareRules = [
       doNotWring: true,
       warnings: {CareWarning.reshapeWhileDamp},
     ),
-    rationale: 'Wool and cashmere fibres have microscopic scales that lock '
+    rationale: 'Wool and cashmere fibers have microscopic scales that lock '
         'together under heat and agitation. Once felted, a garment shrinks '
         'permanently and cannot be restored.',
   ),
@@ -45,7 +45,7 @@ const List<CareRule> defaultCareRules = [
     priority: 95,
     appliesWhen: _isProteinFibre,
     imposes: CareConstraint(bleach: BleachAllowance.none),
-    rationale: 'Chlorine bleach dissolves protein fibres such as wool and '
+    rationale: 'Chlorine bleach dissolves protein fibers such as wool and '
         'silk, yellowing and weakening them.',
   ),
   CareRule(
@@ -112,7 +112,7 @@ const List<CareRule> defaultCareRules = [
       doNotWring: true,
     ),
     rationale: 'Viscose and acetate lose much of their strength when wet, so '
-        'wringing or a hard spin tears the fibres and stretches the garment '
+        'wringing or a hard spin tears the fibers and stretches the garment '
         'out of shape.',
   ),
 
@@ -146,7 +146,7 @@ const List<CareRule> defaultCareRules = [
     priority: 40,
     appliesWhen: _holdsOdour,
     imposes: CareConstraint(warnings: {CareWarning.doNotUseSoftener}),
-    rationale: 'Synthetics trap body oils that cause odour, and fabric '
+    rationale: 'Synthetics trap body oils that cause odor, and fabric '
         'softener leaves a coating that seals them in. Skip the softener.',
   ),
   CareRule(
@@ -204,7 +204,7 @@ const List<CareRule> defaultCareRules = [
     // reason about what else is in the drum. Setting the warning here would
     // isolate every single towel into its own wash.
     imposes: CareConstraint(warnings: {CareWarning.doNotUseSoftener}),
-    rationale: 'Towelling sheds fibres that cling to smooth and dark fabrics, '
+    rationale: 'Toweling sheds fibers that cling to smooth and dark fabrics, '
         'so it is kept away from them. Softener also ruins a towel\'s '
         'absorbency.',
   ),
@@ -256,7 +256,7 @@ const List<CareRule> defaultCareRules = [
     appliesWhen: _isWhite,
     imposes: CareConstraint(warnings: {CareWarning.washWithLikeColours}),
     rationale: 'Whites pick up dye from anything darker sharing the load, and '
-        'grey out permanently once they do.',
+        'gray out permanently once they do.',
   ),
 
   // --- Condition ----------------------------------------------------------

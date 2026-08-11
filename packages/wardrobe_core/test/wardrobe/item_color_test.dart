@@ -4,6 +4,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../support/fixtures.dart';
 
 void main() {
+  _orderedPalettes();
   group('CIEDE2000', () {
     // The published verification data from Sharma, Wu and Dalal (2005),
     // including the pairs that sit exactly on the hue-quadrant discontinuity —
@@ -195,6 +196,59 @@ void main() {
         Colors.white.copyWith(coverage: 0.4),
       ]);
       expect(ColorPalette.fromJson(palette.toJson()), palette);
+    });
+  });
+}
+
+/// Colours a person typed in, rather than ones a camera measured.
+void _orderedPalettes() {
+  group('a palette stated by hand', () {
+    test('the first colour named is the dominant one', () {
+      // Not incidental. `ColorPalette` sorts by coverage and Dart's sort is
+      // not stable, so splitting coverage equally would leave dominance — and
+      // therefore the laundry pile — up to the sort's internals.
+      final palette = ColorPalette.ordered([
+        ItemColor.fromHex('#FAFAFA', name: 'White'),
+        ItemColor.fromHex('#1F2A44', name: 'Navy'),
+      ]);
+
+      expect(palette.dominant!.name, 'White');
+    });
+
+    test('coverage sums to one', () {
+      for (final count in [1, 2, 3]) {
+        final palette = ColorPalette.ordered([
+          for (var i = 0; i < count; i++) ItemColor.fromHex('#808080'),
+        ]);
+
+        expect(
+          palette.colors.fold<double>(0, (sum, c) => sum + c.coverage),
+          closeTo(1, 1e-9),
+          reason: '$count colours',
+        );
+      }
+    });
+
+    test('a second colour still counts against a whites load', () {
+      // The rule that matters: a mostly-white tee with a navy print cannot go
+      // in with the whites. Saying so by hand has to reach that rule, which
+      // only looks at colours covering at least 12% of the garment.
+      final palette = ColorPalette.ordered([
+        ItemColor.fromHex('#FAFAFA', name: 'White'),
+        ItemColor.fromHex('#1F2A44', name: 'Navy'),
+      ]);
+
+      expect(palette.colors.last.coverage, greaterThanOrEqualTo(0.12));
+      expect(palette.colorClass, isNot(ColorClass.whites));
+    });
+
+    test('one colour on its own covers the whole garment', () {
+      final palette = ColorPalette.ordered([
+        ItemColor.fromHex('#1A1A1A', name: 'Black'),
+      ]);
+
+      expect(palette.colors.single.coverage, 1);
+      expect(palette.colorClass, ColorClass.darks);
     });
   });
 }

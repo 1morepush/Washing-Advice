@@ -221,7 +221,7 @@ class _MachineSectionState extends ConsumerState<MachineSection> {
             // for the picker: a custom profile carries its own, sharper
             // caveat instead.
             'A brand pick is an archetype, not your exact model. Check the '
-            'programme against your own machine the first time.',
+            'program against your own machine the first time.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -282,8 +282,8 @@ class _CustomMachineCard extends StatelessWidget {
                   // as more authoritative than a labelled brand archetype,
                   // and that is exactly backwards from how sure it actually is.
                   "AI's best guess at this exact model's $programCount "
-                  'programmes — not checked against a manual. Correct it the '
-                  'first time a programme does not match your dial.',
+                  'programs — not checked against a manual. Correct it the '
+                  'first time a program does not match your dial.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),

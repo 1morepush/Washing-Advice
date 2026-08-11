@@ -82,10 +82,10 @@ void main() {
   testWidgets('favourites is a filter, and the list obeys it', (tester) async {
     await pumpSheet(tester);
 
-    await tester.tap(find.widgetWithText(FilterChip, 'Favourites'));
+    await tester.tap(find.widgetWithText(FilterChip, 'Favorites'));
     await tester.pumpAndSettle();
 
-    expect(query().favouritesOnly, isTrue);
+    expect(query().favoritesOnly, isTrue);
 
     final shown = await container
         .read(wardrobeRepositoryProvider)
@@ -120,7 +120,7 @@ void main() {
   ) async {
     await pumpSheet(tester);
 
-    await tester.tap(find.widgetWithText(FilterChip, 'Favourites'));
+    await tester.tap(find.widgetWithText(FilterChip, 'Favorites'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Clear all'));
     await tester.pumpAndSettle();
@@ -134,7 +134,7 @@ void main() {
   testWidgets('the button says how many items match', (tester) async {
     await pumpSheet(tester);
 
-    await tester.tap(find.widgetWithText(FilterChip, 'Favourites'));
+    await tester.tap(find.widgetWithText(FilterChip, 'Favorites'));
     await tester.pumpAndSettle();
 
     // Worth knowing before the sheet closes: a combination matching nothing

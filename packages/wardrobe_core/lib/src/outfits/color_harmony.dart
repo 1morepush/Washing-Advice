@@ -46,7 +46,7 @@ import '../wardrobe/model/item_color.dart';
 const double _sameHue = 30;
 
 /// Below this they are neighbours: red to yellow is 58°, orange to yellow 34°.
-const double _neighbouring = 75;
+const double _neighboring = 75;
 
 /// At or above this they read as opposites. Blue against yellow measures 169°
 /// and red against teal 149°, which are the two classic pairings that work.
@@ -63,7 +63,7 @@ double harmonyBetween(ItemColor x, ItemColor y) {
 
   final difference = hueDifference(x.hue, y.hue);
   if (difference < _sameHue) return 0.9;
-  if (difference < _neighbouring) return 0.8;
+  if (difference < _neighboring) return 0.8;
   if (difference >= _opposite) return 0.8;
   return 0.5;
 }
@@ -118,10 +118,10 @@ String? describePairing(ItemColor x, ItemColor y) {
   if (x.isNeutral || y.isNeutral) return null;
 
   final difference = hueDifference(x.hue, y.hue);
-  if (difference < _sameHue) return 'Shades of one colour';
-  if (difference < _neighbouring) return 'Neighbouring colours';
+  if (difference < _sameHue) return 'Shades of one color';
+  if (difference < _neighboring) return 'Neighboring colors';
   if (difference >= _opposite) {
-    return 'Opposite colours, which set each other off';
+    return 'Opposite colors, which set each other off';
   }
-  return 'An awkward gap between these colours';
+  return 'An awkward gap between these colors';
 }

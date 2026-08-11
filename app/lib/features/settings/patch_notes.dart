@@ -57,6 +57,19 @@ const _months = [
 final patchNotes = <Release>[
   Release(
     date: DateTime.utc(2026, 8, 11),
+    headline: 'Set the color yourself',
+    changes: [
+      'Edit an item and you can now say what color it actually is — pick from '
+          'swatches or type a hex code. A camera reads navy as black under '
+          'warm indoor light more often than it should, and the color decides '
+          'which load the garment goes in.',
+      'Name more than one and the first is the one it mostly is, which is what '
+          'keeps a white tee with a navy print out of the whites.',
+      'The app now writes in American English throughout.',
+    ],
+  ),
+  Release(
+    date: DateTime.utc(2026, 8, 11),
     headline: 'Two ways to fix a bad cutout',
     changes: [
       'If the background removal took part of the garment with it, you can '
@@ -92,7 +105,7 @@ final patchNotes = <Release>[
     headline: 'Your own machines, and getting updates',
     changes: [
       'Name your washer and dryer by brand and model, and the app names the '
-          'programme actually printed on your dial.',
+          'program actually printed on your dial.',
       'Check for updates, in Settings, gets past a home-screen app that is '
           'showing an old version.',
       'The white strip above the app on iPhone is gone.',

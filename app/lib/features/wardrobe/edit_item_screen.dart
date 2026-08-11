@@ -74,6 +74,7 @@ class _FormState extends ConsumerState<_Form> {
   );
 
   late ItemType _type = widget.original.type.value;
+  late List<ItemColor> _colors = [...widget.original.colors.value.colors];
   late Map<Fiber, int> _composition = {
     ...widget.original.composition.value.percentages,
   };
@@ -109,6 +110,12 @@ class _FormState extends ConsumerState<_Form> {
       composition: _sameComposition
           ? original.composition
           : Confident.fromUser(FabricComposition(_composition)),
+      // `ordered`, not the plain constructor: a hand-picked list carries no
+      // measured coverage, and the order the user put them in is the only
+      // statement of which one the garment mostly is.
+      colors: _sameColors
+          ? original.colors
+          : Confident.fromUser(ColorPalette.ordered(_colors)),
       brand: brand.isEmpty ? null : Confident.fromUser(brand),
       sizeLabel: _size.text.trim().isEmpty ? null : _size.text.trim(),
       notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
@@ -122,6 +129,18 @@ class _FormState extends ConsumerState<_Form> {
     return changed.copyWith(
       care: ref.read(careResolverProvider).forItem(changed).profile,
     );
+  }
+
+  /// Compared by name and by the colour itself, because either can change
+  /// alone: swapping Navy for Black keeps the count, and reordering keeps both.
+  bool get _sameColors {
+    final before = widget.original.colors.value.colors;
+    if (before.length != _colors.length) return false;
+    return List.generate(
+      _colors.length,
+      (i) =>
+          before[i].name == _colors[i].name && before[i].hex == _colors[i].hex,
+    ).every((same) => same);
   }
 
   bool get _sameComposition {
@@ -211,11 +230,22 @@ class _FormState extends ConsumerState<_Form> {
               ),
 
               const SizedBox(height: 24),
+              _FieldHeading(
+                title: 'Color',
+                belief: widget.original.colors,
+                isEdited: !_sameColors,
+              ),
+              _ColorEditor(
+                colors: _colors,
+                onChanged: (value) => setState(() => _colors = value),
+              ),
+
+              const SizedBox(height: 24),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 value: _isFavorite,
                 onChanged: (value) => setState(() => _isFavorite = value),
-                title: const Text('Favourite'),
+                title: const Text('Favorite'),
               ),
               DropdownButtonFormField<LifecycleState>(
                 initialValue: _lifecycle,
@@ -385,7 +415,7 @@ class _CompositionEditor extends StatelessWidget {
             TextButton.icon(
               onPressed: () => _addFibre(context),
               icon: const Icon(Icons.add, size: 18),
-              label: const Text('Add fibre'),
+              label: const Text('Add fiber'),
             ),
           ],
         ),
@@ -460,4 +490,213 @@ class _CarePreview extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The colours the garment actually is.
+///
+/// Not decoration. This value decides which load the garment goes in and
+/// whether the app warns that its dye may run, so a wrong colour is a garment
+/// washed with the wrong pile — the failure the whole app exists to prevent.
+/// A camera under warm indoor light reads navy as black often enough to matter,
+/// and until now there was no way to say so.
+///
+/// Swatches rather than a colour wheel, plus a hex box for anything the list
+/// does not cover. Nobody knows the hex code of their jumper, and a wheel would
+/// invite a precision the underlying judgement does not have — but a hex code
+/// is exactly what someone copying a colour off a shop listing already has.
+class _ColorEditor extends StatefulWidget {
+  const _ColorEditor({required this.colors, required this.onChanged});
+
+  final List<ItemColor> colors;
+  final ValueChanged<List<ItemColor>> onChanged;
+
+  @override
+  State<_ColorEditor> createState() => _ColorEditorState();
+}
+
+/// Beyond this, a stated colour would be recorded and then ignored.
+///
+/// `ColorPalette.ordered` spreads coverage across the list, and the pile rules
+/// only consider a colour covering at least 12% of the garment. A fourth
+/// hand-picked colour lands below that line, so offering it would take an
+/// answer and quietly discard it.
+const _maxColors = 3;
+
+/// Colours garments actually come in, which is not the same as colours.
+///
+/// Chosen to span the laundry classes — whites, lights, brights, darks — and to
+/// include the ones a camera most often mistakes: navy read as black, cream
+/// read as white, charcoal read as navy.
+const _swatches = <(String, String)>[
+  ('White', '#FAFAFA'),
+  ('Cream', '#F0EDE5'),
+  ('Beige', '#C3B091'),
+  ('Gray', '#9A9A9A'),
+  ('Charcoal', '#3B3B3B'),
+  ('Black', '#1A1A1A'),
+  ('Navy', '#1F2A44'),
+  ('Blue', '#1E45C8'),
+  ('Light blue', '#A8C8E8'),
+  ('Denim', '#4A6FA5'),
+  ('Teal', '#128C8C'),
+  ('Green', '#2E7D32'),
+  ('Olive', '#6B7A3A'),
+  ('Yellow', '#F2C230'),
+  ('Orange', '#E06A1E'),
+  ('Red', '#C81E1E'),
+  ('Burgundy', '#6E1B2C'),
+  ('Pink', '#F2C6D0'),
+  ('Purple', '#6B3FA0'),
+  ('Brown', '#6B4A2F'),
+];
+
+class _ColorEditorState extends State<_ColorEditor> {
+  final _hex = TextEditingController();
+  String? _hexError;
+
+  @override
+  void dispose() {
+    _hex.dispose();
+    super.dispose();
+  }
+
+  bool get _isFull => widget.colors.length >= _maxColors;
+
+  void _add(ItemColor color) {
+    if (_isFull) return;
+    widget.onChanged([...widget.colors, color]);
+  }
+
+  void _removeAt(int index) => widget.onChanged([
+    for (final (i, color) in widget.colors.indexed)
+      if (i != index) color,
+  ]);
+
+  void _addTyped() {
+    final text = _hex.text.trim();
+    if (text.isEmpty) return;
+    try {
+      // Named after itself: a hex code is not a colour name, and inventing one
+      // ("Dark blue-ish") would put a guess where the user gave a fact.
+      final color = ItemColor.fromHex(text);
+      _add(color.copyWith(name: color.hex));
+      _hex.clear();
+      setState(() => _hexError = null);
+    } on FormatException {
+      setState(() => _hexError = 'Six hex digits, like #1F2A44.');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (widget.colors.isEmpty)
+          Text(
+            'No color recorded. Pick the one it mostly is.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          )
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              for (final (index, color) in widget.colors.indexed)
+                InputChip(
+                  avatar: _Swatch(color: color),
+                  label: Text(color.name ?? color.hex),
+                  onDeleted: () => _removeAt(index),
+                  deleteButtonTooltipMessage: 'Remove this color',
+                ),
+            ],
+          ),
+        if (widget.colors.length > 1)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'The first is the one it mostly is, and decides the load it goes '
+              'in.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        const SizedBox(height: 12),
+        if (_isFull)
+          Text(
+            'Remove one to add another.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          )
+        else ...[
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final (name, hex) in _swatches)
+                ActionChip(
+                  avatar: _Swatch(color: ItemColor.fromHex(hex)),
+                  label: Text(name),
+                  onPressed: () => _add(ItemColor.fromHex(hex, name: name)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _hex,
+                  decoration: InputDecoration(
+                    labelText: 'Or a hex code',
+                    hintText: '#1F2A44',
+                    errorText: _hexError,
+                  ),
+                  onSubmitted: (_) => _addTyped(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: IconButton.filledTonal(
+                  onPressed: _addTyped,
+                  icon: const Icon(Icons.add),
+                  tooltip: 'Add this color',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// A dot of the colour itself.
+///
+/// Outlined, because the two colours hardest to tell apart from their names —
+/// white and cream — are also the two that vanish against a light background
+/// without a border.
+class _Swatch extends StatelessWidget {
+  const _Swatch({required this.color});
+
+  final ItemColor color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 18,
+    height: 18,
+    decoration: BoxDecoration(
+      color: Color(0xFF000000 | color.rgb),
+      shape: BoxShape.circle,
+      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+    ),
+  );
 }

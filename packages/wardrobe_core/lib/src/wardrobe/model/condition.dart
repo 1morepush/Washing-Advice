@@ -19,7 +19,7 @@ enum WearType {
   shrunk('Shrunk'),
   looseSeam('Loose seam'),
   brokenFastener('Broken fastener'),
-  odour('Persistent odour');
+  odour('Persistent odor');
 
   const WearType(this.label);
 

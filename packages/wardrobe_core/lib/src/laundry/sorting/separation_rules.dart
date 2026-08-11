@@ -15,7 +15,7 @@ import '../../wardrobe/model/wardrobe_item.dart';
 enum SeparationReason {
   /// Dark or bright dye against whites.
   colorTransfer(
-    'Whites will pick up dye from darker items and grey permanently.',
+    'Whites will pick up dye from darker items and gray permanently.',
   ),
 
   /// New saturated dye that runs.
@@ -26,7 +26,7 @@ enum SeparationReason {
 
   /// Towelling shedding onto fabrics that show lint.
   lintTransfer(
-    'Towelling sheds fibres that cling to smooth and dark fabrics.',
+    'Toweling sheds fibers that cling to smooth and dark fabrics.',
   ),
 
   /// Fragile items against heavy ones.

@@ -63,7 +63,7 @@ final class GarmentScanResult {
   final Confident<StyleCut>? styleCut;
   final Set<Season> seasons;
 
-  /// A name to prefill, e.g. `'Grey Nike hoodie'`.
+  /// A name to prefill, e.g. `'Gray Nike hoodie'`.
   final String? suggestedName;
 
   /// Any text visible on the garment, which strongly aids re-identification.

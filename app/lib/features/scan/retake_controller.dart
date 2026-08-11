@@ -66,7 +66,7 @@ final class RetakeReviewing extends RetakeState {
       ('Type', before.type.value.label, after.type.value.label),
     if (before.colors.value.dominant?.name != after.colors.value.dominant?.name)
       (
-        'Colour',
+        'Color',
         before.colors.value.dominant?.name ?? 'Unknown',
         after.colors.value.dominant?.name ?? 'Unknown',
       ),

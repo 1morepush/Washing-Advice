@@ -477,7 +477,7 @@ final class ProfessionalCare {
 enum CareWarning {
   washInsideOut('Wash inside out'),
   washSeparately('Wash separately'),
-  washWithLikeColours('Wash with like colours'),
+  washWithLikeColours('Wash with like colors'),
   doNotSoak('Do not soak', isProhibition: true),
   useMeshBag('Use a mesh laundry bag'),
   closeFastenings('Close zips and fastenings'),

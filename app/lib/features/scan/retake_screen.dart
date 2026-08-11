@@ -74,7 +74,7 @@ class _Capture extends StatelessWidget {
             Text('Photograph the garment', style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             Text(
-              'Lay it flat on a plain surface that is not its own colour. The '
+              'Lay it flat on a plain surface that is not its own color. The '
               'background is what the app removes, so a busy or matching one '
               'is what makes a cutout go wrong.',
               textAlign: TextAlign.center,

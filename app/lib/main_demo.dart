@@ -568,11 +568,11 @@ List<WardrobeItem> _seed() {
     for (var i = 0; i < 6; i++)
       build(
         id: 'demo-pants-$i',
-        name: 'Grey shorts',
+        name: 'Gray shorts',
         type: ItemType.underwear,
         composition: const {Fiber.cotton: 95, Fiber.elastane: 5},
         hex: '#5A5A60',
-        colorName: 'Grey',
+        colorName: 'Gray',
         usage: UsageStats(
           timesWorn: 34 + i,
           timesWashed: 33 + i,
@@ -581,8 +581,8 @@ List<WardrobeItem> _seed() {
         addedDaysAgo: 260,
       ),
     build(
-      id: 'demo-pyjamas',
-      name: 'Striped pyjamas',
+      id: 'demo-pajamas',
+      name: 'Striped pajamas',
       type: ItemType.pajamas,
       composition: const {Fiber.cotton: 100},
       hex: '#8C9BB5',

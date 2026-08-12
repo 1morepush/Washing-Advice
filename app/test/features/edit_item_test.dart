@@ -92,7 +92,7 @@ void main() {
     // Wool → acrylic. The wool rule forbids tumble drying; acrylic does not,
     // and a form that saved the new fabric while keeping the old advice would
     // be worse than one that never allowed the correction.
-    await tester.tap(find.text('Add fibre'));
+    await tester.tap(find.text('Add fiber'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Acrylic').last);
     await tester.pumpAndSettle();
@@ -151,6 +151,109 @@ void main() {
     expect(saved.careLabel, isNotNull);
     expect(saved.care.source, Provenance.tagScan);
     expect(saved.effectiveCare.dry.tumbleDryAllowed, isTrue);
+  });
+  group('setting the color by hand', () {
+    /// The value is not decoration: it decides which load the garment goes in
+    /// and whether the app warns that its dye may run. A camera under warm
+    /// indoor light reads navy as black often enough that this needs an
+    /// override, and correcting it has to reach the laundry rules.
+    Future<void> save(WidgetTester tester) async {
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a swatch replaces what the camera guessed', (tester) async {
+      await pump(tester);
+
+      await tester.tap(find.byTooltip('Remove this color'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ActionChip, 'Navy'));
+      await tester.pumpAndSettle();
+      await save(tester);
+
+      final saved = (await repository.byId(id))!;
+      expect(saved.colors.value.dominant!.name, 'Navy');
+      expect(saved.colors.source, Provenance.userEdited);
+    });
+
+    testWidgets('correcting it changes the load it sorts into', (tester) async {
+      // Charcoal and white are on opposite sides of the whites/darks line, so
+      // a correction that did not reach `colorClass` would be one the app
+      // accepted and then ignored.
+      await pump(tester);
+      expect((await repository.byId(id))!.colorClass, ColorClass.darks);
+
+      await tester.tap(find.byTooltip('Remove this color'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ActionChip, 'White'));
+      await tester.pumpAndSettle();
+      await save(tester);
+
+      expect((await repository.byId(id))!.colorClass, ColorClass.whites);
+    });
+
+    testWidgets('the first color named is the one it mostly is', (
+      tester,
+    ) async {
+      await pump(tester);
+
+      await tester.tap(find.widgetWithText(ActionChip, 'Red'));
+      await tester.pumpAndSettle();
+      await save(tester);
+
+      final saved = (await repository.byId(id))!;
+      expect(saved.colors.value.colors.map((c) => c.name), ['Charcoal', 'Red']);
+      expect(saved.colors.value.dominant!.name, 'Charcoal');
+    });
+
+    testWidgets('a hex code is accepted for anything not offered', (
+      tester,
+    ) async {
+      // What someone copying a colour off a shop listing actually has.
+      await pump(tester);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Or a hex code'),
+        '#123456',
+      );
+      await tester.tap(find.byTooltip('Add this color'));
+      await tester.pumpAndSettle();
+      await save(tester);
+
+      expect(
+        (await repository.byId(id))!.colors.value.colors.last.hex,
+        '#123456',
+      );
+    });
+
+    testWidgets('a hex code that is not one says so', (tester) async {
+      await pump(tester);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Or a hex code'),
+        'navy',
+      );
+      await tester.tap(find.byTooltip('Add this color'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Six hex digits'), findsOneWidget);
+      expect(find.widgetWithText(InputChip, 'Charcoal'), findsOneWidget);
+    });
+
+    testWidgets('leaving the color alone leaves its provenance alone', (
+      tester,
+    ) async {
+      // Re-stamping an untouched field as the user's would make the app claim
+      // they confirmed something they never looked at — and that claim
+      // outranks every future scan.
+      await pump(tester);
+      await save(tester);
+
+      expect(
+        (await repository.byId(id))!.colors.source,
+        Provenance.aiInference,
+      );
+    });
   });
 }
 

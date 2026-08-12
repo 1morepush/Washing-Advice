@@ -86,13 +86,13 @@ void main() {
   group('colours, by measured hue distance', () {
     test('near-identical hues read as shades of one colour', () {
       expect(harmonyBetween(red, burgundy), 0.9);
-      expect(describePairing(red, burgundy), 'Shades of one colour');
+      expect(describePairing(red, burgundy), 'Shades of one color');
     });
 
     test('neighbours work', () {
       expect(harmonyBetween(red, yellow), 0.8);
       expect(harmonyBetween(camel, olive), 0.8);
-      expect(describePairing(orange, yellow), 'Neighbouring colours');
+      expect(describePairing(orange, yellow), 'Neighboring colors');
     });
 
     test('optical opposites work', () {

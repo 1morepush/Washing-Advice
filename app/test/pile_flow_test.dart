@@ -97,8 +97,8 @@ void main() {
     await controller().captureAndPlan();
     final planned = state() as PilePlanned;
 
-    expect(planned.recognisedCount, 1);
-    expect(planned.unrecognisedCount, 2);
+    expect(planned.recognizedCount, 1);
+    expect(planned.unrecognizedCount, 2);
   });
 
   test('a recognised garment brings its scanned care label with it', () async {
@@ -137,7 +137,7 @@ void main() {
     await controller().captureAndPlan();
     final planned = state() as PilePlanned;
 
-    final recognised = planned.detections.firstWhere((d) => d.isRecognised);
+    final recognised = planned.detections.firstWhere((d) => d.isRecognized);
     expect(recognised.item.care.source, Provenance.tagScan);
     expect(recognised.item.effectiveCare.wash.maxTempC, 40);
   });
@@ -162,7 +162,7 @@ void main() {
     await controller().captureAndPlan();
     final planned = state() as PilePlanned;
 
-    expect(planned.unrecognisedCount, 3);
+    expect(planned.unrecognizedCount, 3);
     expect(
       planned.plan.unassigned.map((u) => u.reason),
       everyElement(contains('care label')),

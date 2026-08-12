@@ -17,6 +17,7 @@ import '../../widgets/confidence_chip.dart';
 import '../../widgets/item_thumbnail.dart';
 import '../../widgets/status_message.dart';
 import '../history/wear_recorder.dart';
+import '../laundry/laundry_controller.dart';
 import 'cutout_controller.dart';
 import 'care_text.dart';
 import 'report_wear_sheet.dart';
@@ -36,6 +37,26 @@ class ItemDetailScreen extends ConsumerWidget {
         title: Text(item.valueOrNull?.displayName ?? 'Item'),
         actions: [
           if (item.valueOrNull case final WardrobeItem value) ...[
+            // The one-garment way into the basket. Where a whole load is
+            // involved the laundry screen does it in one go, but the common
+            // case is taking one thing off and wanting it out of the wardrobe.
+            if (value.lifecycle == LifecycleState.active)
+              IconButton(
+                onPressed: () async {
+                  await ref.read(laundryControllerProvider).move([
+                    value.id,
+                  ], LifecycleState.inLaundry);
+                  if (context.mounted) context.go('/laundry');
+                },
+                icon: const Icon(Icons.local_laundry_service_outlined),
+                tooltip: 'Put in the wash',
+              )
+            else if (value.lifecycle.isInLaundryCycle)
+              IconButton(
+                onPressed: () => context.go('/laundry'),
+                icon: const Icon(Icons.local_laundry_service),
+                tooltip: value.lifecycle.label,
+              ),
             IconButton(
               onPressed: () => showReportWearSheet(context, value),
               icon: const Icon(Icons.report_problem_outlined),
@@ -203,7 +224,7 @@ class _Details extends StatelessWidget {
               belief: item.composition,
             ),
             _Fact(
-              label: 'Colour',
+              label: 'Color',
               value: item.colors.value.colors
                   .map((c) => c.name ?? c.hex)
                   .join(', '),

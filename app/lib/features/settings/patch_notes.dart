@@ -7,9 +7,16 @@
 /// fix. Notes fetched from a server would describe a version the phone might
 /// not have, which is exactly the confusion this is meant to resolve.
 ///
-/// Dated rather than numbered because this project has no release numbering to
-/// be honest about — every entry below is a change set that reached `main`, and
-/// the date is the day it did.
+/// Every entry is a change set that reached `main`, and the date is the day it
+/// did. The version numbers were assigned to that history after the fact rather
+/// than being minted at the time — the minor digit steps once per shipped set,
+/// so they order correctly and mean something, but they are a label on the past
+/// and not a record kept as it happened. Worth knowing before anyone treats
+/// them as a build identifier.
+///
+/// The names are jokes. A release nobody can refer to is a release nobody
+/// mentions, and "the Separation Anxiety one" is a great deal easier to say
+/// than "0.6.0".
 library;
 
 import 'package:flutter/material.dart';
@@ -17,10 +24,18 @@ import 'package:flutter/material.dart';
 /// One shipped change set.
 final class Release {
   const Release({
+    required this.version,
+    required this.name,
     required this.date,
     required this.headline,
     required this.changes,
   });
+
+  /// e.g. `0.6.0`. Ordered, and a test keeps it that way.
+  final String version;
+
+  /// The joke. Laundry, always.
+  final String name;
 
   final DateTime date;
 
@@ -56,6 +71,39 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.6.0',
+    name: 'Separation Anxiety',
+    date: DateTime.utc(2026, 8, 12),
+    headline: 'Four piles, and a plan for the dirty one',
+    changes: [
+      'Every garment is now in one of four piles — clean, to wash, washing or '
+          'drying — and there is a Laundry screen to move things between them.',
+      'The to-wash pile works out which clothes can go in together and which '
+          'cannot, what temperature and cycle each load needs, and tells you '
+          'why. Darks with darks, the new red tee on its own.',
+      'Starting a load moves it into the machine and records the wash, so your '
+          'garment history knows what it was actually washed at.',
+    ],
+  ),
+  Release(
+    version: '0.5.0',
+    name: 'Color Run',
+    date: DateTime.utc(2026, 8, 11),
+    headline: 'Set the color yourself',
+    changes: [
+      'Edit an item and you can now say what color it actually is — pick from '
+          'swatches or type a hex code. A camera reads navy as black under '
+          'warm indoor light more often than it should, and the color decides '
+          'which load the garment goes in.',
+      'Name more than one and the first is the one it mostly is, which is what '
+          'keeps a white tee with a navy print out of the whites.',
+      'The app now writes in American English throughout. The u in colour ran '
+          'in the wash.',
+    ],
+  ),
+  Release(
+    version: '0.4.0',
+    name: 'Out, Damned Spot',
     date: DateTime.utc(2026, 8, 11),
     headline: 'Two ways to fix a bad cutout',
     changes: [
@@ -74,6 +122,8 @@ final patchNotes = <Release>[
     ],
   ),
   Release(
+    version: '0.3.0',
+    name: "Tag, You're It",
     date: DateTime.utc(2026, 8, 10),
     headline: 'Care labels are read in full',
     changes: [
@@ -88,17 +138,21 @@ final patchNotes = <Release>[
     ],
   ),
   Release(
+    version: '0.2.0',
+    name: 'Know Your Dial',
     date: DateTime.utc(2026, 8, 8),
     headline: 'Your own machines, and getting updates',
     changes: [
       'Name your washer and dryer by brand and model, and the app names the '
-          'programme actually printed on your dial.',
+          'program actually printed on your dial.',
       'Check for updates, in Settings, gets past a home-screen app that is '
           'showing an old version.',
       'The white strip above the app on iPhone is gone.',
     ],
   ),
   Release(
+    version: '0.1.0',
+    name: 'First Rinse',
     date: DateTime.utc(2026, 8, 7),
     headline: 'First version',
     changes: [
@@ -168,13 +222,16 @@ class _Entry extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Wrapped rather than a Row: at a large text scale a headline and a
-          // date side by side do not fit a narrow phone.
+          // Wrapped rather than a Row: at a large text scale a version, a name
+          // and a date side by side do not fit a narrow phone.
           Wrap(
             spacing: 8,
             crossAxisAlignment: WrapCrossAlignment.end,
             children: [
-              Text(release.headline, style: theme.textTheme.labelLarge),
+              Text(
+                '${release.version} · ${release.name}',
+                style: theme.textTheme.labelLarge,
+              ),
               Text(
                 release.formattedDate,
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -183,6 +240,11 @@ class _Entry extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 2),
+          // The name is the memorable part and the headline is the useful one,
+          // so both are kept: "the Separation Anxiety one" is how someone
+          // refers to a release, and "four piles" is what it did.
+          Text(release.headline, style: theme.textTheme.bodyMedium),
           const SizedBox(height: 6),
           for (final change in release.changes)
             Padding(

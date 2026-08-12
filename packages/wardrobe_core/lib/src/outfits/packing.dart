@@ -312,7 +312,7 @@ final class PackingPlanner {
         notes.add(
           'Washing this lot properly means ${classes.length} separate loads '
           '(${classes.map((c) => c.label.toLowerCase()).join(', ')}). '
-          'Dropping one colour would make it fewer.',
+          'Dropping one color would make it fewer.',
         );
       }
     } else if (trip.days > trip.washEveryDays) {

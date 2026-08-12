@@ -52,11 +52,11 @@ _TYPES: tuple[ItemType, ...] = (
     ItemType.BATH_TOWEL,
 )
 
-_COLOURS: tuple[tuple[str, float, float, float], ...] = (
+_COLORS: tuple[tuple[str, float, float, float], ...] = (
     ("White", 96.5, 0.1, 0.6),
     ("Black", 18.0, 0.0, 0.0),
     ("Navy", 24.1, 2.3, -8.7),
-    ("Grey", 63.7, 0.0, 0.0),
+    ("Gray", 63.7, 0.0, 0.0),
     ("Red", 53.2, 80.1, 67.2),
 )
 
@@ -76,7 +76,7 @@ class FakeVisionProvider:
     async def scan_garment(self, images: list[ScanImage]) -> GarmentScanResult:
         seed = self._seed(images[0])
         item_type = _TYPES[seed % len(_TYPES)]
-        name, lightness, a, b = _COLOURS[(seed // 7) % len(_COLOURS)]
+        name, lightness, a, b = _COLORS[(seed // 7) % len(_COLORS)]
         brand = _BRANDS[(seed // 13) % len(_BRANDS)]
 
         return GarmentScanResult(
@@ -160,7 +160,7 @@ class FakeVisionProvider:
         items: list[DetectedItem] = []
         for index in range(count):
             item_type = _TYPES[(seed + index * 5) % len(_TYPES)]
-            name, lightness, a, b = _COLOURS[(seed + index * 3) % len(_COLOURS)]
+            name, lightness, a, b = _COLORS[(seed + index * 3) % len(_COLORS)]
             items.append(
                 DetectedItem(
                     scan=GarmentScanResult(

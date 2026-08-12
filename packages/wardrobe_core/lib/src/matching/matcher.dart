@@ -55,8 +55,8 @@ sealed class MatchDecision {
 }
 
 /// Confident enough to reuse the existing item without asking.
-final class RecognisedItem extends MatchDecision {
-  const RecognisedItem({required this.match, required this.candidates});
+final class RecognizedItem extends MatchDecision {
+  const RecognizedItem({required this.match, required this.candidates});
 
   final MatchCandidate match;
 
@@ -66,7 +66,7 @@ final class RecognisedItem extends MatchDecision {
   ItemId get itemId => match.itemId;
 
   @override
-  String toString() => 'RecognisedItem(${match.itemId.value})';
+  String toString() => 'RecognizedItem(${match.itemId.value})';
 }
 
 /// Plausible, but worth confirming — "Is this your grey Nike hoodie?".
@@ -90,14 +90,14 @@ final class NeedsConfirmation extends MatchDecision {
 }
 
 /// Nothing in the wardrobe resembles this. Treat it as new.
-final class UnrecognisedItem extends MatchDecision {
-  const UnrecognisedItem({this.candidates = const []});
+final class UnrecognizedItem extends MatchDecision {
+  const UnrecognizedItem({this.candidates = const []});
 
   @override
   final List<MatchCandidate> candidates;
 
   @override
-  String toString() => 'UnrecognisedItem()';
+  String toString() => 'UnrecognizedItem()';
 }
 
 /// Ranks wardrobe items by how well they match a fingerprint.
@@ -137,11 +137,11 @@ final class MatchResolver {
   final double ambiguityMargin;
 
   MatchDecision resolve(List<MatchCandidate> ranked) {
-    if (ranked.isEmpty) return const UnrecognisedItem();
+    if (ranked.isEmpty) return const UnrecognizedItem();
 
     final best = ranked.first;
     if (best.score < confirmAbove) {
-      return UnrecognisedItem(candidates: ranked);
+      return UnrecognizedItem(candidates: ranked);
     }
 
     final runnerUp = ranked.length > 1 ? ranked[1] : null;
@@ -158,7 +158,7 @@ final class MatchResolver {
     }
 
     if (best.score >= recogniseAbove) {
-      return RecognisedItem(match: best, candidates: ranked);
+      return RecognizedItem(match: best, candidates: ranked);
     }
 
     return NeedsConfirmation(

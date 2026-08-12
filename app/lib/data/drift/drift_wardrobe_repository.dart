@@ -134,7 +134,7 @@ class DriftWardrobeRepository implements WardrobeRepository {
       select.where((t) => _anyPacked(t.tags, query.tags.toList()));
     }
 
-    if (query.favouritesOnly) {
+    if (query.favoritesOnly) {
       select.where((t) => t.isFavorite.equals(true));
     }
     if (query.neverWorn) {

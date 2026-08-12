@@ -14,6 +14,12 @@ import 'package:go_router/go_router.dart';
 /// One destination, in the order they appear.
 enum AppDestination {
   wardrobe('Wardrobe', '/', Icons.checkroom_outlined, Icons.checkroom),
+  laundry(
+    'Laundry',
+    '/laundry',
+    Icons.local_laundry_service_outlined,
+    Icons.local_laundry_service,
+  ),
   outfits('Outfits', '/outfits', Icons.style_outlined, Icons.style),
   packing('Packing', '/packing', Icons.luggage_outlined, Icons.luggage),
   insights('Insights', '/insights', Icons.insights_outlined, Icons.insights),

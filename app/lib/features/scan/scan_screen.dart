@@ -199,7 +199,7 @@ class _Review extends StatelessWidget {
                 show: (c) => c.isEmpty ? 'Not readable' : c.label,
               ),
               _Reading(
-                label: 'Colour',
+                label: 'Color',
                 belief: draft.colors,
                 show: (c) => c.isEmpty
                     ? 'Not readable'

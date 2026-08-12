@@ -7,6 +7,8 @@
 /// it just shows the wrong thing or nothing at all.
 library;
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:washing_advice/features/settings/patch_notes.dart';
@@ -25,14 +27,42 @@ void main() {
 
     test('every entry says something', () {
       for (final release in patchNotes) {
-        expect(release.headline, isNotEmpty, reason: '${release.date}');
-        expect(release.changes, isNotEmpty, reason: release.headline);
+        expect(release.headline, isNotEmpty, reason: release.version);
+        expect(release.name, isNotEmpty, reason: release.version);
+        expect(release.changes, isNotEmpty, reason: release.version);
       }
+    });
+
+    test('versions descend in step with the dates', () {
+      // Two orderings that must not disagree. The screen shows the first entry
+      // and folds the rest away, so a version out of step with its date would
+      // put a stale release at the top under a newer-looking number.
+      final versions = [
+        for (final release in patchNotes) _asNumbers(release.version),
+      ];
+      final sorted = [...versions]..sort(_descending);
+
+      expect(versions, sorted);
+    });
+
+    test('no two releases claim the same version', () {
+      final versions = {for (final release in patchNotes) release.version};
+
+      expect(versions, hasLength(patchNotes.length));
+    });
+
+    test('the newest note matches the version the app declares', () {
+      // The notes ship inside the build, so the top entry *is* the running
+      // version. A pubspec that disagreed would make the one thing this screen
+      // exists to answer a lie.
+      expect(patchNotes.first.version, _pubspecVersion());
     });
 
     test('a date reads as a date a person would write', () {
       expect(
         Release(
+          version: '9.9.9',
+          name: 'Fluff and Fold',
           date: DateTime.utc(2026, 8, 11),
           headline: 'x',
           changes: const ['y'],
@@ -55,6 +85,7 @@ void main() {
       await pump(tester);
 
       final latest = patchNotes.first;
+      expect(find.text('${latest.version} · ${latest.name}'), findsOneWidget);
       expect(find.text(latest.headline), findsOneWidget);
       expect(find.text(latest.formattedDate), findsOneWidget);
       expect(find.text(latest.changes.first), findsOneWidget);
@@ -87,4 +118,25 @@ void main() {
       expect(find.textContaining('come with the app'), findsOneWidget);
     });
   });
+}
+
+/// `0.6.0` as `[0, 6, 0]`, so versions compare as numbers and not as text —
+/// `'0.10.0'` sorts before `'0.9.0'` as a string.
+List<int> _asNumbers(String version) => [
+  for (final part in version.split('.')) int.parse(part),
+];
+
+int _descending(List<int> a, List<int> b) {
+  for (var i = 0; i < a.length && i < b.length; i++) {
+    if (a[i] != b[i]) return b[i].compareTo(a[i]);
+  }
+  return b.length.compareTo(a.length);
+}
+
+/// The version the built app declares, read from `pubspec.yaml`.
+String _pubspecVersion() {
+  final line = File(
+    'pubspec.yaml',
+  ).readAsLinesSync().firstWhere((l) => l.startsWith('version:'));
+  return line.split(':')[1].trim().split('+').first;
 }

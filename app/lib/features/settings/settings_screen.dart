@@ -147,7 +147,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Text('Your machines', style: theme.textTheme.titleSmall),
           const SizedBox(height: 8),
           Text(
-            'Used to turn "40°C, gentle, low spin" into the programme actually '
+            'Used to turn "40°C, gentle, low spin" into the program actually '
             'printed on your dial. Optional — without them the app still says '
             'what each load needs, it just cannot name the setting.',
             style: theme.textTheme.bodySmall?.copyWith(

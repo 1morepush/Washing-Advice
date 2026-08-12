@@ -176,7 +176,7 @@ final class InMemoryWardrobeRepository implements WardrobeRepository {
       return false;
     }
 
-    if (query.favouritesOnly && !item.isFavorite) return false;
+    if (query.favoritesOnly && !item.isFavorite) return false;
     if (query.neverWorn && !item.usage.hasNeverBeenWorn) return false;
     if (query.needsCareTagScan && !item.needsCareTagScan) return false;
 

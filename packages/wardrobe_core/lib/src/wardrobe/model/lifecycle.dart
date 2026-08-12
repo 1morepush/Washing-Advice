@@ -21,6 +21,17 @@ enum LifecycleState {
   /// Sitting in the laundry basket, unavailable until washed.
   inLaundry('In laundry'),
 
+  /// In the washing machine right now.
+  ///
+  /// Distinct from [inLaundry] because the answer to "can I wear this
+  /// tonight?" is different — a shirt in the basket can be washed in time, one
+  /// mid-cycle cannot — and because the sorter must not put an item that is
+  /// already in the drum into a second load.
+  beingWashed('Being washed'),
+
+  /// In the dryer, or hanging up to dry.
+  beingDried('Being dried'),
+
   /// Away for repair or alteration.
   beingRepaired('Being repaired'),
 
@@ -40,10 +51,27 @@ enum LifecycleState {
 
   final String label;
 
+  /// Reads a stored name, falling back to [active] for one it does not know.
+  ///
+  /// States get added, and a device still running an older build can be synced
+  /// an item in one it has never heard of. `values.byName` throws, so a single
+  /// unrecognised string would take down the read of the whole wardrobe rather
+  /// than of one field. A stale value the user can see and correct is by far
+  /// the better failure.
+  static LifecycleState parse(String name) =>
+      values.asNameMap()[name] ?? active;
+
   /// Whether the item is still owned. Terminal states stay in the record for
   /// statistics but leave the active wardrobe.
   bool get isOwned => switch (this) {
-        purchased || active || stored || inLaundry || beingRepaired => true,
+        purchased ||
+        active ||
+        stored ||
+        inLaundry ||
+        beingWashed ||
+        beingDried ||
+        beingRepaired =>
+          true,
         donated || sold || discarded || lost => false,
       };
 
@@ -51,7 +79,18 @@ enum LifecycleState {
   bool get isWearable => this == active;
 
   /// Whether the item should be offered to the laundry sorter.
+  ///
+  /// Emphatically not everything in the laundry cycle: something already in the
+  /// drum must not be planned into a *second* load. Only the basket, and the
+  /// clean clothes a pile photograph might turn up.
   bool get isLaunderable => this == active || this == inLaundry;
+
+  /// Whether the item is somewhere between the basket and the wardrobe.
+  ///
+  /// The union the laundry screen counts, and the reason [isWearable] is false
+  /// for all three: it is not in the wardrobe to be worn.
+  bool get isInLaundryCycle =>
+      this == inLaundry || this == beingWashed || this == beingDried;
 
   /// Whether moving to [next] makes sense.
   ///
@@ -63,7 +102,13 @@ enum LifecycleState {
     if (!isOwned) return false; // Terminal states are final.
     return switch (this) {
       purchased => next == active || next == stored || !next.isOwned,
-      active || stored || inLaundry || beingRepaired => true,
+      active ||
+      stored ||
+      inLaundry ||
+      beingWashed ||
+      beingDried ||
+      beingRepaired =>
+        true,
       donated || sold || discarded || lost => false,
     };
   }

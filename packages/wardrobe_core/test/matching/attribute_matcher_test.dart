@@ -131,8 +131,8 @@ void main() {
         wardrobe,
       );
       final decision = resolver.resolve(ranked);
-      expect(decision, isA<RecognisedItem>());
-      expect((decision as RecognisedItem).itemId, greyNikeHoodie.id);
+      expect(decision, isA<RecognizedItem>());
+      expect((decision as RecognizedItem).itemId, greyNikeHoodie.id);
     });
 
     test('nothing similar is treated as a new item', () {
@@ -142,7 +142,7 @@ void main() {
         composition: FabricComposition({Fiber.cotton: 100}),
       );
       final decision = resolver.resolve(matcher.rank(probe, wardrobe));
-      expect(decision, isA<UnrecognisedItem>());
+      expect(decision, isA<UnrecognizedItem>());
     });
 
     test('two near-identical garments force a confirmation', () {
@@ -165,7 +165,7 @@ void main() {
     });
 
     test('an empty wardrobe yields an unrecognised item', () {
-      expect(resolver.resolve(const []), isA<UnrecognisedItem>());
+      expect(resolver.resolve(const []), isA<UnrecognizedItem>());
     });
   });
 

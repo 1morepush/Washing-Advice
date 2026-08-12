@@ -47,7 +47,7 @@ final class PileDetection {
   /// otherwise a draft built from the reading alone.
   final WardrobeItem item;
 
-  bool get isRecognised => decision is RecognisedItem;
+  bool get isRecognized => decision is RecognizedItem;
 
   /// Whether the user should be asked before this is treated as known.
   ///
@@ -90,9 +90,9 @@ final class PilePlanned extends PileState {
 
   final ScanDiagnostics? diagnostics;
 
-  int get recognisedCount => detections.where((d) => d.isRecognised).length;
+  int get recognizedCount => detections.where((d) => d.isRecognized).length;
 
-  int get unrecognisedCount => detections.length - recognisedCount;
+  int get unrecognizedCount => detections.length - recognizedCount;
 }
 
 final class PileFailed extends PileState {
@@ -191,14 +191,14 @@ class PileController extends StateNotifier<PileState> {
       final decision = resolver.resolve(matcher.rank(probe, available));
 
       final item = switch (decision) {
-        RecognisedItem(:final itemId) => byId[itemId]!,
+        RecognizedItem(:final itemId) => byId[itemId]!,
         // A confirmation candidate is *not* adopted. Acting on a maybe is how
         // one garment's care label gets applied to a different garment.
         NeedsConfirmation() ||
-        UnrecognisedItem() => _draftFrom(detected.scan, ids),
+        UnrecognizedItem() => _draftFrom(detected.scan, ids),
       };
 
-      if (decision is RecognisedItem) claimed.add(decision.itemId);
+      if (decision is RecognizedItem) claimed.add(decision.itemId);
       detections.add(
         PileDetection(detected: detected, decision: decision, item: item),
       );
@@ -231,7 +231,7 @@ class PileController extends StateNotifier<PileState> {
           if (identical(existing, detection))
             PileDetection(
               detected: existing.detected,
-              decision: RecognisedItem(
+              decision: RecognizedItem(
                 match: MatchCandidate(itemId: itemId, score: 1),
                 candidates: existing.decision.candidates,
               ),

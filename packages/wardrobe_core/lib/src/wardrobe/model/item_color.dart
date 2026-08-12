@@ -91,7 +91,7 @@ final class ItemColor {
   }) {
     final cleaned = hex.replaceFirst('#', '').trim();
     if (cleaned.length != 6) {
-      throw FormatException('Expected a 6-digit hex colour, got "$hex"');
+      throw FormatException('Expected a 6-digit hex color, got "$hex"');
     }
     final value = int.parse(cleaned, radix: 16);
     return ItemColor.fromRgb(
@@ -348,6 +348,27 @@ final class ColorPalette {
   ColorPalette.single(ItemColor color) : this([color]);
 
   ColorPalette.empty() : this(const []);
+
+  /// A palette whose order was *stated* rather than measured.
+  ///
+  /// A camera reports the coverage it actually saw. A person naming colours by
+  /// hand is saying "mostly this, and some of that" and has no percentage in
+  /// mind, so coverage is derived from the order they gave: descending, and
+  /// summing to one.
+  ///
+  /// Derived rather than split equally, for a reason that would otherwise be a
+  /// very quiet bug: [ColorPalette] sorts by coverage, and Dart's sort is not
+  /// stable. Equal coverages would leave which colour counts as [dominant] up
+  /// to the sort's internals — and dominance decides the laundry pile.
+  factory ColorPalette.ordered(List<ItemColor> colors) {
+    final count = colors.length;
+    // 1 + 2 + ... + count, so the weights below sum to exactly one.
+    final total = count * (count + 1) / 2;
+    return ColorPalette([
+      for (final (index, color) in colors.indexed)
+        color.copyWith(coverage: (count - index) / total),
+    ]);
+  }
 
   final List<ItemColor> _colors;
 

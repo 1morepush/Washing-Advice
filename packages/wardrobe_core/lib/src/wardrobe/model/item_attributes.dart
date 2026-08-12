@@ -15,7 +15,7 @@ enum ItemKind {
   footwear('Footwear'),
   bag('Bags'),
   accessory('Accessories'),
-  jewelry('Jewellery'),
+  jewelry('Jewelry'),
   linen('Household linen');
 
   const ItemKind(this.label);
@@ -101,7 +101,7 @@ enum ItemType {
   tights('Tights', ItemCategory.legwear, weight: 80),
 
   // Sleep, active, swim
-  pajamas('Pyjamas', ItemCategory.sleepwear, weight: 350),
+  pajamas('Pajamas', ItemCategory.sleepwear, weight: 350),
   robe(
     'Robe',
     ItemCategory.sleepwear,
@@ -257,7 +257,7 @@ enum Pattern {
   graphic('Graphic print'),
   camouflage('Camouflage'),
   animalPrint('Animal print'),
-  colorBlock('Colour block'),
+  colorBlock('Color block'),
   heathered('Heathered'),
   other('Other');
 

@@ -29,7 +29,7 @@ void main() {
 
     test('counts only the filters actually set', () {
       const query = WardrobeQuery(
-        favouritesOnly: true,
+        favoritesOnly: true,
         brands: {'Nike'},
         text: 'hoodie',
       );
@@ -51,7 +51,7 @@ void main() {
 
     test('clearing keeps sort and paging', () {
       const query = WardrobeQuery(
-        favouritesOnly: true,
+        favoritesOnly: true,
         sort: WardrobeSort.mostWorn,
         limit: 20,
       );
@@ -257,7 +257,7 @@ void runRepositoryContractTests(String name, RepositoryFactory create) {
 
     test('filters favourites', () async {
       expect(
-        await ids(const WardrobeQuery(favouritesOnly: true)),
+        await ids(const WardrobeQuery(favoritesOnly: true)),
         ['navy-hoodie'],
       );
     });
@@ -287,7 +287,7 @@ void runRepositoryContractTests(String name, RepositoryFactory create) {
         await ids(
           const WardrobeQuery(
             colorClasses: {ColorClass.darks},
-            favouritesOnly: true,
+            favoritesOnly: true,
           ),
         ),
         ['navy-hoodie'],
@@ -482,8 +482,7 @@ void runRepositoryContractTests(String name, RepositoryFactory create) {
     });
 
     test('a watched query keeps its filter across updates', () async {
-      final stream =
-          repository.watch(const WardrobeQuery(favouritesOnly: true));
+      final stream = repository.watch(const WardrobeQuery(favoritesOnly: true));
       final results = <int>[];
       final subscription = stream.listen((items) => results.add(items.length));
 

@@ -35,6 +35,7 @@ import 'dart:typed_data';
 import 'package:washing_advice/data/api/ai_gateway.dart';
 import 'package:washing_advice/data/capture/image_capture_source.dart';
 import 'package:washing_advice/features/insights/insights_screen.dart';
+import 'package:washing_advice/features/laundry/laundry_screen.dart';
 import 'package:washing_advice/features/scan/retake_screen.dart';
 import 'package:washing_advice/features/outfits/outfits_screen.dart';
 import 'package:washing_advice/features/packing/packing_screen.dart';
@@ -225,6 +226,65 @@ void main() {
     );
 
     expect(tester.takeException(), isNull);
+  });
+
+  group('the laundry piles', () {
+    /// A full basket at a narrow width, because the load card is the densest
+    /// thing in the app — settings, requirements, a list of garments and a
+    /// paragraph of reasons — and it is the one screen someone reads at arm's
+    /// length in a utility room.
+    Future<void> pumpLaundry(
+      WidgetTester tester, {
+      TextScaler textScaler = TextScaler.noScaling,
+    }) async {
+      for (var i = 0; i < 6; i++) {
+        await repository.save(
+          confidentItem(
+            id: 'dirty-$i',
+            name: 'Charcoal merino crew-neck jumper $i',
+            type: ItemType.sweater,
+            composition: const {Fiber.wool: 70, Fiber.polyester: 30},
+          ).copyWith(lifecycle: LifecycleState.inLaundry),
+        );
+      }
+
+      await pump(
+        tester,
+        const LaundryScreen(),
+        overrides: [imageStoreProvider.overrideWithValue(MemoryImageStore())],
+        textScaler: textScaler,
+      );
+    }
+
+    testWidgets('the wash plan fits', (tester) async {
+      await pumpLaundry(tester);
+
+      expect(find.text('Start this load'), findsWidgets);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the wash plan fits with larger text', (tester) async {
+      await pumpLaundry(tester, textScaler: enlarged);
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a pile with things in the machine fits', (tester) async {
+      await repository.save(
+        confidentItem(
+          id: 'washing',
+          name: 'Navy hoodie',
+        ).copyWith(lifecycle: LifecycleState.beingWashed),
+      );
+      await pump(
+        tester,
+        const LaundryScreen(initialTab: 2),
+        overrides: [imageStoreProvider.overrideWithValue(MemoryImageStore())],
+        textScaler: enlarged,
+      );
+
+      expect(tester.takeException(), isNull);
+    });
   });
 
   group('taking the photograph again', () {

@@ -129,7 +129,7 @@ sealed class WardrobeEvent {
           itemId: itemId,
           occurredAt: occurredAt,
           recordedAt: recordedAt,
-          to: LifecycleState.values.byName(json['to']! as String),
+          to: LifecycleState.parse(json['to']! as String),
           note: json['note'] as String?,
         ),
       final unknown => throw FormatException('Unknown event type "$unknown"'),

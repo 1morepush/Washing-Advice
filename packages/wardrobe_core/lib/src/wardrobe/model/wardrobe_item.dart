@@ -374,7 +374,7 @@ final class WardrobeItem {
         photos: PhotoSet.fromJson(
           json['photos'] as List<Object?>? ?? const [],
         ),
-        lifecycle: LifecycleState.values.byName(json['lifecycle']! as String),
+        lifecycle: LifecycleState.parse(json['lifecycle']! as String),
         condition: ConditionAssessment.fromJson(
           json['condition'] as List<Object?>? ?? const [],
         ),

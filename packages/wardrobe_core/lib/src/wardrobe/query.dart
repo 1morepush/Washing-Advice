@@ -72,6 +72,8 @@ final class WardrobeQuery {
           LifecycleState.active,
           LifecycleState.stored,
           LifecycleState.inLaundry,
+          LifecycleState.beingWashed,
+          LifecycleState.beingDried,
           LifecycleState.beingRepaired,
         });
 

@@ -24,9 +24,19 @@ List<LoadRationale> _explanations(LaundryLoad load) => [
 ];
 
 class LoadCard extends ConsumerStatefulWidget {
-  const LoadCard({required this.load, super.key});
+  const LoadCard({required this.load, this.action, super.key});
 
   final LaundryLoad load;
+
+  /// What to offer at the bottom of the card, replacing "I washed this".
+  ///
+  /// The pile scan is a one-off: you photograph a heap, follow the card, and
+  /// tell the app it happened. The laundry screen tracks the same load through
+  /// the machine instead, so its buttons move the items on a stage rather than
+  /// closing the book on them. The card itself — settings, reasons, the
+  /// compromise warning — is identical either way, and a second copy of it
+  /// would be a second thing to keep correct.
+  final Widget? action;
 
   @override
   ConsumerState<LoadCard> createState() => _LoadCardState();
@@ -120,35 +130,39 @@ class _LoadCardState extends ConsumerState<LoadCard> {
             const SizedBox(height: 16),
             Align(
               alignment: Alignment.centerLeft,
-              child: _recorded
-                  // Not undoable from here on purpose. The event log is
-                  // append-only, and a button that appeared to delete history
-                  // would misrepresent what the system does.
-                  ? Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.check_circle_outline,
-                          size: 18,
-                          color: theme.colorScheme.primary,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Recorded',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                      ],
-                    )
-                  : FilledButton.tonalIcon(
-                      onPressed: () async {
-                        await ref.read(wearRecorderProvider).recordWash(load);
-                        if (mounted) setState(() => _recorded = true);
-                      },
-                      icon: const Icon(Icons.check),
-                      label: const Text('I washed this'),
-                    ),
+              child:
+                  widget.action ??
+                  (_recorded
+                      // Not undoable from here on purpose. The event log is
+                      // append-only, and a button that appeared to delete history
+                      // would misrepresent what the system does.
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.check_circle_outline,
+                              size: 18,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Recorded',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                          ],
+                        )
+                      : FilledButton.tonalIcon(
+                          onPressed: () async {
+                            await ref
+                                .read(wearRecorderProvider)
+                                .recordWash(load);
+                            if (mounted) setState(() => _recorded = true);
+                          },
+                          icon: const Icon(Icons.check),
+                          label: const Text('I washed this'),
+                        )),
             ),
           ],
         ),

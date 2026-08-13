@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from app.schemas.stains import StainAdviceRequest, StainAdviceResponse
+from app.schemas.stains import StainAdvice, StainAdviceRequest
 from app.services.ai.base import ScanImage
 
 
@@ -24,4 +24,4 @@ class StainAdviser(Protocol):
         self,
         request: StainAdviceRequest,
         image: ScanImage | None = None,
-    ) -> StainAdviceResponse: ...
+    ) -> StainAdvice: ...

@@ -14,8 +14,8 @@ from __future__ import annotations
 
 from app.schemas.stains import (
     BleachUse,
+    StainAdvice,
     StainAdviceRequest,
-    StainAdviceResponse,
     TreatmentStep,
 )
 from app.services.ai.base import ScanImage
@@ -121,7 +121,7 @@ class FakeStainAdviser:
         self,
         request: StainAdviceRequest,
         image: ScanImage | None = None,
-    ) -> StainAdviceResponse:
+    ) -> StainAdvice:
         substance = request.substance.lower()
 
         if any(word in substance for word in _PROTEIN_WORDS):
@@ -133,4 +133,4 @@ class FakeStainAdviser:
         else:
             steps, identified = _stubborn(), None
 
-        return StainAdviceResponse(steps=steps, identified_as=identified)
+        return StainAdvice(steps=steps, identified_as=identified)

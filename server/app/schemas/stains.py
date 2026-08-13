@@ -69,11 +69,24 @@ class StainAdviceRequest(WireModel):
     note: str | None = Field(default=None, max_length=500)
 
 
-class StainAdviceResponse(WireModel):
+class StainAdvice(WireModel):
+    """The treatment itself, before the app has vetted any of it."""
+
     steps: list[TreatmentStep]
 
     # What the model believes the stain to be, in a line. Shown so the user can
     # correct a misread before following advice aimed at the wrong substance.
     identified_as: str | None = None
 
+
+class StainAdviceResponse(WireModel):
+    """Wrapped in `result` like every other endpoint's answer.
+
+    Not a flourish: the Dart client's shared decoder reaches for `result` and
+    records `diagnostics` on the way past, so an endpoint that answered with a
+    bare object would need its own decoding path and its own way of going
+    wrong.
+    """
+
+    result: StainAdvice
     diagnostics: ScanDiagnostics | None = None

@@ -22,7 +22,7 @@ import httpx
 from pydantic import ValidationError
 
 from app.config import Settings, get_settings
-from app.schemas.stains import StainAdviceRequest, StainAdviceResponse, TreatmentStep
+from app.schemas.stains import StainAdvice, StainAdviceRequest, TreatmentStep
 from app.services.ai.base import ProviderError, ScanImage
 from app.services.ai.gemini_errors import gemini_error_reason
 from app.services.stains.prompts import STAIN_SCHEMA, describe
@@ -80,7 +80,7 @@ class GeminiStainAdviser:
         self,
         request: StainAdviceRequest,
         image: ScanImage | None = None,
-    ) -> StainAdviceResponse:
+    ) -> StainAdvice:
         prompt = describe(
             request.substance,
             request.fabric,
@@ -160,7 +160,7 @@ class GeminiStainAdviser:
             raise ProviderError(self.name, f"unexpected response shape: {error}") from error
 
 
-def _parse(data: dict[str, Any]) -> StainAdviceResponse:
+def _parse(data: dict[str, Any]) -> StainAdvice:
     """Builds the response, refusing one that says nothing.
 
     An empty step list is not a usable answer — the endpoint would return a
@@ -172,4 +172,4 @@ def _parse(data: dict[str, Any]) -> StainAdviceResponse:
     if not steps:
         raise ValueError("no steps returned")
 
-    return StainAdviceResponse(steps=steps, identified_as=data.get("identifiedAs"))
+    return StainAdvice(steps=steps, identified_as=data.get("identifiedAs"))

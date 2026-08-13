@@ -72,8 +72,7 @@ async def advise_on_stain(
         raise ProviderUnavailableError(str(error)) from error
 
     return StainAdviceResponse(
-        steps=result.steps,
-        identified_as=result.identified_as,
+        result=result,
         diagnostics=ScanDiagnostics(
             stages_run=[adviser.name],
             stage_answered=adviser.name,

@@ -229,8 +229,8 @@ class TestTheRoute:
 
         assert response.status_code == 200
         body = response.json()
-        assert body["steps"]
-        assert "instruction" in body["steps"][0]
+        assert body["result"]["steps"]
+        assert "instruction" in body["result"]["steps"][0]
 
     def test_the_structured_fields_reach_the_wire_in_camel_case(self, client: TestClient) -> None:
         # The Dart side decodes these by name. A snake_case key here is a field
@@ -244,7 +244,7 @@ class TestTheRoute:
             },
         )
 
-        steps = response.json()["steps"]
+        steps = response.json()["result"]["steps"]
         assert any("isMachineWash" in step for step in steps)
         assert not any("is_machine_wash" in step for step in steps)
 

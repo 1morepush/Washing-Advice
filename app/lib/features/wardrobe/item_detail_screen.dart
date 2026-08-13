@@ -35,38 +35,14 @@ class ItemDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         leading: BackButton(onPressed: () => context.go('/')),
         title: Text(item.valueOrNull?.displayName ?? 'Item'),
+        // Two icons, not five. Everything else moved into the body as a
+        // labelled button, because five unlabelled glyphs squeezed the
+        // garment's own name down to "Charco…" and left the most useful
+        // actions unguessable — a scrubbing brush does not read as "ask about
+        // a spill". The drawer's own comment already said this about
+        // navigation and it is no less true here.
         actions: [
           if (item.valueOrNull case final WardrobeItem value) ...[
-            // The one-garment way into the basket. Where a whole load is
-            // involved the laundry screen does it in one go, but the common
-            // case is taking one thing off and wanting it out of the wardrobe.
-            if (value.lifecycle == LifecycleState.active)
-              IconButton(
-                onPressed: () async {
-                  await ref.read(laundryControllerProvider).move([
-                    value.id,
-                  ], LifecycleState.inLaundry);
-                  if (context.mounted) context.go('/laundry');
-                },
-                icon: const Icon(Icons.local_laundry_service_outlined),
-                tooltip: 'Put in the wash',
-              )
-            else if (value.lifecycle.isInLaundryCycle)
-              IconButton(
-                onPressed: () => context.go('/laundry'),
-                icon: const Icon(Icons.local_laundry_service),
-                tooltip: value.lifecycle.label,
-              ),
-            IconButton(
-              onPressed: () => context.go('/item/${id.value}/stain'),
-              icon: const Icon(Icons.cleaning_services_outlined),
-              tooltip: 'Treat a stain',
-            ),
-            IconButton(
-              onPressed: () => showReportWearSheet(context, value),
-              icon: const Icon(Icons.report_problem_outlined),
-              tooltip: 'Report wear',
-            ),
             IconButton(
               onPressed: () => context.go('/item/${id.value}/edit'),
               icon: const Icon(Icons.edit_outlined),
@@ -76,8 +52,21 @@ class ItemDetailScreen extends ConsumerWidget {
             // this is the one action here with no undo, and it should never
             // be one accidental tap away from "Edit".
             PopupMenuButton<String>(
-              onSelected: (choice) => _confirmAndDelete(context, ref, value),
+              onSelected: (choice) => switch (choice) {
+                'wear' => showReportWearSheet(context, value),
+                _ => _confirmAndDelete(context, ref, value),
+              },
               itemBuilder: (menuContext) => [
+                const PopupMenuItem(
+                  value: 'wear',
+                  child: Row(
+                    children: [
+                      Icon(Icons.report_problem_outlined),
+                      SizedBox(width: 12),
+                      Text('Report wear'),
+                    ],
+                  ),
+                ),
                 PopupMenuItem(
                   value: 'delete',
                   child: Row(
@@ -207,6 +196,7 @@ class _Details extends StatelessWidget {
             padding: const EdgeInsets.only(top: 16),
             child: Center(child: ItemThumbnail(item: item, size: 160)),
           ),
+        _Actions(item: item),
         if (CutoutController.isAvailableFor(item))
           _CutoutPrompt(
             id: item.id,
@@ -406,6 +396,56 @@ class _ScanPrompt extends StatelessWidget {
 /// Shown only where it can do something: an item with a photograph and no
 /// cutout. Items scanned since the feature arrived already have one and never
 /// see this.
+/// The things you actually came here to do, in words.
+///
+/// In the body rather than the app bar because that bar was carrying five
+/// unlabelled icons and had squeezed the garment's name to "Charco…". An icon
+/// is fine for an action people already know is there; it is useless for
+/// introducing one, and "ask about a spill" is not a thing anyone goes looking
+/// for behind a scrubbing brush.
+///
+/// A `Wrap`, so a large text scale drops them onto their own lines rather than
+/// running off a narrow phone.
+class _Actions extends ConsumerWidget {
+  const _Actions({required this.item});
+
+  final WardrobeItem item;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+    child: Wrap(
+      spacing: 8,
+      children: [
+        // The one-garment way into the basket. A whole load is what the
+        // laundry screen is for; the common case is taking one thing off.
+        if (item.lifecycle == LifecycleState.active)
+          FilledButton.tonalIcon(
+            onPressed: () async {
+              await ref.read(laundryControllerProvider).move([
+                item.id,
+              ], LifecycleState.inLaundry);
+              if (context.mounted) context.go('/laundry');
+            },
+            icon: const Icon(Icons.local_laundry_service_outlined),
+            label: const Text('Put in the wash'),
+          )
+        else if (item.lifecycle.isInLaundryCycle)
+          FilledButton.tonalIcon(
+            onPressed: () => context.go('/laundry'),
+            icon: const Icon(Icons.local_laundry_service),
+            label: Text(item.lifecycle.label),
+          ),
+        TextButton.icon(
+          onPressed: () => context.go('/item/${item.id.value}/stain'),
+          icon: const Icon(Icons.cleaning_services_outlined),
+          label: const Text('Spilled something?'),
+        ),
+      ],
+    ),
+  );
+}
+
 class _CutoutPrompt extends ConsumerWidget {
   const _CutoutPrompt({required this.id, required this.hasCutout});
 

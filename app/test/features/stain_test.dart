@@ -287,7 +287,12 @@ void main() {
     );
   });
 
-  testWidgets('the item screen offers it', (tester) async {
+  testWidgets('the item screen offers it in words, not as an icon', (
+    tester,
+  ) async {
+    // It was a bare brush glyph in an app bar carrying five of them, and the
+    // first person to use it could not find it. A tooltip is not an
+    // affordance — nobody hovers a phone.
     await seedWool();
 
     await tester.pumpWidget(
@@ -303,6 +308,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byTooltip('Treat a stain'), findsOneWidget);
+    expect(find.text('Spilled something?'), findsOneWidget);
   });
 }

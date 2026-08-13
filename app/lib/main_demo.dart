@@ -27,6 +27,7 @@ import 'core/settings.dart';
 import 'core/theme.dart';
 import 'data/api/ai_gateway.dart';
 import 'data/api/scan_dto.dart';
+import 'data/api/stain_dto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data/capture/image_capture_source.dart';
@@ -144,6 +145,62 @@ Future<List<WardrobeItem>> _withCutouts(
 /// Answers a scan without a server.
 class _CannedGateway extends AiGateway {
   _CannedGateway() : super(baseUrl: Uri.parse('http://demo.invalid/'));
+
+  /// A stubborn mark, answered the way a model really would.
+  ///
+  /// Deliberately proposes a hot chlorine soak. The demo's charcoal jumper is
+  /// wool and must not be bleached, so this is what makes the vetting visible
+  /// rather than theoretical — the screen shows one step and two refusals.
+  @override
+  Future<StainAdvice> adviseOnStain({
+    required String substance,
+    required String fabric,
+    required String care,
+    String? color,
+    String? note,
+    ScanImage? photo,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+
+    return const StainAdvice(
+      identifiedAs: 'a tannin stain',
+      steps: [
+        TreatmentStep(
+          instruction:
+              'Blot the mark with a clean dry cloth, working from '
+              'the outside in.',
+          because: 'Working inward keeps it from spreading into clean fabric.',
+          abrades: true,
+        ),
+        TreatmentStep(
+          instruction: 'Rinse the back of the fabric under a cold tap.',
+          because:
+              'Pushing from behind lifts the stain out rather than '
+              'through.',
+          temperatureC: 20,
+        ),
+        TreatmentStep(
+          instruction:
+              'Soak in hot water with household bleach for 20 '
+              'minutes.',
+          because:
+              'The general-purpose answer for a mark that will not '
+              'shift.',
+          temperatureC: 60,
+          bleach: BleachUse.chlorine,
+        ),
+        TreatmentStep(
+          instruction:
+              'Wash as normal and check the mark before it goes '
+              'anywhere near heat.',
+          because:
+              'Heat sets whatever is left, and a dryer makes it '
+              'permanent.',
+          isMachineWash: true,
+        ),
+      ],
+    );
+  }
 
   @override
   Future<GarmentScanResult> scanGarment(List<ScanImage> images) async {

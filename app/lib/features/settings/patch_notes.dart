@@ -71,6 +71,27 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.7.0',
+    name: 'Out, Damned Spot II',
+    date: DateTime.utc(2026, 8, 13),
+    headline: 'Ask what to do about a spill',
+    changes: [
+      'Pick a garment, say what was spilled on it — and add a photo if you are '
+          'not sure what the mark is — and you get an ordered treatment, with '
+          'the reason for each step.',
+      'The advice is checked against that garment before you see it. A step '
+          'the care label forbids is removed and the app says which '
+          'instruction it broke, so a wool jumper is never told to take a hot '
+          'bleach soak.',
+      'When nothing is safe to try at home, it says so rather than inventing '
+          'something gentler that will not work.',
+      'Finishing a treatment records it in the garment history and puts it '
+          'straight in the wash.',
+      'The load it ends up in then tells you to check that mark before '
+          'anything goes near heat — drying sets whatever did not come out.',
+    ],
+  ),
+  Release(
     version: '0.6.0',
     name: 'Separation Anxiety',
     date: DateTime.utc(2026, 8, 12),

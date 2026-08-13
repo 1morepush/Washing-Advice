@@ -16,6 +16,7 @@ import '../features/pile/pile_screen.dart';
 import '../features/scan/care_tag_screen.dart';
 import '../features/scan/retake_screen.dart';
 import '../features/scan/scan_screen.dart';
+import '../features/stains/stain_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/wardrobe/edit_item_screen.dart';
 import '../features/wardrobe/item_detail_screen.dart';
@@ -50,6 +51,11 @@ GoRouter buildRouter({String initialLocation = '/'}) => GoRouter(
       path: '/item/:id/mask',
       builder: (_, state) =>
           MaskEditorScreen(id: ItemId(state.pathParameters['id']!)),
+    ),
+    GoRoute(
+      path: '/item/:id/stain',
+      builder: (_, state) =>
+          StainScreen(id: ItemId(state.pathParameters['id']!)),
     ),
     GoRoute(
       path: '/item/:id/care-label',

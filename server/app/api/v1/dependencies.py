@@ -25,6 +25,9 @@ from app.services.images.cutout import BackgroundRemover, BorderSampledRemover
 from app.services.machines.base import MachineIdentifier
 from app.services.machines.fake import FakeMachineIdentifier
 from app.services.machines.gemini_identifier import GeminiMachineIdentifier
+from app.services.stains.base import StainAdviser
+from app.services.stains.fake import FakeStainAdviser
+from app.services.stains.gemini_adviser import GeminiStainAdviser
 from app.services.sync.store import InMemorySyncStore, SqliteSyncStore, SyncStore
 
 
@@ -112,6 +115,34 @@ structurally satisfy `VisionProvider` (different methods entirely), so typing
 convenience that only this module needs.
 """
 
+_live_advisers: list[StainAdviser] = []
+"""The same again for stain advisers, and separate for the same reason."""
+
+
+@lru_cache
+def get_stain_adviser() -> StainAdviser:
+    """The stain adviser described by the current settings.
+
+    Follows `get_machine_identifier` exactly, including reusing
+    `VISION_PROVIDER` rather than adding a second setting: there is one AI
+    backend either way, and a separate switch would only ever move in lockstep
+    with this one.
+    """
+    settings = get_settings()
+    if settings.vision_provider == "fake":
+        adviser: StainAdviser = FakeStainAdviser()
+    else:
+        try:
+            adviser = GeminiStainAdviser.from_settings(settings)
+        except ProviderError as error:
+            raise ProviderUnavailableError(
+                str(error),
+                hint="set GEMINI_API_KEY, or set VISION_PROVIDER=fake",
+            ) from error
+
+    _live_advisers.append(adviser)
+    return adviser
+
 
 @lru_cache
 def get_machine_identifier() -> MachineIdentifier:
@@ -140,12 +171,13 @@ def get_machine_identifier() -> MachineIdentifier:
 
 async def close_providers() -> None:
     """Releases every live provider's and identifier's resources, at shutdown."""
-    for provider in (*_live_providers, *_live_identifiers):
+    for provider in (*_live_providers, *_live_identifiers, *_live_advisers):
         closer = getattr(provider, "aclose", None)
         if closer is not None:
             await closer()
     _live_providers.clear()
     _live_identifiers.clear()
+    _live_advisers.clear()
 
 
 def reset_wiring() -> None:
@@ -156,6 +188,7 @@ def reset_wiring() -> None:
     """
     get_pipeline.cache_clear()
     get_machine_identifier.cache_clear()
+    get_stain_adviser.cache_clear()
     get_knowledge_cache.cache_clear()
     get_background_remover.cache_clear()
     # Closed before it is dropped: a SQLite store left to the garbage collector
@@ -166,4 +199,5 @@ def reset_wiring() -> None:
     get_sync_store.cache_clear()
     _live_providers.clear()
     _live_identifiers.clear()
+    _live_advisers.clear()
     get_settings.cache_clear()

@@ -153,6 +153,28 @@ final class WardrobeItem {
   bool get isLikelyToBleed =>
       colors.value.isLikelyToBleed && usage.timesWashed < 3;
 
+  /// Whether a stain was noted on this garment and it has not been washed
+  /// since.
+  ///
+  /// The one thing the wash plan needs to know about stain treatment. Heat
+  /// sets whatever a treatment failed to lift, and a dryer makes it permanent,
+  /// so a garment in this state has to be checked out of the machine before it
+  /// goes anywhere near one.
+  ///
+  /// Expressed against [UsageStats.lastWashedAt] rather than against a clock
+  /// on purpose. "Recently" would need a now, which the sorter does not have
+  /// and should not acquire — and the real question is not how long ago the
+  /// stain was, it is whether it has been through a wash yet. A garment
+  /// treated last month and not washed since still needs checking; one treated
+  /// this morning and washed at lunchtime does not.
+  bool get hasStainAwaitingAWash {
+    final stain = condition.current[WearType.stain];
+    if (stain == null) return false;
+
+    final washed = usage.lastWashedAt;
+    return washed == null || stain.observedAt.isAfter(washed);
+  }
+
   /// Sheds fibres onto everything else in a shared load.
   ///
   /// Driven by construction rather than fibre — see the note on [Fiber].

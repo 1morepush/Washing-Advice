@@ -18,6 +18,7 @@ import 'package:http_parser/http_parser.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import 'scan_dto.dart';
+import 'stain_dto.dart';
 
 /// A scan could not be completed.
 ///
@@ -111,6 +112,39 @@ class AiGateway implements VisionPort {
     return DryerProfile.fromJson(json);
   }
 
+  /// How to get a stain out of one particular garment.
+  ///
+  /// The garment is described in the words the app already shows on its own
+  /// screens rather than as a structure: the model reasons better about
+  /// "70% Wool, 30% Polyester" than about an enum map, and it keeps the server
+  /// from growing a second, drifting copy of the wardrobe model.
+  ///
+  /// What comes back is **unvetted**. Nothing here checks it against the
+  /// garment's care — that is `StainSafety`'s job in the core, against the real
+  /// values rather than the summary sent up. A caller that showed this
+  /// directly would be showing a wool jumper a bleach soak.
+  Future<StainAdvice> adviseOnStain({
+    required String substance,
+    required String fabric,
+    required String care,
+    String? color,
+    String? note,
+    ScanImage? photo,
+  }) async {
+    final json = await _postForm(
+      'care/stain',
+      fields: {
+        'substance': substance,
+        'fabric': fabric,
+        'care': care,
+        'color': ?color,
+        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      },
+      photo: photo,
+    );
+    return StainAdvice.fromJson(json);
+  }
+
   /// The garment with its background removed.
   ///
   /// Returns null when the server could not separate it — a plain refusal
@@ -197,6 +231,44 @@ class AiGateway implements VisionPort {
       // before the model has been called at all. Sixty seconds covered the
       // model but not the wait in front of it, so a scan could time out having
       // never actually failed.
+      final streamed = await _client
+          .send(request)
+          .timeout(const Duration(seconds: 90));
+      response = await http.Response.fromStream(streamed);
+    } on Exception catch (error) {
+      throw ScanFailure('Could not reach the server. $error');
+    }
+
+    return _decodeResult(response);
+  }
+
+  /// A form post with an optional file, for a call that is mostly text.
+  ///
+  /// Neither [_post] nor [_postJson] fits: the stain endpoint takes several
+  /// text fields *and* a photograph that is usually absent, and sending the
+  /// text as JSON would mean two request shapes for one endpoint depending on
+  /// whether a picture was attached.
+  Future<Map<String, Object?>> _postForm(
+    String path, {
+    required Map<String, String> fields,
+    ScanImage? photo,
+  }) async {
+    final request = http.MultipartRequest('POST', baseUrl.resolve('v1/$path'))
+      ..fields.addAll(fields);
+
+    if (photo != null) {
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'photo',
+          photo.bytes,
+          filename: 'stain.${photo.mimeType.split('/').last}',
+          contentType: _mediaType(photo.mimeType),
+        ),
+      );
+    }
+
+    final http.Response response;
+    try {
       final streamed = await _client
           .send(request)
           .timeout(const Duration(seconds: 90));

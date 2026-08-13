@@ -513,6 +513,31 @@ final class LaundrySorter {
       );
     }
 
+    // A garment whose stain has been treated but not yet washed. Heat sets
+    // whatever the treatment failed to lift and a dryer makes it permanent, so
+    // this is the one thing worth saying about a load that has nothing to do
+    // with its settings: look before you dry it.
+    final treated = [
+      for (final item in items)
+        if (item.hasStainAwaitingAWash) item,
+    ];
+    if (treated.isNotEmpty) {
+      final driver = treated.length == 1 ? treated.single : null;
+      rationale.add(
+        LoadRationale(
+          kind: RationaleKind.handling,
+          reason: driver == null
+              ? 'Check ${treated.length} treated marks before this load goes '
+                  'near heat — drying sets whatever did not come out.'
+              : 'Check the treated mark on ${driver.displayName} before this '
+                  'load goes near heat — drying sets whatever did not come '
+                  'out.',
+          causedBy: driver?.id,
+          causedByName: driver?.displayName,
+        ),
+      );
+    }
+
     return rationale;
   }
 

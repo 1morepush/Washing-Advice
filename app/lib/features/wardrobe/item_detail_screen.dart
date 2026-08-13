@@ -58,6 +58,11 @@ class ItemDetailScreen extends ConsumerWidget {
                 tooltip: value.lifecycle.label,
               ),
             IconButton(
+              onPressed: () => context.go('/item/${id.value}/stain'),
+              icon: const Icon(Icons.cleaning_services_outlined),
+              tooltip: 'Treat a stain',
+            ),
+            IconButton(
               onPressed: () => showReportWearSheet(context, value),
               icon: const Icon(Icons.report_problem_outlined),
               tooltip: 'Report wear',

@@ -262,6 +262,31 @@ void main() {
     expect(observed.observation.note, contains('red wine'));
   });
 
+  test('and reaches the wash plan, not just the history', () async {
+    // The link most likely to go missing. Appending the event alone would look
+    // right in the history and leave the load card silent, so the garment goes
+    // in the dryer and whatever did not come out is set for good.
+    await seedWool();
+    final container = build(_Adviser());
+
+    await container
+        .read(stainControllerProvider(_wool).notifier)
+        .record('red wine');
+
+    final item = (await repository.byId(_wool))!;
+    expect(item.hasStainAwaitingAWash, isTrue);
+    expect(
+      const LaundrySorter()
+          .sort([item])
+          .loads
+          .single
+          .rationaleOf(RationaleKind.handling)
+          .map((r) => r.reason)
+          .join(' '),
+      contains('near heat'),
+    );
+  });
+
   testWidgets('the item screen offers it', (tester) async {
     await seedWool();
 

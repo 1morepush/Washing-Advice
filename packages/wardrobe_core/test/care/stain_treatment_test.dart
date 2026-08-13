@@ -31,6 +31,7 @@ TreatmentStep _step({
     );
 
 void main() {
+  _treatedGarments();
   group('bleach', () {
     test('chlorine is refused on wool whatever the label says', () {
       // Physics before paperwork. Chlorine hydrolyses protein fibres — it does
@@ -315,6 +316,91 @@ void main() {
 
       expect(plan.steps, isEmpty);
       expect(plan.cautions, isEmpty);
+    });
+  });
+}
+
+/// Whether a treated garment is flagged to the wash plan.
+///
+/// The last link in the chain, and the one most likely to be silently missing:
+/// the advice can be perfect and the treatment recorded, and if the load card
+/// says nothing then the garment goes in the dryer and whatever did not come
+/// out is set for good.
+void _treatedGarments() {
+  WearObservation treatedAt(DateTime when) => WearObservation(
+        type: WearType.stain,
+        severity: WearSeverity.slight,
+        observedAt: when,
+        note: 'Treated: red wine',
+      );
+
+  group('a garment with a treated mark', () {
+    test('is flagged when it has never been washed since', () {
+      final item = buildItem(
+        usage: const UsageStats(timesWashed: 0, timesWorn: 1),
+      ).copyWith(condition: ConditionAssessment([treatedAt(testNow)]));
+
+      expect(item.hasStainAwaitingAWash, isTrue);
+    });
+
+    test('stops being flagged once it has been through a wash', () {
+      // Otherwise every garment ever treated carries the warning for life, and
+      // a warning that is always on is a warning nobody reads.
+      final item = buildItem(
+        usage: UsageStats(
+          timesWashed: 4,
+          timesWorn: 9,
+          lastWashedAt: testNow.add(const Duration(days: 1)),
+        ),
+      ).copyWith(condition: ConditionAssessment([treatedAt(testNow)]));
+
+      expect(item.hasStainAwaitingAWash, isFalse);
+    });
+
+    test('is flagged again if it is stained after that wash', () {
+      final item = buildItem(
+        usage: UsageStats(timesWashed: 4, timesWorn: 9, lastWashedAt: testNow),
+      ).copyWith(
+        condition: ConditionAssessment([
+          treatedAt(testNow.add(const Duration(days: 2))),
+        ]),
+      );
+
+      expect(item.hasStainAwaitingAWash, isTrue);
+    });
+
+    test('a garment with no stain on record is not flagged', () {
+      expect(buildItem().hasStainAwaitingAWash, isFalse);
+    });
+
+    test('the load it goes in says to check it before drying', () {
+      final treated = buildItem(
+        id: 'treated',
+        name: 'White cotton tee',
+        usage: const UsageStats(timesWashed: 0, timesWorn: 1),
+      ).copyWith(condition: ConditionAssessment([treatedAt(testNow)]));
+
+      final plan = const LaundrySorter().sort([treated]);
+
+      expect(
+        plan.loads.single
+            .rationaleOf(RationaleKind.handling)
+            .map((r) => r.reason)
+            .join(' '),
+        contains('before this load goes near heat'),
+      );
+    });
+
+    test('an ordinary load says nothing about treated marks', () {
+      final plan = const LaundrySorter().sort([buildItem(id: 'plain')]);
+
+      expect(
+        plan.loads.single
+            .rationaleOf(RationaleKind.handling)
+            .map((r) => r.reason)
+            .join(' '),
+        isNot(contains('near heat')),
+      );
     });
   });
 }

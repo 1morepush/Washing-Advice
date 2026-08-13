@@ -20,6 +20,7 @@ import '../../core/providers.dart';
 import '../../data/api/ai_gateway.dart';
 import '../../data/api/scan_dto.dart';
 import '../../data/api/stain_dto.dart';
+import '../history/wear_recorder.dart';
 import '../wardrobe/care_text.dart';
 
 sealed class StainState {
@@ -125,38 +126,30 @@ class StainController extends StateNotifier<StainState> {
 
   /// Records the treatment against the item.
   ///
-  /// A `ConditionObserved` rather than an event of its own: a stain *is* an
-  /// observation about the garment's condition, the projection that counts
-  /// them already exists, and a new event type would have to be taught to the
-  /// sync contract and to every reducer for no gain the user can see.
-  Future<void> record(String substance) async {
-    final ids = _ref.read(idGeneratorProvider);
-    final now = DateTime.now();
-
-    await _ref
-        .read(eventLogProvider)
-        .append(
-          ConditionObserved(
-            id: EventId(ids.next()),
-            itemId: itemId,
-            occurredAt: now,
-            recordedAt: now,
-            observation: WearObservation(
-              type: WearType.stain,
-              // The mildest grade on purpose. This records a stain that has
-              // just been *treated*, not an assessment of what is left —
-              // nobody can judge that until it has dried, and overstating it
-              // would drag the item's condition down for something that may
-              // well have come out.
-              severity: WearSeverity.slight,
-              observedAt: now,
-              note: 'Treated: $substance',
-            ),
-          ),
-        );
-
-    _ref.invalidate(itemProvider(itemId));
-  }
+  /// Through [WearRecorder.recordCondition] rather than by appending the event
+  /// here, and the difference is not cosmetic: that method also folds the
+  /// observation into the item's own `condition`, which is what
+  /// `hasStainAwaitingAWash` reads and therefore what puts "check this before
+  /// it goes near heat" on the load card. Appending the event alone would look
+  /// right in the history and leave the wash plan silent.
+  ///
+  /// A `WearType.stain` observation rather than an event of its own: a stain
+  /// *is* an observation about condition, the projection already exists, and a
+  /// new event type would have to be taught to the sync contract and to every
+  /// reducer for nothing the user can see.
+  ///
+  /// Logged at the mildest grade, because this records a stain that has just
+  /// been *treated* rather than an assessment of what is left — nobody can
+  /// judge that until it dries, and overstating it would drag the garment's
+  /// condition down for something that may well have come out.
+  Future<void> record(String substance) => _ref
+      .read(wearRecorderProvider)
+      .recordCondition(
+        itemId,
+        type: WearType.stain,
+        severity: WearSeverity.slight,
+        note: 'Treated: $substance',
+      );
 }
 
 /// The care summary in the same words the item screen uses.

@@ -87,6 +87,8 @@ final patchNotes = <Release>[
           'something gentler that will not work.',
       'Finishing a treatment records it in the garment history and puts it '
           'straight in the wash.',
+      'The load it ends up in then tells you to check that mark before '
+          'anything goes near heat — drying sets whatever did not come out.',
     ],
   ),
   Release(

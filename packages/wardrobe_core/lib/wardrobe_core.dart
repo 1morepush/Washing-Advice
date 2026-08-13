@@ -32,6 +32,7 @@ export 'src/care/model/wash_spec.dart';
 export 'src/care/rules/care_rule.dart';
 export 'src/care/rules/default_rules.dart';
 export 'src/care/rules/rule_evaluator.dart';
+export 'src/care/stains/stain_treatment.dart';
 // Events: the append-only history and its projections.
 export 'src/events/co_wear.dart';
 export 'src/events/event_log.dart';

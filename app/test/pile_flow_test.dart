@@ -7,6 +7,7 @@
 /// "photograph your laundry" tool.
 library;
 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
@@ -15,6 +16,7 @@ import 'package:washing_advice/core/settings.dart';
 import 'package:washing_advice/data/api/ai_gateway.dart';
 import 'package:washing_advice/data/capture/image_capture_source.dart';
 import 'package:washing_advice/features/pile/pile_controller.dart';
+import 'package:washing_advice/features/pile/pile_screen.dart';
 
 void main() {
   late InMemoryWardrobeRepository repository;
@@ -37,6 +39,9 @@ void main() {
     overrides: [
       wardrobeRepositoryProvider.overrideWithValue(repository),
       aiGatewayProvider.overrideWithValue(gateway),
+      // Moving garments to the basket writes a LifecycleChanged event; without
+      // this the log resolves to the real Drift database.
+      eventLogProvider.overrideWithValue(InMemoryEventLog()),
       idGeneratorProvider.overrideWithValue(
         SequentialIdGenerator(prefix: 'pile'),
       ),
@@ -226,6 +231,66 @@ void main() {
 
     await controller().captureAndPlan();
     expect(state(), isA<PileIdle>());
+  });
+
+  group('the plan can seed the basket', () {
+    /// Pumps the screen with a plan already on it.
+    ///
+    /// The controller does the scan first so the widget test is about what the
+    /// screen offers, not about the camera or the gateway.
+    Future<void> plan(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(600, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await controller().captureAndPlan();
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: PileScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    Future<List<WardrobeItem>> basket() => repository.query(
+      const WardrobeQuery(lifecycleStates: {LifecycleState.inLaundry}),
+    );
+
+    testWidgets('the garments it recognized go to the basket', (tester) async {
+      // Otherwise the scan is a one-off: photograph a heap, read the plan, and
+      // the app forgets it happened. This is what makes the photograph an
+      // input to the laundry screen rather than a dead end.
+      await repository.save(_hoodie());
+      await plan(tester);
+
+      await tester.tap(find.text('Add it to the wash'));
+      await tester.pumpAndSettle();
+
+      expect((await basket()).single.id.value, 'hoodie');
+      expect(find.textContaining('open Laundry'), findsOneWidget);
+    });
+
+    testWidgets('and the ones it could not place are left alone', (
+      tester,
+    ) async {
+      // A detection the wardrobe could not name is a draft with no row behind
+      // it. Moving one would mean inventing an item nobody agreed to add.
+      await repository.save(_hoodie());
+      await plan(tester);
+
+      await tester.tap(find.text('Add it to the wash'));
+      await tester.pumpAndSettle();
+
+      // Three garments were detected; only the one already catalogued moves.
+      expect(await basket(), hasLength(1));
+    });
+
+    testWidgets('nothing recognized means nothing to offer', (tester) async {
+      await plan(tester);
+
+      expect(find.textContaining('to the wash'), findsNothing);
+    });
   });
 }
 

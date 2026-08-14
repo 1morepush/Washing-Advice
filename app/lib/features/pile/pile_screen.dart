@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/settings.dart';
+import '../laundry/laundry_controller.dart';
 import 'pile_controller.dart';
 import 'widgets/load_card.dart';
 
@@ -189,6 +190,18 @@ class _Plan extends ConsumerWidget {
         ],
 
         const SizedBox(height: 24),
+        // The scan is otherwise a one-off: photograph a heap, read the plan,
+        // and the app forgets it ever happened. Sending the garments it
+        // *recognized* to the basket makes the photograph an input to the
+        // laundry screen rather than a dead end, and means the plan is still
+        // there tomorrow when the machine is free.
+        //
+        // Recognized only. A detection the wardrobe could not place is a draft
+        // built from the reading alone with no row behind it, and moving one
+        // would mean inventing an item nobody agreed to add.
+        if (_recognized(state).isNotEmpty) _AddToWash(ids: _recognized(state)),
+
+        const SizedBox(height: 12),
         OutlinedButton(
           onPressed: controller.reset,
           child: const Text('Scan another pile'),
@@ -196,6 +209,12 @@ class _Plan extends ConsumerWidget {
       ],
     );
   }
+
+  /// The ids of detections the wardrobe actually recognized.
+  List<ItemId> _recognized(PilePlanned state) => [
+    for (final detection in state.detections)
+      if (detection.isRecognized) detection.item.id,
+  ];
 
   String _summary(PilePlanned state) {
     final parts = <String>[
@@ -373,6 +392,57 @@ class _Failed extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Sends what the photograph recognized to the basket.
+///
+/// Its own widget because it has to remember having been pressed: the move is
+/// idempotent, but a button that stays live invites a second tap and gives no
+/// sign the first one did anything.
+class _AddToWash extends ConsumerStatefulWidget {
+  const _AddToWash({required this.ids});
+
+  final List<ItemId> ids;
+
+  @override
+  ConsumerState<_AddToWash> createState() => _AddToWashState();
+}
+
+class _AddToWashState extends ConsumerState<_AddToWash> {
+  bool _added = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final count = widget.ids.length;
+
+    if (_added) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton.icon(
+          onPressed: () => context.go('/laundry'),
+          icon: const Icon(Icons.check),
+          label: Text(
+            '$count ${count == 1 ? 'item is' : 'items are'} in the wash — '
+            'open Laundry',
+          ),
+        ),
+      );
+    }
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: FilledButton.tonalIcon(
+        onPressed: () async {
+          await ref
+              .read(laundryControllerProvider)
+              .move(widget.ids, LifecycleState.inLaundry);
+          if (mounted) setState(() => _added = true);
+        },
+        icon: const Icon(Icons.local_laundry_service_outlined),
+        label: Text('Add ${count == 1 ? 'it' : 'these $count'} to the wash'),
       ),
     );
   }

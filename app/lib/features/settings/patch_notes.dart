@@ -71,6 +71,26 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.8.0',
+    name: 'Basket Case',
+    date: DateTime.utc(2026, 8, 14),
+    headline: 'Three more ways into the wash',
+    changes: [
+      'Long press anything in the wardrobe to start picking clothes out, then '
+          'tap the rest and send the lot to the basket in one go. A full '
+          'basket one garment at a time was never going to happen.',
+      'Reporting wear now offers to put the garment in the wash while you are '
+          'there. Off unless you tick it — plenty of wear is spotted on a '
+          'hanger.',
+      'Photograph a pile and the garments it recognizes can go straight to the '
+          'basket, so the plan is still there tomorrow when the machine is '
+          'free. The ones it could not place are left alone.',
+      'A garment with no color recorded now says so where it matters: the '
+          'color row offers to set it, and the laundry section admits that '
+          '"darks" was an assumption rather than a look at the garment.',
+    ],
+  ),
+  Release(
     version: '0.7.0',
     name: 'Out, Damned Spot II',
     date: DateTime.utc(2026, 8, 13),

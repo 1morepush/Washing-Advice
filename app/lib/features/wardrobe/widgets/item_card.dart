@@ -13,10 +13,20 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../../widgets/item_thumbnail.dart';
 
 class ItemCard extends StatelessWidget {
-  const ItemCard({required this.item, this.onTap, super.key});
+  const ItemCard({
+    required this.item,
+    this.onTap,
+    this.onLongPress,
+    this.selected = false,
+    super.key,
+  });
 
   final WardrobeItem item;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+
+  /// Whether this garment is one of the ones currently picked out.
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
@@ -24,8 +34,13 @@ class ItemCard extends StatelessWidget {
 
     return Card(
       margin: EdgeInsets.zero,
+      // Tinted rather than ticked. A cell is mostly picture, and a badge in the
+      // corner competes with the two that are already there for care labels and
+      // favourites.
+      color: selected ? theme.colorScheme.primaryContainer : null,
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

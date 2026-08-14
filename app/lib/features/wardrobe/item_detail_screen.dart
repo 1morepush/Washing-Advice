@@ -618,7 +618,23 @@ class _Fact extends StatelessWidget {
               runSpacing: 4,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Text(value, style: theme.textTheme.bodyMedium),
+                // Never an empty string. A fact the app has nothing to say
+                // about used to render as a label, a gap and a lone chip —
+                // which reads as a broken screen rather than as missing
+                // information, and was reported as one. Colour is the row that
+                // hits it: a scan whose palette came back empty leaves an
+                // "Unsure · assumed" chip floating beside nothing.
+                Text(
+                  value.trim().isEmpty ? 'Not known' : value,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    // Greyed and italic when there is nothing, so absence does
+                    // not read as a garment whose colour is called "Not known".
+                    color: value.trim().isEmpty
+                        ? theme.colorScheme.onSurfaceVariant
+                        : null,
+                    fontStyle: value.trim().isEmpty ? FontStyle.italic : null,
+                  ),
+                ),
                 if (belief case final Confident<Object> belief)
                   ConfidenceChip.of(belief),
               ],

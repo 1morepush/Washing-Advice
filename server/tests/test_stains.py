@@ -20,6 +20,7 @@ from pydantic import ValidationError
 
 from app.schemas.stains import BleachUse, StainAdviceRequest
 from app.services.ai.base import ProviderError
+from app.services.stains.base import Identified, Proposed
 from app.services.stains.fake import FakeStainAdviser
 from app.services.stains.gemini_adviser import GeminiStainAdviser, _parse
 
@@ -269,3 +270,186 @@ class TestTheRoute:
         )
 
         assert response.status_code == 200
+
+
+def _events(body: str) -> list[dict[str, object]]:
+    """The decoded events out of an SSE body."""
+    return [
+        json.loads(line[len("data:") :].strip())
+        for line in body.splitlines()
+        if line.startswith("data:")
+    ]
+
+
+class TestTheStreamingRoute:
+    def test_each_step_arrives_as_its_own_event(self, client: TestClient) -> None:
+        response = client.post(
+            "/v1/care/stain/stream",
+            data={
+                "substance": "red wine",
+                "fabric": "100% Cotton",
+                "care": "Machine wash, up to 40°C.",
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/event-stream")
+
+        events = _events(response.text)
+        assert [event["type"] for event in events][-1] == "done"
+        assert sum(1 for event in events if event["type"] == "step") >= 2
+
+    def test_what_it_thinks_the_stain_is_comes_before_the_steps(self, client: TestClient) -> None:
+        # It is shown above the steps so a misread is caught before anybody
+        # acts on advice aimed at the wrong substance. Arriving after the last
+        # step would be arriving too late to do that job.
+        response = client.post(
+            "/v1/care/stain/stream",
+            data={
+                "substance": "blood",
+                "fabric": "100% Cotton",
+                "care": "Machine wash, up to 40°C.",
+            },
+        )
+
+        kinds = [event["type"] for event in _events(response.text)]
+        assert kinds.index("identified") < kinds.index("step")
+
+    def test_the_steps_match_the_non_streaming_answer(self, client: TestClient) -> None:
+        # The two routes must not drift into two different treatments. This is
+        # the check that keeps streaming an delivery detail rather than a
+        # second opinion.
+        form = {
+            "substance": "olive oil",
+            "fabric": "100% Cotton",
+            "care": "Machine wash, up to 40°C.",
+        }
+        whole = client.post("/v1/care/stain", data=form).json()["result"]["steps"]
+        streamed = [
+            event["step"]
+            for event in _events(client.post("/v1/care/stain/stream", data=form).text)
+            if event["type"] == "step"
+        ]
+
+        assert [step["instruction"] for step in streamed] == [step["instruction"] for step in whole]
+
+    def test_the_structured_fields_reach_the_wire_in_camel_case(self, client: TestClient) -> None:
+        response = client.post(
+            "/v1/care/stain/stream",
+            data={
+                "substance": "olive oil",
+                "fabric": "100% Cotton",
+                "care": "Machine wash, up to 40°C.",
+            },
+        )
+
+        steps = [e["step"] for e in _events(response.text) if e["type"] == "step"]
+        assert any("isMachineWash" in step for step in steps)
+        assert not any("is_machine_wash" in step for step in steps)
+
+    def test_a_missing_substance_is_still_a_422(self, client: TestClient) -> None:
+        # Rejected before the response starts, so it stays an ordinary status
+        # code rather than an error smuggled inside a 200.
+        response = client.post(
+            "/v1/care/stain/stream",
+            data={"fabric": "100% Cotton", "care": "Machine wash."},
+        )
+
+        assert response.status_code == 422
+
+
+def _sse_chunks(document: str, size: int) -> list[bytes]:
+    """`document` as the API would send it: SSE frames of `size` characters.
+
+    Split on character counts rather than on JSON boundaries on purpose. A real
+    chunk ends wherever the generator happened to flush — mid-word, mid-key,
+    between a `{` and the field that makes the step safe to read.
+    """
+    return [
+        b"data: "
+        + json.dumps(
+            {"candidates": [{"content": {"parts": [{"text": document[at : at + size]}]}}]}
+        ).encode()
+        + b"\n\n"
+        for at in range(0, len(document), size)
+    ]
+
+
+_STREAMED = (
+    '{"identifiedAs": "red wine", "steps": ['
+    '{"instruction": "Blot it with a dry cloth.", "because": "Rubbing spreads it.",'
+    ' "isMachineWash": false, "abrades": true},'
+    '{"instruction": "Soak in warm water with oxygen bleach.", "temperatureC": 40,'
+    ' "bleach": "oxygen", "isMachineWash": false, "abrades": false}'
+    "]}"
+)
+
+
+class TestStreamingFromGemini:
+    def _adviser(self, chunks: list[bytes], status: int = 200) -> GeminiStainAdviser:
+        def handler(request: httpx.Request) -> httpx.Response:
+            if status != 200:
+                return httpx.Response(status, json={"error": {"message": "overloaded"}})
+            return httpx.Response(200, stream=_Stream(chunks))
+
+        return GeminiStainAdviser(
+            api_key="k",
+            client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        )
+
+    async def _collect(self, adviser: GeminiStainAdviser) -> list[object]:
+        return [event async for event in adviser.stream(_request())]
+
+    async def test_the_steps_survive_arbitrary_chunk_boundaries(self) -> None:
+        # The property that matters. Whatever size the fragments arrive in, the
+        # same two steps come out with the same fields.
+        for size in (1, 5, 40, 4000):
+            events = await self._collect(self._adviser(_sse_chunks(_STREAMED, size)))
+            steps = [event.step for event in events if isinstance(event, Proposed)]
+
+            assert len(steps) == 2, f"chunk size {size}"
+            assert steps[0].abrades is True
+            assert steps[1].temperature_c == 40
+            assert steps[1].bleach is BleachUse.OXYGEN
+
+    async def test_a_step_is_never_emitted_half_read(self) -> None:
+        # A step missing `temperatureC` reads as one that names no temperature,
+        # which the safety check treats as harmless. Emitting one early would
+        # walk a 40°C soak straight past a 30°C label.
+        events = await self._collect(self._adviser(_sse_chunks(_STREAMED, 1)))
+        soak = [event.step for event in events if isinstance(event, Proposed)][1]
+
+        assert soak.temperature_c == 40
+
+    async def test_the_name_comes_before_the_first_step(self) -> None:
+        events = await self._collect(self._adviser(_sse_chunks(_STREAMED, 3)))
+
+        assert isinstance(events[0], Identified)
+        assert events[0].text == "red wine"
+
+    async def test_a_stream_that_says_nothing_is_a_provider_error(self) -> None:
+        # Rather than a success carrying no advice, which would draw a heading
+        # with nothing under it.
+        with pytest.raises(ProviderError):
+            await self._collect(self._adviser([b'data: {"candidates": []}\n\n']))
+
+    async def test_a_refused_request_is_a_provider_error(self) -> None:
+        with pytest.raises(ProviderError):
+            await self._collect(self._adviser([], status=503))
+
+    async def test_the_done_sentinel_is_not_read_as_content(self) -> None:
+        chunks = [*_sse_chunks(_STREAMED, 4000), b"data: [DONE]\n\n"]
+        events = await self._collect(self._adviser(chunks))
+
+        assert len([e for e in events if isinstance(e, Proposed)]) == 2
+
+
+class _Stream(httpx.AsyncByteStream):
+    """Hands back preset chunks, so a test can choose the split points."""
+
+    def __init__(self, chunks: list[bytes]) -> None:
+        self._chunks = chunks
+
+    async def __aiter__(self):  # type: ignore[no-untyped-def]
+        for chunk in self._chunks:
+            yield chunk

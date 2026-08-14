@@ -37,29 +37,49 @@ final _proposed = [
 ];
 
 class _Adviser extends AiGateway {
-  _Adviser({this.steps, this.fails = false})
+  _Adviser({this.steps, this.fails = false, this.stopsAfter, this.breaksWith})
     : super(baseUrl: Uri.parse('http://test.invalid/'));
 
   final List<TreatmentStep>? steps;
   final bool fails;
+
+  /// Ends the stream after this many steps, with no `done` — a dropped
+  /// connection partway through a treatment.
+  final int? stopsAfter;
+
+  /// Sends an in-band error after the steps, the way the server reports a
+  /// provider that gave up once the response had already started.
+  final String? breaksWith;
 
   /// What the request carried, so the test can check the garment was described.
   String? sentFabric;
   String? sentCare;
 
   @override
-  Future<StainAdvice> adviseOnStain({
+  Stream<StainStreamEvent> streamStainAdvice({
     required String substance,
     required String fabric,
     required String care,
     String? color,
     String? note,
     ScanImage? photo,
-  }) async {
+  }) async* {
     if (fails) throw const ScanFailure('The server is having a moment.');
     sentFabric = fabric;
     sentCare = care;
-    return StainAdvice(steps: steps ?? _proposed, identifiedAs: 'red wine');
+
+    yield const StainIdentified('red wine');
+    final all = steps ?? _proposed;
+    for (final step in all.take(stopsAfter ?? all.length)) {
+      yield StainStep(step);
+    }
+
+    if (breaksWith case final String message) {
+      yield StainStreamError(message);
+      return;
+    }
+    if (stopsAfter != null) return; // The connection went, mid-treatment.
+    yield const StainDone();
   }
 }
 
@@ -309,5 +329,152 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Spilled something?'), findsOneWidget);
+  });
+
+  group('the advice arrives a step at a time', () {
+    /// Every state the controller published, in order.
+    ///
+    /// The point of streaming is what the user sees *before* the end, so a
+    /// test that only inspected the final state would pass just as happily
+    /// against the old blocking call.
+    List<StainState> record(ProviderContainer container) {
+      final seen = <StainState>[];
+      container.listen(
+        stainControllerProvider(_tee),
+        (_, next) => seen.add(next),
+        fireImmediately: true,
+      );
+      return seen;
+    }
+
+    test('steps are shown before the treatment is finished', () async {
+      await seedCotton();
+      final container = build(_Adviser());
+      final seen = record(container);
+
+      await container
+          .read(stainControllerProvider(_tee).notifier)
+          .advise(substance: 'red wine');
+
+      // Advised, with some but not all of the steps, and not yet complete.
+      final partial = seen.whereType<StainAdvised>().firstWhere(
+        (state) => !state.isComplete,
+      );
+      expect(partial.plan.steps, isNotEmpty);
+      expect(partial.plan.steps.length, lessThan(_proposed.length));
+    });
+
+    test('and the count only ever grows', () async {
+      // A step already on screen is one the user may have started. Re-ordering
+      // or dropping one underneath them is not a rendering glitch here.
+      await seedCotton();
+      final container = build(_Adviser());
+      final seen = record(container);
+
+      await container
+          .read(stainControllerProvider(_tee).notifier)
+          .advise(substance: 'red wine');
+
+      final counts = [
+        for (final state in seen.whereType<StainAdvised>())
+          state.plan.steps.length,
+      ];
+      expect(counts, orderedEquals(List.of(counts)..sort()));
+    });
+
+    test('an unsafe step is refused as it lands, not at the end', () async {
+      // The vetting cannot be deferred to the close: a step shown now is a
+      // step someone can act on now. This wool jumper must never see the
+      // chlorine soak, at any point in the stream.
+      await seedWool();
+      final container = build(_Adviser());
+      final seen = record(container);
+
+      await container
+          .read(stainControllerProvider(_wool).notifier)
+          .advise(substance: 'red wine');
+
+      for (final state in seen.whereType<StainAdvised>()) {
+        expect(
+          state.plan.steps.where((step) => step.bleach != null),
+          isEmpty,
+          reason: 'a bleach step was visible mid-stream',
+        );
+      }
+    });
+
+    test('the finished plan matches the one-shot answer exactly', () async {
+      // Streaming is a delivery detail. If it produced a different treatment
+      // from the same steps it would be a second opinion, and the cautions —
+      // which depend on which steps were kept — are the part most likely to
+      // drift.
+      await seedWool();
+      final container = build(_Adviser());
+
+      await container
+          .read(stainControllerProvider(_wool).notifier)
+          .advise(substance: 'red wine');
+
+      final streamed =
+          container.read(stainControllerProvider(_wool)) as StainAdvised;
+      final atOnce = const StainSafety().vet(
+        _proposed,
+        item: (await repository.byId(_wool))!,
+      );
+
+      expect(
+        streamed.plan.steps.map((s) => s.instruction),
+        atOnce.steps.map((s) => s.instruction),
+      );
+      expect(
+        streamed.plan.refused.map((r) => r.reason),
+        atOnce.refused.map((r) => r.reason),
+      );
+      expect(streamed.plan.cautions, atOnce.cautions);
+    });
+
+    test('a stream that stops early is not presented as finished', () async {
+      // The dangerous case. A truncated treatment reads exactly like a short
+      // one, and the step most often lost is the last — which is usually the
+      // one about checking the mark before it goes near heat.
+      await seedCotton();
+      final container = build(_Adviser(stopsAfter: 1));
+
+      await container
+          .read(stainControllerProvider(_tee).notifier)
+          .advise(substance: 'red wine');
+
+      final state =
+          container.read(stainControllerProvider(_tee)) as StainAdvised;
+      expect(state.plan.steps, hasLength(1));
+      expect(state.isComplete, isFalse);
+    });
+
+    test('a stream that stops before saying anything is a failure', () async {
+      await seedCotton();
+      final container = build(_Adviser(stopsAfter: 0));
+
+      await container
+          .read(stainControllerProvider(_tee).notifier)
+          .advise(substance: 'red wine');
+
+      expect(container.read(stainControllerProvider(_tee)), isA<StainFailed>());
+    });
+
+    test('an error sent mid-stream is a failure, not a short answer', () async {
+      // Once the response has started the server has no status code left, so
+      // it reports the problem in band. Treating that as the end of a good
+      // treatment would show half of one as though it were whole.
+      await seedCotton();
+      final container = build(_Adviser(breaksWith: 'The model gave up.'));
+
+      await container
+          .read(stainControllerProvider(_tee).notifier)
+          .advise(substance: 'red wine');
+
+      final state = container.read(stainControllerProvider(_tee));
+      expect(state, isA<StainFailed>());
+      expect((state as StainFailed).message, 'The model gave up.');
+    });
   });
 }

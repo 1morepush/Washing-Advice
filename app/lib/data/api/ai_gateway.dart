@@ -145,6 +145,81 @@ class AiGateway implements VisionPort {
     return StainAdvice.fromJson(json);
   }
 
+  /// The same advice, delivered as each step is written.
+  ///
+  /// Still **unvetted**, exactly as [adviseOnStain] is, and the streaming makes
+  /// that more pressing rather than less: the vetting has to happen per step,
+  /// as each one lands, because a caller that waited for the end to check
+  /// anything would have given up the entire benefit.
+  ///
+  /// Ends without a [StainDone] if the connection dropped. The caller is
+  /// expected to notice — a truncated treatment reads exactly like a short one,
+  /// and the missing tail is usually the step about checking the mark before it
+  /// goes near heat.
+  Stream<StainStreamEvent> streamStainAdvice({
+    required String substance,
+    required String fabric,
+    required String care,
+    String? color,
+    String? note,
+    ScanImage? photo,
+  }) async* {
+    final request =
+        http.MultipartRequest('POST', baseUrl.resolve('v1/care/stain/stream'))
+          ..fields.addAll({
+            'substance': substance,
+            'fabric': fabric,
+            'care': care,
+            'color': ?color,
+            if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+          });
+
+    if (photo != null) {
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'photo',
+          photo.bytes,
+          filename: 'stain.${photo.mimeType.split('/').last}',
+          contentType: _mediaType(photo.mimeType),
+        ),
+      );
+    }
+
+    final http.StreamedResponse streamed;
+    try {
+      streamed = await _client
+          .send(request)
+          .timeout(const Duration(seconds: 90));
+    } on Exception catch (error) {
+      throw ScanFailure('Could not reach the server. $error');
+    }
+
+    if (streamed.statusCode != 200) {
+      // Still an ordinary failure: nothing has been shown yet, and the server
+      // rejects a bad request before it starts streaming.
+      throw _failureFor(await http.Response.fromStream(streamed));
+    }
+
+    await for (final line
+        in streamed.stream
+            .transform(utf8.decoder)
+            .transform(const LineSplitter())) {
+      if (!line.startsWith('data:')) continue;
+
+      final payload = line.substring('data:'.length).trim();
+      if (payload.isEmpty) continue;
+
+      final decoded = jsonDecode(payload);
+      if (decoded is! Map<String, Object?>) continue;
+
+      if (StainStreamEvent.fromJson(decoded)
+          case final StainStreamEvent event) {
+        if (event is StainDone) lastDiagnostics = event.diagnostics;
+        yield event;
+      }
+    }
+  }
+
   /// The garment with its background removed.
   ///
   /// Returns null when the server could not separate it — a plain refusal

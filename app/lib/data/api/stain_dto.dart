@@ -66,6 +66,67 @@ TreatmentStep _stepFrom(Map<String, Object?> json) {
   );
 }
 
+/// One thing the server said while the advice was still being written.
+///
+/// A sealed family rather than a partial [StainAdvice] that grows: the stream
+/// carries an outcome as well as content — it can end without finishing — and
+/// a type that only ever accumulated steps could not express "that is all of
+/// them" or "the model stopped halfway". Both matter here, because a treatment
+/// that ends early looks exactly like a short one.
+sealed class StainStreamEvent {
+  const StainStreamEvent();
+
+  /// Reads one decoded SSE payload.
+  ///
+  /// An unknown `type` is ignored rather than fatal — a newer server may send
+  /// events this build has never heard of, and dropping one costs nothing while
+  /// throwing would lose a treatment the user is halfway through.
+  static StainStreamEvent? fromJson(Map<String, Object?> json) =>
+      switch (json['type']) {
+        'identified' => StainIdentified(json['identifiedAs'] as String? ?? ''),
+        'step' => StainStep(_stepFrom(json['step']! as Map<String, Object?>)),
+        'done' => StainDone(
+          diagnostics: json['diagnostics'] == null
+              ? null
+              : ScanDiagnostics.fromJson(
+                  json['diagnostics']! as Map<String, Object?>,
+                ),
+        ),
+        'error' => StainStreamError(
+          json['message'] as String? ?? 'The server could not finish.',
+        ),
+        _ => null,
+      };
+}
+
+/// What the model believes the stain is.
+final class StainIdentified extends StainStreamEvent {
+  const StainIdentified(this.identifiedAs);
+
+  final String identifiedAs;
+}
+
+/// One finished step, still unvetted.
+final class StainStep extends StainStreamEvent {
+  const StainStep(this.step);
+
+  final TreatmentStep step;
+}
+
+/// The treatment is complete. Its absence is what marks a truncated answer.
+final class StainDone extends StainStreamEvent {
+  const StainDone({this.diagnostics});
+
+  final ScanDiagnostics? diagnostics;
+}
+
+/// The server gave up partway through.
+final class StainStreamError extends StainStreamEvent {
+  const StainStreamError(this.message);
+
+  final String message;
+}
+
 /// Parses the bleach a step uses.
 ///
 /// An unrecognised value throws rather than degrading to null. Everywhere else

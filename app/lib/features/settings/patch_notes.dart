@@ -71,6 +71,23 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.9.0',
+    name: 'Spin Cycle',
+    date: DateTime.utc(2026, 8, 14),
+    headline: 'Stain advice appears as it is written',
+    changes: [
+      'Asking what to do about a spill no longer makes you wait for the whole '
+          'answer. The first step shows up as soon as it is ready, and the '
+          'rest fill in underneath — which matters, because the first step is '
+          'the one to do first and stains do not wait.',
+      'Every step is still checked against your garment before you see it. '
+          'That happens step by step now rather than all at once, so nothing '
+          'reaches the screen unchecked.',
+      'If the connection drops halfway, it says so instead of showing you half '
+          'a treatment as though it were the whole thing.',
+    ],
+  ),
+  Release(
     version: '0.8.0',
     name: 'Basket Case',
     date: DateTime.utc(2026, 8, 14),

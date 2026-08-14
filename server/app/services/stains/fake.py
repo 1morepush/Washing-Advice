@@ -12,6 +12,8 @@ ever suggested cold water would make the whole vetting layer look untested.
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+
 from app.schemas.stains import (
     BleachUse,
     StainAdvice,
@@ -19,6 +21,7 @@ from app.schemas.stains import (
     TreatmentStep,
 )
 from app.services.ai.base import ScanImage
+from app.services.stains.base import Identified, Proposed, StainEvent
 
 _BLOT = TreatmentStep(
     instruction="Blot the mark with a clean dry cloth, working from the outside in.",
@@ -134,3 +137,20 @@ class FakeStainAdviser:
             steps, identified = _stubborn(), None
 
         return StainAdvice(steps=steps, identified_as=identified)
+
+    async def stream(
+        self,
+        request: StainAdviceRequest,
+        image: ScanImage | None = None,
+    ) -> AsyncIterator[StainEvent]:
+        """The same answer, one event at a time.
+
+        No artificial delay between steps. A fake that slept would make every
+        test that drives the stream pay for it, and the thing worth pinning is
+        the order and the content, not that a real model is slow.
+        """
+        advice = await self.advise(request, image)
+        if advice.identified_as is not None:
+            yield Identified(advice.identified_as)
+        for step in advice.steps:
+            yield Proposed(step)

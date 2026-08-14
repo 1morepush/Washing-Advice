@@ -36,12 +36,28 @@ final class StainThinking extends StainState {
 }
 
 /// A vetted treatment, ready to follow.
+///
+/// Reached with [isComplete] false while the rest is still arriving. The steps
+/// already here are final — each was vetted against this garment as it landed,
+/// and nothing that follows can take one back — so they are safe to act on
+/// before the last one has been written. That is the entire point: the first
+/// step is the one to do first, and waiting for the whole treatment before
+/// showing any of it spends the wait on advice the user has not reached.
 final class StainAdvised extends StainState {
   const StainAdvised({
     required this.substance,
     required this.plan,
     this.identifiedAs,
+    this.isComplete = true,
   });
+
+  /// Whether the server said it had finished.
+  ///
+  /// False means either "still writing" or "stopped early", and the screen
+  /// distinguishes them by whether a failure followed. A treatment that ended
+  /// early looks exactly like a short one, and the step most often lost is the
+  /// one about checking the mark before it goes near heat.
+  final bool isComplete;
 
   /// What the user said was spilled, kept so the screen can show what the
   /// advice is actually about.
@@ -67,7 +83,14 @@ class StainController extends StateNotifier<StainState> {
   final Ref _ref;
   final ItemId itemId;
 
-  /// Asks for a treatment and vets it before anyone sees it.
+  /// Asks for a treatment and vets it, step by step, as it arrives.
+  ///
+  /// Every step is vetted the moment it lands rather than at the end. Doing it
+  /// once at the close would mean either showing unvetted steps — the one thing
+  /// this flow exists to prevent — or holding them all back and streaming for
+  /// nothing. `StainSafety.vet` is pure and takes the whole list, so re-running
+  /// it over the steps so far gives exactly the answer the batch call would
+  /// have given, including the cautions, which depend on what was kept.
   Future<void> advise({
     required String substance,
     String? note,
@@ -86,12 +109,27 @@ class StainController extends StateNotifier<StainState> {
 
     state = const StainThinking();
 
-    final StainAdvice advice;
+    final trimmed = substance.trim();
+    final proposed = <TreatmentStep>[];
+    String? identifiedAs;
+    var finished = false;
+
+    void publish({bool complete = false}) {
+      state = StainAdvised(
+        substance: trimmed,
+        // The whole point. Everything the label forbids is dropped here, with
+        // the reason, before a single step is drawn.
+        plan: const StainSafety().vet(proposed, item: item),
+        identifiedAs: identifiedAs,
+        isComplete: complete,
+      );
+    }
+
     try {
-      advice = await _ref
+      final events = _ref
           .read(aiGatewayProvider)
-          .adviseOnStain(
-            substance: substance.trim(),
+          .streamStainAdvice(
+            substance: trimmed,
             fabric: item.composition.value.label,
             // The care summary the app already shows on the item's own screen,
             // so the model is told exactly what the user was told. A second
@@ -102,6 +140,26 @@ class StainController extends StateNotifier<StainState> {
             note: note,
             photo: photo,
           );
+
+      await for (final event in events) {
+        if (!mounted) return;
+
+        switch (event) {
+          case StainIdentified(identifiedAs: final name):
+            identifiedAs = name;
+            // Only worth a repaint once there is something to draw it above.
+            if (proposed.isNotEmpty) publish();
+          case StainStep(:final step):
+            proposed.add(step);
+            publish();
+          case StainDone():
+            finished = true;
+            publish(complete: true);
+          case StainStreamError(:final message):
+            state = StainFailed(message);
+            return;
+        }
+      }
     } on ScanFailure catch (failure) {
       state = StainFailed(failure.message, isRetryable: failure.isRetryable);
       return;
@@ -113,13 +171,24 @@ class StainController extends StateNotifier<StainState> {
       return;
     }
 
-    state = StainAdvised(
-      substance: substance.trim(),
-      // The whole point. Everything the label forbids is dropped here, with
-      // the reason, before a single step is drawn.
-      plan: const StainSafety().vet(advice.steps, item: item),
-      identifiedAs: advice.identifiedAs,
-    );
+    if (!mounted) return;
+
+    // The stream ended without saying it was done — a dropped connection
+    // partway through. What arrived was vetted and is safe to follow, but it is
+    // not the whole treatment, and presenting a truncated one as complete is
+    // how somebody misses the step about checking the mark before it dries.
+    if (!finished) {
+      state = proposed.isEmpty
+          ? const StainFailed(
+              'The connection dropped before any advice arrived.',
+            )
+          : StainAdvised(
+              substance: trimmed,
+              plan: const StainSafety().vet(proposed, item: item),
+              identifiedAs: identifiedAs,
+              isComplete: false,
+            );
+    }
   }
 
   void reset() => state = const StainIdle();

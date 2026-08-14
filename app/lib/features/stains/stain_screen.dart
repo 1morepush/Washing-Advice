@@ -240,7 +240,12 @@ class _Advice extends ConsumerWidget {
                 ),
               const SizedBox(height: 20),
 
-              if (plan.isEmpty)
+              // Only once the treatment is whole. Mid-stream the plan is
+              // legitimately empty — the first step may have been refused while
+              // the second is still being written — and announcing "nothing is
+              // safe" there tells the user to give up on a treatment that is
+              // about to arrive.
+              if (plan.isEmpty && state.isComplete)
                 StatusMessage(
                   icon: Icons.pan_tool_outlined,
                   title: 'Nothing safe to try at home',
@@ -284,10 +289,24 @@ class _Advice extends ConsumerWidget {
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
               ],
+
+              // Shown under the steps rather than over them. The steps above
+              // are finished and vetted and can be started on now — which is
+              // the whole reason for streaming — so the indicator belongs where
+              // the next one will appear, not somewhere that implies the page
+              // is not ready.
+              if (!state.isComplete) ...[
+                const SizedBox(height: 16),
+                const _StillWriting(),
+              ],
             ],
           ),
         ),
-        _Done(id: id, state: state, controller: controller),
+        // Withheld until the treatment is whole. "Done" on a half-written one
+        // would record a treatment nobody finished and send the garment to the
+        // wash before the step that says to check the mark first.
+        if (state.isComplete)
+          _Done(id: id, state: state, controller: controller),
       ],
     );
   }
@@ -417,4 +436,39 @@ class _Done extends ConsumerWidget {
       ),
     ),
   );
+}
+
+/// That there is more of the treatment still coming.
+///
+/// Its own line under the last step rather than a spinner over the page. What
+/// is already drawn is final — each step was vetted against this garment as it
+/// arrived — so covering it would hide advice that is ready to act on, which is
+/// exactly what streaming was meant to stop doing.
+class _StillWriting extends StatelessWidget {
+  const _StillWriting();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Row(
+      children: [
+        SizedBox(
+          width: 14,
+          height: 14,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          'Working out the rest…',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
 }

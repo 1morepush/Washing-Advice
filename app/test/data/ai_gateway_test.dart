@@ -16,8 +16,11 @@ import 'package:http/testing.dart';
 import 'package:test/test.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 import 'package:washing_advice/data/api/ai_gateway.dart';
+import 'package:washing_advice/data/api/stain_dto.dart';
 
 void main() {
+  _streamingStainAdvice();
+
   group('health()', () {
     test('requests v1/health, not the bare path', () async {
       Uri? requested;
@@ -294,6 +297,140 @@ void main() {
           ),
         ),
       );
+    });
+  });
+}
+
+/// The wire format between the two halves of the streaming stain flow.
+///
+/// The server writes server-sent events and this decodes them, and nothing
+/// either side of that boundary would notice if the framing were wrong — the
+/// controller would simply be handed no steps. Worth its own tests because SSE
+/// framing is easy to get almost right: the events are separated by blank
+/// lines, a chunk can split anywhere including mid-frame, and a `data:` line
+/// carrying something this build has never heard of has to be survivable.
+void _streamingStainAdvice() {
+  const frames =
+      'data: {"type": "identified", "identifiedAs": "red wine"}\n'
+      '\n'
+      'data: {"type": "step", "step": {"instruction": "Blot it.",'
+      ' "abrades": true, "isMachineWash": false}}\n'
+      '\n'
+      'data: {"type": "step", "step": {"instruction": "Soak it.",'
+      ' "temperatureC": 40, "bleach": "oxygen", "isMachineWash": false,'
+      ' "abrades": false}}\n'
+      '\n'
+      'data: {"type": "done", "diagnostics": {"stagesRun": ["gemini"],'
+      ' "stageAnswered": "gemini", "elapsedMs": 900}}\n'
+      '\n';
+
+  /// A gateway whose server sends [frames] in chunks of [size] bytes.
+  AiGateway gatewayFor(String body, {int size = 4096}) {
+    final client = MockClient.streaming((request, _) async {
+      final bytes = utf8.encode(body);
+      return http.StreamedResponse(
+        Stream.fromIterable([
+          for (var at = 0; at < bytes.length; at += size)
+            bytes.sublist(
+              at,
+              at + size > bytes.length ? bytes.length : at + size,
+            ),
+        ]),
+        200,
+        headers: {'content-type': 'text/event-stream'},
+      );
+    });
+    return AiGateway(
+      baseUrl: Uri.parse('http://test.invalid/'),
+      client: client,
+    );
+  }
+
+  Future<List<StainStreamEvent>> collect(AiGateway gateway) => gateway
+      .streamStainAdvice(
+        substance: 'red wine',
+        fabric: '100% Cotton',
+        care: 'Machine wash, up to 40°C.',
+      )
+      .toList();
+
+  group('streaming stain advice', () {
+    test('the events decode in order', () async {
+      final events = await collect(gatewayFor(frames));
+
+      expect(events.map((e) => e.runtimeType.toString()), [
+        'StainIdentified',
+        'StainStep',
+        'StainStep',
+        'StainDone',
+      ]);
+    });
+
+    test('the structured fields survive the wire', () async {
+      // These are what the safety check reads. A step that arrived with its
+      // temperature dropped would be vetted as one that names no temperature.
+      final events = await collect(gatewayFor(frames));
+      final soak = events.whereType<StainStep>().last.step;
+
+      expect(soak.temperatureC, 40);
+      expect(soak.bleach, BleachUse.oxygen);
+    });
+
+    test('a frame split across chunks still decodes', () async {
+      // A network hands over whatever has arrived, not whole events.
+      final events = await collect(gatewayFor(frames, size: 7));
+
+      expect(events.whereType<StainStep>(), hasLength(2));
+      expect(events.last, isA<StainDone>());
+    });
+
+    test('an event type this build does not know is skipped', () async {
+      // A newer server may send more. Dropping one costs nothing; throwing
+      // would lose a treatment the user is halfway through following.
+      const withExtra =
+          'data: {"type": "pondering", "note": "hmm"}\n'
+          '\n'
+          'data: {"type": "step", "step": {"instruction": "Blot it.",'
+          ' "abrades": true, "isMachineWash": false}}\n'
+          '\n';
+
+      final events = await collect(gatewayFor(withExtra));
+      expect(events, hasLength(1));
+      expect(events.single, isA<StainStep>());
+    });
+
+    test('a stream with no done event simply ends', () async {
+      // The gateway reports it by omission; deciding what that means is the
+      // controller's job, and it is not the same as a failure.
+      const truncated =
+          'data: {"type": "step", "step": {"instruction": "Blot it.",'
+          ' "abrades": true, "isMachineWash": false}}\n'
+          '\n';
+
+      final events = await collect(gatewayFor(truncated));
+      expect(events.whereType<StainDone>(), isEmpty);
+    });
+
+    test('diagnostics from the done event are recorded', () async {
+      final gateway = gatewayFor(frames);
+      await collect(gateway);
+
+      expect(gateway.lastDiagnostics?.elapsedMs, 900);
+    });
+
+    test('a rejected request is an ordinary failure', () async {
+      final client = MockClient.streaming((request, _) async {
+        return http.StreamedResponse(
+          Stream.value(utf8.encode('{"detail": "substance is required"}')),
+          422,
+        );
+      });
+      final gateway = AiGateway(
+        baseUrl: Uri.parse('http://test.invalid/'),
+        client: client,
+      );
+
+      await expectLater(collect(gateway), throwsA(isA<ScanFailure>()));
     });
   });
 }

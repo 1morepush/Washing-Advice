@@ -27,6 +27,7 @@ import 'package:washing_advice/features/wardrobe/item_detail_screen.dart';
 import '../support/fixtures.dart';
 
 void main() {
+  _missingFacts();
   const itemId = ItemId('tee');
 
   late InMemoryWardrobeRepository repository;
@@ -217,4 +218,42 @@ class _LabelGateway extends AiGateway {
 
   @override
   Future<CareTagScanResult> scanCareTag(ScanImage image) async => reading;
+}
+
+/// A fact the app knows nothing about.
+///
+/// Reported from a real phone, in dark mode: an item whose colour scan came
+/// back empty rendered the Color row as a label, a gap and a lone
+/// "Unsure · assumed" chip. That reads as a rendering fault rather than as
+/// missing information — it was reported as one — and it had nothing to do
+/// with the theme.
+void _missingFacts() {
+  testWidgets('a fact with no value says so rather than showing nothing', (
+    tester,
+  ) async {
+    final repository = InMemoryWardrobeRepository();
+    await repository.save(
+      confidentItem(id: 'nocolor', name: 'Grey tee').copyWith(
+        colors: Confident(
+          ColorPalette.empty(),
+          confidence: 0,
+          source: Provenance.fallbackDefault,
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          wardrobeRepositoryProvider.overrideWithValue(repository),
+          eventLogProvider.overrideWithValue(InMemoryEventLog()),
+          imageStoreProvider.overrideWithValue(MemoryImageStore()),
+        ],
+        child: const MaterialApp(home: ItemDetailScreen(id: ItemId('nocolor'))),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Not known'), findsWidgets);
+  });
 }

@@ -255,5 +255,33 @@ void _missingFacts() {
     await tester.pumpAndSettle();
 
     expect(find.text('Not known'), findsWidgets);
+    // And offers to fix it. Colour is the one missing fact that changes what
+    // the app *does*: with no palette the garment sorts by a default.
+    expect(find.text('Set it'), findsOneWidget);
+    // Which the laundry section admits to, rather than presenting a default as
+    // a decision somebody made about this garment.
+    expect(find.textContaining('assumed, no color recorded'), findsOneWidget);
+  });
+
+  testWidgets('a garment whose color is known is not nagged about it', (
+    tester,
+  ) async {
+    final repository = InMemoryWardrobeRepository();
+    await repository.save(confidentItem(id: 'navy', name: 'Navy tee'));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          wardrobeRepositoryProvider.overrideWithValue(repository),
+          eventLogProvider.overrideWithValue(InMemoryEventLog()),
+          imageStoreProvider.overrideWithValue(MemoryImageStore()),
+        ],
+        child: const MaterialApp(home: ItemDetailScreen(id: ItemId('navy'))),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Set it'), findsNothing);
+    expect(find.textContaining('assumed'), findsNothing);
   });
 }

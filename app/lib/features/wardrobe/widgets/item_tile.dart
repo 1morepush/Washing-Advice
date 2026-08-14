@@ -8,10 +8,20 @@ import '../../../widgets/confidence_chip.dart';
 import '../../../widgets/item_thumbnail.dart';
 
 class ItemTile extends StatelessWidget {
-  const ItemTile({required this.item, this.onTap, super.key});
+  const ItemTile({
+    required this.item,
+    this.onTap,
+    this.onLongPress,
+    this.selected = false,
+    super.key,
+  });
 
   final WardrobeItem item;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+
+  /// Whether this row is one of the garments currently picked out.
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +29,18 @@ class ItemTile extends StatelessWidget {
 
     return ListTile(
       onTap: onTap,
-      leading: ItemThumbnail(item: item),
+      onLongPress: onLongPress,
+      selected: selected,
+      selectedTileColor: theme.colorScheme.primaryContainer,
+      // The thumbnail is the row's identity, so the tick replaces it rather
+      // than crowding in beside it — the same swap a mail app makes, and the
+      // reason a selected row reads as selected at a glance.
+      leading: selected
+          ? CircleAvatar(
+              backgroundColor: theme.colorScheme.primary,
+              child: Icon(Icons.check, color: theme.colorScheme.onPrimary),
+            )
+          : ItemThumbnail(item: item),
       title: Text(
         item.displayName,
         maxLines: 1,

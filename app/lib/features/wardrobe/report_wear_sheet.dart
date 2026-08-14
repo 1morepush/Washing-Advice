@@ -16,6 +16,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../history/wear_recorder.dart';
+import '../laundry/laundry_controller.dart';
 
 Future<void> showReportWearSheet(BuildContext context, WardrobeItem item) =>
     showModalBottomSheet<void>(
@@ -36,6 +37,15 @@ class _ReportWearSheet extends ConsumerStatefulWidget {
 class _ReportWearSheetState extends ConsumerState<_ReportWearSheet> {
   WearType _type = WearType.pilling;
   WearSeverity _severity = WearSeverity.moderate;
+
+  /// Whether to send the garment to the basket as well as recording the wear.
+  ///
+  /// Off by default, and it stays off. Some wear is noticed while the garment
+  /// is on a hanger and is nothing to do with washing — pilling on a jumper
+  /// you are about to put away is the ordinary case. Defaulting this on would
+  /// quietly move clothes to the basket every time somebody reported a loose
+  /// seam.
+  bool _alsoWash = false;
 
   /// Whether this report will change how the garment is washed.
   ///
@@ -100,6 +110,17 @@ class _ReportWearSheetState extends ConsumerState<_ReportWearSheet> {
           ),
           const SizedBox(height: 16),
           _Consequence(willChangeCare: _willChangeCare),
+          // Offered only for the garment that is actually in your hands. One
+          // already in the basket or the machine has nowhere to go.
+          if (widget.item.lifecycle == LifecycleState.active)
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _alsoWash,
+              onChanged: (chosen) =>
+                  setState(() => _alsoWash = chosen ?? false),
+              title: const Text('Put it in the wash too'),
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
           const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
@@ -118,6 +139,11 @@ class _ReportWearSheetState extends ConsumerState<_ReportWearSheet> {
                         type: _type,
                         severity: _severity,
                       );
+                  if (_alsoWash) {
+                    await ref.read(laundryControllerProvider).move([
+                      widget.item.id,
+                    ], LifecycleState.inLaundry);
+                  }
                   if (context.mounted) Navigator.of(context).pop();
                 },
                 child: const Text('Record'),

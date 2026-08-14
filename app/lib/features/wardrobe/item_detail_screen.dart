@@ -224,6 +224,18 @@ class _Details extends StatelessWidget {
                   .map((c) => c.name ?? c.hex)
                   .join(', '),
               belief: item.colors,
+              // Colour is the one missing fact that changes what the app
+              // *does* rather than only what it displays: with no palette the
+              // garment sorts by a default, and the load it lands in is a
+              // guess. Worth one tap to fix, from the screen where the gap is
+              // visible.
+              action: item.colors.value.colors.isEmpty
+                  ? TextButton(
+                      onPressed: () =>
+                          context.go('/item/${item.id.value}/edit'),
+                      child: const Text('Set it'),
+                    )
+                  : null,
             ),
             if (item.sizeLabel case final String size)
               _Fact(label: 'Size', value: size),
@@ -261,7 +273,17 @@ class _Details extends StatelessWidget {
         _Section(
           title: 'Laundry',
           children: [
-            _Fact(label: 'Sorts into', value: item.colorClass.label),
+            // An empty palette still produces a colour class, because
+            // `ColorClass` has a default and the sorter must put the garment
+            // somewhere. Said plainly rather than shown as a decision: it
+            // lands in darks because that is the harmless mistake, not because
+            // anything looked at the garment.
+            _Fact(
+              label: 'Sorts into',
+              value: item.colors.value.colors.isEmpty
+                  ? '${item.colorClass.label} — assumed, no color recorded'
+                  : item.colorClass.label,
+            ),
             _Fact(label: 'Fabric weight', value: item.fabricClass.label),
             if (item.isLikelyToBleed)
               const _Fact(
@@ -574,7 +596,12 @@ class _Section extends StatelessWidget {
 
 /// A single labelled claim, with its provenance when it has one.
 class _Fact extends StatelessWidget {
-  const _Fact({required this.label, required this.value, this.belief});
+  const _Fact({
+    required this.label,
+    required this.value,
+    this.belief,
+    this.action,
+  });
 
   final String label;
   final String value;
@@ -582,6 +609,13 @@ class _Fact extends StatelessWidget {
   /// The belief this fact came from, if it is an inference rather than
   /// something derived or entered.
   final Confident<Object>? belief;
+
+  /// Something to do about this fact, shown after the value.
+  ///
+  /// For the rows where "not known" is worth fixing on the spot. Telling
+  /// someone a fact is missing and leaving them to find the screen that sets
+  /// it is half an answer.
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -637,6 +671,7 @@ class _Fact extends StatelessWidget {
                 ),
                 if (belief case final Confident<Object> belief)
                   ConfidenceChip.of(belief),
+                ?action,
               ],
             ),
           ),

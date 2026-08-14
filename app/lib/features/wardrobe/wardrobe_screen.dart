@@ -8,9 +8,18 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../../widgets/app_drawer.dart';
+import '../laundry/laundry_controller.dart';
 import 'filter_sheet.dart';
 import 'widgets/item_card.dart';
 import 'widgets/item_tile.dart';
+
+/// The garments currently picked out, if any.
+///
+/// A full basket is the ordinary case, and taking it to the laundry screen one
+/// garment at a time is the kind of tedium that gets a feature abandoned. Kept
+/// on the screen rather than in the controller because it is a thing the *list*
+/// is doing, and it ends the moment the last garment is unpicked.
+final wardrobeSelectionProvider = StateProvider<Set<ItemId>>((ref) => {});
 
 class WardrobeScreen extends ConsumerWidget {
   const WardrobeScreen({super.key});
@@ -27,6 +36,18 @@ class WardrobeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(wardrobeItemsProvider);
     final owned = ref.watch(ownedCountProvider).valueOrNull;
+    final selection = ref.watch(wardrobeSelectionProvider);
+
+    // A contextual scaffold rather than extra buttons on the usual one. While
+    // you are picking clothes out, search and filters and the two floating
+    // buttons are all in the way, and the one thing that matters is how to
+    // finish or how to get out.
+    if (selection.isNotEmpty) {
+      return _SelectionScaffold(
+        selection: selection,
+        items: items.valueOrNull ?? const [],
+      );
+    }
 
     return Scaffold(
       drawer: const AppDrawer(current: AppDestination.wardrobe),
@@ -182,9 +203,18 @@ class _ItemList extends ConsumerWidget {
                       const Divider(height: 1, indent: 88),
                   itemBuilder: (context, index) {
                     final item = items[index];
+                    final selection = ref.watch(wardrobeSelectionProvider);
                     return ItemTile(
                       item: item,
-                      onTap: () => context.go('/item/${item.id.value}'),
+                      selected: selection.contains(item.id),
+                      // Once you have started picking clothes out, a tap adds
+                      // to the selection instead of opening the garment.
+                      // Navigating away mid-selection would throw the selection
+                      // out, which is not what a tap means any more.
+                      onTap: selection.isEmpty
+                          ? () => context.go('/item/${item.id.value}')
+                          : () => toggleWardrobeSelection(ref, item.id),
+                      onLongPress: () => toggleWardrobeSelection(ref, item.id),
                     );
                   },
                 ),
@@ -195,13 +225,13 @@ class _ItemList extends ConsumerWidget {
 }
 
 /// The wardrobe as a wall of garments.
-class _Grid extends StatelessWidget {
+class _Grid extends ConsumerWidget {
   const _Grid({required this.items});
 
   final List<WardrobeItem> items;
 
   @override
-  Widget build(BuildContext context) => GridView.builder(
+  Widget build(BuildContext context, WidgetRef ref) => GridView.builder(
     padding: const EdgeInsets.fromLTRB(12, 4, 12, 96),
     // Sized by extent rather than a fixed column count, so a phone gets three
     // columns, a tablet gets six, and neither has to be special-cased.
@@ -215,12 +245,94 @@ class _Grid extends StatelessWidget {
     itemCount: items.length,
     itemBuilder: (context, index) {
       final item = items[index];
+      final selection = ref.watch(wardrobeSelectionProvider);
       return ItemCard(
         item: item,
-        onTap: () => context.go('/item/${item.id.value}'),
+        selected: selection.contains(item.id),
+        onTap: selection.isEmpty
+            ? () => context.go('/item/${item.id.value}')
+            : () => toggleWardrobeSelection(ref, item.id),
+        onLongPress: () => toggleWardrobeSelection(ref, item.id),
       );
     },
   );
+}
+
+/// Adds [id] to the selection, or takes it back out.
+void toggleWardrobeSelection(WidgetRef ref, ItemId id) {
+  final notifier = ref.read(wardrobeSelectionProvider.notifier);
+  final next = {...notifier.state};
+  if (!next.remove(id)) next.add(id);
+  notifier.state = next;
+}
+
+/// The wardrobe while garments are being picked out.
+///
+/// Everything a selection cannot use is gone: the drawer, the search box, the
+/// filter button and both floating buttons. What is left says how many are
+/// picked, how to take them all, how to stop, and the one action worth doing in
+/// bulk.
+class _SelectionScaffold extends ConsumerWidget {
+  const _SelectionScaffold({required this.selection, required this.items});
+
+  final Set<ItemId> selection;
+  final List<WardrobeItem> items;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Only what can actually go. `transitionTo` would refuse the rest, so a
+    // button counting them would promise a move that silently does nothing.
+    final washable = [
+      for (final item in items)
+        if (selection.contains(item.id) &&
+            item.lifecycle == LifecycleState.active)
+          item.id,
+    ];
+
+    void clear() => ref.read(wardrobeSelectionProvider.notifier).state = {};
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: clear,
+          tooltip: 'Stop selecting',
+        ),
+        title: Text('${selection.length} selected'),
+        actions: [
+          TextButton(
+            onPressed: () =>
+                ref.read(wardrobeSelectionProvider.notifier).state = {
+                  for (final item in items) item.id,
+                },
+            child: const Text('All'),
+          ),
+        ],
+      ),
+      body: _ItemList(items: items),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: FilledButton.icon(
+            onPressed: washable.isEmpty
+                ? null
+                : () async {
+                    await ref
+                        .read(laundryControllerProvider)
+                        .move(washable, LifecycleState.inLaundry);
+                    clear();
+                  },
+            icon: const Icon(Icons.local_laundry_service_outlined),
+            label: Text(
+              washable.isEmpty
+                  ? 'Nothing here can go in the wash'
+                  : 'Put ${washable.length} in the wash',
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _SearchField extends StatefulWidget {

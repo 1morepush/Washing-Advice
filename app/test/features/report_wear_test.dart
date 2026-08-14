@@ -233,5 +233,47 @@ void main() {
 
       expect(await events.all(), isEmpty);
     });
+
+    testWidgets('recording leaves the garment where it is by default', (
+      tester,
+    ) async {
+      // Wear is often noticed on a hanger, and has nothing to do with washing.
+      // Moving clothes to the basket every time somebody reported a loose seam
+      // would be the app deciding something it was not asked to decide.
+      await open(tester);
+      await tester.tap(find.widgetWithText(FilledButton, 'Record'));
+      await tester.pumpAndSettle();
+
+      expect((await item()).lifecycle, LifecycleState.active);
+    });
+
+    testWidgets('ticking the box puts it in the basket as well', (
+      tester,
+    ) async {
+      // The case the checkbox exists for: you have taken the shirt off, seen
+      // the mark, and the next thing you were going to do was wash it anyway.
+      await open(tester);
+      await tester.tap(find.text('Put it in the wash too'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Record'));
+      await tester.pumpAndSettle();
+
+      expect((await item()).lifecycle, LifecycleState.inLaundry);
+      // Still a wear report first. The move is the extra, not the point.
+      expect((await item()).condition.observations, hasLength(1));
+    });
+
+    testWidgets('and is not offered for a garment already in the basket', (
+      tester,
+    ) async {
+      // There is nowhere for it to go, and an inert checkbox reads as a
+      // feature that is broken rather than one that does not apply.
+      await repository.save(
+        (await item()).copyWith(lifecycle: LifecycleState.inLaundry),
+      );
+      await open(tester);
+
+      expect(find.text('Put it in the wash too'), findsNothing);
+    });
   });
 }

@@ -244,15 +244,19 @@ class _EditorState extends ConsumerState<_Editor> {
     });
 
     try {
-      final bytes = await renderMask(
+      // On an opaque ground rather than transparent. Sent with alpha, the
+      // remover flattens it — in practice onto black — and a black t-shirt
+      // then becomes the same colour as the background it is meant to be
+      // separated from. The only thing left with any contrast is the bedding
+      // the user has not painted out yet, so it keeps the bedding and throws
+      // the shirt away.
+      final bytes = await renderForRemoval(
         original: original,
         cutout: _cutout,
         strokes: _strokes,
+        background: groundFor(widget.item.colors.value.dominant?.lightness),
       );
 
-      // PNG, and it matters: what is being sent is already transparent where
-      // the user has painted, and JPEG would flatten that to black and hand
-      // the remover a garment on a black rectangle.
       final refined = await ref
           .read(aiGatewayProvider)
           .cutout(ScanImage(bytes: bytes, mimeType: 'image/png'));
@@ -270,9 +274,46 @@ class _EditorState extends ConsumerState<_Editor> {
         return;
       }
 
-      final image = await decodeImageFromList(refined);
+      final proposed = await decodeImageFromList(refined);
+
+      // What is on the canvas now, as one image, so the proposal can be
+      // measured and limited against it.
+      final beforeBytes = await renderMask(
+        original: original,
+        cutout: _cutout,
+        strokes: _strokes,
+      );
+      final before = await decodeImageFromList(beforeBytes);
+
+      // Subtract only. A removal the user painted by hand is a deliberate
+      // statement about their own garment — they can see it and the model
+      // cannot — so a pass that restored what they had just wiped out would
+      // be overruling the one party who knows.
+      final image = await intersect(proposed: proposed, current: before);
+      proposed.dispose();
+
+      final kept = await opaqueFraction(image);
+      final had = await opaqueFraction(before);
+      before.dispose();
+
       if (!mounted) {
         image.dispose();
+        return;
+      }
+
+      // A pass that throws away almost everything is not a tidier edge, it is
+      // a failed segmentation — and accepting one replaces careful hand work
+      // with an empty frame. Judged rather than trusted, which is the same
+      // stance the laundry rules and the stain check already take: the model
+      // proposes and the app decides whether the proposal is usable.
+      if (had > 0 && kept < had * 0.5) {
+        image.dispose();
+        setState(() {
+          _refining = false;
+          _notice =
+              'That would have removed most of the garment, so it has been '
+              'left alone. Your own tidying is still here.';
+        });
         return;
       }
 

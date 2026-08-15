@@ -325,6 +325,34 @@ void main() {
       );
     });
 
+    testWidgets('a pass that would eat the garment is refused', (tester) async {
+      // Reported from a real phone: a hand-tidied black t-shirt came back as
+      // a scrap of bedding in one corner. Accepting that replaces careful
+      // hand work with an empty frame, and Undo is small comfort when the
+      // screen has just thrown away what you spent a minute drawing.
+      final nearlyEmpty = await tester.runAsync(() => _mostlyTransparent());
+      install(answer: nearlyEmpty);
+      await tester.runAsync(() => seed(withCutout: true));
+      await open(tester);
+      await paintAcross(tester);
+
+      await tester.tap(find.text('Let the app finish the edges'));
+      await drain(tester);
+
+      expect(
+        find.textContaining('removed most of the garment'),
+        findsOneWidget,
+      );
+      // The editor and the stroke are both still here.
+      expect(find.text('Save cutout'), findsOneWidget);
+      expect(
+        tester
+            .widget<IconButton>(find.widgetWithIcon(IconButton, Icons.undo))
+            .onPressed,
+        isNotNull,
+      );
+    });
+
     testWidgets('undoing a pass brings the earlier strokes back', (
       tester,
     ) async {
@@ -372,4 +400,22 @@ class _Remover extends AiGateway {
     received = image;
     return answer;
   }
+}
+
+/// A cutout that kept almost nothing — a corner of a large frame.
+///
+/// What a failed segmentation actually returns: not an empty image, which
+/// would be easy to spot, but a plausible-looking scrap.
+Future<Uint8List> _mostlyTransparent({int size = 40}) async {
+  final recorder = ui.PictureRecorder();
+  ui.Canvas(recorder).drawRect(
+    const Rect.fromLTWH(0, 0, 6, 6),
+    Paint()..color = const Color(0xFFEEEEEE),
+  );
+  final picture = recorder.endRecording();
+  final image = await picture.toImage(size, size);
+  final data = (await image.toByteData(format: ui.ImageByteFormat.png))!;
+  picture.dispose();
+  image.dispose();
+  return data.buffer.asUint8List();
 }

@@ -173,4 +173,131 @@ void main() {
       expect(geometry.brushToImage(20), 40);
     });
   });
+
+  group('preparing a canvas for the remover', () {
+    test('what is sent has no transparency left in it', () async {
+      // The bug this exists for. A cutout is transparent, a remover handed
+      // transparency flattens it — in practice onto black — and a black
+      // t-shirt then becomes the same colour as the background it is supposed
+      // to be separated from. It keeps the bedding and throws the shirt away.
+      final original = await _solid(const Color(0xFF101010));
+      final cutout = await _solid(const Color(0xFF101010));
+
+      final png = await renderForRemoval(
+        original: original,
+        cutout: cutout,
+        strokes: [across(MaskMode.subtract)],
+        background: const Color(0xFFFFFFFF),
+      );
+
+      // Where the stroke removed the garment there is now ground, not a hole.
+      final removed = await _pixel(png, 20, 20);
+      expect(removed.alpha, 255);
+      expect(removed.red, 255);
+      // And the garment itself is untouched.
+      expect((await _pixel(png, 2, 2)).red, 0x10);
+
+      original.dispose();
+      cutout.dispose();
+    });
+
+    test('the ground is chosen against the garment', () {
+      // A near-black garment gets a white ground and vice versa. A fixed
+      // colour would fail one of the two commonest cases outright.
+      expect(groundFor(12), const Color(0xFFFFFFFF));
+      expect(groundFor(94), const Color(0xFF101010));
+    });
+
+    test('and is a mid-grey when the color was never recorded', () {
+      expect(groundFor(null), const Color(0xFF808080));
+    });
+  });
+
+  group('limiting what the remover may do', () {
+    test('it can take pixels away', () async {
+      final current = await _solid(const Color(0xFF204080));
+      final proposed = await _empty();
+
+      final result = await intersect(proposed: proposed, current: current);
+      expect(await opaqueFraction(result), lessThan(0.05));
+
+      current.dispose();
+      proposed.dispose();
+      result.dispose();
+    });
+
+    test('but it cannot put back what the user removed', () async {
+      // The user's own removals are a deliberate statement about their own
+      // garment — they can see it and the model cannot — so a pass that
+      // restored the bedding they had just wiped out would be overruling the
+      // one party who knows.
+      final current = await _empty();
+      final proposed = await _solid(const Color(0xFF204080));
+
+      final result = await intersect(proposed: proposed, current: current);
+      expect(await opaqueFraction(result), lessThan(0.05));
+
+      current.dispose();
+      proposed.dispose();
+      result.dispose();
+    });
+
+    test('what both keep survives', () async {
+      final current = await _solid(const Color(0xFF204080));
+      final proposed = await _solid(const Color(0xFF204080));
+
+      final result = await intersect(proposed: proposed, current: current);
+      expect(await opaqueFraction(result), greaterThan(0.95));
+
+      current.dispose();
+      proposed.dispose();
+      result.dispose();
+    });
+
+    test('a proposal at a different resolution still lines up', () async {
+      // The remover is free to answer at whatever size it likes, and an
+      // intersection between two different grids would silently trim an edge.
+      final current = await _solid(const Color(0xFF204080), size: 40);
+      final proposed = await _solid(const Color(0xFF204080), size: 100);
+
+      final result = await intersect(proposed: proposed, current: current);
+      expect(result.width, 40);
+      expect(await opaqueFraction(result), greaterThan(0.95));
+
+      current.dispose();
+      proposed.dispose();
+      result.dispose();
+    });
+  });
+
+  group('measuring how much is left', () {
+    test('a full image reads as full', () async {
+      final image = await _solid(const Color(0xFF204080));
+      expect(await opaqueFraction(image), greaterThan(0.95));
+      image.dispose();
+    });
+
+    test('an empty one reads as empty', () async {
+      final image = await _empty();
+      expect(await opaqueFraction(image), lessThan(0.05));
+      image.dispose();
+    });
+
+    test('half an image reads as about half', () async {
+      // The number that decides whether a pass is a tidier edge or a failed
+      // segmentation, so it has to be roughly right rather than merely
+      // ordered.
+      final recorder = ui.PictureRecorder();
+      ui.Canvas(recorder).drawRect(
+        const Rect.fromLTWH(0, 0, 40, 20),
+        Paint()..color = const Color(0xFF204080),
+      );
+      final picture = recorder.endRecording();
+      final image = await picture.toImage(40, 40);
+      picture.dispose();
+
+      expect(await opaqueFraction(image), closeTo(0.5, 0.06));
+      image.dispose();
+    });
+  });
 }

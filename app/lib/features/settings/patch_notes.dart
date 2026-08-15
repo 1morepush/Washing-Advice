@@ -71,6 +71,25 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.10.0',
+    name: 'Both Sides Now',
+    date: DateTime.utc(2026, 8, 15),
+    headline: 'Care labels with two sides, in any language',
+    changes: [
+      'Take as many photos of a care label as it needs. Labels are often '
+          'printed on both sides, or carry on onto a second tag behind the '
+          'first — add each one and they are read together as a single label '
+          'instead of one side quietly going missing.',
+      'Nothing is read until you say so, so you can turn the label over first. '
+          'A shot that came out blurred can be dropped without starting again.',
+      'Labels in other languages now work properly. The wash symbols are the '
+          'same in every country, so a French or Japanese label reads just as '
+          'well as an English one — the app tells you which language it was, '
+          'and shows the wording exactly as printed rather than translating it '
+          'at you.',
+    ],
+  ),
+  Release(
     version: '0.9.0',
     name: 'Spin Cycle',
     date: DateTime.utc(2026, 8, 14),

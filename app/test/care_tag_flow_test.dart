@@ -47,10 +47,21 @@ void main() {
 
   CareTagState state() => container.read(careTagControllerProvider(itemId));
 
+  /// Photograph once and read it.
+  ///
+  /// Two calls now: a capture no longer reads on its own, because a label
+  /// printed on both sides has to be turned over before anything is worked
+  /// out. Wrapped here so the assertions below stay about what the reading
+  /// does rather than about how many taps it took.
+  Future<void> captureAndRead() async {
+    await controller().capture();
+    await controller().readCollected();
+  }
+
   test('a label overrides the generic fibre rule', () async {
     // The superwash case. Without a label the wool rule forbids tumble drying;
     // the manufacturer says otherwise and knows this garment better.
-    await controller().captureAndRead();
+    await captureAndRead();
 
     final reviewing = state() as CareTagReviewing;
     expect(reviewing.updated.effectiveCare.dry.tumbleDryAllowed, isTrue);
@@ -61,7 +72,7 @@ void main() {
   test(
     'the overridden fields are reported, because that is the news',
     () async {
-      await controller().captureAndRead();
+      await captureAndRead();
 
       final reviewing = state() as CareTagReviewing;
       expect(
@@ -74,7 +85,7 @@ void main() {
   test('saving stops the app asking for the label again', () async {
     expect((await repository.byId(itemId))!.needsCareTagScan, isTrue);
 
-    await controller().captureAndRead();
+    await captureAndRead();
     await controller().save();
 
     final saved = (await repository.byId(itemId))!;
@@ -94,7 +105,7 @@ void main() {
       // could have caught it, so this test does.
       await container.read(itemProvider(itemId).future);
 
-      await controller().captureAndRead();
+      await captureAndRead();
       await controller().save();
 
       final shown = (await container.read(itemProvider(itemId).future))!;
@@ -110,7 +121,7 @@ void main() {
     // without digging the garment back out of the wardrobe, and nothing had
     // ever filed a photo under that role — the accessor and the role were
     // both dead code.
-    await controller().captureAndRead();
+    await captureAndRead();
     await controller().save();
 
     final saved = (await repository.byId(itemId))!;
@@ -140,7 +151,7 @@ void main() {
       ],
     );
 
-    await controller().captureAndRead();
+    await captureAndRead();
     await controller().save();
 
     final saved = (await repository.byId(itemId))!;
@@ -152,7 +163,7 @@ void main() {
   test('the label survives a later correction to the fabric', () async {
     // The whole reason the constraint is stored on the item. Re-resolving after
     // an edit must not quietly drop the manufacturer's instruction.
-    await controller().captureAndRead();
+    await captureAndRead();
     await controller().save();
 
     final saved = (await repository.byId(itemId))!;
@@ -170,7 +181,7 @@ void main() {
   });
 
   test('a label printing its composition outranks the photo guess', () async {
-    await controller().captureAndRead();
+    await captureAndRead();
 
     final reviewing = state() as CareTagReviewing;
     expect(reviewing.updated.composition.source, Provenance.tagScan);
@@ -187,7 +198,7 @@ void main() {
       unreadableSymbolCount: 5,
     );
 
-    await controller().captureAndRead();
+    await captureAndRead();
 
     expect(state(), isA<CareTagFailed>());
     expect((await repository.byId(itemId))!.careLabel, isNull);
@@ -202,13 +213,136 @@ void main() {
       unreadableSymbolCount: 1,
     );
 
-    await controller().captureAndRead();
+    await captureAndRead();
 
     final reviewing = state() as CareTagReviewing;
     expect(reviewing.reading.isComplete, isFalse);
     expect(reviewing.updated.effectiveCare.wash.maxTempC, 40);
     // The rule table still covers the symbol that could not be read.
     expect(reviewing.updated.effectiveCare.dry.tumbleDryAllowed, isFalse);
+  });
+
+  group('a label printed on more than one side', () {
+    /// A controller whose camera hands back [count] distinct photographs.
+    CareTagController rolling(int count) {
+      container.dispose();
+      container = ProviderContainer(
+        overrides: [
+          wardrobeRepositoryProvider.overrideWithValue(repository),
+          eventLogProvider.overrideWithValue(InMemoryEventLog()),
+          aiGatewayProvider.overrideWithValue(gateway),
+          imageStoreProvider.overrideWithValue(MemoryImageStore()),
+          imageCaptureProvider.overrideWithValue(
+            _Roll([
+              for (var i = 0; i < count; i++) ScanImage(bytes: [i, i, i]),
+            ]),
+          ),
+        ],
+      );
+      return container.read(careTagControllerProvider(itemId).notifier);
+    }
+
+    test('a photo is held rather than read straight away', () async {
+      // The point of the change. Reading the first shot immediately gives a
+      // complete-looking answer from half a label, with nothing on it to
+      // suggest the other side exists.
+      final controller = rolling(2);
+
+      await controller.capture();
+
+      expect(state(), isA<CareTagCollecting>());
+      expect((state() as CareTagCollecting).images, hasLength(1));
+      expect(gateway.photosSent, 0);
+    });
+
+    test('both sides reach the server as one reading', () async {
+      final controller = rolling(2);
+
+      await controller.capture();
+      await controller.capture();
+      await controller.readCollected();
+
+      expect(gateway.photosSent, 2);
+      expect(state(), isA<CareTagReviewing>());
+    });
+
+    test('and both are filed against the garment', () async {
+      // Two sides, two photographs kept, so the label can be re-read later
+      // without digging the garment back out of the wardrobe.
+      final controller = rolling(2);
+
+      await controller.capture();
+      await controller.capture();
+      await controller.readCollected();
+      await controller.save();
+
+      final saved = (await repository.byId(itemId))!;
+      expect(saved.photos.withRole(PhotoRole.careTag), hasLength(2));
+    });
+
+    test('the last shot can be dropped without starting over', () async {
+      final controller = rolling(3);
+
+      await controller.capture();
+      await controller.capture();
+      controller.discardLast();
+
+      expect((state() as CareTagCollecting).images, hasLength(1));
+    });
+
+    test('dropping the only shot goes back to the start', () async {
+      final controller = rolling(1);
+
+      await controller.capture();
+      controller.discardLast();
+
+      expect(state(), isA<CareTagIdle>());
+    });
+
+    test('backing out of the camera keeps what was already taken', () async {
+      // The roll is exhausted after one, so the second capture reports a
+      // cancelled camera. Losing side one there would be its own small
+      // disaster.
+      final controller = rolling(1);
+
+      await controller.capture();
+      await controller.capture();
+
+      expect((state() as CareTagCollecting).images, hasLength(1));
+    });
+  });
+
+  group('a label in another language', () {
+    test('the language is carried through to the review', () async {
+      // The instructions come from the ISO 3758 symbols, which are identical
+      // everywhere. The language only decides what the screen says about it.
+      gateway.reading = const CareTagScanResult(
+        instructions: CareConstraint(method: WashMethod.machine, maxTempC: 30),
+        confidence: 0.9,
+        language: 'fr',
+        rawText: "LAVER À FROID / LAVER À L'ENVERS",
+      );
+
+      await captureAndRead();
+
+      final reviewing = state() as CareTagReviewing;
+      expect(reviewing.reading.language, 'fr');
+      // And the reading itself is unaffected — a French label is not a worse
+      // label.
+      expect(reviewing.updated.effectiveCare.wash.maxTempC, 30);
+      expect(reviewing.updated.care.source, Provenance.tagScan);
+    });
+
+    test('a symbols-only label simply has no language', () async {
+      gateway.reading = const CareTagScanResult(
+        instructions: CareConstraint(method: WashMethod.machine, maxTempC: 30),
+        confidence: 0.9,
+      );
+
+      await captureAndRead();
+
+      expect((state() as CareTagReviewing).reading.language, isNull);
+    });
   });
 }
 
@@ -245,25 +379,31 @@ class _FakeGateway extends AiGateway {
 
   CareTagScanResult? reading;
 
+  /// How many photographs the last read was given, so a test can check that
+  /// both sides actually reached the server rather than only the first.
+  int photosSent = 0;
+
   @override
-  Future<CareTagScanResult> scanCareTag(ScanImage image) async =>
-      reading ??
-      CareTagScanResult(
-        instructions: const CareConstraint(
-          method: WashMethod.machine,
-          maxTempC: 40,
-          agitation: Agitation.mild,
-          tumbleDryAllowed: true,
-          tumbleDryHeat: TumbleDryHeat.low,
-        ),
-        confidence: 0.93,
-        composition: Confident(
-          FabricComposition(const {Fiber.wool: 80, Fiber.nylon: 20}),
-          confidence: 0.95,
-          source: Provenance.tagScan,
-        ),
-        symbolsFound: const ['wash_40', 'tumble_low', 'iron_low'],
-      );
+  Future<CareTagScanResult> scanCareTag(List<ScanImage> images) async {
+    photosSent = images.length;
+    return reading ??
+        CareTagScanResult(
+          instructions: const CareConstraint(
+            method: WashMethod.machine,
+            maxTempC: 40,
+            agitation: Agitation.mild,
+            tumbleDryAllowed: true,
+            tumbleDryHeat: TumbleDryHeat.low,
+          ),
+          confidence: 0.93,
+          composition: Confident(
+            FabricComposition(const {Fiber.wool: 80, Fiber.nylon: 20}),
+            confidence: 0.95,
+            source: Provenance.tagScan,
+          ),
+          symbolsFound: const ['wash_40', 'tumble_low', 'iron_low'],
+        );
+  }
 }
 
 /// Reads fine, refuses every write — a browser origin out of quota.
@@ -286,4 +426,21 @@ class _QuotaExceeded implements Exception {
 
   @override
   String toString() => 'QuotaExceededError';
+}
+
+/// Hands back a different photograph on each capture, so a test can tell one
+/// side of a label from the other. Returns null once exhausted, which is how
+/// `ImageCaptureSource` reports a cancelled camera.
+class _Roll implements ImageCaptureSource {
+  _Roll(this._images);
+
+  final List<ScanImage> _images;
+  int _taken = 0;
+
+  @override
+  Future<ScanImage?> capture() async =>
+      _taken < _images.length ? _images[_taken++] : null;
+
+  @override
+  Future<List<ScanImage>> pickMultiple() async => _images;
 }

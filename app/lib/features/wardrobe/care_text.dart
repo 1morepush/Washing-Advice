@@ -141,3 +141,38 @@ String careFieldValue(CareInstructions instructions, String field) =>
       },
       _ => '—',
     };
+
+/// The name of the language a label was printed in, when it is worth saying.
+///
+/// Returns null for English, for a label with no legible words, and for a code
+/// with no name here. All three are the same instruction to the screen: say
+/// nothing. "This label is in English" reads as though the app were unsure of
+/// something obvious, and "This label is in sv" is worse than silence.
+///
+/// The list is deliberately short rather than exhaustive. Its job is to name
+/// the language on a garment somebody actually owns; a code it does not know
+/// still produces a correct reading, because the instructions come from the
+/// ISO 3758 symbols and those are identical in every country. Only the
+/// sentence naming the language is lost.
+String? foreignLanguageName(String? code) => switch (code?.toLowerCase()) {
+  null || 'en' => null,
+  'fr' => 'French',
+  'de' => 'German',
+  'es' => 'Spanish',
+  'it' => 'Italian',
+  'pt' => 'Portuguese',
+  'nl' => 'Dutch',
+  'sv' => 'Swedish',
+  'da' => 'Danish',
+  'no' => 'Norwegian',
+  'fi' => 'Finnish',
+  'pl' => 'Polish',
+  'cs' => 'Czech',
+  'tr' => 'Turkish',
+  'ru' => 'Russian',
+  'ja' => 'Japanese',
+  'ko' => 'Korean',
+  'zh' => 'Chinese',
+  'ar' => 'Arabic',
+  _ => null,
+};

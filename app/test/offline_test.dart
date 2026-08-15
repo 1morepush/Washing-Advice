@@ -242,7 +242,8 @@ class _OfflineGateway extends AiGateway {
       _offline();
 
   @override
-  Future<CareTagScanResult> scanCareTag(ScanImage image) async => _offline();
+  Future<CareTagScanResult> scanCareTag(List<ScanImage> images) async =>
+      _offline();
 
   @override
   Future<PileScanResult> scanPile(ScanImage image) async => _offline();

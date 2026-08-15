@@ -91,6 +91,7 @@ final class CareTagScanResult {
     this.unreadableSymbolCount = 0,
     this.rawText,
     this.rawModelResponse,
+    this.language,
   });
 
   /// The care requirements legible on the label.
@@ -111,8 +112,19 @@ final class CareTagScanResult {
   /// silently returning an incomplete answer.
   final int unreadableSymbolCount;
 
-  /// The raw OCR text.
+  /// The raw OCR text, exactly as printed.
+  ///
+  /// Never translated, whatever language the label is in. This is what the
+  /// user reads to check the app against the tag in their hand, and a
+  /// translation would make that impossible.
   final String? rawText;
+
+  /// ISO 639-1 code of the words on the label, when any were legible.
+  ///
+  /// Null for a symbols-only label, which is ordinary rather than a failure:
+  /// ISO 3758 symbols carry the instructions and mean the same in every
+  /// country, so a label with no words at all is still fully readable.
+  final String? language;
 
   final String? rawModelResponse;
 
@@ -230,7 +242,14 @@ abstract interface class VisionPort {
   Future<GarmentScanResult> scanGarment(List<ScanImage> images);
 
   /// Reads a care label.
-  Future<CareTagScanResult> scanCareTag(ScanImage image);
+  /// Reads a care label from one or more photographs.
+  ///
+  /// A list because a label is often printed on both sides, or continues onto
+  /// a second tag sewn behind the first. They are parts of one label on one
+  /// garment and are read together into a single answer — not separate scans
+  /// to be reconciled afterwards, which would leave the caller deciding which
+  /// of two readings to believe.
+  Future<CareTagScanResult> scanCareTag(List<ScanImage> images);
 
   /// Finds and identifies every garment in a photo of a pile.
   Future<PileScanResult> scanPile(ScanImage image);

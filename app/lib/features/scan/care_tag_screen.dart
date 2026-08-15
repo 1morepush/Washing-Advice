@@ -7,6 +7,8 @@
 /// what the app had been telling them.
 library;
 
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -38,6 +40,10 @@ class CareTagScreen extends ConsumerWidget {
       ),
       body: switch (state) {
         CareTagIdle() => _Capture(controller: controller),
+        CareTagCollecting(:final images) => _Collected(
+          images: images,
+          controller: controller,
+        ),
         CareTagReading() => const _Reading(),
         CareTagReviewing() => _Review(state: state, controller: controller),
         CareTagSaved() => _Saved(onDone: back),
@@ -79,7 +85,10 @@ class _Capture extends StatelessWidget {
             Text(
               'Flatten it out and fill the frame with the symbols. This is the '
               "manufacturer's own instruction, so it will override anything "
-              'the app worked out from the fabric.',
+              'the app worked out from the fabric.\n\n'
+              'Printed on both sides? You can add the other side before it is '
+              'read. Any language is fine — the symbols are the same '
+              'everywhere.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -87,7 +96,7 @@ class _Capture extends StatelessWidget {
             ),
             const SizedBox(height: 32),
             FilledButton.icon(
-              onPressed: controller.captureAndRead,
+              onPressed: controller.capture,
               icon: const Icon(Icons.camera_alt_outlined),
               label: const Text('Take a photo'),
             ),
@@ -149,6 +158,31 @@ class _Review extends StatelessWidget {
                   ),
                 ],
               ),
+              // Said only when it is news. A label in the language the app is
+              // already in needs no announcement, and "read in English" on an
+              // English label reads as though the app were unsure.
+              if (foreignLanguageName(state.reading.language)
+                  case final String language) ...[
+                _ReadNotice(
+                  icon: Icons.translate,
+                  text:
+                      'This label is in $language. The symbols are the same in '
+                      'every country, so the instructions below come from '
+                      'those; the wording is shown as printed.',
+                ),
+                const SizedBox(height: 8),
+              ],
+
+              if (state.images.length > 1) ...[
+                _ReadNotice(
+                  icon: Icons.photo_library_outlined,
+                  text:
+                      'Read from ${state.images.length} photos together, as '
+                      'one label.',
+                ),
+                const SizedBox(height: 8),
+              ],
+
               const SizedBox(height: 12),
 
               // The changes first. Everything else on this screen is
@@ -487,6 +521,186 @@ class _Failed extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The photographs taken so far, with the choice of adding another or reading.
+///
+/// This screen exists because reading the first shot immediately is wrong for
+/// the commonest awkward label: one printed on both sides, or continued onto a
+/// second tag sewn behind the first. Reading half of one produces an answer
+/// that looks complete, and there is nothing on it to suggest otherwise.
+class _Collected extends StatelessWidget {
+  const _Collected({required this.images, required this.controller});
+
+  final List<ScanImage> images;
+  final CareTagController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Text(
+                images.length == 1
+                    ? 'One photo of the label'
+                    : '${images.length} photos of the label',
+                style: theme.textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'They are read together as one label, so put each side or tag '
+                'in its own photo. Nothing has been read yet.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  for (final (index, image) in images.indexed)
+                    _Shot(index: index + 1, image: image),
+                ],
+              ),
+            ],
+          ),
+        ),
+        SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: controller.capture,
+                        icon: const Icon(Icons.add_a_photo_outlined),
+                        label: const Text('Add another side'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // For the shot that came out blurred, which is most of
+                    // them. Retaking without this would mean starting over.
+                    IconButton(
+                      onPressed: controller.discardLast,
+                      icon: const Icon(Icons.undo),
+                      tooltip: 'Remove the last photo',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: controller.readCollected,
+                    icon: const Icon(Icons.document_scanner_outlined),
+                    label: Text(
+                      images.length == 1
+                          ? 'Read this label'
+                          : 'Read these ${images.length} together',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One collected photograph, numbered in the order it was taken.
+class _Shot extends StatelessWidget {
+  const _Shot({required this.index, required this.image});
+
+  final int index;
+  final ScanImage image;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Stack(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.memory(
+            Uint8List.fromList(image.bytes),
+            width: 108,
+            height: 108,
+            fit: BoxFit.cover,
+            // A thumbnail that will not decode must not take the screen with
+            // it — the photograph is still perfectly good to the server.
+            errorBuilder: (_, _, _) => Container(
+              width: 108,
+              height: 108,
+              color: theme.colorScheme.surfaceContainerHighest,
+              child: const Icon(Icons.image_not_supported_outlined),
+            ),
+          ),
+        ),
+        Positioned(
+          top: 4,
+          left: 4,
+          child: CircleAvatar(
+            radius: 11,
+            backgroundColor: theme.colorScheme.primary,
+            child: Text(
+              '$index',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onPrimary,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Something worth saying about how the reading was obtained.
+class _ReadNotice extends StatelessWidget {
+  const _ReadNotice({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

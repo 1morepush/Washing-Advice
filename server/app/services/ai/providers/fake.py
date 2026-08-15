@@ -106,12 +106,20 @@ class FakeVisionProvider:
             suggested_name=f"{name} {item_type.value}",
         )
 
-    async def scan_care_tag(self, image: ScanImage) -> CareTagScanResult:
-        seed = self._seed(image)
+    async def scan_care_tag(self, images: list[ScanImage]) -> CareTagScanResult:
+        # Seeded from the first photograph so a second side does not change the
+        # answer for a label the tests already pin.
+        seed = self._seed(images[0])
         # Every third label comes back with an unreadable symbol, so the
         # "part of this label could not be read" path is exercised by default
         # rather than only in a test that remembers to ask for it.
         unreadable = 1 if seed % 3 == 0 else 0
+        # Every fifth label is French, for the same reason every third has an
+        # unreadable symbol: the interesting path should be exercised by
+        # default rather than only where a test remembers to ask for it. The
+        # symbols are ISO 3758 and identical, so the structured answer is the
+        # same one — only the words the user is shown differ.
+        french = seed % 5 == 0
 
         return CareTagScanResult(
             instructions=CareConstraint(
@@ -150,7 +158,15 @@ class FakeVisionProvider:
             ),
             symbols_found=["wash.30", "bleach.none", "iron.low"],
             unreadable_symbol_count=unreadable,
-            raw_text="95% COTTON 5% ELASTANE / MACHINE WASH COLD",
+            # Never translated. It is what the user reads to check the app
+            # against the tag in their hand, and a translation would make that
+            # impossible.
+            raw_text=(
+                "95% COTON 5% ÉLASTHANNE / LAVER À FROID / LAVER À L'ENVERS"
+                if french
+                else "95% COTTON 5% ELASTANE / MACHINE WASH COLD"
+            ),
+            language="fr" if french else "en",
         )
 
     async def scan_pile(self, image: ScanImage) -> PileScanResult:

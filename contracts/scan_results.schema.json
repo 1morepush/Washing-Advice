@@ -137,7 +137,14 @@
           "description": "Symbols visible but not interpretable. Reported so the app can honestly say part of the label could not be read, rather than returning an incomplete answer as if it were complete.",
           "type": "integer", "minimum": 0
         },
-        "rawText": { "type": "string" }
+        "rawText": {
+          "description": "The words exactly as printed, in their own language and script. Never translated: it is what the user reads to check the app against the tag in their hand.",
+          "type": "string"
+        },
+        "language": {
+          "description": "ISO 639-1 code of the words on the label. Absent for a symbols-only label, which is ordinary rather than a failure — ISO 3758 symbols mean the same in every country.",
+          "type": "string", "minLength": 2, "maxLength": 2
+        }
       }
     },
 

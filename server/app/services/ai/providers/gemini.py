@@ -220,8 +220,8 @@ class GeminiVisionProvider:
         except (ValidationError, ValueError, KeyError) as error:
             raise ProviderError(self.name, f"invalid garment scan: {error}") from error
 
-    async def scan_care_tag(self, image: ScanImage) -> CareTagScanResult:
-        data = await self._generate(CARE_TAG_PROMPT, [image], CARE_TAG_SCHEMA)
+    async def scan_care_tag(self, images: list[ScanImage]) -> CareTagScanResult:
+        data = await self._generate(CARE_TAG_PROMPT, images, CARE_TAG_SCHEMA)
         try:
             return _parse_care_tag(data)
         except (ValidationError, ValueError, KeyError) as error:
@@ -366,7 +366,23 @@ def _parse_care_tag(data: dict[str, Any]) -> CareTagScanResult:
         symbols_found=[str(s) for s in data.get("symbolsFound", [])],
         unreadable_symbol_count=int(data.get("unreadableSymbolCount", 0)),
         raw_text=data.get("rawText"),
+        language=_language(data.get("language")),
     )
+
+
+def _language(raw: Any) -> str | None:
+    """An ISO 639-1 code, or nothing.
+
+    Normalised rather than trusted: models answer "en", "EN", "eng" and
+    "English" to the same question. Only a two-letter code survives, because
+    that is what the app matches against to decide whether to mention the
+    language at all — and a value it cannot match is worse than none, since it
+    would put "read in English" on the screen for an English label.
+    """
+    if not isinstance(raw, str):
+        return None
+    code = raw.strip().lower()
+    return code if len(code) == 2 and code.isalpha() else None
 
 
 def _parse_pile(data: dict[str, Any]) -> PileScanResult:

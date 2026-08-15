@@ -26,7 +26,7 @@ def find_image(*, complete: bool) -> bytes:
     provider = FakeVisionProvider()
     for seed in range(40):
         data = png_bytes(seed)
-        result = asyncio.run(provider.scan_care_tag(ScanImage(data=data, mime_type="image/png")))
+        result = asyncio.run(provider.scan_care_tag([ScanImage(data=data, mime_type="image/png")]))
         if result.is_complete is complete:
             return data
     raise AssertionError(f"no seed produced a complete={complete} reading")
@@ -103,6 +103,50 @@ class TestCareTagScan:
         return client.post(
             "/v1/scan/care-tag", files={"image": ("tag.png", image, "image/png")}
         ).json()
+
+    def test_both_sides_of_a_label_are_read_as_one(self, client: TestClient) -> None:
+        # Labels are routinely printed on both sides, or continue onto a second
+        # tag sewn behind the first. Two photographs are two parts of one
+        # label, and must come back as one answer rather than two.
+        response = client.post(
+            "/v1/scan/care-tag",
+            files=[
+                ("images", ("front.png", png_bytes(4), "image/png")),
+                ("images", ("back.png", png_bytes(5), "image/png")),
+            ],
+        )
+
+        assert response.status_code == 200
+        assert response.json()["result"]["instructions"]["method"] == "machine"
+
+    def test_the_single_photo_form_still_works(self, client: TestClient) -> None:
+        # What every build shipped before two-sided labels sends. An app that
+        # has not been updated should keep working rather than start answering
+        # 422 to a request that was correct when it was written.
+        response = client.post(
+            "/v1/scan/care-tag",
+            files={"image": ("tag.png", png_bytes(4), "image/png")},
+        )
+
+        assert response.status_code == 200
+
+    def test_no_photograph_at_all_is_refused(self, client: TestClient) -> None:
+        response = client.post("/v1/scan/care-tag", data={"brand": "Uniqlo"})
+
+        assert response.status_code == 422
+
+    def test_the_language_of_the_words_is_reported(self, client: TestClient) -> None:
+        # The symbols are ISO 3758 and mean the same everywhere, so a foreign
+        # label is readable — but the app needs to know it was reading one to
+        # say so, and to show the wording it could not place.
+        response = client.post(
+            "/v1/scan/care-tag",
+            files={"image": ("tag.png", png_bytes(4), "image/png")},
+        )
+
+        result = response.json()["result"]
+        assert "language" in result
+        assert len(result["language"]) == 2
 
     def test_a_repeat_scan_of_a_clean_read_is_served_from_memory(self, client: TestClient) -> None:
         image = find_image(complete=True)

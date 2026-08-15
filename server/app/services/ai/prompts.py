@@ -192,7 +192,17 @@ CARE_TAG_SCHEMA: dict[str, Any] = {
             "type": "integer",
             "description": "Symbols clearly present but which you could not decode.",
         },
-        "rawText": {"type": "string", "description": "All text visible on the label."},
+        "rawText": {
+            "type": "string",
+            "description": "All text visible on the label, exactly as printed. Never translated.",
+        },
+        "language": {
+            "type": "string",
+            "description": (
+                "ISO 639-1 code of the words you read, e.g. 'en'. "
+                "Omit when the label prints no legible words."
+            ),
+        },
     },
     "required": ["instructions", "confidence"],
 }
@@ -265,6 +275,53 @@ an instruction the manufacturer never gave, exactly like an invented drying
 symbol.
 
 Transcribe fibre percentages only if they are printed and legible.
+
+MORE THAN ONE PHOTOGRAPH: care labels are often printed on both sides, or run
+onto a second tag sewn behind the first. When several photographs are given,
+they are different parts of ONE label on ONE garment. Read them together and
+return a single answer covering all of them.
+
+Combine, do not average. If the wash tub is legible in one photograph and
+creased in another, you have read it — state it. A field is unknown only when
+no photograph shows it legibly. Symbols and text may be split across the
+photographs in any order, and the same symbol may appear more than once; a
+repeat is the same instruction seen twice, not a second instruction.
+
+If two photographs genuinely contradict each other on the same field — one tub
+reads 30 and the other 40 — report the lower, safer figure, and count the
+disagreement in `unreadableSymbolCount` so the app can say part of the label
+was not certain. A contradiction means one of the two was misread, and there is
+no way to tell which from here.
+
+THE LANGUAGE OF THE WORDS: the symbols are ISO 3758 and mean the same thing in
+every country, so most of this label is readable whatever language it is
+printed in. Read the symbols first and always. The words are secondary
+evidence, and they may be in any language.
+
+Map the words by meaning, not by spelling. Every field above stays in the enum
+values given — those are identifiers, not text to translate into.
+
+For `washTemperature`, the printed word may be any of:
+
+  cold   kalt, froid, frío, freddo, koud, zimno, 冷水, 찬물, холодная
+  warm   warm, tiède, templado/tibio, tiepido, lauwarm, ciepła, 温水, 따뜻한
+  hot    heiß, chaud, caliente, caldo, heet, gorąca, 熱水, 뜨거운
+
+The same holds for the prose warnings: "laver séparément", "separat waschen"
+and "lavare separatamente" are all `washSeparately`; "à l'envers", "auf links"
+and "del revés" are all `washInsideOut`. A phrase you cannot confidently place
+onto one of the listed warnings should be left out rather than guessed at, and
+it will still appear in `rawText`.
+
+Report the language of the printed words in `language` as an ISO 639-1 code —
+"en", "de", "fr". Many labels print several languages at once; give the one you
+actually read the instructions from. Leave it out for a label with no legible
+words at all, which is a perfectly ordinary symbols-only label and not a
+failure.
+
+`rawText` stays the words exactly as printed, in their own language and script.
+Do not translate it. It is what the user sees when they want to check the app
+against the tag in their hand, and a translation would make that impossible.
 """
 
 

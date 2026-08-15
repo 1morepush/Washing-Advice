@@ -231,3 +231,152 @@ Future<Uint8List> renderMask({
     picture.dispose();
   }
 }
+
+/// Renders the mask onto an opaque ground, for sending to the remover.
+///
+/// Not [renderMask] with a colour behind it, and the difference is the whole
+/// point of this function existing.
+///
+/// A cutout is transparent, and a background remover that is handed
+/// transparency flattens it — in practice onto black. Do that with a black
+/// t-shirt and the garment and the removed background become the same colour,
+/// so the only thing left with any contrast is whatever bedding the user has
+/// not painted out yet. The remover then keeps the bedding and throws away the
+/// shirt, which is not a subtle degradation: it returns an almost empty image.
+///
+/// So the ground is chosen against the garment rather than fixed. [background]
+/// should be a colour the garment is not; the caller knows the garment's
+/// palette and this does not.
+Future<Uint8List> renderForRemoval({
+  required ui.Image original,
+  required ui.Image? cutout,
+  required List<MaskStroke> strokes,
+  required Color background,
+}) async {
+  final size = Size(original.width.toDouble(), original.height.toDouble());
+  final recorder = ui.PictureRecorder();
+  final canvas = ui.Canvas(recorder);
+
+  canvas.drawRect(Offset.zero & size, Paint()..color = background);
+  paintMask(
+    canvas,
+    original: original,
+    cutout: cutout,
+    strokes: strokes,
+    destination: Offset.zero & size,
+    imageSize: size,
+  );
+
+  final picture = recorder.endRecording();
+  try {
+    final image = await picture.toImage(original.width, original.height);
+    try {
+      final data = await image.toByteData(format: ui.ImageByteFormat.png);
+      return data!.buffer.asUint8List();
+    } finally {
+      image.dispose();
+    }
+  } finally {
+    picture.dispose();
+  }
+}
+
+/// A ground the garment will stand out against, from its CIE L* lightness.
+///
+/// Only has to be far enough away in brightness to keep an edge detectable,
+/// so it flips on lightness rather than trying to be clever about hue: black
+/// garments are the common case and white ones the other, and a mid-grey would
+/// fail both at once.
+///
+/// Takes the number rather than an `ItemColor` so this file stays free of the
+/// wardrobe model — it knows about pixels and nothing else. Mid-grey when the
+/// garment's colour was never recorded, which is no worse than the fixed
+/// choice it replaces and no better.
+Color groundFor(double? lightness) {
+  if (lightness == null) return const Color(0xFF808080);
+  return lightness < 50 ? const Color(0xFFFFFFFF) : const Color(0xFF101010);
+}
+
+/// [proposed] limited to what [current] already kept.
+///
+/// The remover may only take pixels away, never put them back. A removal the
+/// user painted by hand is a deliberate statement about their own garment —
+/// they can see it and the model cannot — so a pass that restored the bedding
+/// they had just wiped out would be overruling the one party who knows.
+///
+/// `dstIn` keeps the destination where the source is opaque, so drawing the
+/// current mask over the proposal with it yields exactly the intersection.
+Future<ui.Image> intersect({
+  required ui.Image proposed,
+  required ui.Image current,
+}) async {
+  final width = current.width;
+  final height = current.height;
+  final size = Size(width.toDouble(), height.toDouble());
+  final recorder = ui.PictureRecorder();
+  final canvas = ui.Canvas(recorder);
+
+  canvas.saveLayer(Offset.zero & size, Paint());
+  // Scaled to the current mask's frame: the remover is free to answer at a
+  // different resolution, and an intersection between two different grids
+  // would silently trim an edge.
+  canvas.drawImageRect(
+    proposed,
+    Offset.zero & Size(proposed.width.toDouble(), proposed.height.toDouble()),
+    Offset.zero & size,
+    Paint(),
+  );
+  canvas.drawImageRect(
+    current,
+    Offset.zero & size,
+    Offset.zero & size,
+    Paint()..blendMode = BlendMode.dstIn,
+  );
+  canvas.restore();
+
+  final picture = recorder.endRecording();
+  try {
+    return await picture.toImage(width, height);
+  } finally {
+    picture.dispose();
+  }
+}
+
+/// The fraction of [image] that is not transparent, from 0 to 1.
+///
+/// Measured on a small copy. The answer only has to be good enough to tell
+/// "kept most of it" from "kept almost nothing", and reading the alpha of a
+/// twelve-megapixel photograph to decide that would cost more than the request
+/// it is checking.
+Future<double> opaqueFraction(ui.Image image, {int sample = 64}) async {
+  final recorder = ui.PictureRecorder();
+  ui.Canvas(recorder).drawImageRect(
+    image,
+    Offset.zero & Size(image.width.toDouble(), image.height.toDouble()),
+    Offset.zero & Size(sample.toDouble(), sample.toDouble()),
+    Paint()..filterQuality = FilterQuality.low,
+  );
+
+  final picture = recorder.endRecording();
+  try {
+    final small = await picture.toImage(sample, sample);
+    try {
+      final data = await small.toByteData();
+      if (data == null) return 0;
+
+      final bytes = data.buffer.asUint8List();
+      var opaque = 0;
+      for (var i = 3; i < bytes.length; i += 4) {
+        // Half opacity rather than any at all: downscaling smears a hard edge
+        // into a band of faint pixels, and counting those would report a
+        // nearly empty image as a third full.
+        if (bytes[i] > 127) opaque++;
+      }
+      return opaque / (sample * sample);
+    } finally {
+      small.dispose();
+    }
+  } finally {
+    picture.dispose();
+  }
+}

@@ -50,6 +50,8 @@ final class CareTagReviewing extends CareTagState {
     required this.resolution,
     required this.previous,
     this.images = const [],
+    this.keptFromEarlier = const {},
+    this.hadEarlierLabel = false,
   });
 
   /// What the label scan returned, including how much of it was legible.
@@ -73,6 +75,21 @@ final class CareTagReviewing extends CareTagState {
 
   /// The care in force before the scan, for showing what changed.
   final CareInstructions previous;
+
+  /// Fields this reading did not state, kept from a label scanned earlier.
+  ///
+  /// Empty when there was no earlier label, or when the new reading restated
+  /// everything. Non-empty is worth showing: a value carried over from a scan
+  /// weeks ago, presented as though this photograph had just read it, is the
+  /// app being quietly more certain than it is.
+  final Set<String> keptFromEarlier;
+
+  /// Whether an earlier label existed to merge with at all.
+  ///
+  /// Distinct from [keptFromEarlier] being empty, which also happens when the
+  /// new reading covered everything the old one did. Only this decides whether
+  /// there is anything to offer replacing.
+  final bool hadEarlierLabel;
 }
 
 final class CareTagSaved extends CareTagState {
@@ -192,6 +209,7 @@ class CareTagController extends StateNotifier<CareTagState> {
     WardrobeItem item,
     CareTagScanResult reading, [
     List<ScanImage> images = const [],
+    bool replaceEarlier = false,
   ]) {
     // The composition printed on the label outranks whatever was guessed from
     // a photograph of the garment, so it is taken too when the label carries
@@ -201,14 +219,31 @@ class CareTagController extends StateNotifier<CareTagState> {
         ? item.composition
         : Confident.resolve(item.composition, reading.composition!);
 
+    // Laid over whatever was scanned before rather than replacing it. A
+    // re-scan used to wipe out every field the new photograph did not happen
+    // to show — the commonest case being somebody scanning the back of a
+    // two-sided label and losing the wash symbols already read off the front.
+    final earlier = replaceEarlier ? null : item.careLabel;
+    final instructions = earlier == null
+        ? reading.instructions
+        : reading.instructions.mergedWith(earlier.value);
+
     final withLabel = item.copyWith(
       composition: composition,
       careLabel: Confident(
-        reading.instructions,
+        instructions,
         // An unreadable symbol lowers confidence in the whole reading, not
         // just in the field it belonged to: if part of the label defeated the
         // OCR, the rest of it deserves less trust as well.
-        confidence: reading.confidence,
+        //
+        // A merged label takes the lower of the two, because it is no more
+        // trustworthy than the least trustworthy reading it draws on — and
+        // some of its fields genuinely come from the older one.
+        confidence: earlier == null
+            ? reading.confidence
+            : (reading.confidence < earlier.confidence
+                  ? reading.confidence
+                  : earlier.confidence),
         source: Provenance.tagScan,
       ),
       updatedAt: DateTime.now(),
@@ -222,7 +257,25 @@ class CareTagController extends StateNotifier<CareTagState> {
       resolution: resolution,
       previous: item.care.instructions,
       images: images,
+      keptFromEarlier: earlier == null
+          ? const {}
+          : reading.instructions.fieldsKeptFrom(earlier.value),
+      hadEarlierLabel: item.careLabel != null,
     );
+  }
+
+  /// Re-runs the review with the earlier label discarded.
+  ///
+  /// The escape hatch the merge needs. Merging keeps a field the earlier scan
+  /// read *wrong* whenever the new photograph is silent about it, and no
+  /// amount of re-scanning shifts it while that symbol stays illegible. This
+  /// is how somebody says "start from this reading alone".
+  Future<void> replaceEarlierLabel() async {
+    if (state case final CareTagReviewing reviewing) {
+      final item = await _ref.read(wardrobeRepositoryProvider).byId(itemId);
+      if (item == null) return;
+      state = _review(item, reviewing.reading, reviewing.images, true);
+    }
   }
 
   /// Files the label photograph against the item.

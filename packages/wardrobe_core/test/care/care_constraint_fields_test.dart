@@ -111,4 +111,72 @@ void main() {
       CleaningSolvent.wetClean,
     );
   });
+
+  group('merging a later reading over an earlier one', () {
+    test('every field survives a reading that states nothing', () {
+      // `mergedWith` is a sixth place each field has to be declared, and an
+      // omission there does not fail loudly: it silently drops evidence the
+      // user had already scanned. Merging an empty reading over a full one
+      // must give the full one back, field for field.
+      const nothing = CareConstraint();
+
+      expect(nothing.mergedWith(everything).statedFields, expectedFields);
+      expect(nothing.mergedWith(everything).toJson(), everything.toJson());
+    });
+
+    test('and a reading that states everything keeps its own values', () {
+      const nothing = CareConstraint();
+
+      expect(everything.mergedWith(nothing).toJson(), everything.toJson());
+    });
+
+    test('a newly stated field wins over the earlier one', () {
+      // A re-scan is as often a correction as an addition, and the newer
+      // reading is the more recent direct evidence.
+      const earlier = CareConstraint(maxTempC: 60, method: WashMethod.machine);
+      const later = CareConstraint(maxTempC: 30);
+
+      final merged = later.mergedWith(earlier);
+      expect(merged.maxTempC, 30);
+      // And the field the new reading was silent about is still there.
+      expect(merged.method, WashMethod.machine);
+    });
+
+    test('warnings add up rather than replace', () {
+      // The commonest two-sided label: symbols on one face, prose on the
+      // other. A photograph of the symbol panel legitimately states no
+      // warnings while the earlier shot of the text panel stated two.
+      const earlier = CareConstraint(
+        warnings: {CareWarning.washInsideOut, CareWarning.doNotUseSoftener},
+      );
+      const later = CareConstraint(
+        maxTempC: 30,
+        warnings: {CareWarning.washSeparately},
+      );
+
+      expect(later.mergedWith(earlier).warnings, {
+        CareWarning.washInsideOut,
+        CareWarning.doNotUseSoftener,
+        CareWarning.washSeparately,
+      });
+    });
+
+    test('what was kept rather than read is reportable', () {
+      // The screen has to say so. A field carried over from a scan weeks ago,
+      // presented as though this photograph had just read it, is the app
+      // being quietly more certain than it is.
+      const earlier = CareConstraint(
+        maxTempC: 60,
+        method: WashMethod.machine,
+        bleach: BleachAllowance.none,
+      );
+      const later = CareConstraint(maxTempC: 30);
+
+      expect(later.fieldsKeptFrom(earlier), {'wash.method', 'bleach'});
+    });
+
+    test('nothing is kept when the new reading restates it all', () {
+      expect(everything.fieldsKeptFrom(everything), isEmpty);
+    });
+  });
 }

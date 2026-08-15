@@ -10,9 +10,11 @@
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 import 'package:washing_advice/core/providers.dart';
+import 'package:washing_advice/features/laundry/laundry_screen.dart';
 import 'package:washing_advice/core/settings.dart';
 import 'package:washing_advice/features/laundry/laundry_controller.dart';
 
@@ -189,5 +191,108 @@ void main() {
         expect(await pile(LifecycleState.beingDried), isEmpty);
       },
     );
+  });
+
+  group('taking a garment back out', () {
+    /// Pumps the laundry screen on the tab for [pile].
+    Future<void> openOn(WidgetTester tester, String tab) async {
+      // Wide enough for all four tabs at once. The tab bar scrolls on a real
+      // phone, and a test that had to drag it before every assertion would be
+      // testing the tab bar rather than the thing under it.
+      tester.view.physicalSize = const Size(1000, 1600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: LaundryScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(tab));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the basket lets go of something put there by mistake', (
+      tester,
+    ) async {
+      // The gap this fills. A garment in the basket had no way back out at
+      // all — the only control on the row was the one that did not exist.
+      final item = await save('tee');
+      await controller().move([item.id], LifecycleState.inLaundry);
+
+      await openOn(tester, 'To wash (1)');
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Take out of the laundry'));
+      await tester.pumpAndSettle();
+
+      expect(
+        (await repository.byId(item.id))!.lifecycle,
+        LifecycleState.active,
+      );
+    });
+
+    testWidgets('and so does the machine', (tester) async {
+      final item = await save('tee');
+      await controller().move([item.id], LifecycleState.beingWashed);
+
+      await openOn(tester, 'Washing (1)');
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Take out of the laundry'));
+      await tester.pumpAndSettle();
+
+      expect(
+        (await repository.byId(item.id))!.lifecycle,
+        LifecycleState.active,
+      );
+    });
+
+    testWidgets('a jumper still damp can go back to the basket', (
+      tester,
+    ) async {
+      final item = await save('jumper');
+      await controller().move([item.id], LifecycleState.beingDried);
+
+      await openOn(tester, 'Drying (1)');
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Back to the basket'));
+      await tester.pumpAndSettle();
+
+      expect(
+        (await repository.byId(item.id))!.lifecycle,
+        LifecycleState.inLaundry,
+      );
+    });
+
+    testWidgets('the clean pile has nothing extra to offer', (tester) async {
+      // It is the wardrobe. "Take out of the laundry" on a garment that is
+      // not in the laundry would be a control that does nothing.
+      await save('tee');
+
+      await openOn(tester, 'Clean (1)');
+
+      expect(find.byIcon(Icons.more_vert), findsNothing);
+    });
+
+    testWidgets('the basket cannot be moved into the drum by hand', (
+      tester,
+    ) async {
+      // Starting a wash records it, and "times washed" and every later fading
+      // judgement rest on that record. A hand move would put the garment in
+      // the drum with no record at all, so it is deliberately not offered.
+      final item = await save('tee');
+      await controller().move([item.id], LifecycleState.inLaundry);
+
+      await openOn(tester, 'To wash (1)');
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Move to washing'), findsNothing);
+      expect(find.textContaining('drum'), findsNothing);
+    });
   });
 }

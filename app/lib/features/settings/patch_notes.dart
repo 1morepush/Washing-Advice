@@ -76,6 +76,11 @@ final patchNotes = <Release>[
     date: DateTime.utc(2026, 8, 15),
     headline: 'Scanning a label again adds to it',
     changes: [
+      'Fixed: tidying a cutout saved correctly but the garment page kept '
+          'showing the old picture until you restarted the app.',
+      'Take a garment back out of any laundry pile. Something dropped in the '
+          'basket by mistake had no way out at all, and a jumper that came out '
+          'of the dryer still damp can go back in the basket.',
       'When you tidy a cutout by hand, you can now hand it back to the app to '
           'finish the edges. It can only take more away, never put back what '
           'you removed, and if its answer would wipe out most of the garment '

@@ -8,11 +8,36 @@
 /// not have, which is exactly the confusion this is meant to resolve.
 ///
 /// Every entry is a change set that reached `main`, and the date is the day it
-/// did. The version numbers were assigned to that history after the fact rather
-/// than being minted at the time — the minor digit steps once per shipped set,
-/// so they order correctly and mean something, but they are a label on the past
-/// and not a record kept as it happened. Worth knowing before anyone treats
-/// them as a build identifier.
+/// did. The numbers up to 0.7.0 were assigned to that history after the fact;
+/// from 0.8.0 they have been minted as each set shipped, which is why the
+/// dates from there on are the real ones. Not a build identifier either way.
+///
+/// ## Which digit moves
+///
+/// Decided by what the *user* gets, not by how much code changed. A one-line
+/// fix and a rewritten subsystem are the same size to somebody holding a
+/// phone; what differs is whether the app can now do something it could not
+/// do before.
+///
+/// * **Minor — 0.13.0.** A new capability. The app does something it could not
+///   do at all before: a new screen, a new action, a new question it can
+///   answer. However small the diff.
+/// * **Patch — 0.12.1.** The app finally does what it already claimed to. A
+///   repair to shipped behaviour, with no new capability. Named like any other
+///   release, because a fix worth shipping is worth being able to refer to.
+/// * **No entry at all.** Nothing a user could notice — a refactor, a test, a
+///   server change that leaves every answer identical. A notes screen that
+///   listed those would bury the entries that matter.
+///
+/// Two rules settle the awkward cases:
+///
+/// * A fix that travels *with* a feature rides along in that feature's minor
+///   release rather than earning a patch of its own — 0.11.0 carries two.
+///   Only a repair shipping on its own becomes a patch.
+/// * A patch never rewrites the release it repairs. 0.12.0 shipped and was
+///   found wanting the same day; folding the fixes back into its bullets would
+///   quietly change what that release *was*. These notes are a record of what
+///   reached `main`, not a tidy summary of it.
 ///
 /// The names are jokes. A release nobody can refer to is a release nobody
 /// mentions, and "the Separation Anxiety one" is a great deal easier to say

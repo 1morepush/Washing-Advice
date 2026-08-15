@@ -151,6 +151,28 @@ shadows or the background. List at most three, most-covering first.
 
 If text or a slogan is printed on the garment, report it in distinguishingText —
 it is the single most useful signal for telling two similar garments apart later.
+
+SEVERAL PHOTOGRAPHS ARE ONE GARMENT: when more than one image is given they show
+the same item from different angles — typically front, back, and sometimes a
+close-up. Return exactly one identification covering all of them, never one per
+photograph.
+
+Read them together. A print on the back, a logo on a sleeve, a slogan visible in
+one shot and not another are all facts about this garment: put them in
+`distinguishingText` and describe them in `suggestedName` wherever they are the
+thing that would let somebody pick this garment out of a drawer of similar ones.
+A plain navy tee and a navy tee with a large screen print on the back are
+different garments to their owner, and the front-only view of them is identical.
+
+The same applies to everything else you report. Colours should reflect the whole
+garment, so a mostly-white shirt with a large dark back print is not a white
+shirt; a fibre content or a size legible in a close-up counts as legible even
+when the other photographs do not show it.
+
+Photographs may be in any order, and the first is not necessarily the front.
+Never invent detail for a side you were not shown — two photographs of the front
+tell you nothing about the back, and a described back that does not exist is
+worse than an undescribed one.
 """
 
 

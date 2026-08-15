@@ -71,6 +71,25 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.11.0',
+    name: 'The Full Monty',
+    date: DateTime.utc(2026, 8, 15),
+    headline: 'Photograph the back too',
+    changes: [
+      'Take as many photos of a garment as it needs before it is identified. A '
+          'plain navy tee and one with a big print across the back look the '
+          'same from the front — to you and to the app — so now you can turn '
+          'it around first.',
+      'Say what each photo shows: front, back, a detail, a logo, a brand tag. '
+          'It guesses front then back then detail, and you can change any of '
+          'them with a tap.',
+      'The print on the back now feeds into the name and description, so two '
+          'similar shirts are easier to tell apart in your wardrobe.',
+      'Fixed: a fourth photo used to overwrite the third instead of being '
+          'saved beside it.',
+    ],
+  ),
+  Release(
     version: '0.10.0',
     name: 'Both Sides Now',
     date: DateTime.utc(2026, 8, 15),

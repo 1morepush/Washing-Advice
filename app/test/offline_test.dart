@@ -144,7 +144,9 @@ void main() {
 
   group('degrades honestly where a server is genuinely needed', () {
     test('a garment scan says the server is unreachable', () async {
-      await container.read(scanControllerProvider.notifier).captureAndScan();
+      final scan = container.read(scanControllerProvider.notifier);
+      await scan.capture();
+      await scan.scanCollected();
 
       final state = container.read(scanControllerProvider);
       expect(state, isA<ScanError>());

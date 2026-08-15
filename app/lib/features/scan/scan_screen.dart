@@ -8,6 +8,8 @@ library;
 
 import 'dart:async';
 
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -39,6 +41,10 @@ class ScanScreen extends ConsumerWidget {
       ),
       body: switch (state) {
         ScanIdle() => _Capture(controller: controller),
+        ScanCollecting(:final shots) => _Collected(
+          shots: shots,
+          controller: controller,
+        ),
         ScanAnalysing(:final imageCount) => _Analysing(imageCount: imageCount),
         ScanReviewing() => _Review(state: state, controller: controller),
         ScanSaved(:final item) => _Saved(item: item, controller: controller),
@@ -76,8 +82,10 @@ class _Capture extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Lay it flat against a plain background. A front and a back '
-            'read better than one shot.',
+            'Lay it flat against a plain background. Take the back too if '
+            'there is a print on it — a plain navy tee and one with a design '
+            'across the back look the same from the front, to you and to the '
+            'app.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -85,13 +93,13 @@ class _Capture extends StatelessWidget {
           ),
           const SizedBox(height: 32),
           FilledButton.icon(
-            onPressed: controller.captureAndScan,
+            onPressed: controller.capture,
             icon: const Icon(Icons.camera_alt_outlined),
             label: const Text('Take a photo'),
           ),
           const SizedBox(height: 8),
           TextButton.icon(
-            onPressed: () => controller.captureAndScan(fromGallery: true),
+            onPressed: () => controller.capture(fromGallery: true),
             icon: const Icon(Icons.photo_library_outlined),
             label: const Text('Choose from library'),
           ),
@@ -479,6 +487,175 @@ class _Failed extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The photographs taken so far, with what each one shows.
+///
+/// The reason this screen exists is the shirt with a print across the back. It
+/// is identical to a plain one from the front, so a flow that identified the
+/// first shot the moment it was taken would confidently call it plain — and
+/// there would be nothing on the result to suggest otherwise.
+class _Collected extends StatelessWidget {
+  const _Collected({required this.shots, required this.controller});
+
+  final List<ScanShot> shots;
+  final ScanController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Text(
+                shots.length == 1 ? 'One photo' : '${shots.length} photos',
+                style: theme.textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'All of one garment, read together. Tap a photo to say what it '
+                'shows. Nothing has been sent yet.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  for (final (index, shot) in shots.indexed)
+                    _ShotTile(
+                      shot: shot,
+                      onRole: (role) => controller.setRole(index, role),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: controller.capture,
+                        icon: const Icon(Icons.add_a_photo_outlined),
+                        label: const Text('Add another photo'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    IconButton(
+                      onPressed: controller.discardLast,
+                      icon: const Icon(Icons.undo),
+                      tooltip: 'Remove the last photo',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: controller.scanCollected,
+                    icon: const Icon(Icons.auto_awesome_outlined),
+                    label: Text(
+                      shots.length == 1
+                          ? 'Identify it'
+                          : 'Identify from these ${shots.length}',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One collected photograph, labelled with the part of the garment it shows.
+///
+/// The label is a guess — front, then back, then details — and tapping it
+/// changes it. Guessing and letting the user correct is the right trade for
+/// something they would otherwise have to set on every single shot, and the
+/// order people photograph a garment in is genuinely predictable.
+class _ShotTile extends StatelessWidget {
+  const _ShotTile({required this.shot, required this.onRole});
+
+  final ScanShot shot;
+  final ValueChanged<PhotoRole> onRole;
+
+  /// The parts worth offering. Not every [PhotoRole] — a care label has its own
+  /// scanner, and offering `condition` or `worn` here would invite somebody to
+  /// file a stain photo as part of identifying the garment.
+  static const _offered = [
+    PhotoRole.front,
+    PhotoRole.back,
+    PhotoRole.detail,
+    PhotoRole.logo,
+    PhotoRole.brandTag,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return SizedBox(
+      width: 108,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.memory(
+              Uint8List.fromList(shot.image.bytes),
+              width: 108,
+              height: 108,
+              fit: BoxFit.cover,
+              // A thumbnail that will not decode must not take the screen with
+              // it — the photograph is still perfectly good to the server.
+              errorBuilder: (_, _, _) => Container(
+                width: 108,
+                height: 108,
+                color: theme.colorScheme.surfaceContainerHighest,
+                child: const Icon(Icons.image_not_supported_outlined),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          PopupMenuButton<PhotoRole>(
+            onSelected: onRole,
+            tooltip: 'What this photo shows',
+            itemBuilder: (_) => [
+              for (final role in _offered)
+                PopupMenuItem(value: role, child: Text(role.label)),
+            ],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(shot.role.label, style: theme.textTheme.labelMedium),
+                Icon(
+                  Icons.arrow_drop_down,
+                  size: 18,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

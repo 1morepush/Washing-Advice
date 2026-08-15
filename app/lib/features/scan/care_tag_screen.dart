@@ -183,6 +183,19 @@ class _Review extends StatelessWidget {
                 const SizedBox(height: 8),
               ],
 
+              // What this photograph did not read, kept from the last time
+              // the label was scanned. Said plainly and with a way out: a
+              // merge keeps a field the earlier scan got *wrong* whenever the
+              // new one is silent about it, and presenting that as freshly
+              // read would be the app being quietly more certain than it is.
+              if (state.keptFromEarlier.isNotEmpty) ...[
+                _KeptNotice(
+                  fields: state.keptFromEarlier,
+                  onReplace: controller.replaceEarlierLabel,
+                ),
+                const SizedBox(height: 8),
+              ],
+
               const SizedBox(height: 12),
 
               // The changes first. Everything else on this screen is
@@ -698,6 +711,69 @@ class _ReadNotice extends StatelessWidget {
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Which fields came from the previous scan rather than this one.
+///
+/// Its own widget rather than another `_ReadNotice` because it needs an action
+/// beside it. Keeping a field the earlier reading got wrong is the one way
+/// merging can be worse than replacing, and re-scanning cannot fix it while
+/// the symbol stays illegible — so the way out has to be here, next to the
+/// thing that prompts the doubt, rather than buried in a menu.
+class _KeptNotice extends StatelessWidget {
+  const _KeptNotice({required this.fields, required this.onReplace});
+
+  final Set<String> fields;
+  final VoidCallback onReplace;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final named = [for (final field in fields) careFieldLabel(field)]..sort();
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.history,
+                size: 18,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  named.length == 1
+                      ? 'This photo did not show ${named.first.toLowerCase()}, '
+                            'so it is kept from the last scan of this label.'
+                      : 'This photo did not show ${named.join(', ')}, so they '
+                            'are kept from the last scan of this label.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: onReplace,
+              child: const Text('Use only what I just scanned'),
             ),
           ),
         ],

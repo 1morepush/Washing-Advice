@@ -222,6 +222,57 @@ final class CareConstraint {
 
   bool get statesNothing => statedFields.isEmpty && warnings.isEmpty;
 
+  /// This reading laid over [earlier], field by field.
+  ///
+  /// For scanning the same garment's label a second time. A re-scan used to
+  /// replace what was there, which loses everything the new photograph did not
+  /// happen to show — the commonest case being somebody scanning the back of a
+  /// two-sided label and wiping out the wash symbols they had already read off
+  /// the front.
+  ///
+  /// A field this reading states wins, because it is the newest direct
+  /// evidence and a re-scan is as often a correction as an addition. A field
+  /// it does not state falls back to [earlier], because "this photograph did
+  /// not show it" is not the same as "the manufacturer said nothing" — and by
+  /// this point there is already evidence the manufacturer did.
+  ///
+  /// Warnings are the exception: they union rather than replace. A warning is
+  /// an additive fact printed in prose beside the symbols, so a photograph of
+  /// the symbol panel legitimately states none of them while the earlier shot
+  /// of the text panel stated three. Losing one is the dangerous direction.
+  ///
+  /// The consequence worth being honest about: a field the earlier scan got
+  /// *wrong* survives if the new one is silent about it, and no amount of
+  /// re-scanning that field's own symbol will shift it while the symbol stays
+  /// illegible. That is why callers must show which fields were kept rather
+  /// than read, and offer to replace outright instead.
+  CareConstraint mergedWith(CareConstraint earlier) => CareConstraint(
+        method: method ?? earlier.method,
+        maxTempC: maxTempC ?? earlier.maxTempC,
+        washTemperature: washTemperature ?? earlier.washTemperature,
+        agitation: agitation ?? earlier.agitation,
+        bleach: bleach ?? earlier.bleach,
+        tumbleDryAllowed: tumbleDryAllowed ?? earlier.tumbleDryAllowed,
+        tumbleDryHeat: tumbleDryHeat ?? earlier.tumbleDryHeat,
+        naturalDry: naturalDry ?? earlier.naturalDry,
+        dryInShade: dryInShade ?? earlier.dryInShade,
+        doNotWring: doNotWring ?? earlier.doNotWring,
+        ironTemperature: ironTemperature ?? earlier.ironTemperature,
+        steamAllowed: steamAllowed ?? earlier.steamAllowed,
+        doNotDryClean: doNotDryClean ?? earlier.doNotDryClean,
+        solvent: solvent ?? earlier.solvent,
+        warnings: {...earlier.warnings, ...warnings},
+      );
+
+  /// The fields [mergedWith] would take from [earlier] rather than from this
+  /// reading.
+  ///
+  /// What the review screen has to show. A merged label that presented a field
+  /// carried over from a scan weeks ago as though this photograph had just
+  /// read it would be the app being quietly more certain than it is.
+  Set<String> fieldsKeptFrom(CareConstraint earlier) =>
+      earlier.statedFields.difference(statedFields);
+
   Map<String, Object?> toJson() => {
         if (method != null) 'method': method!.name,
         if (maxTempC != null) 'maxTempC': maxTempC,

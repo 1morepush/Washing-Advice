@@ -344,6 +344,149 @@ void main() {
       expect((state() as CareTagReviewing).reading.language, isNull);
     });
   });
+
+  group('scanning the same label again', () {
+    /// The item with a label already scanned: 40°C machine wash, tumble dry
+    /// low. The state somebody is in when they turn the tag over.
+    Future<void> alreadyScanned() async {
+      final item = (await repository.byId(itemId))!;
+      final labelled = item.copyWith(
+        careLabel: Confident(
+          const CareConstraint(
+            method: WashMethod.machine,
+            maxTempC: 40,
+            tumbleDryAllowed: true,
+            tumbleDryHeat: TumbleDryHeat.low,
+            warnings: {CareWarning.washInsideOut},
+          ),
+          confidence: 0.93,
+          source: Provenance.tagScan,
+        ),
+      );
+      await repository.save(
+        labelled.copyWith(care: const CareResolver().forItem(labelled).profile),
+      );
+    }
+
+    test('a second scan does not wipe out the first', () async {
+      // The bug this replaces. Scanning the back of a two-sided label used to
+      // replace the whole reading, losing the wash symbols already read off
+      // the front — and nothing said so.
+      await alreadyScanned();
+      gateway.reading = const CareTagScanResult(
+        instructions: CareConstraint(
+          bleach: BleachAllowance.none,
+          ironTemperature: IronTemperature.low,
+        ),
+        confidence: 0.9,
+      );
+
+      await captureAndRead();
+
+      final label = (state() as CareTagReviewing).updated.careLabel!.value;
+      expect(label.bleach, BleachAllowance.none);
+      expect(label.maxTempC, 40, reason: 'the front reading was lost');
+      expect(label.tumbleDryAllowed, isTrue);
+    });
+
+    test('and what it does state wins', () async {
+      // A re-scan is as often a correction as an addition, so the newer
+      // direct evidence takes precedence where there is any.
+      await alreadyScanned();
+      gateway.reading = const CareTagScanResult(
+        instructions: CareConstraint(maxTempC: 30),
+        confidence: 0.9,
+      );
+
+      await captureAndRead();
+
+      expect(
+        (state() as CareTagReviewing).updated.careLabel!.value.maxTempC,
+        30,
+      );
+    });
+
+    test('warnings from both readings survive', () async {
+      await alreadyScanned();
+      gateway.reading = const CareTagScanResult(
+        instructions: CareConstraint(
+          maxTempC: 30,
+          warnings: {CareWarning.doNotUseSoftener},
+        ),
+        confidence: 0.9,
+      );
+
+      await captureAndRead();
+
+      expect((state() as CareTagReviewing).updated.careLabel!.value.warnings, {
+        CareWarning.washInsideOut,
+        CareWarning.doNotUseSoftener,
+      });
+    });
+
+    test('the screen is told what was kept rather than read', () async {
+      await alreadyScanned();
+      gateway.reading = const CareTagScanResult(
+        instructions: CareConstraint(maxTempC: 30),
+        confidence: 0.9,
+      );
+
+      await captureAndRead();
+
+      final reviewing = state() as CareTagReviewing;
+      expect(reviewing.keptFromEarlier, contains('wash.method'));
+      expect(reviewing.keptFromEarlier, contains('dry.tumbleDryAllowed'));
+      expect(reviewing.keptFromEarlier, isNot(contains('wash.maxTempC')));
+      expect(reviewing.hadEarlierLabel, isTrue);
+    });
+
+    test('a merged label is no more trusted than its weaker half', () async {
+      // Some of its fields genuinely come from the older reading, so the
+      // whole cannot claim the newer one's confidence.
+      await alreadyScanned();
+      gateway.reading = const CareTagScanResult(
+        instructions: CareConstraint(maxTempC: 30),
+        confidence: 0.55,
+      );
+
+      await captureAndRead();
+
+      expect((state() as CareTagReviewing).updated.careLabel!.confidence, 0.55);
+    });
+
+    test('replacing outright drops the earlier reading', () async {
+      // The escape hatch. Merging keeps a field the earlier scan read wrong
+      // whenever the new one is silent about it, and re-scanning cannot shift
+      // it while that symbol stays illegible.
+      await alreadyScanned();
+      gateway.reading = const CareTagScanResult(
+        instructions: CareConstraint(maxTempC: 30),
+        confidence: 0.9,
+      );
+
+      await captureAndRead();
+      await controller().replaceEarlierLabel();
+
+      final reviewing = state() as CareTagReviewing;
+      expect(reviewing.updated.careLabel!.value.maxTempC, 30);
+      expect(reviewing.updated.careLabel!.value.tumbleDryAllowed, isNull);
+      expect(reviewing.keptFromEarlier, isEmpty);
+    });
+
+    test('a first scan has nothing to merge with', () async {
+      // No earlier label at all: nothing kept, and nothing to offer replacing.
+      gateway.reading = const CareTagScanResult(
+        instructions: CareConstraint(maxTempC: 30),
+        confidence: 0.9,
+      );
+
+      await captureAndRead();
+
+      final reviewing = state() as CareTagReviewing;
+      expect(reviewing.keptFromEarlier, isEmpty);
+      expect(reviewing.hadEarlierLabel, isFalse);
+    });
+  });
 }
 
 WardrobeItem _woolJumper() {

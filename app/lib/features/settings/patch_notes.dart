@@ -71,6 +71,22 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.12.0',
+    name: 'Second Rinse',
+    date: DateTime.utc(2026, 8, 15),
+    headline: 'Scanning a label again adds to it',
+    changes: [
+      'Scanning a care label a second time no longer throws away the first '
+          'reading. Anything the new photo shows wins; anything it does not '
+          'show is kept from before — so photographing the back of a tag weeks '
+          'later no longer loses the wash symbols off the front.',
+      'It tells you which parts were kept rather than freshly read, and offers '
+          'to use only the new scan if the old one had it wrong.',
+      'A merged label is only as trusted as the weaker of the two readings, '
+          'since some of what it says came from the older one.',
+    ],
+  ),
+  Release(
     version: '0.11.0',
     name: 'The Full Monty',
     date: DateTime.utc(2026, 8, 15),

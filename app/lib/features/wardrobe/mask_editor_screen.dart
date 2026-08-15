@@ -17,6 +17,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../../data/images/image_store.dart';
+import '../../widgets/item_thumbnail.dart';
 import '../../widgets/status_message.dart';
 import 'cutout_controller.dart';
 import 'mask_edit.dart';
@@ -211,6 +212,13 @@ class _EditorState extends ConsumerState<_Editor> {
           );
 
       ref.invalidate(itemProvider(widget.item.id));
+      // And the bytes behind that URI, which is the half that was missing.
+      // `cutoutNameFor` is a pure function of the photograph, deliberately, so
+      // a second tidy of the same photo writes to the *same* name — and
+      // `imageBytesProvider` is keyed by URI, so it went on serving the
+      // picture from the first tidy. The row was saved correctly and the item
+      // page showed the old cutout.
+      ref.invalidate(imageBytesProvider(uri));
       if (mounted) context.go('/item/${widget.item.id.value}');
     } on Exception catch (error) {
       if (mounted) {

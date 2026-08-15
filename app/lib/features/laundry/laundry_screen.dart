@@ -209,6 +209,29 @@ class _Items extends ConsumerWidget {
     ),
   };
 
+  /// Where else a garment in this pile can go, in words.
+  ///
+  /// The gap this fills: a garment put in the basket by mistake had no way
+  /// back out at all, and one in the machine could only go forwards. Every
+  /// laundry pile can now return a garment to the wardrobe.
+  ///
+  /// `beingWashed` is deliberately not offered from the basket. Starting a
+  /// wash is `LaundryController.start`, which *records* the wash — moving a
+  /// garment into the drum by hand would put it there with no record, and
+  /// "times washed" and every later fading judgement rest on that record.
+  List<(String, LifecycleState)> get _alsoGoesTo => switch (pile) {
+    // Already in the wardrobe; its only move is the one above.
+    _Pile.clean => const [],
+    _Pile.toWash => const [('Take out of the laundry', LifecycleState.active)],
+    _Pile.washing => const [
+      ('Take out of the laundry', LifecycleState.active),
+      ('Back to the basket', LifecycleState.inLaundry),
+    ],
+    // Putting it away is the forward action, so the useful extra here is the
+    // jumper that came out still damp.
+    _Pile.drying => const [('Back to the basket', LifecycleState.inLaundry)],
+  };
+
   /// Whether moving the whole pile at once is offered.
   ///
   /// Emphatically not on the clean pile, where "all 143" would send an entire
@@ -251,15 +274,35 @@ class _Items extends ConsumerWidget {
             leading: ItemThumbnail(item: item, size: 44),
             title: Text(item.displayName),
             subtitle: Text(item.colorClass.label),
-            trailing: next == null
-                ? null
-                : IconButton(
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (next != null)
+                  IconButton(
                     onPressed: () => ref.read(laundryControllerProvider).move([
                       item.id,
                     ], next.$3),
                     icon: Icon(next.$2),
                     tooltip: next.$1,
                   ),
+                // Spelled out rather than given a second glyph. The one-tap
+                // icon beside it is the common move and earns its shorthand;
+                // everything else here is occasional, and an unlabelled
+                // symbol for "take this back out of the wash" is a symbol
+                // nobody finds.
+                if (_alsoGoesTo.isNotEmpty)
+                  PopupMenuButton<LifecycleState>(
+                    onSelected: (stage) => ref
+                        .read(laundryControllerProvider)
+                        .move([item.id], stage),
+                    tooltip: 'Move this somewhere else',
+                    itemBuilder: (_) => [
+                      for (final (label, stage) in _alsoGoesTo)
+                        PopupMenuItem(value: stage, child: Text(label)),
+                    ],
+                  ),
+              ],
+            ),
             onTap: () => context.go('/item/${item.id.value}'),
           ),
       ],

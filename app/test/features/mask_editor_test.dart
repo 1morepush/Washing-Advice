@@ -17,9 +17,11 @@ import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 import 'package:washing_advice/core/providers.dart';
 import 'package:washing_advice/data/api/ai_gateway.dart';
+import 'package:washing_advice/data/images/image_store.dart';
 import 'package:washing_advice/data/images/memory_image_store.dart';
 import 'package:washing_advice/features/wardrobe/mask_edit.dart';
 import 'package:washing_advice/features/wardrobe/mask_editor_screen.dart';
+import 'package:washing_advice/widgets/item_thumbnail.dart';
 
 import '../support/fixtures.dart';
 
@@ -49,13 +51,26 @@ void main() {
   /// Encoding a PNG is real engine work, so this has to be handed to
   /// [WidgetTester.runAsync] — under the test binding's fake clock
   /// `Picture.toImage` never completes and the test hangs rather than failing.
-  Future<void> seed({required bool withCutout}) async {
+  Future<void> seed({
+    required bool withCutout,
+    bool derivedName = false,
+  }) async {
     final photoUri = await images.save(
       await _png(const Color(0xFF204080)),
       name: 'tee-front',
     );
     final cutoutUri = withCutout
-        ? await images.save(await _png(const Color(0xFF204080)), name: 'cut')
+        ? await images.save(
+            await _png(const Color(0xFF204080)),
+            name: derivedName
+                ? imageName(
+                    id,
+                    PhotoRole.front,
+                    takenAt: DateTime.utc(2026, 1, 1),
+                    cutout: true,
+                  )
+                : 'cut',
+          )
         : null;
 
     await repository.save(
@@ -186,6 +201,42 @@ void main() {
     expect(await images.read(photo.cutoutUri!), isNotNull);
     // And back on the item, rather than stranded on the editor.
     expect(find.text('the item'), findsOneWidget);
+  });
+
+  testWidgets('saving refreshes the picture, not just the row', (tester) async {
+    // Reported from a phone: tidy a cutout, go back, and the garment page is
+    // still showing the old one. `cutoutNameFor` is a pure function of the
+    // photograph — deliberately, so a second tidy overwrites rather than
+    // leaking a file per save — which means the URI does not change, and
+    // `imageBytesProvider` is keyed by URI. It went on serving the bytes it
+    // had read the first time.
+    // Seeded under the name a save would derive, which is the whole point:
+    // with a differently-named cutout the URI changes and the cache misses by
+    // luck rather than by design. That is how the first version of this test
+    // passed against the bug.
+    await tester.runAsync(() => seed(withCutout: true, derivedName: true));
+    await open(tester);
+
+    final uri = (await repository.byId(id))!.photos.displayPhoto!.cutoutUri!;
+    // Warm the cache the way the item page does before the edit.
+    await tester.runAsync(() => container.read(imageBytesProvider(uri).future));
+    final before = container.read(imageBytesProvider(uri)).valueOrNull;
+    expect(before, isNotNull);
+
+    await paintAcross(tester);
+    await tester.tap(find.text('Save cutout'));
+    await drain(tester);
+
+    final after = (await repository.byId(id))!.photos.displayPhoto!.cutoutUri!;
+    expect(after, uri, reason: 'the URI is stable, which is what causes this');
+
+    // Resolved rather than peeked: Riverpod hands back the previous value
+    // while a refresh is in flight, so `valueOrNull` cannot tell "invalidated
+    // and reloading" from "never invalidated at all".
+    final reread = await tester.runAsync(
+      () => container.read(imageBytesProvider(after).future),
+    );
+    expect(reread, isNot(before));
   });
 
   testWidgets('cancelling writes nothing', (tester) async {

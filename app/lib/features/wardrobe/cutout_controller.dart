@@ -17,6 +17,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../../data/images/image_store.dart';
+import '../../widgets/item_thumbnail.dart';
 
 enum CutoutStatus { idle, working, failed, done }
 
@@ -110,6 +111,9 @@ class CutoutController extends StateNotifier<CutoutStatus> {
       // The detail screen reads through a cached future; without this the user
       // watches the button succeed and the picture not change.
       _ref.invalidate(itemProvider(itemId));
+      // The bytes are cached by URI too, and re-cutting the same photograph
+      // writes to the same name on purpose, so the item alone is not enough.
+      _ref.invalidate(imageBytesProvider(cutoutUri));
       state = CutoutStatus.done;
     } on Exception {
       state = CutoutStatus.failed;

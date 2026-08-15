@@ -16,6 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 import 'package:washing_advice/core/providers.dart';
+import 'package:washing_advice/data/api/ai_gateway.dart';
 import 'package:washing_advice/data/images/memory_image_store.dart';
 import 'package:washing_advice/features/wardrobe/mask_edit.dart';
 import 'package:washing_advice/features/wardrobe/mask_editor_screen.dart';
@@ -238,4 +239,137 @@ void main() {
     expect(find.textContaining('photograph'), findsWidgets);
     expect(find.text('Save cutout'), findsNothing);
   });
+
+  group('letting the app finish the edges', () {
+    /// A gateway whose remover answers with [answer], or refuses when null.
+    ///
+    /// It records what it was sent, because the thing worth pinning is that
+    /// the *edited* canvas goes up rather than the untouched photograph — the
+    /// whole reason a second pass can succeed where the first failed is that
+    /// it is being asked about a different picture.
+    _Remover install({Uint8List? answer}) {
+      final remover = _Remover(answer: answer);
+      container.dispose();
+      container = ProviderContainer(
+        overrides: [
+          wardrobeRepositoryProvider.overrideWithValue(repository),
+          eventLogProvider.overrideWithValue(InMemoryEventLog()),
+          imageStoreProvider.overrideWithValue(images),
+          aiGatewayProvider.overrideWithValue(remover),
+        ],
+      );
+      addTearDown(container.dispose);
+      return remover;
+    }
+
+    testWidgets('the edited canvas is what gets sent, not the original', (
+      tester,
+    ) async {
+      final refined = await tester.runAsync(
+        () => _png(const Color(0xFF00FF00)),
+      );
+      final remover = install(answer: refined);
+      await tester.runAsync(() => seed(withCutout: true));
+      await open(tester);
+      await paintAcross(tester);
+
+      await tester.tap(find.text('Let the app finish the edges'));
+      await drain(tester);
+
+      expect(remover.received, isNotNull);
+      // PNG, because what is sent is already transparent where the user
+      // painted and JPEG would flatten that to black.
+      expect(remover.received!.mimeType, 'image/png');
+    });
+
+    testWidgets('its answer becomes the canvas and can be undone', (
+      tester,
+    ) async {
+      final refined = await tester.runAsync(
+        () => _png(const Color(0xFF00FF00)),
+      );
+      install(answer: refined);
+      await tester.runAsync(() => seed(withCutout: true));
+      await open(tester);
+
+      final undo = find.widgetWithIcon(IconButton, Icons.undo);
+      expect(tester.widget<IconButton>(undo).onPressed, isNull);
+
+      await tester.tap(find.text('Let the app finish the edges'));
+      await drain(tester);
+
+      // A pass is undoable in its own right, not only the strokes before it.
+      expect(tester.widget<IconButton>(undo).onPressed, isNotNull);
+    });
+
+    testWidgets('a refusal keeps the work on the canvas', (tester) async {
+      // The important one. Setting the fatal-failure field here would replace
+      // the whole editor with a message and throw away a hand-drawn mask
+      // because one request came back empty.
+      install();
+      await tester.runAsync(() => seed(withCutout: true));
+      await open(tester);
+      await paintAcross(tester);
+
+      await tester.tap(find.text('Let the app finish the edges'));
+      await drain(tester);
+
+      expect(find.textContaining('could not separate'), findsOneWidget);
+      // Still an editor, still holding the stroke.
+      expect(find.text('Save cutout'), findsOneWidget);
+      expect(
+        tester
+            .widget<IconButton>(find.widgetWithIcon(IconButton, Icons.undo))
+            .onPressed,
+        isNotNull,
+      );
+    });
+
+    testWidgets('undoing a pass brings the earlier strokes back', (
+      tester,
+    ) async {
+      // A pass bakes the strokes into the new image and clears them, so
+      // restoring only the image would leave them applied twice — and undoing
+      // once would look like it had done nothing.
+      final refined = await tester.runAsync(
+        () => _png(const Color(0xFF00FF00)),
+      );
+      install(answer: refined);
+      await tester.runAsync(() => seed(withCutout: true));
+      await open(tester);
+      await paintAcross(tester);
+
+      await tester.tap(find.text('Let the app finish the edges'));
+      await drain(tester);
+
+      final undo = find.widgetWithIcon(IconButton, Icons.undo);
+      await tester.tap(undo);
+      await tester.pump();
+
+      // The stroke from before the pass is back, so Undo is still live.
+      expect(tester.widget<IconButton>(undo).onPressed, isNotNull);
+
+      await tester.tap(undo);
+      await tester.pump();
+
+      // And now everything is undone.
+      expect(tester.widget<IconButton>(undo).onPressed, isNull);
+    });
+  });
+}
+
+/// A gateway whose background remover answers with one fixed picture.
+class _Remover extends AiGateway {
+  _Remover({this.answer}) : super(baseUrl: Uri.parse('http://test.invalid/'));
+
+  final Uint8List? answer;
+
+  /// What the last call was given.
+  ScanImage? received;
+
+  @override
+  Future<Uint8List?> cutout(ScanImage image) async {
+    received = image;
+    return answer;
+  }
 }

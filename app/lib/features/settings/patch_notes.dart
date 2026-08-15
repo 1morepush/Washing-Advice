@@ -76,6 +76,11 @@ final patchNotes = <Release>[
     date: DateTime.utc(2026, 8, 15),
     headline: 'Scanning a label again adds to it',
     changes: [
+      'When you tidy a cutout by hand, you can now hand it back to the app to '
+          'finish the edges. It works where the first attempt did not because '
+          'you have already painted away the bedding and the other clothes — '
+          'it is being asked a much easier question. Undo takes it back if you '
+          'do not like the result.',
       'Scanning a care label a second time no longer throws away the first '
           'reading. Anything the new photo shows wins; anything it does not '
           'show is kept from before — so photographing the back of a tag weeks '

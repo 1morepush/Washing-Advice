@@ -144,7 +144,9 @@ void main() {
 
   group('degrades honestly where a server is genuinely needed', () {
     test('a garment scan says the server is unreachable', () async {
-      await container.read(scanControllerProvider.notifier).captureAndScan();
+      final scan = container.read(scanControllerProvider.notifier);
+      await scan.capture();
+      await scan.scanCollected();
 
       final state = container.read(scanControllerProvider);
       expect(state, isA<ScanError>());
@@ -242,7 +244,8 @@ class _OfflineGateway extends AiGateway {
       _offline();
 
   @override
-  Future<CareTagScanResult> scanCareTag(ScanImage image) async => _offline();
+  Future<CareTagScanResult> scanCareTag(List<ScanImage> images) async =>
+      _offline();
 
   @override
   Future<PileScanResult> scanPile(ScanImage image) async => _offline();

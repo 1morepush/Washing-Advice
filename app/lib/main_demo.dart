@@ -345,7 +345,7 @@ class _CannedGateway extends AiGateway {
   }
 
   @override
-  Future<CareTagScanResult> scanCareTag(ScanImage image) async {
+  Future<CareTagScanResult> scanCareTag(List<ScanImage> images) async {
     await Future<void>.delayed(const Duration(milliseconds: 700));
 
     // A superwash label: it permits things the generic wool rule forbids, which

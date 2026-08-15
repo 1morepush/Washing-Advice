@@ -27,6 +27,45 @@ final class ScanIdle extends ScanState {
   const ScanIdle();
 }
 
+/// One photograph, with the part of the garment it shows.
+///
+/// The role is carried from the moment the shot is taken rather than derived
+/// from its position later. Position was doing that job and could only ever
+/// express "first is the front, everything else is the back" — which is wrong
+/// the moment somebody photographs a back print and a sleeve logo, and wrong
+/// again when they photograph the back first.
+final class ScanShot {
+  const ScanShot({required this.image, required this.role});
+
+  final ScanImage image;
+  final PhotoRole role;
+
+  ScanShot withRole(PhotoRole role) => ScanShot(image: image, role: role);
+}
+
+/// Photographs taken so far, before any of them has been sent.
+///
+/// A garment is not always identifiable from one side. A plain navy tee and a
+/// navy tee with a large print across the back are different garments to their
+/// owner and identical from the front, so the scan has to be able to see both
+/// before it decides what this is.
+final class ScanCollecting extends ScanState {
+  const ScanCollecting(this.shots);
+
+  final List<ScanShot> shots;
+
+  /// What the next photograph is most likely to be.
+  ///
+  /// Front, then back, then details. A guess the user can override, which is
+  /// the right trade for something they would otherwise have to set every
+  /// single time.
+  PhotoRole get nextRole => switch (shots.length) {
+    0 => PhotoRole.front,
+    1 => PhotoRole.back,
+    _ => PhotoRole.detail,
+  };
+}
+
 /// Images are with the server.
 final class ScanAnalysing extends ScanState {
   const ScanAnalysing(this.imageCount);
@@ -39,15 +78,15 @@ final class ScanReviewing extends ScanState {
   const ScanReviewing({
     required this.draft,
     required this.result,
-    required this.images,
+    required this.shots,
     this.diagnostics,
   });
 
-  /// The photographs the reading came from.
+  /// The photographs the reading came from, each with what it shows.
   ///
   /// Held so they can be stored when the user commits. Uploading them again
   /// for the cutout would be a second transfer of bytes already in hand.
-  final List<ScanImage> images;
+  final List<ScanShot> shots;
 
   /// The item as it would be saved, already run through the care resolver.
   final WardrobeItem draft;
@@ -61,7 +100,7 @@ final class ScanReviewing extends ScanState {
   ScanReviewing withDraft(WardrobeItem draft) => ScanReviewing(
     draft: draft,
     result: result,
-    images: images,
+    shots: shots,
     diagnostics: diagnostics,
   );
 }
@@ -85,15 +124,21 @@ class ScanController extends StateNotifier<ScanState> {
 
   final Ref _ref;
 
-  /// Captures a photo and scans it.
-  Future<void> captureAndScan({bool fromGallery = false}) async {
-    final capture = _ref.read(imageCaptureProvider);
-
+  /// Takes one photograph and holds it, without scanning yet.
+  ///
+  /// Deliberately does not scan. Somebody photographing a shirt with a print
+  /// across the back has to be able to turn it around first, and a flow that
+  /// sent the first shot immediately would identify a plain navy tee.
+  Future<void> capture({bool fromGallery = false}) async {
+    final existing = switch (state) {
+      ScanCollecting(:final shots) => shots,
+      _ => const <ScanShot>[],
+    };
     final List<ScanImage> images;
     try {
       images = fromGallery
-          ? await capture.pickMultiple()
-          : [?await capture.capture()];
+          ? await _ref.read(imageCaptureProvider).pickMultiple()
+          : [?await _ref.read(imageCaptureProvider).capture()];
     } on CaptureFailure catch (failure) {
       // The capture layer already decided whether trying again could work, so
       // this passes that through rather than assuming every camera problem is
@@ -106,19 +151,75 @@ class ScanController extends StateNotifier<ScanState> {
     }
 
     if (images.isEmpty) {
-      // The user backed out. Not an error, and showing one would be rude.
-      state = const ScanIdle();
+      // The user backed out. Not an error, and showing one would be rude —
+      // and whatever was already taken is kept, because losing the front
+      // because the back was cancelled would be its own small disaster.
+      state = existing.isEmpty ? const ScanIdle() : ScanCollecting(existing);
       return;
     }
 
-    await scanImages(images);
+    final added = <ScanShot>[];
+    for (final (index, image) in images.indexed) {
+      added.add(
+        ScanShot(
+          image: image,
+          role: switch (existing.length + index) {
+            0 => PhotoRole.front,
+            1 => PhotoRole.back,
+            _ => PhotoRole.detail,
+          },
+        ),
+      );
+    }
+
+    state = ScanCollecting([...existing, ...added]);
+  }
+
+  /// Says what part of the garment one of the collected shots shows.
+  void setRole(int index, PhotoRole role) {
+    if (state case ScanCollecting(
+      :final shots,
+    ) when index >= 0 && index < shots.length) {
+      final next = [...shots];
+      next[index] = next[index].withRole(role);
+      state = ScanCollecting(next);
+    }
+  }
+
+  /// Drops the last photograph taken, for a shot that came out unusable.
+  void discardLast() {
+    if (state case ScanCollecting(:final shots) when shots.isNotEmpty) {
+      final kept = shots.sublist(0, shots.length - 1);
+      state = kept.isEmpty ? const ScanIdle() : ScanCollecting(kept);
+    }
+  }
+
+  /// Sends everything collected so far as one garment.
+  Future<void> scanCollected() async {
+    if (state case ScanCollecting(:final shots)) {
+      await scanShots(shots);
+    }
   }
 
   /// Scans images that are already in hand.
   ///
   /// Separate from capture so tests and the screenshot run can supply bytes
   /// directly — the whole reason capture is behind an interface.
-  Future<void> scanImages(List<ScanImage> images) async {
+  Future<void> scanImages(List<ScanImage> images) async => scanShots([
+    for (final (index, image) in images.indexed)
+      ScanShot(
+        image: image,
+        role: switch (index) {
+          0 => PhotoRole.front,
+          1 => PhotoRole.back,
+          _ => PhotoRole.detail,
+        },
+      ),
+  ]);
+
+  /// Sends photographs that are already in hand, each with what it shows.
+  Future<void> scanShots(List<ScanShot> shots) async {
+    final images = [for (final shot in shots) shot.image];
     state = ScanAnalysing(images.length);
 
     final gateway = _ref.read(aiGatewayProvider);
@@ -127,7 +228,7 @@ class ScanController extends StateNotifier<ScanState> {
       state = ScanReviewing(
         draft: _draftFrom(result),
         result: result,
-        images: images,
+        shots: shots,
         diagnostics: gateway.lastDiagnostics,
       );
     } on ScanFailure catch (failure) {
@@ -157,7 +258,7 @@ class ScanController extends StateNotifier<ScanState> {
   Future<void> save() async {
     if (state case final ScanReviewing reviewing) {
       final ids = _ref.read(idGeneratorProvider);
-      final item = await _withPhotos(reviewing.draft, reviewing.images);
+      final item = await _withPhotos(reviewing.draft, reviewing.shots);
 
       await _ref.read(wardrobeRepositoryProvider).save(item);
       // The item row and the event are two records of the same happening. The
@@ -188,34 +289,42 @@ class ScanController extends StateNotifier<ScanState> {
   /// a row that falls back to its colour swatch.
   Future<WardrobeItem> _withPhotos(
     WardrobeItem item,
-    List<ScanImage> images,
+    List<ScanShot> shots,
   ) async {
-    if (images.isEmpty) return item;
+    if (shots.isEmpty) return item;
 
     final store = _ref.read(imageStoreProvider);
     final gateway = _ref.read(aiGatewayProvider);
     final now = DateTime.now();
 
     var photos = item.photos;
+    // The front is cut out, and only once. Two photographs both marked front —
+    // which the user is free to do — would otherwise mean two uploads and a
+    // second file overwriting the first.
+    var cutoutDone = false;
 
-    for (final (index, image) in images.indexed) {
-      // The first shot is the front; anything after it is the back. More than
-      // two would need the user to say, and the capture flow does not ask.
-      final role = index == 0 ? PhotoRole.front : PhotoRole.back;
+    for (final (index, shot) in shots.indexed) {
+      final role = shot.role;
+      // Distinct per photograph, because the stored name is derived from it.
+      // Without this two details, or two backs, resolve to one name: the
+      // second overwrites the first and the set ends up with two records
+      // pointing at one file, carrying the wrong dimensions for one of them.
+      final capturedAt = now.add(Duration(microseconds: index));
 
       try {
         final uri = await store.save(
-          Uint8List.fromList(image.bytes),
-          name: imageName(item.id, role),
+          Uint8List.fromList(shot.image.bytes),
+          name: imageName(item.id, role, takenAt: capturedAt),
         );
 
         String? cutoutUri;
-        if (role == PhotoRole.front) {
-          final cutout = await gateway.cutout(image);
+        if (role == PhotoRole.front && !cutoutDone) {
+          cutoutDone = true;
+          final cutout = await gateway.cutout(shot.image);
           if (cutout != null) {
             cutoutUri = await store.save(
               cutout,
-              name: imageName(item.id, role, cutout: true),
+              name: imageName(item.id, role, takenAt: capturedAt, cutout: true),
             );
           }
         }
@@ -225,9 +334,9 @@ class ScanController extends StateNotifier<ScanState> {
             uri: uri,
             cutoutUri: cutoutUri,
             role: role,
-            capturedAt: now,
-            width: image.width,
-            height: image.height,
+            capturedAt: capturedAt,
+            width: shot.image.width,
+            height: shot.image.height,
           ),
         );
       } on Exception {

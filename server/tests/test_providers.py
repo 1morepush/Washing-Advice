@@ -53,7 +53,7 @@ class TestFakeProvider:
         assert len(results) > 1, "a fake that always says the same thing tests nothing"
 
     async def test_reports_a_bar_less_tub_as_normal_agitation(self) -> None:
-        result = await FakeVisionProvider().scan_care_tag(scan_image(1))
+        result = await FakeVisionProvider().scan_care_tag([scan_image(1)])
         assert result.instructions.agitation is Agitation.NORMAL
 
     async def test_an_unreadable_symbol_leaves_the_field_unstated(self) -> None:
@@ -62,7 +62,7 @@ class TestFakeProvider:
         incomplete = [
             result
             for seed in range(20)
-            if not (result := await provider.scan_care_tag(scan_image(seed))).is_complete
+            if not (result := await provider.scan_care_tag([scan_image(seed)])).is_complete
         ]
 
         assert incomplete, "the fake must exercise the incomplete-label path"

@@ -71,6 +71,48 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.11.0',
+    name: 'The Full Monty',
+    date: DateTime.utc(2026, 8, 15),
+    headline: 'Photograph the back too',
+    changes: [
+      'Fixed: long garment names were cut off at the top of their own page. '
+          '"Black koi graphic tee" became "Black koi graphic t…", losing the '
+          'word that told it apart from every other black tee. The name now '
+          'wraps instead, and gets more room when your text size is larger.',
+      'Take as many photos of a garment as it needs before it is identified. A '
+          'plain navy tee and one with a big print across the back look the '
+          'same from the front — to you and to the app — so now you can turn '
+          'it around first.',
+      'Say what each photo shows: front, back, a detail, a logo, a brand tag. '
+          'It guesses front then back then detail, and you can change any of '
+          'them with a tap.',
+      'The print on the back now feeds into the name and description, so two '
+          'similar shirts are easier to tell apart in your wardrobe.',
+      'Fixed: a fourth photo used to overwrite the third instead of being '
+          'saved beside it.',
+    ],
+  ),
+  Release(
+    version: '0.10.0',
+    name: 'Both Sides Now',
+    date: DateTime.utc(2026, 8, 15),
+    headline: 'Care labels with two sides, in any language',
+    changes: [
+      'Take as many photos of a care label as it needs. Labels are often '
+          'printed on both sides, or carry on onto a second tag behind the '
+          'first — add each one and they are read together as a single label '
+          'instead of one side quietly going missing.',
+      'Nothing is read until you say so, so you can turn the label over first. '
+          'A shot that came out blurred can be dropped without starting again.',
+      'Labels in other languages now work properly. The wash symbols are the '
+          'same in every country, so a French or Japanese label reads just as '
+          'well as an English one — the app tells you which language it was, '
+          'and shows the wording exactly as printed rather than translating it '
+          'at you.',
+    ],
+  ),
+  Release(
     version: '0.9.0',
     name: 'Spin Cycle',
     date: DateTime.utc(2026, 8, 14),

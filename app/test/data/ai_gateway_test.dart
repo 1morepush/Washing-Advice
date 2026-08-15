@@ -126,7 +126,7 @@ void main() {
       // client never uses, so it is the likeliest of these to drift.
       await gatewayReturning({
         'result': {'instructions': <String, Object?>{}, 'confidence': 0.8},
-      }).scanCareTag(image());
+      }).scanCareTag([image()]);
 
       expect(requested.path, '/v1/scan/care-tag');
       expect(method, 'POST');

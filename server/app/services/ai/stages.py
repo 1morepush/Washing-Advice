@@ -90,11 +90,13 @@ class ProviderStage:
         )
 
     async def _care_tag(self, request: ScanRequest) -> StageOutcome:
-        image = request.primary
-        result = await self._provider.scan_care_tag(image)
+        result = await self._provider.scan_care_tag(request.images)
 
         if self._cache is not None:
-            await self._cache.remember_care(image_signature(image), result)
+            # Keyed on the first photograph, as the lookup is. A second side
+            # cannot be part of the key without making the cache miss whenever
+            # somebody photographs the same label in a different order.
+            await self._cache.remember_care(image_signature(request.primary), result)
             if request.known_brand and result.composition is not None:
                 await self._cache.observe_composition(
                     request.known_brand,

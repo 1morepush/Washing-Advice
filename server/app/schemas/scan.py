@@ -77,6 +77,14 @@ class CareTagScanResult(WireModel):
         ),
     )
     raw_text: str | None = Field(default=None)
+    language: str | None = Field(
+        default=None,
+        description=(
+            "ISO 639-1 code of the words on the label, if any were legible. "
+            "The symbols are ISO 3758 and mean the same everywhere, so a label "
+            "with none of this is a symbols-only label rather than a failure."
+        ),
+    )
 
     @property
     def is_complete(self) -> bool:

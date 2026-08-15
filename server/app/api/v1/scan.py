@@ -75,15 +75,38 @@ async def scan_garment(
     summary="Read a care label",
 )
 async def scan_care_tag(
-    image: UploadFile = File(..., description="A close-up of the care label."),
+    images: list[UploadFile] = File(
+        default_factory=list,
+        description=(
+            "Close-ups of one garment's care label. Send several when the label "
+            "is printed on both sides or continues onto a second tag — they are "
+            "read together as one label."
+        ),
+    ),
+    image: UploadFile | None = File(
+        default=None,
+        description="The single-photograph form. Superseded by `images`.",
+    ),
     brand: str | None = Form(default=None),
     settings: Settings = Depends(get_settings),
     pipeline: VisionPipeline = Depends(get_pipeline),
 ) -> CareTagScanResponse:
-    scan_image = await _read_image(image, settings)
+    # Both spellings accepted. `images` is the one to use; `image` is what
+    # every build shipped before two-sided labels existed sends, and an app
+    # that has not been updated should keep working rather than start
+    # answering 422 to a request that was correct when it was written.
+    uploads = images or ([image] if image is not None else [])
+    if not uploads:
+        raise ScanFailedError(
+            "no photograph of a care label was provided",
+            hint="Attach at least one close-up of the label.",
+        )
+
+    check_image_count(len(uploads), maximum=settings.max_images_per_request)
+    scan_images = [await _read_image(upload, settings) for upload in uploads]
 
     outcome = await pipeline.run(
-        ScanRequest(kind=ScanKind.CARE_TAG, images=[scan_image], known_brand=brand)
+        ScanRequest(kind=ScanKind.CARE_TAG, images=scan_images, known_brand=brand)
     )
 
     if not isinstance(outcome.result, CareTagScanResult):

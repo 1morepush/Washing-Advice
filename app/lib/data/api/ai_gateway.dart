@@ -74,8 +74,17 @@ class AiGateway implements VisionPort {
   }
 
   @override
-  Future<CareTagScanResult> scanCareTag(ScanImage image) async {
-    final json = await _post('scan/care-tag', files: [('image', image)]);
+  Future<CareTagScanResult> scanCareTag(List<ScanImage> images) async {
+    if (images.isEmpty) {
+      throw const ScanFailure(
+        'No photograph of the label was provided.',
+        isRetryable: false,
+      );
+    }
+    final json = await _post(
+      'scan/care-tag',
+      files: [for (final image in images) ('images', image)],
+    );
     return careTagResultFromJson(json);
   }
 

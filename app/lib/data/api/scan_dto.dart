@@ -153,6 +153,7 @@ CareTagScanResult careTagResultFromJson(Map<String, Object?> json) {
     unreadableSymbolCount:
         (json['unreadableSymbolCount'] as num?)?.toInt() ?? 0,
     rawText: json['rawText'] as String?,
+    language: json['language'] as String?,
   );
 }
 

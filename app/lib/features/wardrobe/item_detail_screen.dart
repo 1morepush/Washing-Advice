@@ -22,6 +22,23 @@ import 'cutout_controller.dart';
 import 'care_text.dart';
 import 'report_wear_sheet.dart';
 
+/// How tall the bar has to be to hold a three-line name at the current type
+/// size.
+///
+/// Derived rather than fixed. `toolbarHeight` is in logical pixels and does
+/// not follow the text scale, so a height that fits three lines by default
+/// clips the last one as soon as somebody turns their type up — and the larger
+/// the type, the more likely the name needed three lines in the first place.
+double _titleHeight(BuildContext context) {
+  final style = Theme.of(context).textTheme.titleMedium;
+  final scaled = MediaQuery.textScalerOf(
+    context,
+  ).scale(style?.fontSize ?? 16.0);
+  // Three lines at the style's own line spacing, plus the padding the bar
+  // keeps above and below its title.
+  return (scaled * (style?.height ?? 1.4) * 3) + 24;
+}
+
 class ItemDetailScreen extends ConsumerWidget {
   const ItemDetailScreen({required this.id, super.key});
 
@@ -34,7 +51,26 @@ class ItemDetailScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         leading: BackButton(onPressed: () => context.go('/')),
-        title: Text(item.valueOrNull?.displayName ?? 'Item'),
+        // The name gets the room it needs. A garment's name is the one thing
+        // on this screen that says *which* garment it is, and a single line
+        // cut "Black koi graphic tee" down to "Black koi graphic t…" — losing
+        // precisely the word that tells it from every other black tee. The
+        // distinguishing word is as often at the end as the start, so
+        // truncation is not a graceful degradation here.
+        //
+        // Three lines rather than two because two is not enough at a larger
+        // text size, which is exactly when someone needs the name legible.
+        // The bar grows with the type for the same reason: a fixed height
+        // would clip the third line the moment it was used.
+        toolbarHeight: _titleHeight(context),
+        title: Text(
+          item.valueOrNull?.displayName ?? 'Item',
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+          // A step down from the default, so a wrapped name reads as a title
+          // rather than as a paragraph in the chrome.
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         // Two icons, not five. Everything else moved into the body as a
         // labelled button, because five unlabelled glyphs squeezed the
         // garment's own name down to "Charco…" and left the most useful

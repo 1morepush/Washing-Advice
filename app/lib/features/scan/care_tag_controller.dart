@@ -29,6 +29,19 @@ final class CareTagReading extends CareTagState {
   const CareTagReading();
 }
 
+/// Photographs taken so far, before any of them has been read.
+///
+/// A label is very often printed on both sides, or continues onto a second tag
+/// sewn behind the first, and reading one side of a two-sided label gives an
+/// answer that looks complete and is not. Collecting first means the reading
+/// sees the whole label at once rather than producing two partial answers for
+/// something to reconcile afterwards.
+final class CareTagCollecting extends CareTagState {
+  const CareTagCollecting(this.images);
+
+  final List<ScanImage> images;
+}
+
 /// The label was read and the user is confirming what it says.
 final class CareTagReviewing extends CareTagState {
   const CareTagReviewing({
@@ -36,18 +49,18 @@ final class CareTagReviewing extends CareTagState {
     required this.updated,
     required this.resolution,
     required this.previous,
-    this.image,
+    this.images = const [],
   });
 
   /// What the label scan returned, including how much of it was legible.
   final CareTagScanResult reading;
 
-  /// The photograph the reading came from, kept so it can be filed against the
-  /// item on save.
+  /// The photographs the reading came from, kept so they can be filed against
+  /// the item on save.
   ///
-  /// Null only when a reading arrived without one, which is how the tests
+  /// Empty only when a reading arrived without any, which is how the tests
   /// drive this controller directly.
-  final ScanImage? image;
+  final List<ScanImage> images;
 
   /// The item as it would be saved, with the label attached and care
   /// re-resolved from it.
@@ -81,7 +94,18 @@ class CareTagController extends StateNotifier<CareTagState> {
   final Ref _ref;
   final ItemId itemId;
 
-  Future<void> captureAndRead() async {
+  /// Takes one photograph and holds it, without reading anything yet.
+  ///
+  /// Deliberately does not read. Somebody photographing a two-sided label has
+  /// to be able to turn it over before the answer is worked out, and a flow
+  /// that read the first shot immediately would give them a complete-looking
+  /// answer from half a label.
+  Future<void> capture() async {
+    final existing = switch (state) {
+      CareTagCollecting(:final images) => images,
+      _ => const <ScanImage>[],
+    };
+
     final ScanImage? image;
     try {
       image = await _ref.read(imageCaptureProvider).capture();
@@ -91,13 +115,34 @@ class CareTagController extends StateNotifier<CareTagState> {
     }
 
     if (image == null) {
-      state = const CareTagIdle();
+      // Backing out of the camera keeps whatever was already taken. Losing an
+      // earlier side because the second shot was cancelled would be its own
+      // small disaster.
+      state = existing.isEmpty
+          ? const CareTagIdle()
+          : CareTagCollecting(existing);
       return;
     }
-    await readImage(image);
+
+    state = CareTagCollecting([...existing, image]);
   }
 
-  Future<void> readImage(ScanImage image) async {
+  /// Drops the last photograph taken, for a shot that came out unusable.
+  void discardLast() {
+    if (state case CareTagCollecting(:final images) when images.isNotEmpty) {
+      final kept = images.sublist(0, images.length - 1);
+      state = kept.isEmpty ? const CareTagIdle() : CareTagCollecting(kept);
+    }
+  }
+
+  /// Reads everything collected so far.
+  Future<void> readCollected() async {
+    if (state case CareTagCollecting(:final images)) {
+      await readImages(images);
+    }
+  }
+
+  Future<void> readImages(List<ScanImage> images) async {
     final item = await _ref.read(wardrobeRepositoryProvider).byId(itemId);
     if (item == null) {
       state = const CareTagFailed(
@@ -111,7 +156,7 @@ class CareTagController extends StateNotifier<CareTagState> {
 
     final CareTagScanResult reading;
     try {
-      reading = await _ref.read(aiGatewayProvider).scanCareTag(image);
+      reading = await _ref.read(aiGatewayProvider).scanCareTag(images);
     } on ScanFailure catch (failure) {
       state = CareTagFailed(failure.message, isRetryable: failure.isRetryable);
       return;
@@ -128,21 +173,25 @@ class CareTagController extends StateNotifier<CareTagState> {
       // would replace a rule-derived profile with an empty label and record it
       // at `tagScan` provenance, making the app *more* confident about care it
       // knows nothing new about.
-      state = const CareTagFailed(
-        'Nothing on that label could be read. Try a closer, flatter shot with '
-        'the symbols in focus.',
+      state = CareTagFailed(
+        images.length > 1
+            ? 'Nothing on that label could be read, from any of the '
+                  '${images.length} photos. Try closer, flatter shots with the '
+                  'symbols in focus.'
+            : 'Nothing on that label could be read. Try a closer, flatter shot '
+                  'with the symbols in focus.',
       );
       return;
     }
 
-    state = _review(item, reading, image);
+    state = _review(item, reading, images);
   }
 
   /// Attaches the label to the item and re-resolves its care.
   CareTagReviewing _review(
     WardrobeItem item,
     CareTagScanResult reading, [
-    ScanImage? image,
+    List<ScanImage> images = const [],
   ]) {
     // The composition printed on the label outranks whatever was guessed from
     // a photograph of the garment, so it is taken too when the label carries
@@ -172,7 +221,7 @@ class CareTagController extends StateNotifier<CareTagState> {
       updated: withLabel.copyWith(care: resolution.profile),
       resolution: resolution,
       previous: item.care.instructions,
-      image: image,
+      images: images,
     );
   }
 
@@ -187,44 +236,53 @@ class CareTagController extends StateNotifier<CareTagState> {
   /// and refusing to save over it would throw away a care reading the user has
   /// just reviewed and approved. No cutout is requested — a label is text, not
   /// a garment to lift off its background.
-  Future<WardrobeItem> _withLabelPhoto(
+  Future<WardrobeItem> _withLabelPhotos(
     WardrobeItem item,
-    ScanImage image,
+    List<ScanImage> images,
   ) async {
-    try {
-      // One instant for both, because the name is derived from it: a second
-      // reading of the same label would otherwise be written over the first and
-      // added to the set again, leaving two records pointing at one file with
-      // the earlier one's dimensions.
-      final capturedAt = DateTime.now();
-      final uri = await _ref
-          .read(imageStoreProvider)
-          .save(
-            Uint8List.fromList(image.bytes),
-            name: imageName(item.id, PhotoRole.careTag, takenAt: capturedAt),
-          );
+    var updated = item;
 
-      return item.copyWith(
-        photos: item.photos.add(
-          ItemPhoto(
-            uri: uri,
-            role: PhotoRole.careTag,
-            capturedAt: capturedAt,
-            width: image.width,
-            height: image.height,
+    for (final (index, image) in images.indexed) {
+      try {
+        // One instant per photograph, because the name is derived from it: two
+        // sides saved on the same instant would write over each other and
+        // leave two records pointing at one file. The index is added for the
+        // same reason — `DateTime.now()` twice in a tight loop can genuinely
+        // return the same microsecond.
+        final capturedAt = DateTime.now().add(Duration(microseconds: index));
+        final uri = await _ref
+            .read(imageStoreProvider)
+            .save(
+              Uint8List.fromList(image.bytes),
+              name: imageName(item.id, PhotoRole.careTag, takenAt: capturedAt),
+            );
+
+        updated = updated.copyWith(
+          photos: updated.photos.add(
+            ItemPhoto(
+              uri: uri,
+              role: PhotoRole.careTag,
+              capturedAt: capturedAt,
+              width: image.width,
+              height: image.height,
+            ),
           ),
-        ),
-      );
-    } on Exception {
-      return item;
+        );
+      } on Exception {
+        // One side that will not store should not cost the others, nor the
+        // reading the user has just approved.
+        continue;
+      }
     }
+
+    return updated;
   }
 
   Future<void> save() async {
     if (state case final CareTagReviewing reviewing) {
-      final item = reviewing.image == null
+      final item = reviewing.images.isEmpty
           ? reviewing.updated
-          : await _withLabelPhoto(reviewing.updated, reviewing.image!);
+          : await _withLabelPhotos(reviewing.updated, reviewing.images);
 
       await _ref.read(wardrobeRepositoryProvider).save(item);
 

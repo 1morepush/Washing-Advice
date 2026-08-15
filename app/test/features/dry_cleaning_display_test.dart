@@ -171,9 +171,11 @@ void main() {
       );
 
       await pump(tester, const CareTagScreen(id: itemId));
-      await container
-          .read(careTagControllerProvider(itemId).notifier)
-          .captureAndRead();
+      final controller = container.read(
+        careTagControllerProvider(itemId).notifier,
+      );
+      await controller.capture();
+      await controller.readCollected();
       await tester.pumpAndSettle();
 
       expect(find.text('Do not dry clean'), findsOneWidget);
@@ -197,9 +199,11 @@ void main() {
       );
 
       await pump(tester, const CareTagScreen(id: itemId));
-      await container
-          .read(careTagControllerProvider(itemId).notifier)
-          .captureAndRead();
+      final controller = container.read(
+        careTagControllerProvider(itemId).notifier,
+      );
+      await controller.capture();
+      await controller.readCollected();
       await tester.pumpAndSettle();
 
       expect(find.text('Take care'), findsOneWidget);
@@ -217,7 +221,8 @@ class _LabelGateway extends AiGateway {
   );
 
   @override
-  Future<CareTagScanResult> scanCareTag(ScanImage image) async => reading;
+  Future<CareTagScanResult> scanCareTag(List<ScanImage> images) async =>
+      reading;
 }
 
 /// A fact the app knows nothing about.

@@ -76,6 +76,10 @@ final patchNotes = <Release>[
     date: DateTime.utc(2026, 8, 15),
     headline: 'Photograph the back too',
     changes: [
+      'Fixed: long garment names were cut off at the top of their own page. '
+          '"Black koi graphic tee" became "Black koi graphic t…", losing the '
+          'word that told it apart from every other black tee. The name now '
+          'wraps instead, and gets more room when your text size is larger.',
       'Take as many photos of a garment as it needs before it is identified. A '
           'plain navy tee and one with a big print across the back look the '
           'same from the front — to you and to the app — so now you can turn '

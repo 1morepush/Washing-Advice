@@ -21,6 +21,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/services.dart' show FontLoader, rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -390,6 +391,31 @@ void main() {
       await pumpDetail(tester);
 
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the garment name is not cut off', (tester) async {
+      // An ellipsis is not an overflow, so every other assertion in this file
+      // passed happily while the app bar showed "Charcoal merino crew-neck
+      // ju…". The name is the one thing on this screen that says *which*
+      // garment it is, and the distinguishing word is as often at the end as
+      // the start — "Black koi graphic tee" truncates to "Black koi graphic
+      // t…", losing exactly what tells it from every other black tee.
+      await pumpDetail(tester);
+
+      final title = tester.renderObject<RenderParagraph>(
+        find.text('Charcoal merino crew-neck jumper'),
+      );
+      expect(title.didExceedMaxLines, isFalse);
+    });
+
+    testWidgets('and is not cut off with larger text either', (tester) async {
+      // The case this is most likely to regress in: bigger type, same 320dp.
+      await pumpDetail(tester, textScaler: const TextScaler.linear(1.3));
+
+      final title = tester.renderObject<RenderParagraph>(
+        find.text('Charcoal merino crew-neck jumper'),
+      );
+      expect(title.didExceedMaxLines, isFalse);
     });
 
     testWidgets('the detail screen fits with larger text', (tester) async {

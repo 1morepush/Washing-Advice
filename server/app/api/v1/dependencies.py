@@ -21,6 +21,9 @@ from app.services.ai.knowledge_cache import (
 from app.services.ai.pipeline import VisionPipeline
 from app.services.ai.registry import registry
 from app.services.ai.stages import ProviderStage
+from app.services.condition.base import ConditionReader
+from app.services.condition.fake import FakeConditionReader
+from app.services.condition.gemini_reader import GeminiConditionReader
 from app.services.images.cutout import BackgroundRemover, BorderSampledRemover
 from app.services.machines.base import MachineIdentifier
 from app.services.machines.fake import FakeMachineIdentifier
@@ -124,6 +127,9 @@ _live_advisers: list[StainAdviser] = []
 _live_stylists: list[Stylist] = []
 """And again for stylists."""
 
+_live_readers: list[ConditionReader] = []
+"""And again for condition readers."""
+
 
 @lru_cache
 def get_stain_adviser() -> StainAdviser:
@@ -175,6 +181,28 @@ def get_stylist() -> Stylist:
 
 
 @lru_cache
+def get_condition_reader() -> ConditionReader:
+    """The condition reader described by the current settings.
+
+    Reuses `VISION_PROVIDER` like every other AI-backed dependency here.
+    """
+    settings = get_settings()
+    if settings.vision_provider == "fake":
+        reader: ConditionReader = FakeConditionReader()
+    else:
+        try:
+            reader = GeminiConditionReader.from_settings(settings)
+        except ProviderError as error:
+            raise ProviderUnavailableError(
+                str(error),
+                hint="set GEMINI_API_KEY, or set VISION_PROVIDER=fake",
+            ) from error
+
+    _live_readers.append(reader)
+    return reader
+
+
+@lru_cache
 def get_machine_identifier() -> MachineIdentifier:
     """The machine identifier described by the current settings.
 
@@ -206,6 +234,7 @@ async def close_providers() -> None:
         *_live_identifiers,
         *_live_advisers,
         *_live_stylists,
+        *_live_readers,
     ):
         closer = getattr(provider, "aclose", None)
         if closer is not None:
@@ -214,6 +243,7 @@ async def close_providers() -> None:
     _live_identifiers.clear()
     _live_advisers.clear()
     _live_stylists.clear()
+    _live_readers.clear()
 
 
 def reset_wiring() -> None:
@@ -226,6 +256,7 @@ def reset_wiring() -> None:
     get_machine_identifier.cache_clear()
     get_stain_adviser.cache_clear()
     get_stylist.cache_clear()
+    get_condition_reader.cache_clear()
     get_knowledge_cache.cache_clear()
     get_background_remover.cache_clear()
     # Closed before it is dropped: a SQLite store left to the garbage collector
@@ -238,4 +269,5 @@ def reset_wiring() -> None:
     _live_identifiers.clear()
     _live_advisers.clear()
     _live_stylists.clear()
+    _live_readers.clear()
     get_settings.cache_clear()

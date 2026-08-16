@@ -96,6 +96,24 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.13.0',
+    name: 'Sock Drawer',
+    date: DateTime.utc(2026, 8, 16),
+    headline: 'Identical garments share a row',
+    changes: [
+      'Six identical socks are one row now, not six — they were crowding out '
+          'the garment you were actually looking for. Tap to open the group '
+          'up, tap again for one of them.',
+      'The count still says six, because six is what you own. Picking a group '
+          'picks every copy, so sending them to the wash does not leave five '
+          'in the drawer.',
+      'Only garments the app is genuinely sure are the same get collapsed: '
+          'same type, brand, size, fabric and colour. Two things it knows '
+          'little about are not thereby the same thing.',
+      'Not what you want? Turn it off under the three dots in the wardrobe.',
+    ],
+  ),
+  Release(
     version: '0.12.1',
     name: 'Spot Clean',
     date: DateTime.utc(2026, 8, 15),

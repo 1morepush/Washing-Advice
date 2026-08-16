@@ -43,7 +43,7 @@ Future<void> main() async {
   // Awaited, so the wardrobe stream's first emission already has the seed in
   // it. Without this the list subscribes to an empty repository and the app
   // opens on the empty state before flicking to the real one.
-  await repository.saveAll(await _withCutouts(_seed(), images));
+  await repository.saveAll(await _withCutouts(_inPiles(_seed()), images));
 
   // A real settings store. The sync section reads it while building — which is
   // correct, it needs to know whether sync is configured — and the previous
@@ -54,6 +54,22 @@ Future<void> main() async {
   // On web this is backed by local storage, so a machine picked in the demo
   // survives a reload. That is what the real app does, which is the point.
   final settings = SettingsStore(await SharedPreferences.getInstance());
+
+  // A real PNG for the camera to hand back, taken from the demo cutouts.
+  //
+  // The three bytes it used to return are not an image, so every screen that
+  // shows you what you have just photographed — the collected label shots, the
+  // collected garment angles — drew a broken-image placeholder. Those screens
+  // exist precisely to show the shots back, and a screenshot of one full of
+  // placeholders demonstrates nothing.
+  final captured = ScanImage(
+    bytes: base64Decode(
+      (jsonDecode(await rootBundle.loadString('assets/demo/cutouts.json'))
+              as Map<String, dynamic>)['demo-jumper']!
+          as String,
+    ),
+    mimeType: 'image/png',
+  );
 
   runApp(
     ProviderScope(
@@ -69,9 +85,7 @@ Future<void> main() async {
         idGeneratorProvider.overrideWithValue(ids),
         aiGatewayProvider.overrideWithValue(_CannedGateway()),
         imageCaptureProvider.overrideWithValue(
-          FixedImageCaptureSource([
-            const ScanImage(bytes: [0xFF, 0xD8, 0xFF]),
-          ]),
+          FixedImageCaptureSource([captured]),
         ),
         settingsStoreProvider.overrideWithValue(settings),
         backendUrlProvider.overrideWith((ref) => defaultBackendUrl),
@@ -200,6 +214,41 @@ class _CannedGateway extends AiGateway {
         ),
       ],
     );
+  }
+
+  /// The streaming form, which is what the screen actually calls.
+  ///
+  /// Built from [adviseOnStain] rather than duplicating its steps, so the two
+  /// cannot drift. The delay between steps is deliberate: the point of this
+  /// flow is that the first instruction is readable before the last one has
+  /// been written, and a double that answered instantly would demonstrate the
+  /// opposite.
+  @override
+  Stream<StainStreamEvent> streamStainAdvice({
+    required String substance,
+    required String fabric,
+    required String care,
+    String? color,
+    String? note,
+    ScanImage? photo,
+  }) async* {
+    final advice = await adviseOnStain(
+      substance: substance,
+      fabric: fabric,
+      care: care,
+      color: color,
+      note: note,
+      photo: photo,
+    );
+
+    if (advice.identifiedAs case final String identified) {
+      yield StainIdentified(identified);
+    }
+    for (final step in advice.steps) {
+      await Future<void>.delayed(const Duration(milliseconds: 350));
+      yield StainStep(step);
+    }
+    yield const StainDone();
   }
 
   @override
@@ -367,6 +416,15 @@ class _CannedGateway extends AiGateway {
       ),
       symbolsFound: const ['wash_40', 'tumble_low', 'iron_low', 'no_bleach'],
       unreadableSymbolCount: 1,
+      // French, because the interesting half of reading a foreign label is
+      // what the app says about having read one. The symbols are ISO 3758 and
+      // identical everywhere, so the structured answer above is the same one
+      // an English tag would give — which is exactly the point being made.
+      language: 'fr',
+      rawText:
+          '80% LAINE 20% POLYAMIDE\n'
+          'LAVER À 40°C — CYCLE DÉLICAT\n'
+          'SÉCHAGE EN TAMBOUR À BASSE TEMPÉRATURE',
     );
   }
 }
@@ -651,6 +709,32 @@ List<WardrobeItem> _seed() {
       ),
       addedDaysAgo: 700,
     ),
+  ];
+}
+
+/// Spreads a few garments across the laundry piles.
+///
+/// Left as one clean wardrobe, every laundry tab but the first was empty — so
+/// the screen that exists to show four piles and a plan demonstrated an empty
+/// state four times. This is a mid-week wardrobe rather than a freshly folded
+/// one, which is the state anybody actually opens the app in.
+List<WardrobeItem> _inPiles(List<WardrobeItem> items) {
+  const staged = {
+    'demo-tee': LifecycleState.inLaundry,
+    'demo-jeans': LifecycleState.inLaundry,
+    'demo-red': LifecycleState.inLaundry,
+    'demo-socks-0': LifecycleState.inLaundry,
+    'demo-hoodie': LifecycleState.beingWashed,
+    'demo-chinos': LifecycleState.beingWashed,
+    'demo-towel': LifecycleState.beingDried,
+  };
+
+  return [
+    for (final item in items)
+      if (staged[item.id.value] case final LifecycleState stage)
+        item.copyWith(lifecycle: stage)
+      else
+        item,
   ];
 }
 

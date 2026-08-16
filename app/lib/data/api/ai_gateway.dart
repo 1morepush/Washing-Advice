@@ -280,12 +280,22 @@ class AiGateway implements VisionPort {
   /// a truncated list would silently never suggest half of somebody's clothes,
   /// and at roughly thirty tokens a garment even a large wardrobe is a small
   /// fraction of what a single photograph costs.
-  Future<List<StyleProposal>> proposeOutfits({
+  /// With [suggestGaps] the same call also names pieces the wardrobe does not
+  /// have. One request rather than two: the whole wardrobe is already in the
+  /// prompt, so asking both questions costs a few hundred tokens instead of a
+  /// second round trip, and the answers agree with each other because one pass
+  /// produced them.
+  ///
+  /// The vocabulary of garment types goes up with the request rather than
+  /// living on the server, so the list the model may name from and the list
+  /// `GapVetting` resolves against are the same list.
+  Future<StyleAnswer> proposeOutfits({
     required List<WardrobeItem> wardrobe,
     required String occasion,
     String? season,
     int count = 4,
     String? note,
+    bool suggestGaps = false,
   }) async {
     if (wardrobe.isEmpty) {
       throw const ScanFailure(
@@ -300,9 +310,19 @@ class AiGateway implements VisionPort {
       'count': count,
       'wardrobe': [for (final item in wardrobe) styleCandidateJson(item)],
       if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      if (suggestGaps) ...{
+        'suggestGaps': true,
+        'stylableTypes': stylableTypeLabels,
+      },
     });
 
-    return styleProposalsFromJson(styleResultList(body['result']));
+    return (
+      outfits: styleProposalsFromJson(styleResultList(body['result'])),
+      // Absent on a server built before gaps existed, which reads as "none"
+      // rather than as a failure: its answer to the outfit question is still
+      // perfectly good.
+      pieces: pieceProposalsFromJson(body['pieces']),
+    );
   }
 
   /// The garment with its background removed.

@@ -17,6 +17,14 @@ The second is hedging. A reason that says "these colours work well together" is
 one the builder could have written, and if that is all the model has to say
 there was no point asking it. The reason is shown to the user in full, in the
 model's own words, so it has to be worth reading.
+
+`GAPS_PROMPT` asks the other half of the same question — which pieces the
+wardrobe is missing — and spends its length on the two ways that goes wrong. It
+must not suggest what somebody already owns, which is the fastest way to look
+like it never read the list. And it must not turn into shopping: no brands, no
+shops, no prices, no products. This is a wardrobe app, and plenty of people use
+one to buy less; describing the garment and stopping there leaves what to do
+about it where it belongs.
 """
 
 from __future__ import annotations
@@ -63,6 +71,35 @@ the specific garments in your reason so it is obvious which outfit it belongs
 to.
 """
 
+GAPS_PROMPT = """
+ALSO NAME WHAT IS MISSING:
+
+Some of their clothes are asking for something they do not own. A light
+graphic tee wants a mid-weight indigo denim under it; a linen shirt wants
+something that is not black jeans. Name those pieces.
+
+RULES FOR THESE:
+
+- Every piece must go with garments from the list above. Name their ids in
+  pairsWith, copied exactly. A piece with nothing of theirs to wear it with is
+  a shopping list entry, not advice, and will be thrown away.
+- Never name something they already have. Read the list first: if there are
+  already dark blue jeans on it, do not suggest dark blue jeans. Suggesting
+  what somebody owns is the fastest way to look like you did not look.
+- Use the type labels given below, copied exactly, and say the colour in plain
+  words — "dark blue", "cream", "olive". Somebody is going to read this while
+  looking at their own drawers or a rail in a shop.
+- Never name a brand, a shop, a price or a specific product. Describe the
+  garment, not where to get it. They may already own the answer, or find it
+  second-hand, or decide against it — none of that is yours to steer.
+- Two or three at most, and only where one is genuinely wanted. A wardrobe
+  with no real gap should return an empty list. Inventing a need is worse than
+  saying nothing, because it turns every honest suggestion into noise.
+
+Say why it works against the specific garments it pairs with, the same way you
+did for the outfits.
+"""
+
 STYLE_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
@@ -82,6 +119,33 @@ STYLE_SCHEMA: dict[str, Any] = {
                     },
                 },
                 "required": ["itemIds", "rationale"],
+            },
+        },
+        "pieces": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "description": "A label copied exactly from the allowed types.",
+                    },
+                    "colors": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Plain colour words, e.g. 'dark blue'.",
+                    },
+                    "pairsWith": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Ids of their garments this goes with.",
+                    },
+                    "rationale": {
+                        "type": "string",
+                        "description": "Why it works, in one or two sentences.",
+                    },
+                },
+                "required": ["type", "pairsWith", "rationale"],
             },
         },
     },
@@ -127,5 +191,11 @@ def describe(request: StyleRequest) -> str:
     lines.append("")
     lines.append("Their wardrobe:")
     lines.extend(_line(item) for item in request.wardrobe)
+
+    if request.suggest_gaps:
+        lines.append(GAPS_PROMPT)
+        if request.stylable_types:
+            lines.append("Types you may name, copied exactly:")
+            lines.append(", ".join(request.stylable_types))
 
     return "\n".join(lines)

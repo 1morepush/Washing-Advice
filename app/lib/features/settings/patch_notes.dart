@@ -96,6 +96,29 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.16.0',
+    name: 'Something Blue',
+    date: DateTime.utc(2026, 8, 16),
+    headline: 'It can tell you what you are missing',
+    changes: [
+      'Tick "Also say what I am missing" before asking the Stylist for ideas, '
+          'and it will name pieces you do not own that would go with the '
+          'clothes you do — the dark blue jeans your light graphic tee has '
+          'been asking for.',
+      'Every suggestion says which of your clothes it goes with, by name, and '
+          'why. A piece with nothing of yours to wear it with is dropped, '
+          'because that is a shopping list rather than advice.',
+      'It will not suggest something already hanging up. If it names a colour '
+          'you have in that garment already, the suggestion is dropped before '
+          'you see it.',
+      'No brands, no shops, no prices, and no links. It describes the garment '
+          'and stops there — where to find one, or whether to bother, is not '
+          'the app\'s business.',
+      'Off unless you ask. The Stylist works exactly as it did if you leave '
+          'the box alone.',
+    ],
+  ),
+  Release(
     version: '0.15.0',
     name: 'Wear and Tear',
     date: DateTime.utc(2026, 8, 16),

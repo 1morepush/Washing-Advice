@@ -54,6 +54,19 @@ class StyleRequest(WireModel):
         default=None,
         description="Anything the user added, e.g. 'it will be cold'.",
     )
+    suggest_gaps: bool = Field(
+        default=False,
+        description=("Also name pieces the wardrobe does not have that would go with it."),
+    )
+    stylable_types: list[str] = Field(
+        default_factory=list,
+        description=(
+            "The garment types a suggested piece may name, as plain labels. "
+            "Supplied by the caller rather than held here so the vocabulary "
+            "the model chooses from and the one the client resolves against "
+            "are the same list. Ignored unless suggest_gaps is set."
+        ),
+    )
 
 
 class ProposedOutfit(WireModel):
@@ -65,8 +78,51 @@ class ProposedOutfit(WireModel):
     )
 
 
+class ProposedPiece(WireModel):
+    """One garment the wardrobe does not have, and what it would go with.
+
+    No id, because it does not exist yet. What makes it advice rather than a
+    shopping list is `pairs_with`: the owned garments it was suggested for.
+    The client resolves those against the real wardrobe and refuses a piece
+    that pairs with nothing, exactly as it refuses an outfit naming an id it
+    made up.
+    """
+
+    type: str = Field(description="A label copied from stylable_types.")
+    colors: list[str] = Field(
+        default_factory=list,
+        description="How it should look, in plain words, e.g. 'dark blue'.",
+    )
+    pairs_with: list[str] = Field(
+        default_factory=list,
+        description="Ids of owned garments this would go with.",
+    )
+    rationale: str = Field(
+        description="Why it would work, in one or two sentences.",
+    )
+
+
+class StyleAnswer(WireModel):
+    """Both halves of what a stylist returns.
+
+    A single type rather than a tuple so adding a third kind of answer later
+    does not change every implementation's signature.
+    """
+
+    outfits: list[ProposedOutfit] = Field(default_factory=list)
+    pieces: list[ProposedPiece] = Field(default_factory=list)
+
+
 class StyleResponse(WireModel):
-    """Wrapped in `result` like every other endpoint's answer."""
+    """Wrapped in `result` like every other endpoint's answer.
+
+    The pieces ride alongside `result` rather than inside it, which keeps this
+    additive: a client built before they existed reads `result` and never looks
+    at the new key, and a client built after them against an older server finds
+    the key absent and shows nothing. Folding both into `result` would have
+    made it a breaking change for the one endpoint whose result is an array.
+    """
 
     result: list[ProposedOutfit]
+    pieces: list[ProposedPiece] = Field(default_factory=list)
     diagnostics: ScanDiagnostics | None = None

@@ -81,3 +81,56 @@ List<Object?> styleResultList(Object? result) {
   }
   return result;
 }
+
+/// Both halves of what the stylist answered.
+///
+/// The pieces are a separate list rather than more outfits because they are a
+/// different kind of thing: no ids, nothing to open, nothing to save. Keeping
+/// them apart on the wire is what lets the two vettings stay separate.
+typedef StyleAnswer = ({
+  List<StyleProposal> outfits,
+  List<PieceProposal> pieces,
+});
+
+/// Reads the suggested pieces out of a `pieces` array.
+///
+/// Absent entirely on a server built before they existed, which is the shape
+/// this has to survive most: an older backend answers the outfit question
+/// perfectly well and simply says nothing about gaps. Anything other than a
+/// list is treated the same way — no pieces — rather than failing a response
+/// whose outfits are perfectly good.
+List<PieceProposal> pieceProposalsFromJson(Object? json) {
+  if (json is! List) return const [];
+
+  final proposals = <PieceProposal>[];
+  for (final entry in json) {
+    if (entry is! Map<String, Object?>) continue;
+
+    final type = entry['type'];
+    final rationale = entry['rationale'];
+    if (type is! String || type.trim().isEmpty) continue;
+    if (rationale is! String || rationale.trim().isEmpty) continue;
+
+    proposals.add(
+      PieceProposal(
+        type: type.trim(),
+        colors: [
+          for (final color in _list(entry['colors']))
+            if (color is String && color.trim().isNotEmpty) color.trim(),
+        ],
+        // Left empty rather than dropped when malformed. The vetting refuses a
+        // piece that pairs with nothing and says why, which is a better answer
+        // than the suggestion silently never existing.
+        pairsWithIds: [
+          for (final id in _list(entry['pairsWith']))
+            if (id is String && id.isNotEmpty) ItemId(id),
+        ],
+        rationale: rationale.trim(),
+      ),
+    );
+  }
+
+  return proposals;
+}
+
+List<Object?> _list(Object? value) => value is List ? value : const [];

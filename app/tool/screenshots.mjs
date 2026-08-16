@@ -50,9 +50,18 @@ async function shot(page, name) {
   console.log(`captured ${name}.png`);
 }
 
-/** Clicks by on-screen text, which Flutter exposes through the a11y tree. */
+/** Clicks by on-screen text, which Flutter exposes through the a11y tree.
+ *
+ * Two lookups, because Flutter is not consistent about which it uses: a plain
+ * label lands in the node's text, while a chip or a button with its own
+ * semantics lands in `aria-label` and is invisible to `getByText`.
+ */
 async function tapText(page, text) {
-  await page.getByText(text, { exact: false }).first().click();
+  const byText = page.getByText(text, { exact: false }).first();
+  const target = (await byText.count()) > 0
+    ? byText
+    : page.getByLabel(text, { exact: false }).first();
+  await target.click();
   await page.waitForTimeout(1200);
 }
 
@@ -120,17 +129,33 @@ for (const theme of ['light', 'dark']) {
     await ready(page);
     await shot(page, 'scan-capture');
 
+    // Front, then back — the shirt with a print across it is the case this
+    // exists for, and one frame of it says more than the prose does.
     await tapText(page, 'Take a photo');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1200);
+    await tapText(page, 'Add another photo');
+    await page.waitForTimeout(1200);
+    await shot(page, 'scan-collected');
+
+    await tapText(page, 'Identify');
+    await page.waitForTimeout(2500);
     await shot(page, 'scan-review');
 
-    // The care-label flow, driven to its review step — the screen that shows
-    // where the manufacturer overruled the rule table.
+    // The care-label flow. A capture now collects rather than reading, so
+    // there are two screens worth showing: the shots taken so far, and the
+    // review with what the reading changed.
     await page.goto(`${BASE}/#/item/demo-jumper/care-label`, {
       waitUntil: 'load',
     });
     await ready(page);
     await tapText(page, 'Take a photo');
+    await page.waitForTimeout(1200);
+    // A second side, which is the whole reason this screen exists.
+    await tapText(page, 'Add another side');
+    await page.waitForTimeout(1200);
+    await shot(page, 'care-label-collected');
+
+    await tapText(page, 'Read these');
     await page.waitForTimeout(2500);
     await shot(page, 'care-label-review');
 
@@ -145,6 +170,27 @@ for (const theme of ['light', 'dark']) {
     await tapText(page, 'Take a photo');
     await page.waitForTimeout(3000);
     await shot(page, 'laundry-plan');
+
+    // The four piles. `laundry-piles` predates the way back out of one, so
+    // both the basket and the machine are shot from the current build.
+    await page.goto(`${BASE}/#/laundry`, { waitUntil: 'load' });
+    await ready(page);
+    await shot(page, 'laundry-piles');
+
+    // Treating a spill, driven to the vetted plan. The wool jumper is the
+    // right subject: the canned advice includes a chlorine soak, and what the
+    // screen shows is that soak refused with its reason.
+    await page.goto(`${BASE}/#/item/demo-jumper/stain`, { waitUntil: 'load' });
+    await ready(page);
+    // Typed rather than tapping a chip. Flutter puts a real <input> behind the
+    // focused field, and a chip's tap does not always reach the framework
+    // through the accessibility node — whereas keystrokes always do, and the
+    // button stays disabled until the field has something in it.
+    await page.keyboard.type('Red wine', { delay: 40 });
+    await page.waitForTimeout(600);
+    await tapText(page, 'How do I get it out?');
+    await page.waitForTimeout(3500);
+    await shot(page, 'stain-advice');
 
     await page.goto(`${BASE}/#/outfits`, { waitUntil: 'load' });
     await ready(page);

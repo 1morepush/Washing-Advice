@@ -7,21 +7,31 @@ which cycle to select on *your* machine.
 > Instead of "wash cold", it says: **Delicates, 30°C, 800 rpm, extra rinse on**
 > — and tells you it chose 30°C because your new red tee bleeds.
 
-| Wardrobe | Laundry plan | Scan review | Care label |
+| Wardrobe | Four laundry piles | Loads to run | Treat a spill |
 |---|---|---|---|
-| ![Wardrobe](app/docs/screenshots/wardrobe-light.png) | ![Laundry plan](app/docs/screenshots/laundry-plan.png) | ![Scan review](app/docs/screenshots/scan-review.png) | ![Care label review](app/docs/screenshots/care-label-review.png) |
+| ![Wardrobe](app/docs/screenshots/wardrobe-light.png) | ![Laundry piles](app/docs/screenshots/laundry-piles.png) | ![Laundry plan](app/docs/screenshots/laundry-plan.png) | ![Stain advice](app/docs/screenshots/stain-advice.png) |
 
-| Outfits | Saved outfits | Packing | Insights |
+| Photograph every side | What the scan found | Collect the label | What the label changed |
 |---|---|---|---|
-| ![Outfits](app/docs/screenshots/outfits.png) | ![Saved outfits](app/docs/screenshots/outfits-saved.png) | ![Packing](app/docs/screenshots/packing.png) | ![Insights](app/docs/screenshots/insights-light.png) |
+| ![Collected angles](app/docs/screenshots/scan-collected.png) | ![Scan review](app/docs/screenshots/scan-review.png) | ![Collected label shots](app/docs/screenshots/care-label-collected.png) | ![Care label review](app/docs/screenshots/care-label-review.png) |
 
-| Item detail | Cutout editor | Edit an item | Settings |
+| Item detail | Tidy the cutout | Edit an item | Insights |
 |---|---|---|---|
-| ![Item detail](app/docs/screenshots/item-detail-light.png) | ![Cutout editor](app/docs/screenshots/cutout-editor.png) | ![Edit an item](app/docs/screenshots/edit-item.png) | ![Settings](app/docs/screenshots/settings.png) |
+| ![Item detail](app/docs/screenshots/item-detail-light.png) | ![Cutout editor](app/docs/screenshots/cutout-editor.png) | ![Edit an item](app/docs/screenshots/edit-item.png) | ![Insights](app/docs/screenshots/insights-light.png) |
+
+| Outfits | Saved outfits | Packing | Settings |
+|---|---|---|---|
+| ![Outfits](app/docs/screenshots/outfits.png) | ![Saved outfits](app/docs/screenshots/outfits-saved.png) | ![Packing](app/docs/screenshots/packing.png) | ![Settings](app/docs/screenshots/settings.png) |
+
+| As a list | Wardrobe, dark | Item detail, dark | Insights, dark |
+|---|---|---|---|
+| ![List view](app/docs/screenshots/wardrobe-list.png) | ![Wardrobe in dark mode](app/docs/screenshots/wardrobe-dark.png) | ![Item detail in dark mode](app/docs/screenshots/item-detail-dark.png) | ![Insights in dark mode](app/docs/screenshots/insights-dark.png) |
 
 These are captures of the real app — a web build of `app/lib/main_demo.dart`,
 which is the shipping code with storage, the camera and the backend
-substituted. Not mock-ups.
+substituted. Not mock-ups. `app/tool/screenshots.mjs` drives them, so every
+one of them is regenerated from the current build rather than being a picture
+of how the app used to look.
 
 ---
 
@@ -72,6 +82,15 @@ pattern and cut, each with a confidence and a stated source. It suggests a name.
 Anything it is unsure about is flagged for you to confirm rather than silently
 accepted.
 
+**Take as many photographs as the garment needs.** A capture collects rather
+than identifying, so you can turn the shirt around before anything is decided —
+a plain navy tee and one with a large print across the back are identical from
+the front, to you and to the app. Each shot carries what it shows: front, back,
+a detail, a logo, a brand tag, guessed by the order you take them and
+changeable with a tap. They go up together as one garment, and a print on the
+back reaches the name and the description, which is what lets you pick that
+shirt out of a drawer of similar ones.
+
 Every item's background is removed, so the wardrobe is a wall of garments
 floating on the page — browsable by shape and colour before you read a word,
 the way you would look along an actual rail. That is not decoration: a grid of
@@ -88,9 +107,25 @@ without re-photographing the garment.
 When the remover gets it wrong, you fix it with a finger rather than arguing
 with it. **Remove** rubs out what it left behind; **Restore** paints back what
 it ate, and paints back the photograph's own pixels rather than a colour, so a
-repaired edge carries the garment's real colour. Running the remover again is
-not offered once a mask exists, because it is deterministic — the same
-photograph gives the same wrong answer, and only a finger changes it.
+repaired edge carries the garment's real colour.
+
+Then **Let the app finish the edges** hands your rough work back to the
+remover. That is not a retry — the remover is deterministic and the same
+photograph gives the same wrong answer. It is a second attempt at a *different
+picture*: once the bedding and the other clothes are painted away, what it is
+given is a garment on an empty field, which is the easy case. Three rules keep
+it from making things worse:
+
+- It is sent on an **opaque ground chosen against the garment**, white behind a
+  dark one and near-black behind a pale one. Sent with transparency the remover
+  flattens it onto black, and a black t-shirt then becomes the same colour as
+  the background it is meant to be separated from.
+- It may only **subtract**. Its answer is intersected with what is already on
+  the canvas, so it can take more away and can never put back what you removed
+  by hand — you can see the garment and it cannot.
+- A pass that would keep **less than half** of what was visible is refused with
+  its reason, because that is a failed segmentation rather than a tidier edge.
+  Your own tidying is left exactly as it was.
 
 And when the photograph itself was the problem — the garment held against a
 wall its own colour, with a hand and a shadow in shot — no mask rescues it.
@@ -109,6 +144,85 @@ disagreed with the rule the app had been applying.
 That is how you find out a particular wool jumper is superwash and can go in the
 machine at 40°, which is not something you learn by reading a label once and
 forgetting it.
+
+**Labels with more than one side.** Tags are routinely printed on both faces, or
+continue onto a second tag sewn behind the first. Photograph each one and they
+are read together as a single label. Nothing is read until you say so, so you
+can turn the tag over first, and a blurred shot can be dropped without starting
+again. Where two photographs contradict each other the lower, safer figure wins
+and the disagreement is counted as unreadable — there is no way to tell from a
+photograph which of the two was misread.
+
+**Labels in another language.** The symbols are ISO 3758 and mean the same in
+every country, so a foreign label is already almost entirely readable — only the
+words needed work. `kalt`, `froid`, `frío` and `冷水` all reach the same 30°C;
+`laver séparément` and `separat waschen` both reach "wash separately". The app
+says which language it read, and shows the wording **exactly as printed** rather
+than translating it back at you, because that is what you check the app against
+with the tag in your hand.
+
+**Scanning again adds to what you had.** A second reading no longer replaces the
+first: what the new photograph shows wins, what it does not show is kept, and
+warnings from both accumulate. So photographing the back of a tag weeks later
+does not lose the wash symbols off the front. The review names the fields it
+carried over rather than read, and offers to use only the new scan if the old
+one had it wrong — a merged label is only as trusted as the weaker of its two
+halves.
+
+### Get a stain out
+
+Pick a garment, say what was spilled on it, and get an ordered treatment with
+the reason for each step. Add a photograph if you are not sure what the mark
+is; what you tell it still comes first.
+
+**The advice is checked against that garment before you see it.** The model
+proposes a treatment for the substance; `StainSafety` in the core vets every
+step against this garment's real care and removes what it forbids, saying which
+instruction it broke. A wool jumper is never told to take a chlorine soak —
+chlorine hydrolyses protein fibres, so that one holds even when a label says
+bleaching is fine, because the label is then wrong. What was left out is shown
+rather than silently dropped: "the usual next step is a chlorine soak, and this
+garment cannot take it" is genuinely useful, and it is the only way you learn
+why your treatment is shorter than the one on the internet.
+
+When nothing is safe to try at home, it says so instead of inventing something
+gentler that will not work.
+
+The steps **appear as they are written** rather than after the whole answer is
+ready — they come in the order you carry them out, so the first one is readable
+while the rest are still arriving, and each is vetted as it lands rather than in
+a batch at the end. If the connection drops halfway it says so, instead of
+showing you half a treatment as though it were the whole thing.
+
+Finishing one records it in the garment's history and puts it in the wash, and
+the load it lands in carries a warning to check that mark before anything goes
+near heat — drying sets whatever did not come out.
+
+### Keep track of what is dirty
+
+Every garment sits in one of four piles — **clean**, **to wash**, **washing**,
+**drying** — and the Laundry screen moves things between them. The to-wash pile
+is not a list: it is run through the same sorting engine as a pile scan, so it
+shows the loads to run, the programme and temperature for each, and why.
+
+Four ways in, because the moment you notice something is dirty varies:
+
+- from the garment's own page, one tap;
+- **long press** anything in the wardrobe to start picking, tap the rest, and
+  send the lot at once — a full basket one garment at a time was never going to
+  happen;
+- a checkbox when reporting wear, off unless you tick it, since plenty of wear
+  is spotted on a hanger and has nothing to do with washing;
+- straight from a pile photograph, for the garments it recognised.
+
+And a way back out of each, because things land in the basket by mistake and
+jumpers come out of the dryer still damp.
+
+Starting a load moves it into the machine **and records the wash** in the same
+action — that record is what "times washed" and every later fading and
+shrinkage judgement rest on. Which is also why you cannot drop a garment into
+the drum by hand: a move with no record would quietly corrupt the history the
+rest of the app reasons from.
 
 ### Sort a pile of laundry
 
@@ -170,6 +284,17 @@ Anything the camera got wrong can be fixed, and a correction outranks every
 other source permanently. Changing the fabric re-derives the washing
 instructions immediately — a form that let you correct 100% wool to 100% acrylic
 while still recommending a wool cycle would be worse than no form at all.
+
+Colour is worth correcting more often than it sounds. A camera reads navy as
+black under warm indoor light more often than it should, and the colour decides
+which load the garment goes in — so you can set it by hand from named swatches
+or a hex code. Name more than one and the first is the one it mostly is, which
+is what keeps a white tee with a navy print out of the whites.
+
+A garment whose colour was never recorded says so where it matters: the colour
+row offers to set it, and the laundry section admits that "darks" was an
+assumption rather than a look at the garment. It lands in darks because that is
+the harmless mistake, not because anything examined it.
 
 ### Keep a history
 
@@ -439,9 +564,9 @@ A few decisions worth reading about:
 
 | # | Scope | Status |
 |---|---|---|
-| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 470 core tests |
-| 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts, machine identification | **Done** — 222 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 306 app tests |
+| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 529 core tests |
+| 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts, machine identification | **Done** — 266 tests |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 502 app tests |
 | 4 | Care-label scanning, item editing, filter sheet, garment cutouts, grid view | **Done** |
 | 5 | Pile scanning, load grouping, machine profiles, wear and wash history | **Done** |
 | 6 | Outfit suggestions, laundry-aware packing, wardrobe insights | **Done** |
@@ -449,6 +574,15 @@ A few decisions worth reading about:
 | 6b | Saving outfits under a name, with their own wear counts | **Done** |
 | 7 | Offline verification, provenance-based sync engine | **Done** |
 | 7a | Sync endpoints, HTTP client, and a two-device test against the real server | **Done** |
+| 8 | Hand-painted cutout masks, rescanning a misread garment, manual colour entry | **Done** |
+| 9 | Four laundry piles, the loads to run from the basket, four ways in and out | **Done** |
+| 10 | Stain treatment: proposed by a model, vetted by the core, streamed as written | **Done** |
+| 11 | Care labels from several photographs, in any language, merged across scans | **Done** |
+| 12 | Garments photographed from every side, with what each shot shows | **Done** |
+
+Released as `0.12.1 — Spot Clean`; the app's own **Settings → What's new**
+carries the full list, and `app/lib/features/settings/patch_notes.dart` records
+which version digit moves for what.
 
 `dart analyze --fatal-infos`, `flutter analyze --fatal-infos`, `ruff`, `mypy
 --strict` and every formatter run clean in CI, on all three parts.
@@ -489,7 +623,8 @@ Stated plainly, because the code says so too.
   the colours at the frame's border, which handles a garment on a bed or a table
   and will not handle one on a patterned rug. A learned matting model is the
   upgrade, and the remover sits behind an interface so one can be dropped in.
-  Until then the fallback is the hand editor, which is a fix rather than a cure.
+  Until then there are two fallbacks — paint it out by hand, then hand the rough
+  result back for a second pass — and both are fixes rather than cures.
 - **The demo cutouts are of drawn shapes, not photographs.** There are no
   garments in a build container. The *cutouts* are genuine output from the
   shipping remover; the things it was run on are illustrations.

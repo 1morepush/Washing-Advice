@@ -8,19 +8,26 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../../widgets/app_drawer.dart';
-import '../../widgets/item_thumbnail.dart';
 import '../../widgets/status_message.dart';
 import '../history/wear_recorder.dart';
 import 'outfit_controller.dart';
+import 'outfit_pieces.dart';
 import 'saved_outfits.dart';
+import 'stylist_tab.dart';
+
+/// The three views of "what to wear", in the order they are shown.
+///
+/// Named rather than left as tab indices, which is not fussiness: the router
+/// addressed the saved outfits as `initialTab: 1` and adding a tab in front of
+/// it silently pointed that link somewhere else. A name cannot drift.
+enum OutfitsTab { suggested, stylist, saved }
 
 class OutfitsScreen extends ConsumerWidget {
-  const OutfitsScreen({this.initialTab = 0, super.key});
+  const OutfitsScreen({this.initialTab = OutfitsTab.suggested, super.key});
 
   /// Which tab to open on.
   ///
@@ -29,7 +36,7 @@ class OutfitsScreen extends ConsumerWidget {
   /// makes the app drivable from a browser, which is how it gets screenshotted
   /// without an emulator — and it means a link to someone's saved outfits is a
   /// link, not an instruction to tap twice.
-  final int initialTab;
+  final OutfitsTab initialTab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -37,17 +44,24 @@ class OutfitsScreen extends ConsumerWidget {
     final request = ref.watch(outfitRequestProvider);
 
     return DefaultTabController(
-      length: 2,
-      initialIndex: initialTab,
+      length: OutfitsTab.values.length,
+      initialIndex: initialTab.index,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Outfits'),
-          // Two tabs rather than two destinations in the drawer: suggestions
-          // and saved outfits are the same subject seen two ways, and someone
-          // deciding what to wear moves between them constantly.
+          // Tabs rather than destinations in the drawer: these are the same
+          // subject seen three ways, and someone deciding what to wear moves
+          // between them constantly.
+          //
+          // Stylist is its own tab rather than extra cards among the
+          // suggestions because the two are different in kind. Suggested is
+          // arithmetic the app can defend line by line; Stylist is a model's
+          // taste. Mixing them would leave no way to tell which you were
+          // reading.
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Suggested'),
+              Tab(text: 'Stylist'),
               Tab(text: 'Saved'),
             ],
           ),
@@ -95,6 +109,7 @@ class OutfitsScreen extends ConsumerWidget {
                 ),
               ],
             ),
+            const StylistTab(),
             const SavedOutfitsTab(),
           ],
         ),
@@ -166,17 +181,7 @@ class _SuggestionCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                for (final item in suggestion.items)
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: _Piece(item: item),
-                    ),
-                  ),
-              ],
-            ),
+            OutfitPieces(items: suggestion.items),
             if (suggestion.reasons.isNotEmpty) ...[
               const SizedBox(height: 12),
               const Divider(height: 1),
@@ -271,46 +276,6 @@ class _SuggestionCard extends ConsumerWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _Piece extends StatelessWidget {
-  const _Piece({required this.item});
-
-  final WardrobeItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return InkWell(
-      onTap: () => context.go('/item/${item.id.value}'),
-      borderRadius: BorderRadius.circular(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AspectRatio(
-            aspectRatio: 1,
-            child: ItemThumbnail(item: item, size: double.infinity),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            item.displayName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodyMedium,
-          ),
-          Text(
-            item.type.value.label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
       ),
     );
   }

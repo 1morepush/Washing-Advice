@@ -22,12 +22,29 @@ class OutfitController {
     OutfitSuggestion suggestion, {
     required String name,
     required Occasion occasion,
+  }) => _save(suggestion.items, name: name, occasion: occasion);
+
+  /// The same, for an outfit a model proposed and the core let through.
+  ///
+  /// Once saved the two are indistinguishable, which is the point: where an
+  /// outfit came from matters while it is being considered and not at all once
+  /// somebody has decided they like it.
+  Future<Outfit> saveStyled(
+    StyledOutfit styled, {
+    required String name,
+    required Occasion occasion,
+  }) => _save(styled.items, name: name, occasion: occasion);
+
+  Future<Outfit> _save(
+    List<WardrobeItem> items, {
+    required String name,
+    required Occasion occasion,
   }) async {
     final now = DateTime.now();
     final outfit = Outfit(
       id: OutfitId(_ref.read(idGeneratorProvider).next()),
-      name: name.trim().isEmpty ? _nameFor(suggestion) : name.trim(),
-      itemIds: suggestion.itemIds,
+      name: name.trim().isEmpty ? _nameFor(items) : name.trim(),
+      itemIds: items.map((item) => item.id),
       occasion: occasion,
       // Seasons are deliberately left unstated rather than guessed from the
       // garments. Empty means "any" throughout the domain, and inferring
@@ -87,8 +104,8 @@ class OutfitController {
   ///
   /// The two most identifying garments, which is what someone would say out
   /// loud — "the cream blouse and the jeans" — rather than a serial number.
-  String _nameFor(OutfitSuggestion suggestion) =>
-      suggestion.items.take(2).map((i) => i.displayName).join(' + ');
+  String _nameFor(List<WardrobeItem> items) =>
+      items.take(2).map((i) => i.displayName).join(' + ');
 }
 
 final outfitControllerProvider = Provider<OutfitController>(

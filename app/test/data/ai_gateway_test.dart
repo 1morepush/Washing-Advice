@@ -16,6 +16,7 @@ import 'package:http/testing.dart';
 import 'package:test/test.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 import 'package:washing_advice/data/api/ai_gateway.dart';
+import 'package:washing_advice/data/api/scan_dto.dart';
 import 'package:washing_advice/data/api/stain_dto.dart';
 
 void main() {
@@ -297,6 +298,194 @@ void main() {
           ),
         ),
       );
+    });
+  });
+  _askingForOutfits();
+}
+
+/// Asking for outfit ideas.
+///
+/// The one endpoint whose `result` is an array rather than an object, which is
+/// the sort of thing that is correct by luck until somebody refactors the
+/// unwrapping. It is also the only call that sends the wardrobe up, so what
+/// goes *into* the request is worth asserting: a stylist told nothing about
+/// colour would be guessing.
+void _askingForOutfits() {
+  group('proposeOutfits', () {
+    late Uri requested;
+    late Map<String, Object?> sent;
+
+    AiGateway gatewayReturning(Object body) {
+      final client = MockClient((request) async {
+        requested = request.url;
+        sent = jsonDecode(request.body) as Map<String, Object?>;
+        return http.Response(jsonEncode(body), 200);
+      });
+      return AiGateway(
+        baseUrl: Uri.parse('https://washing-advice.onrender.com/'),
+        client: client,
+      );
+    }
+
+    WardrobeItem item(String id, {String? brand}) {
+      final built = WardrobeItem(
+        id: ItemId(id),
+        name: 'Oxford shirt',
+        type: Confident(
+          ItemType.dressShirt,
+          confidence: 0.9,
+          source: Provenance.aiInference,
+        ),
+        brand: brand == null ? null : Confident.fromUser(brand),
+        composition: Confident(
+          FabricComposition(const {Fiber.cotton: 100}),
+          confidence: 0.9,
+          source: Provenance.tagScan,
+        ),
+        colors: Confident(
+          ColorPalette([ItemColor.fromHex('#FFFFFF', name: 'white')]),
+          confidence: 0.9,
+          source: Provenance.aiInference,
+        ),
+        care: const CareProfile.unknown(),
+        addedAt: DateTime.utc(2026, 8, 5),
+        updatedAt: DateTime.utc(2026, 8, 5),
+      );
+      return built.copyWith(care: const CareResolver().forItem(built).profile);
+    }
+
+    /// Captured from a run of the real server with the fake stylist, not
+    /// hand-written — this is the shape it actually sends.
+    const captured =
+        '{"result":[{"itemIds":["shirt","chinos","shoes"],"rationale":'
+        '"The stone chinos keep the oxford shirt from reading as formal, '
+        'which suits Everyday."},{"itemIds":["shirt","tee","chinos"],'
+        '"rationale":"Two tops at once, which is not a thing."}],'
+        '"diagnostics":{"stagesRun":["fake"],"stageAnswered":"fake",'
+        '"servedFromCache":false,"elapsedMs":0}}';
+
+    test('posts to v1/style/outfits', () async {
+      await gatewayReturning(
+        jsonDecode(captured),
+      ).proposeOutfits(wardrobe: [item('shirt')], occasion: 'Everyday');
+
+      expect(requested.path, '/v1/style/outfits');
+    });
+
+    test('a result array decodes into proposals', () async {
+      // `_decodeResult` insists on an object and every other endpoint returns
+      // one. This is the exception, and reading it through the ordinary path
+      // would throw on a perfectly good answer.
+      final client = MockClient(
+        (request) async => http.Response(captured, 200),
+      );
+      final gateway = AiGateway(
+        baseUrl: Uri.parse('https://washing-advice.onrender.com/'),
+        client: client,
+      );
+
+      final proposals = await gateway.proposeOutfits(
+        wardrobe: [item('shirt')],
+        occasion: 'Everyday',
+      );
+
+      expect(proposals, hasLength(2));
+      expect(proposals.first.itemIds, [
+        const ItemId('shirt'),
+        const ItemId('chinos'),
+        const ItemId('shoes'),
+      ]);
+      expect(proposals.first.rationale, contains('stone chinos'));
+    });
+
+    test('the stylist is told what each garment looks like', () async {
+      await gatewayReturning(jsonDecode(captured)).proposeOutfits(
+        wardrobe: [item('shirt', brand: 'Uniqlo')],
+        occasion: 'Everyday',
+        season: 'Summer',
+        count: 3,
+        note: '  it will be cold  ',
+      );
+
+      expect(sent['occasion'], 'Everyday');
+      expect(sent['season'], 'Summer');
+      expect(sent['count'], 3);
+      expect(sent['note'], 'it will be cold');
+
+      final garment = (sent['wardrobe']! as List).single as Map;
+      expect(garment['id'], 'shirt');
+      expect(garment['type'], 'Dress shirt');
+      expect(garment['category'], 'Tops');
+      expect(garment['colors'], ['white']);
+      expect(garment['fabric'], '100% Cotton');
+      expect(garment['brand'], 'Uniqlo');
+    });
+
+    test('nothing the stylist has no use for is sent', () async {
+      // Not tidiness. Every field is tokens spent on each request and one more
+      // thing to keep in step across two languages, and a stylist has no use
+      // for wash temperatures or wear counts.
+      await gatewayReturning(
+        jsonDecode(captured),
+      ).proposeOutfits(wardrobe: [item('shirt')], occasion: 'Everyday');
+
+      final garment = (sent['wardrobe']! as List).single as Map;
+      expect(garment.keys, isNot(contains('care')));
+      expect(garment.keys, isNot(contains('usage')));
+      expect(garment.keys, isNot(contains('lifecycle')));
+      // Absent rather than null: an unbranded garment says nothing about its
+      // brand rather than saying its brand is nothing.
+      expect(garment.keys, isNot(contains('brand')));
+    });
+
+    test('a malformed proposal is dropped, not thrown on', () async {
+      // One bad entry in a batch of three is not a reason to show none, and
+      // the vetting downstream would refuse it anyway.
+      final proposals = await gatewayReturning({
+        'result': [
+          {'itemIds': <String>[], 'rationale': 'nothing to wear'},
+          {
+            'itemIds': ['shirt', 'chinos'],
+            'rationale': '   ',
+          },
+          {
+            'itemIds': ['shirt', 'chinos'],
+            'rationale': 'this one is fine',
+          },
+        ],
+      }).proposeOutfits(wardrobe: [item('shirt')], occasion: 'Everyday');
+
+      expect(proposals.single.rationale, 'this one is fine');
+    });
+
+    test('a result that is not a list is a contract error', () async {
+      await expectLater(
+        gatewayReturning({
+          'result': {'itemIds': <String>[]},
+        }).proposeOutfits(wardrobe: [item('shirt')], occasion: 'Everyday'),
+        throwsA(isA<ScanContractError>()),
+      );
+    });
+
+    test('an empty wardrobe never reaches the server', () async {
+      // A round trip to be told what the app already knows, and the answer is
+      // a sentence rather than an error.
+      var called = false;
+      final client = MockClient((request) async {
+        called = true;
+        return http.Response(captured, 200);
+      });
+
+      await expectLater(
+        AiGateway(
+          baseUrl: Uri.parse('https://washing-advice.onrender.com/'),
+          client: client,
+        ).proposeOutfits(wardrobe: const [], occasion: 'Everyday'),
+        throwsA(
+          isA<ScanFailure>().having((f) => f.isRetryable, 'retryable', isFalse),
+        ),
+      );
+      expect(called, isFalse);
     });
   });
 }

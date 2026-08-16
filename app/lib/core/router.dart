@@ -65,8 +65,12 @@ GoRouter buildRouter({String initialLocation = '/'}) => GoRouter(
     GoRoute(path: '/laundry', builder: (_, _) => const LaundryScreen()),
     GoRoute(path: '/outfits', builder: (_, _) => const OutfitsScreen()),
     GoRoute(
+      path: '/outfits/stylist',
+      builder: (_, _) => const OutfitsScreen(initialTab: OutfitsTab.stylist),
+    ),
+    GoRoute(
       path: '/outfits/saved',
-      builder: (_, _) => const OutfitsScreen(initialTab: 1),
+      builder: (_, _) => const OutfitsScreen(initialTab: OutfitsTab.saved),
     ),
     GoRoute(path: '/packing', builder: (_, _) => const PackingScreen()),
     GoRoute(path: '/insights', builder: (_, _) => const InsightsScreen()),

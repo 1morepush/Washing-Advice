@@ -96,6 +96,27 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.14.0',
+    name: 'Second Opinion',
+    date: DateTime.utc(2026, 8, 16),
+    headline: 'Ask for outfit ideas',
+    changes: [
+      'A new Stylist tab on Outfits. It reads what your wardrobe is made of '
+          'and suggests things to wear, noticing what the app never could: '
+          'pattern against pattern, proportion, how dressy something reads.',
+      'It tells you why, in its own words, so you can disagree with it. This '
+          'is taste rather than arithmetic, and the Suggested tab beside it '
+          'still works the way it always did.',
+      'Add a note first if today is unusual — "it will be cold", "I am '
+          'meeting a client".',
+      'It only ever suggests clothes you own and could actually put on this '
+          'morning. Anything it names that is in the wash, or that it made '
+          'up, is dropped before you see it, and the tab says how many.',
+      'Nothing happens until you ask. Your photographs are never sent — only '
+          'the facts already on each garment.',
+    ],
+  ),
+  Release(
     version: '0.13.0',
     name: 'Sock Drawer',
     date: DateTime.utc(2026, 8, 16),

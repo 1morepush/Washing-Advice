@@ -436,6 +436,41 @@ void main() {
       expect(find.textContaining('Floating free'), findsNothing);
     });
 
+    testWidgets('the choice can be changed without starting over', (
+      tester,
+    ) async {
+      // The intro is unreachable once ideas are on screen, so a checkbox only
+      // there would let the first ask decide the whole session. Both
+      // directions matter: somebody who asked without this on needs a way to
+      // turn it on, and somebody who asked with it on needs a way back to
+      // just their wardrobe.
+      stylist = _Stylist(pieces: const [jeans]);
+      await seed();
+      await pump(tester);
+      await ask(tester);
+
+      expect(stylist.askedForGaps, isFalse);
+      expect(find.text('dark blue Jeans'), findsNothing);
+
+      // Turn it on from the results, and ask again.
+      await tester.tap(find.text('Also say what I am missing'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Ask again'));
+      await tester.pumpAndSettle();
+
+      expect(stylist.askedForGaps, isTrue);
+      expect(find.text('dark blue Jeans'), findsOneWidget);
+
+      // And back off again, sticking to the wardrobe.
+      await tester.tap(find.text('Also say what I am missing'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Ask again'));
+      await tester.pumpAndSettle();
+
+      expect(stylist.askedForGaps, isFalse);
+      expect(find.text('dark blue Jeans'), findsNothing);
+    });
+
     testWidgets('a wardrobe that needs nothing simply says nothing', (
       tester,
     ) async {

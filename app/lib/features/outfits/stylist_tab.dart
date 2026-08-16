@@ -189,14 +189,14 @@ class _Thinking extends StatelessWidget {
   );
 }
 
-class _Ideas extends StatelessWidget {
+class _Ideas extends ConsumerWidget {
   const _Ideas({required this.state, required this.onAskAgain});
 
   final StylistSuggested state;
   final Future<void> Function() onAskAgain;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
     if (state.outfits.isEmpty && state.pieces.isEmpty) {
@@ -234,7 +234,24 @@ class _Ideas extends StatelessWidget {
             ),
           ),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
+        // The same choice as on the intro, offered again where it can actually
+        // be changed. Without it the first answer decides the rest of the
+        // session: the intro is not reachable once ideas are on screen, so
+        // somebody who asked without this on had no way back to it, and
+        // somebody who asked with it on had no way to stick to their wardrobe.
+        CheckboxListTile(
+          value: ref.watch(suggestGapsProvider),
+          onChanged: (on) =>
+              ref.read(suggestGapsProvider.notifier).state = on ?? false,
+          dense: true,
+          contentPadding: EdgeInsets.zero,
+          controlAffinity: ListTileControlAffinity.leading,
+          title: Text(
+            'Also say what I am missing',
+            style: theme.textTheme.bodyMedium,
+          ),
+        ),
         Center(
           child: TextButton.icon(
             onPressed: onAskAgain,

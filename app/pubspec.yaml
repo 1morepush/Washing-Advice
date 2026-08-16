@@ -3,7 +3,7 @@ description: >-
   AI wardrobe and laundry assistant. Presentation only — every judgement about
   how to treat a garment lives in the wardrobe_core package.
 publish_to: 'none'
-version: 0.14.0+1
+version: 0.15.0+1
 
 environment:
   sdk: ^3.12.2

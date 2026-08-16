@@ -96,6 +96,27 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.15.0',
+    name: 'Wear and Tear',
+    date: DateTime.utc(2026, 8, 16),
+    headline: 'Photograph a garment to check it for wear',
+    changes: [
+      'New under the three dots on any garment: Check for wear. Photograph '
+          'the places things actually wear — cuffs, elbows, underarms, the '
+          'seat — and it tells you what it can see.',
+      'Nothing is recorded until you say so. Each thing it finds is a '
+          'separate question with its own yes and no, and it tells you where '
+          'to look so you can check it against the garment in your hand.',
+      'When accepting something would change how the garment is washed, it '
+          'says so before you tap, not after.',
+      '"Nothing to report" is the usual answer and it says that plainly. If '
+          'it saw something it was not sure enough about, it tells you that '
+          'too rather than pretending it saw nothing.',
+      'Reporting wear by hand still works exactly as before. This is the '
+          'quick way, not the replacement.',
+    ],
+  ),
+  Release(
     version: '0.14.0',
     name: 'Second Opinion',
     date: DateTime.utc(2026, 8, 16),

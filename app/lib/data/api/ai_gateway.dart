@@ -17,6 +17,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
+import 'condition_dto.dart';
 import 'scan_dto.dart';
 import 'stain_dto.dart';
 import 'style_dto.dart';
@@ -230,6 +231,38 @@ class AiGateway implements VisionPort {
     }
   }
 
+  /// What a photograph shows of a garment's condition.
+  ///
+  /// Every photograph is sent rather than one. Wear is not evenly distributed —
+  /// cuffs, underarms, the seat — and a reader given only the front shot
+  /// reports a jumper as fine because the pilling is under the arms.
+  ///
+  /// What comes back is **unvetted**. A wear observation changes the condition
+  /// grade and how the garment is washed, so `ConditionReview` in the core
+  /// decides which are worth putting to the user, and the user decides the
+  /// rest. A caller that recorded these directly would let a shadow in the
+  /// weave change somebody's laundry.
+  Future<List<ObservedWear>> readCondition({
+    required List<ScanImage> images,
+    required String garment,
+    String? fabric,
+    String? known,
+  }) async {
+    if (images.isEmpty) {
+      throw const ScanFailure(
+        'No photograph was provided.',
+        isRetryable: false,
+      );
+    }
+
+    final json = await _postForm(
+      'care/condition',
+      fields: {'garment': garment, 'fabric': ?fabric, 'known': ?known},
+      files: [for (final image in images) ('images', image)],
+    );
+    return observedWearFromJson(json);
+  }
+
   /// Outfits a model thinks would work, from the wardrobe it is given.
   ///
   /// Sends facts rather than photographs: the wardrobe already holds type,
@@ -379,6 +412,7 @@ class AiGateway implements VisionPort {
     String path, {
     required Map<String, String> fields,
     ScanImage? photo,
+    List<(String, ScanImage)> files = const [],
   }) async {
     final request = http.MultipartRequest('POST', baseUrl.resolve('v1/$path'))
       ..fields.addAll(fields);
@@ -390,6 +424,17 @@ class AiGateway implements VisionPort {
           photo.bytes,
           filename: 'stain.${photo.mimeType.split('/').last}',
           contentType: _mediaType(photo.mimeType),
+        ),
+      );
+    }
+
+    for (final (field, image) in files) {
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          field,
+          image.bytes,
+          filename: 'upload.${image.mimeType.split('/').last}',
+          contentType: _mediaType(image.mimeType),
         ),
       );
     }

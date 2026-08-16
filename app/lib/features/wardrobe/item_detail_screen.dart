@@ -20,6 +20,7 @@ import '../history/wear_recorder.dart';
 import '../laundry/laundry_controller.dart';
 import 'cutout_controller.dart';
 import 'care_text.dart';
+import 'condition_sheet.dart';
 import 'report_wear_sheet.dart';
 
 /// How tall the bar has to be to hold a three-line name at the current type
@@ -90,6 +91,7 @@ class ItemDetailScreen extends ConsumerWidget {
             PopupMenuButton<String>(
               onSelected: (choice) => switch (choice) {
                 'wear' => showReportWearSheet(context, value),
+                'check' => showConditionSheet(context, value),
                 _ => _confirmAndDelete(context, ref, value),
               },
               itemBuilder: (menuContext) => [
@@ -100,6 +102,19 @@ class ItemDetailScreen extends ConsumerWidget {
                       Icon(Icons.report_problem_outlined),
                       SizedBox(width: 12),
                       Text('Report wear'),
+                    ],
+                  ),
+                ),
+                // Beside reporting it by hand rather than instead of it. The
+                // form is exact and the camera is quick, and somebody who has
+                // just found a hole should not have to photograph it to say so.
+                const PopupMenuItem(
+                  value: 'check',
+                  child: Row(
+                    children: [
+                      Icon(Icons.photo_camera_outlined),
+                      SizedBox(width: 12),
+                      Text('Check for wear'),
                     ],
                   ),
                 ),

@@ -13,6 +13,7 @@ class ItemTile extends StatelessWidget {
     this.onTap,
     this.onLongPress,
     this.selected = false,
+    this.copies = 1,
     super.key,
   });
 
@@ -22,6 +23,13 @@ class ItemTile extends StatelessWidget {
 
   /// Whether this row is one of the garments currently picked out.
   final bool selected;
+
+  /// How many identical garments this row stands for.
+  ///
+  /// Shown rather than silently collapsed. A wardrobe that quietly displayed
+  /// three socks as one would be lying about what is in it, and the count is
+  /// also the affordance — it is what tells you the row opens into something.
+  final int copies;
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +55,11 @@ class ItemTile extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
-        [item.type.value.label, item.composition.value.label].join(' · '),
+        [
+          if (copies > 1) '$copies of these',
+          item.type.value.label,
+          item.composition.value.label,
+        ].join(' · '),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: theme.textTheme.bodySmall,

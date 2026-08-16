@@ -72,6 +72,7 @@ export 'src/vision/scan_merge.dart';
 export 'src/vision/vision_port.dart';
 // Wardrobe: what the user owns.
 export 'src/wardrobe/analytics.dart';
+export 'src/wardrobe/duplicates.dart';
 export 'src/wardrobe/in_memory_repository.dart';
 export 'src/wardrobe/model/condition.dart';
 export 'src/wardrobe/model/fabric.dart';

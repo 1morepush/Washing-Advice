@@ -18,6 +18,7 @@ class ItemCard extends StatelessWidget {
     this.onTap,
     this.onLongPress,
     this.selected = false,
+    this.copies = 1,
     super.key,
   });
 
@@ -27,6 +28,9 @@ class ItemCard extends StatelessWidget {
 
   /// Whether this garment is one of the ones currently picked out.
   final bool selected;
+
+  /// How many identical garments this cell stands for.
+  final int copies;
 
   @override
   Widget build(BuildContext context) {
@@ -56,6 +60,32 @@ class ItemCard extends StatelessWidget {
                   // Overlaid rather than given their own row: the picture is
                   // what the grid is for, and a badge strip under every tile
                   // would take that space from all of them to serve a few.
+                  // Top left, because the care and favourite badges already
+                  // own the right corner and a count that moved depending on
+                  // what else was true would be hard to find twice.
+                  if (copies > 1)
+                    Positioned(
+                      top: 4,
+                      left: 4,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          child: Text(
+                            '×$copies',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSecondaryContainer,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   Positioned(
                     top: 4,
                     right: 4,

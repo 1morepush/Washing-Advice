@@ -21,6 +21,22 @@ import 'widgets/item_tile.dart';
 /// is doing, and it ends the moment the last garment is unpicked.
 final wardrobeSelectionProvider = StateProvider<Set<ItemId>>((ref) => {});
 
+/// Duplicate groups the user has opened up.
+///
+/// Collapsing is the default because six identical socks crowd out the garment
+/// somebody was looking for. Expanding is per-group and not remembered across
+/// visits: opening one is a thing you do to answer a question — which of these
+/// have I actually worn — rather than a preference about your wardrobe.
+final expandedGroupsProvider = StateProvider<Set<String>>((ref) => {});
+
+/// Whether copies are collapsed at all.
+///
+/// Off is a real setting rather than a debug switch. The grouping is inferred
+/// from facts the app happens to hold, so somebody whose wardrobe it reads
+/// wrongly needs a way to simply stop it, and "tap each group open every time"
+/// is not that.
+final groupDuplicatesProvider = StateProvider<bool>((ref) => true);
+
 class WardrobeScreen extends ConsumerWidget {
   const WardrobeScreen({super.key});
 
@@ -58,6 +74,15 @@ class WardrobeScreen extends ConsumerWidget {
             view: ref.watch(wardrobeViewProvider),
             onChanged: (view) =>
                 ref.read(wardrobeViewProvider.notifier).state = view,
+          ),
+          // In the overflow rather than as a fourth icon: it is set once and
+          // then forgotten, which is not what the top bar is for.
+          _MoreMenu(
+            grouping: ref.watch(groupDuplicatesProvider),
+            onGrouping: (on) {
+              ref.read(groupDuplicatesProvider.notifier).state = on;
+              ref.read(expandedGroupsProvider.notifier).state = {};
+            },
           ),
           _FilterAction(
             // Counted against the baseline, not against an empty query: the
@@ -148,6 +173,26 @@ class _ViewToggle extends StatelessWidget {
   }
 }
 
+/// The overflow, which currently holds one thing.
+class _MoreMenu extends StatelessWidget {
+  const _MoreMenu({required this.grouping, required this.onGrouping});
+
+  final bool grouping;
+  final ValueChanged<bool> onGrouping;
+
+  @override
+  Widget build(BuildContext context) => PopupMenuButton<void>(
+    tooltip: 'More',
+    itemBuilder: (_) => [
+      CheckedPopupMenuItem(
+        checked: grouping,
+        onTap: () => onGrouping(!grouping),
+        child: const Text('Group identical items'),
+      ),
+    ],
+  );
+}
+
 /// The filter button, badged with how many filters are on.
 class _FilterAction extends StatelessWidget {
   const _FilterAction({required this.count, required this.onPressed});
@@ -197,27 +242,7 @@ class _ItemList extends ConsumerWidget {
         Expanded(
           child: ref.watch(wardrobeViewProvider) == WardrobeView.grid
               ? _Grid(items: items)
-              : ListView.separated(
-                  itemCount: items.length,
-                  separatorBuilder: (_, _) =>
-                      const Divider(height: 1, indent: 88),
-                  itemBuilder: (context, index) {
-                    final item = items[index];
-                    final selection = ref.watch(wardrobeSelectionProvider);
-                    return ItemTile(
-                      item: item,
-                      selected: selection.contains(item.id),
-                      // Once you have started picking clothes out, a tap adds
-                      // to the selection instead of opening the garment.
-                      // Navigating away mid-selection would throw the selection
-                      // out, which is not what a tap means any more.
-                      onTap: selection.isEmpty
-                          ? () => context.go('/item/${item.id.value}')
-                          : () => toggleWardrobeSelection(ref, item.id),
-                      onLongPress: () => toggleWardrobeSelection(ref, item.id),
-                    );
-                  },
-                ),
+              : _List(items: items),
         ),
       ],
     );
@@ -225,6 +250,40 @@ class _ItemList extends ConsumerWidget {
 }
 
 /// The wardrobe as a wall of garments.
+/// The wardrobe as rows.
+class _List extends ConsumerWidget {
+  const _List({required this.items});
+
+  final List<WardrobeItem> items;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final entries = _shown(ref, items);
+    final selection = ref.watch(wardrobeSelectionProvider);
+
+    return ListView.separated(
+      itemCount: entries.length,
+      separatorBuilder: (_, _) => const Divider(height: 1, indent: 88),
+      itemBuilder: (context, index) {
+        final entry = entries[index];
+        return ItemTile(
+          item: entry.item,
+          copies: entry.copies,
+          selected: selection.contains(entry.item.id),
+          // Once you have started picking clothes out, a tap adds to the
+          // selection instead of opening the garment. Navigating away
+          // mid-selection would throw the selection out, which is not what a
+          // tap means any more.
+          onTap: selection.isEmpty
+              ? () => _open(context, ref, entry)
+              : () => _toggleEntry(ref, entry),
+          onLongPress: () => _toggleEntry(ref, entry),
+        );
+      },
+    );
+  }
+}
+
 class _Grid extends ConsumerWidget {
   const _Grid({required this.items});
 
@@ -242,20 +301,98 @@ class _Grid extends ConsumerWidget {
       // Taller than wide: garments are, and the two text lines need room.
       childAspectRatio: 0.78,
     ),
-    itemCount: items.length,
+    itemCount: _shown(ref, items).length,
     itemBuilder: (context, index) {
-      final item = items[index];
+      final entry = _shown(ref, items)[index];
       final selection = ref.watch(wardrobeSelectionProvider);
       return ItemCard(
-        item: item,
-        selected: selection.contains(item.id),
+        item: entry.item,
+        selected: selection.contains(entry.item.id),
+        copies: entry.copies,
         onTap: selection.isEmpty
-            ? () => context.go('/item/${item.id.value}')
-            : () => toggleWardrobeSelection(ref, item.id),
-        onLongPress: () => toggleWardrobeSelection(ref, item.id),
+            ? () => _open(context, ref, entry)
+            : () => _toggleEntry(ref, entry),
+        onLongPress: () => _toggleEntry(ref, entry),
       );
     },
   );
+}
+
+/// One row of the wardrobe: a garment, and how many copies it stands for.
+///
+/// A group of one and a lone garment are the same thing here, so the list has
+/// one kind of row rather than two — which is what keeps selection, tapping and
+/// the empty state from each needing a branch.
+class _Entry {
+  const _Entry({required this.group, required this.expanded});
+
+  final DuplicateGroup group;
+
+  /// Whether this row is a member of an opened group rather than its head.
+  final bool expanded;
+
+  WardrobeItem get item => group.representative;
+
+  /// How many garments this row stands for — 1 once the group is opened, so a
+  /// member never claims to be the whole group.
+  int get copies => expanded ? 1 : group.count;
+
+  List<ItemId> get ids => expanded ? [item.id] : group.ids;
+}
+
+/// The rows to draw, with opened groups flattened back into their members.
+List<_Entry> _shown(WidgetRef ref, List<WardrobeItem> items) {
+  if (!ref.watch(groupDuplicatesProvider)) {
+    return [
+      for (final item in items)
+        _Entry(
+          group: DuplicateGroup(signature: item.id.value, items: [item]),
+          expanded: true,
+        ),
+    ];
+  }
+
+  final open = ref.watch(expandedGroupsProvider);
+  return [
+    for (final group in groupDuplicates(items))
+      if (group.isMultiple && open.contains(group.signature))
+        for (final item in group.items)
+          _Entry(
+            group: DuplicateGroup(signature: group.signature, items: [item]),
+            expanded: true,
+          )
+      else
+        _Entry(group: group, expanded: false),
+  ];
+}
+
+/// Opens a garment, or opens up a group.
+///
+/// A collapsed group has no single garment to show — its members have their own
+/// histories and their own wear counts, and picking one to stand for the rest
+/// would be inventing an answer. So the first tap opens the group and the
+/// second opens a garment.
+void _open(BuildContext context, WidgetRef ref, _Entry entry) {
+  if (entry.copies > 1) {
+    final notifier = ref.read(expandedGroupsProvider.notifier);
+    notifier.state = {...notifier.state, entry.group.signature};
+    return;
+  }
+  context.go('/item/${entry.item.id.value}');
+}
+
+/// Selects or deselects everything a row stands for.
+void _toggleEntry(WidgetRef ref, _Entry entry) {
+  final notifier = ref.read(wardrobeSelectionProvider.notifier);
+  final next = {...notifier.state};
+  // All in or all out, judged by the head: half a group selected is a state
+  // nothing on this screen can show, so it is not one worth reaching.
+  if (next.contains(entry.item.id)) {
+    next.removeAll(entry.ids);
+  } else {
+    next.addAll(entry.ids);
+  }
+  notifier.state = next;
 }
 
 /// Adds [id] to the selection, or takes it back out.

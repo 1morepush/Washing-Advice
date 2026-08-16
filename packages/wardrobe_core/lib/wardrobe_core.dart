@@ -60,6 +60,7 @@ export 'src/outfits/model/outfit.dart';
 export 'src/outfits/outfit_builder.dart';
 export 'src/outfits/outfit_repository.dart';
 export 'src/outfits/packing.dart';
+export 'src/outfits/styling.dart';
 // Shared kernel.
 export 'src/shared/clock.dart';
 export 'src/shared/confidence.dart';

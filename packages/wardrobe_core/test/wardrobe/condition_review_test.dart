@@ -60,8 +60,7 @@ void main() {
       );
 
   ConditionReport read(List<ObservedWear> observed, {WardrobeItem? item}) =>
-      const ConditionReview()
-          .read(observed, item: item ?? pristine, at: now);
+      const ConditionReview().read(observed, item: item ?? pristine, at: now);
 
   test('wear on a garment nothing is known about is worth asking about', () {
     final report = read([seen(WearType.pilling, WearSeverity.moderate)]);

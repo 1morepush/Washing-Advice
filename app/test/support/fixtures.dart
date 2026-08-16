@@ -17,6 +17,11 @@ WardrobeItem confidentItem({
   ItemType type = ItemType.tShirt,
   Map<Fiber, int> composition = const {Fiber.cotton: 100},
   String hex = '#3C3F44',
+
+  /// The colour as a word, where a test needs one. Left unset by default
+  /// because a real scan often produces no name either, and the rules that
+  /// read colour names are supposed to stay quiet when there is none.
+  String? colorName,
   UsageStats usage = const UsageStats(timesWorn: 3),
   PurchaseInfo? purchase,
   Set<Season> seasons = const {},
@@ -28,6 +33,7 @@ WardrobeItem confidentItem({
   type: type,
   composition: composition,
   hex: hex,
+  colorName: colorName,
   usage: usage,
   purchase: purchase,
   seasons: seasons,
@@ -63,6 +69,7 @@ WardrobeItem _base({
   required Map<Fiber, int> composition,
   required String hex,
   required CareProfile care,
+  String? colorName,
   UsageStats usage = const UsageStats(timesWorn: 3),
   PurchaseInfo? purchase,
   Set<Season> seasons = const {},
@@ -78,7 +85,7 @@ WardrobeItem _base({
     source: Provenance.tagScan,
   ),
   colors: Confident(
-    ColorPalette([ItemColor.fromHex(hex)]),
+    ColorPalette([ItemColor.fromHex(hex, name: colorName)]),
     confidence: 0.9,
     source: Provenance.aiInference,
   ),

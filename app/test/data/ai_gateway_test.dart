@@ -389,13 +389,13 @@ void _askingForOutfits() {
         occasion: 'Everyday',
       );
 
-      expect(proposals, hasLength(2));
-      expect(proposals.first.itemIds, [
+      expect(proposals.outfits, hasLength(2));
+      expect(proposals.outfits.first.itemIds, [
         const ItemId('shirt'),
         const ItemId('chinos'),
         const ItemId('shoes'),
       ]);
-      expect(proposals.first.rationale, contains('stone chinos'));
+      expect(proposals.outfits.first.rationale, contains('stone chinos'));
     });
 
     test('the stylist is told what each garment looks like', () async {
@@ -455,7 +455,110 @@ void _askingForOutfits() {
         ],
       }).proposeOutfits(wardrobe: [item('shirt')], occasion: 'Everyday');
 
-      expect(proposals.single.rationale, 'this one is fine');
+      expect(proposals.outfits.single.rationale, 'this one is fine');
+    });
+
+    test('the gaps are not asked for unless they were requested', () async {
+      // Opt-in on the wire too, not merely unshown. The flag and the type
+      // vocabulary both stay off the request until somebody ticks the box.
+      await gatewayReturning(
+        jsonDecode(captured),
+      ).proposeOutfits(wardrobe: [item('shirt')], occasion: 'Everyday');
+
+      expect(sent.containsKey('suggestGaps'), isFalse);
+      expect(sent.containsKey('stylableTypes'), isFalse);
+    });
+
+    test(
+      'asking for them sends the vocabulary the core resolves against',
+      () async {
+        // Sent rather than held on the server, so the list the model may name
+        // from and the list GapVetting parses back cannot drift apart.
+        await gatewayReturning(jsonDecode(captured)).proposeOutfits(
+          wardrobe: [item('shirt')],
+          occasion: 'Everyday',
+          suggestGaps: true,
+        );
+
+        expect(sent['suggestGaps'], isTrue);
+        expect(sent['stylableTypes'], contains('Jeans'));
+        // The vocabulary is the core's, so what it excludes is excluded here.
+        expect(sent['stylableTypes'], isNot(contains('Pajamas')));
+      },
+    );
+
+    test('a pieces array decodes into proposals', () async {
+      final answer =
+          await gatewayReturning({
+            'result': [
+              {
+                'itemIds': ['shirt', 'chinos'],
+                'rationale': 'fine',
+              },
+            ],
+            'pieces': [
+              {
+                'type': 'Jeans',
+                'colors': ['dark blue'],
+                'pairsWith': ['shirt'],
+                'rationale': 'Something with body under the oxford.',
+              },
+            ],
+          }).proposeOutfits(
+            wardrobe: [item('shirt')],
+            occasion: 'Everyday',
+            suggestGaps: true,
+          );
+
+      expect(answer.pieces, hasLength(1));
+      expect(answer.pieces.single.type, 'Jeans');
+      expect(answer.pieces.single.colors, ['dark blue']);
+      expect(answer.pieces.single.pairsWithIds, [const ItemId('shirt')]);
+    });
+
+    test('a server that has never heard of pieces is not a failure', () async {
+      // The shape this has to survive most. An older backend answers the outfit
+      // question perfectly well and simply says nothing about gaps; treating
+      // the missing key as an error would break a working deployment.
+      final answer = await gatewayReturning(jsonDecode(captured))
+          .proposeOutfits(
+            wardrobe: [item('shirt')],
+            occasion: 'Everyday',
+            suggestGaps: true,
+          );
+
+      expect(answer.outfits, isNotEmpty);
+      expect(answer.pieces, isEmpty);
+    });
+
+    test('a piece with no reason is dropped rather than shown blank', () async {
+      final answer =
+          await gatewayReturning({
+            'result': [
+              {
+                'itemIds': ['shirt', 'chinos'],
+                'rationale': 'fine',
+              },
+            ],
+            'pieces': [
+              {
+                'type': 'Jeans',
+                'pairsWith': ['shirt'],
+                'rationale': '   ',
+              },
+              {
+                'type': 'Blazer',
+                'pairsWith': ['shirt'],
+                'rationale': 'this one is fine',
+              },
+            ],
+          }).proposeOutfits(
+            wardrobe: [item('shirt')],
+            occasion: 'Everyday',
+            suggestGaps: true,
+          );
+
+      expect(answer.pieces.single.type, 'Blazer');
     });
 
     test('a result that is not a list is a contract error', () async {

@@ -23,6 +23,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../core/providers.dart';
 import '../../data/api/ai_gateway.dart';
 import '../../data/api/scan_dto.dart';
+import '../../data/api/style_dto.dart';
 
 sealed class StylistState {
   const StylistState();
@@ -44,12 +45,24 @@ final class StylistThinking extends StylistState {
 /// somebody asked for ideas looks like a thin wardrobe rather than a model
 /// naming clothes that are in the wash — and those want different responses.
 final class StylistSuggested extends StylistState {
-  const StylistSuggested(this.result, {required this.occasion});
+  const StylistSuggested(
+    this.result, {
+    required this.occasion,
+    this.gaps = const SuggestedPieces(),
+  });
 
   final StyledOutfits result;
   final Occasion occasion;
 
+  /// Pieces the wardrobe does not have, if they were asked for.
+  ///
+  /// Kept apart from [result] rather than merged into it, because they are a
+  /// different kind of answer: nothing here can be opened, saved or worn.
+  final SuggestedPieces gaps;
+
   List<StyledOutfit> get outfits => result.outfits;
+
+  List<SuggestedPiece> get pieces => gaps.pieces;
 
   /// Why ideas were dropped, each reason once.
   ///
@@ -72,7 +85,16 @@ class StylistController extends StateNotifier<StylistState> {
   final Ref _ref;
 
   /// Asks for ideas for [request], and checks what comes back.
-  Future<void> ask(OutfitRequest request, {String? note}) async {
+  ///
+  /// With [suggestGaps] it also asks what the wardrobe is missing. Off unless
+  /// the screen says otherwise: a wardrobe app that started naming things to go
+  /// and find without being asked would be answering a question nobody put, and
+  /// plenty of people use one of these to buy less rather than more.
+  Future<void> ask(
+    OutfitRequest request, {
+    String? note,
+    bool suggestGaps = false,
+  }) async {
     final owned = await _ref
         .read(wardrobeRepositoryProvider)
         .query(const WardrobeQuery.owned());
@@ -97,9 +119,9 @@ class StylistController extends StateNotifier<StylistState> {
 
     state = const StylistThinking();
 
-    final List<StyleProposal> proposals;
+    final StyleAnswer answer;
     try {
-      proposals = await _ref
+      answer = await _ref
           .read(aiGatewayProvider)
           .proposeOutfits(
             wardrobe: wearable,
@@ -109,6 +131,7 @@ class StylistController extends StateNotifier<StylistState> {
                 : request.season.label,
             count: request.count,
             note: note,
+            suggestGaps: suggestGaps,
           );
     } on ScanFailure catch (failure) {
       state = StylistFailed(failure.message, isRetryable: failure.isRetryable);
@@ -128,8 +151,13 @@ class StylistController extends StateNotifier<StylistState> {
     // list would report a garment that went into the wash mid-request as
     // invented rather than as unavailable.
     state = StylistSuggested(
-      const StyleVetting().vet(proposals, wardrobe: owned),
+      const StyleVetting().vet(answer.outfits, wardrobe: owned),
       occasion: request.occasion,
+      // Vetted against the whole wardrobe rather than the wearable subset, and
+      // that is the point of it: a suggestion to go and find dark blue jeans
+      // has to be refused when a pair is sitting in the laundry basket. They
+      // are still owned, and owning them is the whole question.
+      gaps: const GapVetting().vet(answer.pieces, wardrobe: owned),
     );
   }
 

@@ -24,6 +24,15 @@ import 'outfit_pieces.dart';
 import 'saved_outfits.dart';
 import 'stylist_controller.dart';
 
+/// Whether to also ask what the wardrobe is missing.
+///
+/// Off by default, and asked for rather than assumed. Naming clothes somebody
+/// does not own is a different thing from naming ones they do, and a wardrobe
+/// app that volunteered it would be answering a question nobody put — plenty of
+/// people keep one of these precisely to buy less. Same shape as
+/// `groupDuplicatesProvider`: a display preference, held where the feature is.
+final suggestGapsProvider = StateProvider<bool>((ref) => false);
+
 class StylistTab extends ConsumerStatefulWidget {
   const StylistTab({super.key});
 
@@ -42,7 +51,11 @@ class _StylistTabState extends ConsumerState<StylistTab> {
 
   Future<void> _ask() => ref
       .read(stylistControllerProvider.notifier)
-      .ask(ref.read(outfitRequestProvider), note: _note.text);
+      .ask(
+        ref.read(outfitRequestProvider),
+        note: _note.text,
+        suggestGaps: ref.read(suggestGapsProvider),
+      );
 
   @override
   Widget build(BuildContext context) => switch (ref.watch(
@@ -68,14 +81,14 @@ class _StylistTabState extends ConsumerState<StylistTab> {
   };
 }
 
-class _Intro extends StatelessWidget {
+class _Intro extends ConsumerWidget {
   const _Intro({required this.note, required this.onAsk});
 
   final TextEditingController note;
   final Future<void> Function() onAsk;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
     return ListView(
@@ -119,7 +132,26 @@ class _Intro extends StatelessWidget {
           maxLines: 2,
           minLines: 1,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
+        // Opt-in, and worded as what it does rather than as a feature name.
+        // "Also suggest things to buy" would be a different promise: what comes
+        // back names a garment and a colour and stops there, with no brand, no
+        // shop and no price, because where to get one is not the app's business.
+        CheckboxListTile(
+          value: ref.watch(suggestGapsProvider),
+          onChanged: (on) =>
+              ref.read(suggestGapsProvider.notifier).state = on ?? false,
+          contentPadding: EdgeInsets.zero,
+          controlAffinity: ListTileControlAffinity.leading,
+          title: const Text('Also say what I am missing'),
+          subtitle: Text(
+            'Names pieces you do not own that would go with your clothes.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
         FilledButton.icon(
           onPressed: onAsk,
           icon: const Icon(Icons.auto_awesome, size: 18),
@@ -167,7 +199,7 @@ class _Ideas extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    if (state.outfits.isEmpty) {
+    if (state.outfits.isEmpty && state.pieces.isEmpty) {
       return StatusMessage(
         icon: Icons.auto_awesome_outlined,
         title: 'Nothing usable came back',
@@ -191,6 +223,7 @@ class _Ideas extends StatelessWidget {
       children: [
         for (final outfit in state.outfits)
           _IdeaCard(outfit: outfit, occasion: state.occasion),
+        if (state.pieces.isNotEmpty) _Missing(pieces: state.pieces),
         if (state.setAside.isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(
@@ -210,6 +243,110 @@ class _Ideas extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Pieces the wardrobe does not have.
+///
+/// Below the outfits and visibly apart from them, because they are a different
+/// kind of answer and the difference matters: everything above this can be
+/// worn today, and nothing here can. A card that looked like the others would
+/// be offering somebody clothes they do not own, which is the exact failure
+/// [StyleVetting] exists to prevent on the other side.
+///
+/// No Save and no "Wearing this". Both resolve to real garments, and a piece
+/// with no id has none — a button that appeared to work and then quietly did
+/// nothing would be worse than its absence.
+class _Missing extends StatelessWidget {
+  const _Missing({required this.pieces});
+
+  final List<SuggestedPiece> pieces;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Icon(
+              Icons.search_outlined,
+              size: 18,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'What you are missing',
+                style: theme.textTheme.titleSmall,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Not in your wardrobe. Described rather than shopped for — no brand, '
+          'no shop, no price.',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 12),
+        for (final piece in pieces) _MissingCard(piece: piece),
+      ],
+    );
+  }
+}
+
+class _MissingCard extends StatelessWidget {
+  const _MissingCard({required this.piece});
+
+  final SuggestedPiece piece;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      // Outlined rather than filled, so it reads as a note beside the outfits
+      // rather than as one more thing to wear.
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(piece.description, style: theme.textTheme.titleSmall),
+            const SizedBox(height: 8),
+            // Named, not just counted. "Goes with 2 items" would make somebody
+            // ask which two, and the pairing is the whole reason this is advice
+            // rather than a shopping list.
+            Text(
+              'Goes with your '
+              '${piece.pairsWith.map((item) => item.displayName).join(', ')}.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              piece.rationale,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

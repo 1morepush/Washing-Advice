@@ -7,6 +7,29 @@ which cycle to select on *your* machine.
 > Instead of "wash cold", it says: **Delicates, 30°C, 800 rpm, extra rinse on**
 > — and tells you it chose 30°C because your new red tee bleeds.
 
+## TL;DR
+
+- **Photograph your clothes.** The app works out what each one is — type,
+  fabric, colour, brand — and keeps it. Take the back too if there is a print
+  on it.
+- **Scan the care label once.** Both sides if it has two, in whatever language
+  it is printed in. Scan it again later and the second reading adds to the
+  first rather than replacing it.
+- **Say what is dirty.** Four piles — clean, to wash, washing, drying — and
+  four ways to move a garment into the wash, including photographing the heap
+  on the floor.
+- **Get the loads to run.** Not "wash cold" but the programme, temperature and
+  spin for *your* machine, with the reason for each choice.
+- **Spilled something?** Say what it was and get a step-by-step treatment,
+  checked against that garment before you see it.
+
+**The rule the whole thing is built around: no laundry decision is ever made by
+a language model.** The AI turns pixels into facts — what this garment is, what
+its label says. Every judgement about how to wash it is made by deterministic,
+offline, exhaustively tested code, because ruining a wool sweater has no undo.
+
+It runs with no API key and no account. [Jump to running it](#running-it).
+
 | Wardrobe | Four laundry piles | Loads to run | Treat a spill |
 |---|---|---|---|
 | ![Wardrobe](app/docs/screenshots/wardrobe-light.png) | ![Laundry piles](app/docs/screenshots/laundry-piles.png) | ![Laundry plan](app/docs/screenshots/laundry-plan.png) | ![Stain advice](app/docs/screenshots/stain-advice.png) |

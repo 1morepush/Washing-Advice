@@ -21,6 +21,9 @@ from app.services.ai.knowledge_cache import (
 from app.services.ai.pipeline import VisionPipeline
 from app.services.ai.registry import registry
 from app.services.ai.stages import ProviderStage
+from app.services.condition.base import ConditionReader
+from app.services.condition.fake import FakeConditionReader
+from app.services.condition.gemini_reader import GeminiConditionReader
 from app.services.images.cutout import BackgroundRemover, BorderSampledRemover
 from app.services.machines.base import MachineIdentifier
 from app.services.machines.fake import FakeMachineIdentifier
@@ -28,6 +31,9 @@ from app.services.machines.gemini_identifier import GeminiMachineIdentifier
 from app.services.stains.base import StainAdviser
 from app.services.stains.fake import FakeStainAdviser
 from app.services.stains.gemini_adviser import GeminiStainAdviser
+from app.services.style.base import Stylist
+from app.services.style.fake import FakeStylist
+from app.services.style.gemini_stylist import GeminiStylist
 from app.services.sync.store import InMemorySyncStore, SqliteSyncStore, SyncStore
 
 
@@ -118,6 +124,12 @@ convenience that only this module needs.
 _live_advisers: list[StainAdviser] = []
 """The same again for stain advisers, and separate for the same reason."""
 
+_live_stylists: list[Stylist] = []
+"""And again for stylists."""
+
+_live_readers: list[ConditionReader] = []
+"""And again for condition readers."""
+
 
 @lru_cache
 def get_stain_adviser() -> StainAdviser:
@@ -142,6 +154,52 @@ def get_stain_adviser() -> StainAdviser:
 
     _live_advisers.append(adviser)
     return adviser
+
+
+@lru_cache
+def get_stylist() -> Stylist:
+    """The stylist described by the current settings.
+
+    Reuses `VISION_PROVIDER` for the same reason the adviser and the
+    identifier do: there is one AI backend either way, and a second setting
+    would only ever move in lockstep with this one.
+    """
+    settings = get_settings()
+    if settings.vision_provider == "fake":
+        stylist: Stylist = FakeStylist()
+    else:
+        try:
+            stylist = GeminiStylist.from_settings(settings)
+        except ProviderError as error:
+            raise ProviderUnavailableError(
+                str(error),
+                hint="set GEMINI_API_KEY, or set VISION_PROVIDER=fake",
+            ) from error
+
+    _live_stylists.append(stylist)
+    return stylist
+
+
+@lru_cache
+def get_condition_reader() -> ConditionReader:
+    """The condition reader described by the current settings.
+
+    Reuses `VISION_PROVIDER` like every other AI-backed dependency here.
+    """
+    settings = get_settings()
+    if settings.vision_provider == "fake":
+        reader: ConditionReader = FakeConditionReader()
+    else:
+        try:
+            reader = GeminiConditionReader.from_settings(settings)
+        except ProviderError as error:
+            raise ProviderUnavailableError(
+                str(error),
+                hint="set GEMINI_API_KEY, or set VISION_PROVIDER=fake",
+            ) from error
+
+    _live_readers.append(reader)
+    return reader
 
 
 @lru_cache
@@ -171,13 +229,21 @@ def get_machine_identifier() -> MachineIdentifier:
 
 async def close_providers() -> None:
     """Releases every live provider's and identifier's resources, at shutdown."""
-    for provider in (*_live_providers, *_live_identifiers, *_live_advisers):
+    for provider in (
+        *_live_providers,
+        *_live_identifiers,
+        *_live_advisers,
+        *_live_stylists,
+        *_live_readers,
+    ):
         closer = getattr(provider, "aclose", None)
         if closer is not None:
             await closer()
     _live_providers.clear()
     _live_identifiers.clear()
     _live_advisers.clear()
+    _live_stylists.clear()
+    _live_readers.clear()
 
 
 def reset_wiring() -> None:
@@ -189,6 +255,8 @@ def reset_wiring() -> None:
     get_pipeline.cache_clear()
     get_machine_identifier.cache_clear()
     get_stain_adviser.cache_clear()
+    get_stylist.cache_clear()
+    get_condition_reader.cache_clear()
     get_knowledge_cache.cache_clear()
     get_background_remover.cache_clear()
     # Closed before it is dropped: a SQLite store left to the garbage collector
@@ -200,4 +268,6 @@ def reset_wiring() -> None:
     _live_providers.clear()
     _live_identifiers.clear()
     _live_advisers.clear()
+    _live_stylists.clear()
+    _live_readers.clear()
     get_settings.cache_clear()

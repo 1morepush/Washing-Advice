@@ -31,6 +31,19 @@ enum WearType {
         fading || pilling || hole || tear || looseSeam || stretchedOut => true,
         stain || shrunk || brokenFastener || odour => false,
       };
+
+  /// Whether this can honestly get *better*.
+  ///
+  /// A stain comes out, a seam is sewn up, a button is replaced, a smell
+  /// washes away. Fading, pilling, holes and stretch do not undo themselves —
+  /// so a fresh observation reporting less of one of those than is already on
+  /// record is something being looked at less carefully, not a garment
+  /// recovering. That distinction is what stops a hurried glance overwriting a
+  /// careful one.
+  bool get isReversible => switch (this) {
+        stain || looseSeam || brokenFastener || odour => true,
+        fading || pilling || hole || tear || stretchedOut || shrunk => false,
+      };
 }
 
 /// How bad an observed problem is.

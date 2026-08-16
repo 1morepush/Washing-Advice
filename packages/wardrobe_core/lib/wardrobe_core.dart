@@ -60,6 +60,7 @@ export 'src/outfits/model/outfit.dart';
 export 'src/outfits/outfit_builder.dart';
 export 'src/outfits/outfit_repository.dart';
 export 'src/outfits/packing.dart';
+export 'src/outfits/styling.dart';
 // Shared kernel.
 export 'src/shared/clock.dart';
 export 'src/shared/confidence.dart';
@@ -72,6 +73,8 @@ export 'src/vision/scan_merge.dart';
 export 'src/vision/vision_port.dart';
 // Wardrobe: what the user owns.
 export 'src/wardrobe/analytics.dart';
+export 'src/wardrobe/condition_review.dart';
+export 'src/wardrobe/duplicates.dart';
 export 'src/wardrobe/in_memory_repository.dart';
 export 'src/wardrobe/model/condition.dart';
 export 'src/wardrobe/model/fabric.dart';

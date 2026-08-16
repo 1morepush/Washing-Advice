@@ -17,8 +17,10 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
+import 'condition_dto.dart';
 import 'scan_dto.dart';
 import 'stain_dto.dart';
+import 'style_dto.dart';
 
 /// A scan could not be completed.
 ///
@@ -229,6 +231,80 @@ class AiGateway implements VisionPort {
     }
   }
 
+  /// What a photograph shows of a garment's condition.
+  ///
+  /// Every photograph is sent rather than one. Wear is not evenly distributed —
+  /// cuffs, underarms, the seat — and a reader given only the front shot
+  /// reports a jumper as fine because the pilling is under the arms.
+  ///
+  /// What comes back is **unvetted**. A wear observation changes the condition
+  /// grade and how the garment is washed, so `ConditionReview` in the core
+  /// decides which are worth putting to the user, and the user decides the
+  /// rest. A caller that recorded these directly would let a shadow in the
+  /// weave change somebody's laundry.
+  Future<List<ObservedWear>> readCondition({
+    required List<ScanImage> images,
+    required String garment,
+    String? fabric,
+    String? known,
+  }) async {
+    if (images.isEmpty) {
+      throw const ScanFailure(
+        'No photograph was provided.',
+        isRetryable: false,
+      );
+    }
+
+    final json = await _postForm(
+      'care/condition',
+      fields: {'garment': garment, 'fabric': ?fabric, 'known': ?known},
+      files: [for (final image in images) ('images', image)],
+    );
+    return observedWearFromJson(json);
+  }
+
+  /// Outfits a model thinks would work, from the wardrobe it is given.
+  ///
+  /// Sends facts rather than photographs: the wardrobe already holds type,
+  /// colour, pattern, fit and fabric from when each garment was scanned, and
+  /// re-uploading forty pictures to derive them again would cost a multiple of
+  /// the time for facts the app is surer about than a fresh glance would be.
+  ///
+  /// What comes back is **unvetted**, exactly as stain advice is. The ids may
+  /// name garments that do not exist and the outfits may be structurally
+  /// impossible; `StyleVetting` in the core checks both against the real
+  /// wardrobe. A caller that showed these directly would be offering people
+  /// clothes they do not own.
+  ///
+  /// The whole wardrobe is sent rather than a sample. A stylist choosing from
+  /// a truncated list would silently never suggest half of somebody's clothes,
+  /// and at roughly thirty tokens a garment even a large wardrobe is a small
+  /// fraction of what a single photograph costs.
+  Future<List<StyleProposal>> proposeOutfits({
+    required List<WardrobeItem> wardrobe,
+    required String occasion,
+    String? season,
+    int count = 4,
+    String? note,
+  }) async {
+    if (wardrobe.isEmpty) {
+      throw const ScanFailure(
+        'There is nothing in your wardrobe to style yet.',
+        isRetryable: false,
+      );
+    }
+
+    final body = await _postJsonBody('style/outfits', {
+      'occasion': occasion,
+      'season': ?season,
+      'count': count,
+      'wardrobe': [for (final item in wardrobe) styleCandidateJson(item)],
+      if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+    });
+
+    return styleProposalsFromJson(styleResultList(body['result']));
+  }
+
   /// The garment with its background removed.
   ///
   /// Returns null when the server could not separate it — a plain refusal
@@ -336,6 +412,7 @@ class AiGateway implements VisionPort {
     String path, {
     required Map<String, String> fields,
     ScanImage? photo,
+    List<(String, ScanImage)> files = const [],
   }) async {
     final request = http.MultipartRequest('POST', baseUrl.resolve('v1/$path'))
       ..fields.addAll(fields);
@@ -347,6 +424,17 @@ class AiGateway implements VisionPort {
           photo.bytes,
           filename: 'stain.${photo.mimeType.split('/').last}',
           contentType: _mediaType(photo.mimeType),
+        ),
+      );
+    }
+
+    for (final (field, image) in files) {
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          field,
+          image.bytes,
+          filename: 'upload.${image.mimeType.split('/').last}',
+          contentType: _mediaType(image.mimeType),
         ),
       );
     }
@@ -369,6 +457,17 @@ class AiGateway implements VisionPort {
   Future<Map<String, Object?>> _postJson(
     String path,
     Map<String, Object?> body,
+  ) async => _resultOf(await _postJsonBody(path, body));
+
+  /// A JSON post whose answer is unwrapped by the caller.
+  ///
+  /// Every endpoint but one returns a `result` object, so [_postJson] is what
+  /// callers want. The stylist returns a `result` *array*, which [_resultOf]
+  /// would reject — so the two calls share everything up to the unwrapping and
+  /// differ only there.
+  Future<Map<String, Object?>> _postJsonBody(
+    String path,
+    Map<String, Object?> body,
   ) async {
     final http.Response response;
     try {
@@ -383,14 +482,12 @@ class AiGateway implements VisionPort {
       throw ScanFailure('Could not reach the server. $error');
     }
 
-    return _decodeResult(response);
+    return _decodeBody(response);
   }
 
   /// The tail every call shares once a response has actually arrived: fail on
-  /// a bad status, record diagnostics, and hand back the `result` object.
-  /// Factored out because [_postJson] needed it a second time — [_post] and
-  /// [_postJson] differ only in how the request is built and sent.
-  Map<String, Object?> _decodeResult(http.Response response) {
+  /// a bad status and record diagnostics.
+  Map<String, Object?> _decodeBody(http.Response response) {
     if (response.statusCode != 200) {
       throw _failureFor(response);
     }
@@ -401,7 +498,14 @@ class AiGateway implements VisionPort {
         : ScanDiagnostics.fromJson(
             body['diagnostics']! as Map<String, Object?>,
           );
+    return body;
+  }
 
+  /// [_decodeBody], plus the `result` object almost every endpoint returns.
+  Map<String, Object?> _decodeResult(http.Response response) =>
+      _resultOf(_decodeBody(response));
+
+  Map<String, Object?> _resultOf(Map<String, Object?> body) {
     final result = body['result'];
     if (result is! Map<String, Object?>) {
       throw ScanContractError('the response had no "result"');

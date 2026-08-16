@@ -96,6 +96,66 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.15.0',
+    name: 'Wear and Tear',
+    date: DateTime.utc(2026, 8, 16),
+    headline: 'Photograph a garment to check it for wear',
+    changes: [
+      'New under the three dots on any garment: Check for wear. Photograph '
+          'the places things actually wear — cuffs, elbows, underarms, the '
+          'seat — and it tells you what it can see.',
+      'Nothing is recorded until you say so. Each thing it finds is a '
+          'separate question with its own yes and no, and it tells you where '
+          'to look so you can check it against the garment in your hand.',
+      'When accepting something would change how the garment is washed, it '
+          'says so before you tap, not after.',
+      '"Nothing to report" is the usual answer and it says that plainly. If '
+          'it saw something it was not sure enough about, it tells you that '
+          'too rather than pretending it saw nothing.',
+      'Reporting wear by hand still works exactly as before. This is the '
+          'quick way, not the replacement.',
+    ],
+  ),
+  Release(
+    version: '0.14.0',
+    name: 'Second Opinion',
+    date: DateTime.utc(2026, 8, 16),
+    headline: 'Ask for outfit ideas',
+    changes: [
+      'A new Stylist tab on Outfits. It reads what your wardrobe is made of '
+          'and suggests things to wear, noticing what the app never could: '
+          'pattern against pattern, proportion, how dressy something reads.',
+      'It tells you why, in its own words, so you can disagree with it. This '
+          'is taste rather than arithmetic, and the Suggested tab beside it '
+          'still works the way it always did.',
+      'Add a note first if today is unusual — "it will be cold", "I am '
+          'meeting a client".',
+      'It only ever suggests clothes you own and could actually put on this '
+          'morning. Anything it names that is in the wash, or that it made '
+          'up, is dropped before you see it, and the tab says how many.',
+      'Nothing happens until you ask. Your photographs are never sent — only '
+          'the facts already on each garment.',
+    ],
+  ),
+  Release(
+    version: '0.13.0',
+    name: 'Sock Drawer',
+    date: DateTime.utc(2026, 8, 16),
+    headline: 'Identical garments share a row',
+    changes: [
+      'Six identical socks are one row now, not six — they were crowding out '
+          'the garment you were actually looking for. Tap to open the group '
+          'up, tap again for one of them.',
+      'The count still says six, because six is what you own. Picking a group '
+          'picks every copy, so sending them to the wash does not leave five '
+          'in the drawer.',
+      'Only garments the app is genuinely sure are the same get collapsed: '
+          'same type, brand, size, fabric and colour. Two things it knows '
+          'little about are not thereby the same thing.',
+      'Not what you want? Turn it off under the three dots in the wardrobe.',
+    ],
+  ),
+  Release(
     version: '0.12.1',
     name: 'Spot Clean',
     date: DateTime.utc(2026, 8, 15),

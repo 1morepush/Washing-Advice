@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from app.schemas.style import ProposedOutfit, StyleRequest
+from app.schemas.style import StyleAnswer, StyleRequest
 
 
 @runtime_checkable
@@ -17,4 +17,4 @@ class Stylist(Protocol):
     @property
     def name(self) -> str: ...
 
-    async def propose(self, request: StyleRequest) -> list[ProposedOutfit]: ...
+    async def propose(self, request: StyleRequest) -> StyleAnswer: ...

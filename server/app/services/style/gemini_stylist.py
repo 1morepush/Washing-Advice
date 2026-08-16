@@ -25,7 +25,12 @@ import httpx
 from pydantic import ValidationError
 
 from app.config import Settings, get_settings
-from app.schemas.style import ProposedOutfit, StyleRequest
+from app.schemas.style import (
+    ProposedOutfit,
+    ProposedPiece,
+    StyleAnswer,
+    StyleRequest,
+)
 from app.services.ai.base import ProviderError
 from app.services.ai.gemini_errors import gemini_error_reason
 from app.services.style.prompts import STYLE_SCHEMA, describe
@@ -79,7 +84,7 @@ class GeminiStylist:
             await self._client.aclose()
             self._client = None
 
-    async def propose(self, request: StyleRequest) -> list[ProposedOutfit]:
+    async def propose(self, request: StyleRequest) -> StyleAnswer:
         if not request.wardrobe:
             raise ProviderError(self.name, "no wardrobe to choose from")
 
@@ -149,17 +154,32 @@ class GeminiStylist:
             raise ProviderError(self.name, f"unexpected response shape: {error}") from error
 
 
-def _parse(data: dict[str, Any]) -> list[ProposedOutfit]:
+def _parse(data: dict[str, Any]) -> StyleAnswer:
     """Builds the response, refusing one that proposes nothing.
 
-    An empty list is not a usable answer: the endpoint would return a success
-    carrying no ideas, and the app would draw a heading with nothing under it.
-    Failing here reads as a provider problem and offers the user a retry, which
-    on this endpoint often works — the temperature is high enough that the same
-    request twice is genuinely a second attempt.
+    An empty outfit list is not a usable answer: the endpoint would return a
+    success carrying no ideas, and the app would draw a heading with nothing
+    under it. Failing here reads as a provider problem and offers the user a
+    retry, which on this endpoint often works — the temperature is high enough
+    that the same request twice is genuinely a second attempt.
+
+    Empty *pieces* is the opposite: a wardrobe with no real gap in it should
+    come back with none, and the prompt says so explicitly. Treating that as a
+    failure would be paying the model to invent a need.
+
+    A malformed piece is dropped rather than failing the call. The outfits are
+    the answer to the question that was asked; losing all of them because one
+    suggested extra came back misshapen would be the tail wagging the dog.
     """
     outfits = [ProposedOutfit.model_validate(outfit) for outfit in data.get("outfits", [])]
     if not outfits:
         raise ValueError("no outfits returned")
 
-    return outfits
+    pieces: list[ProposedPiece] = []
+    for piece in data.get("pieces", []):
+        try:
+            pieces.append(ProposedPiece.model_validate(piece))
+        except ValidationError:
+            continue
+
+    return StyleAnswer(outfits=outfits, pieces=pieces)

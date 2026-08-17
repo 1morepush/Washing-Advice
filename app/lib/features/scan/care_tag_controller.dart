@@ -16,6 +16,7 @@ import '../../core/providers.dart';
 import '../../data/api/ai_gateway.dart';
 import '../../data/api/scan_dto.dart';
 import '../../data/images/image_store.dart';
+import 'care_label_merge.dart';
 
 sealed class CareTagState {
   const CareTagState();
@@ -205,61 +206,31 @@ class CareTagController extends StateNotifier<CareTagState> {
   }
 
   /// Attaches the label to the item and re-resolves its care.
+  ///
+  /// The rules for doing that live in [withCareLabel], shared with the scan
+  /// flow, which now reads a label from the same handful of photographs that
+  /// identified the garment. What stays here is the part specific to this
+  /// screen: what to tell the user about the merge.
   CareTagReviewing _review(
     WardrobeItem item,
     CareTagScanResult reading, [
     List<ScanImage> images = const [],
     bool replaceEarlier = false,
   ]) {
-    // The composition printed on the label outranks whatever was guessed from
-    // a photograph of the garment, so it is taken too when the label carries
-    // one. `Confident.resolve` picks by provenance first, which is precisely
-    // the ordering this needs.
-    final composition = reading.composition == null
-        ? item.composition
-        : Confident.resolve(item.composition, reading.composition!);
-
-    // Laid over whatever was scanned before rather than replacing it. A
-    // re-scan used to wipe out every field the new photograph did not happen
-    // to show — the commonest case being somebody scanning the back of a
-    // two-sided label and losing the wash symbols already read off the front.
-    final earlier = replaceEarlier ? null : item.careLabel;
-    final instructions = earlier == null
-        ? reading.instructions
-        : reading.instructions.mergedWith(earlier.value);
-
-    final withLabel = item.copyWith(
-      composition: composition,
-      careLabel: Confident(
-        instructions,
-        // An unreadable symbol lowers confidence in the whole reading, not
-        // just in the field it belonged to: if part of the label defeated the
-        // OCR, the rest of it deserves less trust as well.
-        //
-        // A merged label takes the lower of the two, because it is no more
-        // trustworthy than the least trustworthy reading it draws on — and
-        // some of its fields genuinely come from the older one.
-        confidence: earlier == null
-            ? reading.confidence
-            : (reading.confidence < earlier.confidence
-                  ? reading.confidence
-                  : earlier.confidence),
-        source: Provenance.tagScan,
-      ),
-      updatedAt: DateTime.now(),
+    final labelled = withCareLabel(
+      item,
+      reading,
+      resolver: _ref.read(careResolverProvider),
+      replaceEarlier: replaceEarlier,
     );
-
-    final resolution = _ref.read(careResolverProvider).forItem(withLabel);
 
     return CareTagReviewing(
       reading: reading,
-      updated: withLabel.copyWith(care: resolution.profile),
-      resolution: resolution,
+      updated: labelled.item,
+      resolution: labelled.resolution,
       previous: item.care.instructions,
       images: images,
-      keptFromEarlier: earlier == null
-          ? const {}
-          : reading.instructions.fieldsKeptFrom(earlier.value),
+      keptFromEarlier: labelled.keptFromEarlier,
       hadEarlierLabel: item.careLabel != null,
     );
   }

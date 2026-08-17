@@ -96,6 +96,51 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.18.0',
+    name: 'Whole Load',
+    date: DateTime.utc(2026, 8, 16),
+    headline: 'Photograph a whole pile, then submit it in one go',
+    changes: [
+      'New on the wardrobe: Add several garments. Photograph one, tap "Next '
+          'garment", photograph the next, and keep going through the pile. '
+          'Nothing is sent while you work, so there is no waiting between '
+          'garments.',
+      'Submit the lot and put the phone down. It works through them one at a '
+          'time and tells you how far it has got — "9 of 40" — rather than '
+          'spinning at you.',
+      'Photograph each garment\'s care label along with it and both are read '
+          'together, so a whole wardrobe arrives with real washing '
+          'instructions rather than guesses.',
+      'You still see everything before it is saved, but once for the whole '
+          'batch instead of once per garment. All ticked to start with: untick '
+          'anything you do not want, fix a name that came out wrong, then save '
+          'them all.',
+      'One garment failing does not lose the rest. The ones that could not be '
+          'read are listed by number so you know exactly which few to do '
+          'again.',
+    ],
+  ),
+  Release(
+    version: '0.17.0',
+    name: 'One Trip',
+    date: DateTime.utc(2026, 8, 16),
+    headline: 'Photograph the care label with the garment',
+    changes: [
+      'Photograph the care label while you are adding a garment and mark it '
+          '"Care label" — it is read in the same pass. No more saving the '
+          'garment, opening it again, and starting a second scanner for a tag '
+          'sewn into the thing you were already holding.',
+      'What the label says wins over what the fabric suggested, so the '
+          'washing comes from the manufacturer rather than a guess. The '
+          'review screen says which of the two you are looking at.',
+      'A label that comes out blurred no longer costs you the garment. It is '
+          'identified and saved as usual, the screen says the label could not '
+          'be read, and you can scan it again whenever you like.',
+      'Scanning a label on its own from the item screen still works exactly '
+          'as before.',
+    ],
+  ),
+  Release(
     version: '0.16.0',
     name: 'Something Blue',
     date: DateTime.utc(2026, 8, 16),

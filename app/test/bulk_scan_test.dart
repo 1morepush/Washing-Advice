@@ -1,0 +1,300 @@
+/// Adding a whole wardrobe in one sitting.
+///
+/// The thing being protected is the shape of the flow rather than any single
+/// reading: nothing leaves the phone until the user submits, one garment's
+/// photographs never bleed into the next, and a batch of forty survives the
+/// two or three that inevitably go wrong. A bulk screen that lost thirty-nine
+/// garments to one blurred photo would be worse than no bulk screen.
+library;
+
+import 'dart:typed_data';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:wardrobe_core/wardrobe_core.dart';
+import 'package:washing_advice/core/providers.dart';
+import 'package:washing_advice/data/api/ai_gateway.dart';
+import 'package:washing_advice/data/capture/image_capture_source.dart';
+import 'package:washing_advice/data/images/memory_image_store.dart';
+import 'package:washing_advice/features/scan/bulk_controller.dart';
+
+void main() {
+  late InMemoryWardrobeRepository repository;
+  late _BatchGateway gateway;
+  late ProviderContainer container;
+
+  setUp(() {
+    repository = InMemoryWardrobeRepository();
+    gateway = _BatchGateway();
+    container = ProviderContainer(
+      overrides: [
+        imageStoreProvider.overrideWithValue(MemoryImageStore()),
+        wardrobeRepositoryProvider.overrideWithValue(repository),
+        eventLogProvider.overrideWithValue(InMemoryEventLog()),
+        aiGatewayProvider.overrideWithValue(gateway),
+        idGeneratorProvider.overrideWithValue(
+          SequentialIdGenerator(prefix: 'bulk'),
+        ),
+        imageCaptureProvider.overrideWithValue(
+          FixedImageCaptureSource([
+            const ScanImage(bytes: [1, 2, 3]),
+          ]),
+        ),
+      ],
+    );
+  });
+
+  tearDown(() => container.dispose());
+
+  BulkController controller() =>
+      container.read(bulkControllerProvider.notifier);
+  BulkState state() => container.read(bulkControllerProvider);
+
+  /// Photograph [count] garments, one shot each.
+  Future<void> photograph(int count) async {
+    for (var i = 0; i < count; i++) {
+      await controller().capture();
+      if (i < count - 1) controller().nextGarment();
+    }
+  }
+
+  group('photographing the pile', () {
+    test('nothing is sent while you are still taking photos', () async {
+      // The whole reason this screen exists. Forty round trips you have to
+      // stand through is the thing being replaced.
+      await photograph(3);
+
+      expect(gateway.garmentCalls, 0);
+      expect(state(), isA<BulkCollecting>());
+      expect((state() as BulkCollecting).garmentCount, 3);
+    });
+
+    test('one garment does not bleed into the next', () async {
+      // The boundary is the tap, and it has to actually separate them: two
+      // garments merged into one loses a garment outright.
+      await controller().capture();
+      await controller().capture();
+      controller().nextGarment();
+      await controller().capture();
+
+      final collecting = state() as BulkCollecting;
+      expect(collecting.garmentCount, 2);
+      expect(collecting.all.first.shots, hasLength(2));
+      expect(collecting.all.last.shots, hasLength(1));
+    });
+
+    test('a garment boundary with no garment is not created', () async {
+      // An empty garment would be one more thing to explain in the review
+      // list, for a tap that was plainly a mistake.
+      controller().nextGarment();
+      controller().nextGarment();
+
+      expect((state() as BulkCollecting).garmentCount, 0);
+    });
+
+    test('an accidental Next garment can be walked back', () async {
+      // Otherwise the finished set is stranded: undo would have nothing to
+      // work on and the photos would be unreachable.
+      await controller().capture();
+      controller().nextGarment();
+      controller().discardLast();
+
+      final collecting = state() as BulkCollecting;
+      expect(collecting.done, isEmpty);
+      expect(collecting.current.shots, hasLength(1));
+    });
+
+    test('the care label rides along with its own garment', () async {
+      await controller().capture();
+      await controller().capture();
+      controller().setRole(1, PhotoRole.careTag);
+
+      expect((state() as BulkCollecting).current.hasCareTag, isTrue);
+    });
+  });
+
+  group('submitting the batch', () {
+    test('each garment is read on its own', () async {
+      await photograph(3);
+      await controller().submit();
+
+      expect(gateway.garmentCalls, 3);
+      expect(state(), isA<BulkReviewing>());
+      expect((state() as BulkReviewing).readable, hasLength(3));
+    });
+
+    test('the label goes to the label reader, per garment', () async {
+      await controller().capture();
+      await controller().capture();
+      controller().setRole(1, PhotoRole.careTag);
+      await controller().submit();
+
+      expect(gateway.labelCalls, 1);
+      final read = (state() as BulkReviewing).readable.single.read!;
+      expect(read.draft.careLabel, isNotNull);
+      expect(read.draft.effectiveCare.wash.maxTempC, 30);
+    });
+
+    test('one bad garment does not take the batch with it', () async {
+      // The most important test here. A batch this size will hit a blurred
+      // photo somewhere, and losing the other thirty-nine to it would be the
+      // worst possible outcome for a screen whose point is doing this once.
+      gateway.failOnCall = 2;
+      await photograph(3);
+      await controller().submit();
+
+      final reviewing = state() as BulkReviewing;
+      expect(reviewing.readable, hasLength(2));
+      expect(reviewing.failed, hasLength(1));
+    });
+
+    test('the one that failed is named, not silently dropped', () async {
+      // Otherwise somebody counts hangers to work out which to redo.
+      gateway.failOnCall = 2;
+      await photograph(3);
+      await controller().submit();
+
+      final failed = (state() as BulkReviewing).failed.single;
+      expect(failed.index, 1);
+      expect(failed.failure, isNotNull);
+    });
+
+    test('nothing has reached the wardrobe yet', () async {
+      // Reviewing is not skipped, only batched. Forty unreviewed garments is
+      // forty wrong names to find later.
+      await photograph(2);
+      await controller().submit();
+
+      expect(await repository.query(const WardrobeQuery.owned()), isEmpty);
+    });
+  });
+
+  group('reviewing and saving', () {
+    test(
+      'everything arrives accepted, so the fast path is one button',
+      () async {
+        await photograph(3);
+        await controller().submit();
+
+        expect((state() as BulkReviewing).accepted, hasLength(3));
+      },
+    );
+
+    test('saving writes them all, with their photos', () async {
+      await photograph(2);
+      await controller().submit();
+      await controller().saveAccepted();
+
+      final owned = await repository.query(const WardrobeQuery.owned());
+      expect(owned, hasLength(2));
+      expect(owned.first.photos.photos, isNotEmpty);
+      expect(state(), isA<BulkSaved>());
+      expect((state() as BulkSaved).saved, 2);
+    });
+
+    test('one turned down is not saved, and the rest are', () async {
+      await photograph(3);
+      await controller().submit();
+      controller().toggle(1);
+      await controller().saveAccepted();
+
+      expect(await repository.query(const WardrobeQuery.owned()), hasLength(2));
+    });
+
+    test('turning one down can be taken back', () async {
+      // It stays on screen rather than vanishing: a garment that disappeared
+      // on a mistaken tap would be a photo session you cannot get back.
+      await photograph(2);
+      await controller().submit();
+      controller().toggle(0);
+      controller().toggle(0);
+
+      expect((state() as BulkReviewing).accepted, hasLength(2));
+    });
+
+    test('a name can be fixed before saving', () async {
+      await photograph(1);
+      await controller().submit();
+      controller().revise(0, (draft) => draft.copyWith(name: 'My good jumper'));
+      await controller().saveAccepted();
+
+      final owned = await repository.query(const WardrobeQuery.owned());
+      expect(owned.single.displayName, 'My good jumper');
+    });
+
+    test('correcting one garment leaves the others alone', () async {
+      await photograph(3);
+      await controller().submit();
+      controller().revise(1, (draft) => draft.copyWith(name: 'Only this one'));
+
+      final names = (state() as BulkReviewing).readable
+          .map((o) => o.read!.draft.displayName)
+          .toList();
+      expect(names[1], 'Only this one');
+      expect(names[0], isNot('Only this one'));
+    });
+
+    test('an event is logged for every garment saved', () async {
+      // The item row and the event are two records of one happening, and the
+      // history is only replayable if bulk keeps them in step like the single
+      // flow does.
+      await photograph(2);
+      await controller().submit();
+      await controller().saveAccepted();
+
+      final events = await container.read(eventLogProvider).all();
+      expect(events.whereType<ItemAdded>(), hasLength(2));
+    });
+  });
+}
+
+/// A backend that answers every garment, and can be told to fail one.
+class _BatchGateway extends AiGateway {
+  _BatchGateway() : super(baseUrl: Uri.parse('http://test.invalid/'));
+
+  int garmentCalls = 0;
+  int labelCalls = 0;
+
+  /// Which call number to fail, counting from one. Null never fails.
+  int? failOnCall;
+
+  @override
+  Future<Uint8List?> cutout(ScanImage image) async =>
+      Uint8List.fromList([0x89, 0x50, 0x4E, 0x47]);
+
+  @override
+  Future<GarmentScanResult> scanGarment(List<ScanImage> images) async {
+    garmentCalls++;
+    if (garmentCalls == failOnCall) {
+      throw const ScanFailure('That photo was too blurred to read.');
+    }
+
+    return GarmentScanResult(
+      type: Confident(
+        ItemType.sweater,
+        confidence: 0.9,
+        source: Provenance.aiInference,
+      ),
+      colors: Confident(
+        ColorPalette([ItemColor.fromHex('#1F2A44', name: 'Navy')]),
+        confidence: 0.88,
+        source: Provenance.aiInference,
+      ),
+      composition: Confident(
+        FabricComposition(const {Fiber.wool: 100}),
+        confidence: 0.6,
+        source: Provenance.aiInference,
+      ),
+      suggestedName: 'Navy jumper $garmentCalls',
+    );
+  }
+
+  @override
+  Future<CareTagScanResult> scanCareTag(List<ScanImage> images) async {
+    labelCalls++;
+    return const CareTagScanResult(
+      instructions: CareConstraint(maxTempC: 30),
+      confidence: 0.93,
+    );
+  }
+}

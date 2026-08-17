@@ -7,16 +7,13 @@
 /// error at every place that has to handle it rather than a blank screen.
 library;
 
-import 'dart:typed_data';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../../data/capture/image_capture_source.dart';
-import '../../data/api/ai_gateway.dart';
 import '../../data/api/scan_dto.dart';
-import '../../data/images/image_store.dart';
+import 'garment_intake.dart';
 
 sealed class ScanState {
   const ScanState();
@@ -64,6 +61,13 @@ final class ScanCollecting extends ScanState {
     1 => PhotoRole.back,
     _ => PhotoRole.detail,
   };
+
+  /// Whether a care label is among these shots.
+  ///
+  /// Drives the one thing the screen has to say differently: that pressing the
+  /// button will read the tag as well, rather than leaving it for a second
+  /// trip through a different scanner.
+  bool get hasCareTag => shots.any((shot) => shot.role == PhotoRole.careTag);
 }
 
 /// Images are with the server.
@@ -79,8 +83,24 @@ final class ScanReviewing extends ScanState {
     required this.draft,
     required this.result,
     required this.shots,
+    this.label,
+    this.labelUnread = false,
     this.diagnostics,
   });
+
+  /// The care label read from the same batch, if one was photographed.
+  ///
+  /// Null when no tag was among the shots — the ordinary case — and also when
+  /// one was and could not be read, which [labelUnread] tells apart.
+  final CareTagScanResult? label;
+
+  /// Whether a label was photographed and came back with nothing usable.
+  ///
+  /// Worth its own flag rather than being inferred from a null [label]. The
+  /// user took that photograph on purpose, and silently saving a garment with
+  /// rule-derived care would leave them believing the manufacturer's
+  /// instructions were in hand when they are not.
+  final bool labelUnread;
 
   /// The photographs the reading came from, each with what it shows.
   ///
@@ -101,6 +121,8 @@ final class ScanReviewing extends ScanState {
     draft: draft,
     result: result,
     shots: shots,
+    label: label,
+    labelUnread: labelUnread,
     diagnostics: diagnostics,
   );
 }
@@ -218,28 +240,24 @@ class ScanController extends StateNotifier<ScanState> {
   ]);
 
   /// Sends photographs that are already in hand, each with what it shows.
+  ///
+  /// The reading itself lives in [GarmentIntake], shared with the bulk flow.
+  /// What belongs here is only what the screen does about it.
   Future<void> scanShots(List<ScanShot> shots) async {
-    final images = [for (final shot in shots) shot.image];
-    state = ScanAnalysing(images.length);
+    state = ScanAnalysing(shots.length);
 
-    final gateway = _ref.read(aiGatewayProvider);
     try {
-      final result = await gateway.scanGarment(images);
+      final read = await _ref.read(garmentIntakeProvider).read(shots);
       state = ScanReviewing(
-        draft: _draftFrom(result),
-        result: result,
-        shots: shots,
-        diagnostics: gateway.lastDiagnostics,
+        draft: read.draft,
+        result: read.result,
+        shots: read.shots,
+        label: read.label,
+        labelUnread: read.labelUnread,
+        diagnostics: read.diagnostics,
       );
-    } on ScanFailure catch (failure) {
+    } on IntakeFailure catch (failure) {
       state = ScanError(failure.message, isRetryable: failure.isRetryable);
-    } on ScanContractError catch (error) {
-      // Deliberately distinct wording. This is the app and the server
-      // disagreeing about the contract, and no amount of retrying fixes it.
-      state = ScanError(
-        'The server sent something this version cannot read. $error',
-        isRetryable: false,
-      );
     }
   }
 
@@ -250,157 +268,24 @@ class ScanController extends StateNotifier<ScanState> {
       // Re-resolve: changing the fabric changes what the rules say about it,
       // and a review screen still showing care derived from the old fibre
       // would be quietly wrong in exactly the way that damages clothes.
-      state = reviewing.withDraft(_reresolveCare(revised));
+      state = reviewing.withDraft(
+        _ref.read(garmentIntakeProvider).reresolveCare(revised),
+      );
     }
   }
 
   /// Writes the reviewed item to the wardrobe.
   Future<void> save() async {
     if (state case final ScanReviewing reviewing) {
-      final ids = _ref.read(idGeneratorProvider);
-      final item = await _withPhotos(reviewing.draft, reviewing.shots);
-
-      await _ref.read(wardrobeRepositoryProvider).save(item);
-      // The item row and the event are two records of the same happening. The
-      // row is what the wardrobe screen reads; the event is what makes the
-      // history replayable, and without it "added on" would be a field nobody
-      // could verify.
-      await _ref
-          .read(eventLogProvider)
-          .append(
-            ItemAdded(
-              id: EventId(ids.next()),
-              itemId: item.id,
-              occurredAt: item.addedAt,
-              recordedAt: DateTime.now(),
-            ),
-          );
-      state = ScanSaved(item);
+      state = ScanSaved(
+        await _ref
+            .read(garmentIntakeProvider)
+            .commit(reviewing.draft, reviewing.shots),
+      );
     }
   }
 
   void reset() => state = const ScanIdle();
-
-  /// Stores the captured photographs and asks the server for a cutout.
-  ///
-  /// Failures here are swallowed on purpose. A missing picture is a cosmetic
-  /// loss; refusing to save the garment over it would throw away a scan the
-  /// user has already reviewed and approved, which is a far worse outcome than
-  /// a row that falls back to its colour swatch.
-  Future<WardrobeItem> _withPhotos(
-    WardrobeItem item,
-    List<ScanShot> shots,
-  ) async {
-    if (shots.isEmpty) return item;
-
-    final store = _ref.read(imageStoreProvider);
-    final gateway = _ref.read(aiGatewayProvider);
-    final now = DateTime.now();
-
-    var photos = item.photos;
-    // The front is cut out, and only once. Two photographs both marked front —
-    // which the user is free to do — would otherwise mean two uploads and a
-    // second file overwriting the first.
-    var cutoutDone = false;
-
-    for (final (index, shot) in shots.indexed) {
-      final role = shot.role;
-      // Distinct per photograph, because the stored name is derived from it.
-      // Without this two details, or two backs, resolve to one name: the
-      // second overwrites the first and the set ends up with two records
-      // pointing at one file, carrying the wrong dimensions for one of them.
-      final capturedAt = now.add(Duration(microseconds: index));
-
-      try {
-        final uri = await store.save(
-          Uint8List.fromList(shot.image.bytes),
-          name: imageName(item.id, role, takenAt: capturedAt),
-        );
-
-        String? cutoutUri;
-        if (role == PhotoRole.front && !cutoutDone) {
-          cutoutDone = true;
-          final cutout = await gateway.cutout(shot.image);
-          if (cutout != null) {
-            cutoutUri = await store.save(
-              cutout,
-              name: imageName(item.id, role, takenAt: capturedAt, cutout: true),
-            );
-          }
-        }
-
-        photos = photos.add(
-          ItemPhoto(
-            uri: uri,
-            cutoutUri: cutoutUri,
-            role: role,
-            capturedAt: capturedAt,
-            width: shot.image.width,
-            height: shot.image.height,
-          ),
-        );
-      } on Exception {
-        // Storage full, permission revoked, disk error. Keep going: the other
-        // photographs and the item itself are still worth saving.
-        continue;
-      }
-    }
-
-    return item.copyWith(photos: photos);
-  }
-
-  /// Turns a scan result into a saveable item.
-  ///
-  /// The care profile is *derived*, not carried over: the vision layer reports
-  /// what it saw, and the core's rule table decides what that means for washing
-  /// it. Letting a model state care directly would put laundry judgement in the
-  /// provider, which is exactly what the rule table exists to prevent.
-  WardrobeItem _draftFrom(GarmentScanResult result) {
-    final now = DateTime.now();
-    final draft = WardrobeItem(
-      id: ItemId(_ref.read(idGeneratorProvider).next()),
-      name: result.suggestedName ?? result.type.value.label,
-      type: result.type,
-      composition:
-          result.composition ??
-          Confident(
-            FabricComposition(const {}),
-            confidence: 0,
-            source: Provenance.fallbackDefault,
-          ),
-      colors: result.colors,
-      brand: result.brand,
-      pattern: result.pattern,
-      sleeveLength: result.sleeveLength?.value,
-      fit: result.fit?.value,
-      styleCut: result.styleCut?.value,
-      seasons: result.seasons,
-      distinguishingText: result.distinguishingText,
-      care: const CareProfile.unknown(),
-      addedAt: now,
-      updatedAt: now,
-    );
-    return _reresolveCare(draft);
-  }
-
-  /// Recomputes the care profile from the item's own facts.
-  ///
-  /// No label constraint is passed: a garment scan reads the *garment*, not its
-  /// care tag. That is a separate scan with a separate provenance, and pretending
-  /// a photo of a hoodie told us its wash temperature would put a guess where the
-  /// user expects a manufacturer's instruction.
-  WardrobeItem _reresolveCare(WardrobeItem item) => item.copyWith(
-    care: _ref
-        .read(careResolverProvider)
-        .resolve(
-          facts: item.facts,
-          // Passing this is what makes a rule fired on a guessed fabric
-          // report itself as a guess, which in turn is what raises the
-          // "scan the label" prompt on exactly the items that need it.
-          factsConfidence: item.factsConfidence,
-        )
-        .profile,
-  );
 }
 
 final scanControllerProvider = StateNotifierProvider<ScanController, ScanState>(

@@ -17,6 +17,7 @@ import '../../data/capture/image_capture_source.dart';
 import '../../data/api/ai_gateway.dart';
 import '../../data/api/scan_dto.dart';
 import '../../data/images/image_store.dart';
+import 'care_label_merge.dart';
 
 sealed class ScanState {
   const ScanState();
@@ -64,6 +65,13 @@ final class ScanCollecting extends ScanState {
     1 => PhotoRole.back,
     _ => PhotoRole.detail,
   };
+
+  /// Whether a care label is among these shots.
+  ///
+  /// Drives the one thing the screen has to say differently: that pressing the
+  /// button will read the tag as well, rather than leaving it for a second
+  /// trip through a different scanner.
+  bool get hasCareTag => shots.any((shot) => shot.role == PhotoRole.careTag);
 }
 
 /// Images are with the server.
@@ -79,8 +87,24 @@ final class ScanReviewing extends ScanState {
     required this.draft,
     required this.result,
     required this.shots,
+    this.label,
+    this.labelUnread = false,
     this.diagnostics,
   });
+
+  /// The care label read from the same batch, if one was photographed.
+  ///
+  /// Null when no tag was among the shots — the ordinary case — and also when
+  /// one was and could not be read, which [labelUnread] tells apart.
+  final CareTagScanResult? label;
+
+  /// Whether a label was photographed and came back with nothing usable.
+  ///
+  /// Worth its own flag rather than being inferred from a null [label]. The
+  /// user took that photograph on purpose, and silently saving a garment with
+  /// rule-derived care would leave them believing the manufacturer's
+  /// instructions were in hand when they are not.
+  final bool labelUnread;
 
   /// The photographs the reading came from, each with what it shows.
   ///
@@ -101,6 +125,8 @@ final class ScanReviewing extends ScanState {
     draft: draft,
     result: result,
     shots: shots,
+    label: label,
+    labelUnread: labelUnread,
     diagnostics: diagnostics,
   );
 }
@@ -218,17 +244,67 @@ class ScanController extends StateNotifier<ScanState> {
   ]);
 
   /// Sends photographs that are already in hand, each with what it shows.
+  ///
+  /// Shots marked as the care label are split off and read by the label
+  /// scanner rather than being handed to the garment one. They are different
+  /// questions — what is this, and what does the manufacturer say about washing
+  /// it — and a photograph of a tag tells the garment reader almost nothing.
+  ///
+  /// Doing both here is what saves the second trip. Somebody adding a jumper
+  /// used to photograph it, wait, save it, open it again, and start a separate
+  /// scanner for the label sewn into the same garment they were already
+  /// holding. Now the tag is one more shot in the same handful.
   Future<void> scanShots(List<ScanShot> shots) async {
-    final images = [for (final shot in shots) shot.image];
-    state = ScanAnalysing(images.length);
+    final garment = [
+      for (final shot in shots)
+        if (shot.role != PhotoRole.careTag) shot.image,
+    ];
+    final label = [
+      for (final shot in shots)
+        if (shot.role == PhotoRole.careTag) shot.image,
+    ];
+
+    if (garment.isEmpty) {
+      // A label on its own identifies nothing. Worth saying plainly rather
+      // than sending it to the garment reader and relaying whatever it makes
+      // of a photograph of a tag.
+      state = const ScanError(
+        'There is no photo of the garment itself here — only its label. Add a '
+        'photo of the garment so it can be identified.',
+        isRetryable: false,
+      );
+      return;
+    }
+
+    state = ScanAnalysing(shots.length);
 
     final gateway = _ref.read(aiGatewayProvider);
     try {
-      final result = await gateway.scanGarment(images);
+      final result = await gateway.scanGarment(garment);
+      var draft = _draftFrom(result);
+
+      CareTagScanResult? reading;
+      if (label.isNotEmpty) {
+        // After the garment rather than alongside it, and deliberately: the
+        // label is laid over a draft that has to exist first, and running them
+        // together would save a few seconds in exchange for having to hold a
+        // half-built item while one of two calls is still out.
+        reading = await _readLabel(label);
+        if (reading != null) {
+          draft = withCareLabel(
+            draft,
+            reading,
+            resolver: _ref.read(careResolverProvider),
+          ).item;
+        }
+      }
+
       state = ScanReviewing(
-        draft: _draftFrom(result),
+        draft: draft,
         result: result,
         shots: shots,
+        label: reading,
+        labelUnread: label.isNotEmpty && reading == null,
         diagnostics: gateway.lastDiagnostics,
       );
     } on ScanFailure catch (failure) {
@@ -240,6 +316,29 @@ class ScanController extends StateNotifier<ScanState> {
         'The server sent something this version cannot read. $error',
         isRetryable: false,
       );
+    }
+  }
+
+  /// Reads the label shots, or returns null if they said nothing usable.
+  ///
+  /// Failure here never fails the scan. The garment has already been
+  /// identified and is worth saving; an unreadable tag costs the user the care
+  /// instructions, which they can scan again from the item screen at their
+  /// leisure. Throwing away a good garment reading because the label photo was
+  /// blurred would be the tail wagging the dog — so this reports by returning
+  /// nothing and the review screen says so.
+  Future<CareTagScanResult?> _readLabel(List<ScanImage> images) async {
+    try {
+      final reading = await _ref.read(aiGatewayProvider).scanCareTag(images);
+      // A label stating nothing must not be attached. It would replace a
+      // rule-derived profile with an empty one recorded at `tagScan`
+      // provenance, making the app more confident about care it learned
+      // nothing new about.
+      return reading.instructions.statesNothing ? null : reading;
+    } on ScanFailure {
+      return null;
+    } on ScanContractError {
+      return null;
     }
   }
 

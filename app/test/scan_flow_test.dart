@@ -313,6 +313,146 @@ void main() {
       expect((state() as ScanCollecting).shots, hasLength(1));
     });
   });
+
+  group('the care label in the same handful of photos', () {
+    /// Photograph the garment, then its tag, and identify the lot.
+    ///
+    /// The whole point of the feature: one trip through one screen, rather
+    /// than save the garment, reopen it, and start a second scanner for a
+    /// label sewn into the thing you were already holding.
+    Future<void> captureBoth() async {
+      await controller().capture();
+      await controller().capture();
+      controller().setRole(1, PhotoRole.careTag);
+      await controller().scanCollected();
+    }
+
+    setUp(() {
+      container.dispose();
+      container = ProviderContainer(
+        overrides: [
+          imageStoreProvider.overrideWithValue(images),
+          wardrobeRepositoryProvider.overrideWithValue(repository),
+          eventLogProvider.overrideWithValue(InMemoryEventLog()),
+          aiGatewayProvider.overrideWithValue(gateway),
+          idGeneratorProvider.overrideWithValue(
+            SequentialIdGenerator(prefix: 'scan'),
+          ),
+          imageCaptureProvider.overrideWithValue(
+            _Roll(const [
+              ScanImage(bytes: [1, 2, 3]),
+              ScanImage(bytes: [4, 5, 6]),
+            ]),
+          ),
+        ],
+      );
+    });
+
+    test('the tag goes to the label reader, not the garment one', () async {
+      // Two different questions. A photograph of a care tag tells the garment
+      // reader almost nothing, and sending it there would spend an image to
+      // make the identification worse.
+      await captureBoth();
+
+      expect(gateway.imagesSent, 1);
+      expect(gateway.labelImagesSent, 1);
+    });
+
+    test('the manufacturer instruction wins over the fabric guess', () async {
+      // The reason this is worth doing at all. Without the label the care
+      // comes from the rule table reasoning about wool; with it, it comes
+      // from whoever made the garment.
+      await captureBoth();
+
+      final reviewing = state() as ScanReviewing;
+      expect(reviewing.draft.careLabel, isNotNull);
+      expect(reviewing.draft.careLabel!.source, Provenance.tagScan);
+      expect(reviewing.draft.effectiveCare.wash.maxTempC, 30);
+    });
+
+    test('the saved item carries it, so no second trip is needed', () async {
+      await captureBoth();
+      await controller().save();
+
+      final saved = await repository.byId((state() as ScanSaved).item.id);
+      expect(saved!.careLabel, isNotNull);
+      expect(saved.needsCareTagScan, isFalse);
+    });
+
+    test('the label photo is filed as a label, and never cut out', () async {
+      // A cutout of a care tag is meaningless, and the front is the only shot
+      // that gets one.
+      await captureBoth();
+      await controller().save();
+
+      final saved = await repository.byId((state() as ScanSaved).item.id);
+      expect(
+        saved!.photos.photos.map((p) => p.role),
+        containsAll([PhotoRole.front, PhotoRole.careTag]),
+      );
+      expect(gateway.cutoutsRequested, 1);
+    });
+
+    test('a garment photographed without a tag is unchanged', () async {
+      // The ordinary path has to stay exactly as it was: no label reader call
+      // at all, and care still derived by the rule table.
+      await controller().capture();
+      await controller().scanCollected();
+
+      expect(gateway.labelImagesSent, 0);
+      final reviewing = state() as ScanReviewing;
+      expect(reviewing.draft.careLabel, isNull);
+      expect(reviewing.label, isNull);
+      expect(reviewing.labelUnread, isFalse);
+    });
+
+    test('an unreadable tag does not cost you the garment', () async {
+      // The important one. The garment has been identified and is worth
+      // saving; throwing that away because the tag photo was blurred would be
+      // the tail wagging the dog.
+      gateway.labelReading = null;
+      await captureBoth();
+
+      final reviewing = state() as ScanReviewing;
+      expect(reviewing.draft.type.value, ItemType.sweater);
+      expect(reviewing.draft.careLabel, isNull);
+      // Said rather than silent, so nobody believes the manufacturer's
+      // instructions are in hand when what is showing is a guess.
+      expect(reviewing.labelUnread, isTrue);
+    });
+
+    test('a label request that fails outright is the same story', () async {
+      gateway.labelFailure = const ScanFailure('The label reader is down.');
+      await captureBoth();
+
+      expect(state(), isA<ScanReviewing>());
+      expect((state() as ScanReviewing).labelUnread, isTrue);
+    });
+
+    test('a tag with no garment identifies nothing, and says so', () async {
+      // A label on its own is not a garment scan. Better to say that than to
+      // hand a photo of a tag to the garment reader and relay whatever it
+      // makes of it.
+      await controller().capture();
+      controller().setRole(0, PhotoRole.careTag);
+      await controller().scanCollected();
+
+      expect(state(), isA<ScanError>());
+      expect((state() as ScanError).message, contains('only its label'));
+      expect(gateway.imagesSent, 0);
+    });
+
+    test('editing the draft does not lose the label that was read', () async {
+      // withDraft rebuilds the reviewing state, and dropping the label there
+      // would make the reading vanish the moment somebody corrected the name.
+      await captureBoth();
+      controller().reviseDraft((draft) => draft.copyWith(name: 'My jumper'));
+
+      final reviewing = state() as ScanReviewing;
+      expect(reviewing.label, isNotNull);
+      expect(reviewing.draft.careLabel, isNotNull);
+    });
+  });
 }
 
 /// Stands in for the backend.
@@ -335,6 +475,33 @@ class _FakeGateway extends AiGateway {
 
   /// How many cutouts were asked for. One garment needs exactly one.
   int cutoutsRequested = 0;
+
+  /// How many photographs the label reader was given, so a test can prove the
+  /// tag went to the label endpoint rather than to the garment one.
+  int labelImagesSent = 0;
+
+  /// What the label reader answers with. Null stands for a server that could
+  /// not make anything of the photograph.
+  CareTagScanResult? labelReading = const CareTagScanResult(
+    instructions: CareConstraint(maxTempC: 30),
+    confidence: 0.93,
+  );
+
+  ScanFailure? labelFailure;
+
+  @override
+  Future<CareTagScanResult> scanCareTag(List<ScanImage> images) async {
+    labelImagesSent = images.length;
+    if (labelFailure case final ScanFailure failure) throw failure;
+    // Null stands for a label that stated nothing legible, which is a
+    // different outcome from the request failing.
+    return labelReading ??
+        const CareTagScanResult(
+          instructions: CareConstraint(),
+          confidence: 0.1,
+          unreadableSymbolCount: 4,
+        );
+  }
 
   @override
   Future<Uint8List?> cutout(ScanImage image) async {

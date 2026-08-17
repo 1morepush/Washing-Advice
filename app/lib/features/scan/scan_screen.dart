@@ -220,6 +220,11 @@ class _Review extends StatelessWidget {
                   show: (p) => p.label,
                 ),
               const SizedBox(height: 8),
+              // Said before the care card, because it changes how that card
+              // should be read: care derived from a manufacturer's instruction
+              // is a different kind of fact from care inferred from pixels.
+              if (state.label != null || state.labelUnread)
+                _LabelOutcome(read: state.label != null),
               _CareSummary(item: draft),
               if (state.diagnostics case final ScanDiagnostics diagnostics)
                 _Diagnostics(diagnostics: diagnostics),
@@ -318,6 +323,52 @@ class _Reading<T extends Object> extends StatelessWidget {
 }
 
 /// What the rule table concluded from the reading.
+/// What became of a care label photographed alongside the garment.
+///
+/// Both outcomes are worth a line. A label that was read is the strongest care
+/// evidence the app can hold and the reason the wash settings below are what
+/// they are. A label that could not be read matters more: the user took that
+/// photograph deliberately, and letting the screen fall silent would leave
+/// them believing the manufacturer's instructions were in hand when what is
+/// actually showing is a guess from the fabric.
+class _LabelOutcome extends StatelessWidget {
+  const _LabelOutcome({required this.read});
+
+  final bool read;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = read ? theme.colorScheme.primary : theme.colorScheme.error;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            read ? Icons.check_circle_outline : Icons.error_outline,
+            size: 16,
+            color: color,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              read
+                  ? 'The care label was read from your photo, so the washing '
+                        'below comes from the manufacturer rather than a guess.'
+                  : 'The care label photo could not be read, so the washing '
+                        'below is worked out from the fabric. You can scan the '
+                        'label again from the item once it is saved.',
+              style: theme.textTheme.bodySmall?.copyWith(color: color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _CareSummary extends StatelessWidget {
   const _CareSummary({required this.item});
 
@@ -504,6 +555,8 @@ class _Collected extends StatelessWidget {
   final List<ScanShot> shots;
   final ScanController controller;
 
+  bool get hasCareTag => shots.any((shot) => shot.role == PhotoRole.careTag);
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -524,6 +577,23 @@ class _Collected extends StatelessWidget {
                 'shows. Nothing has been sent yet.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Said here rather than discovered afterwards. The tag is the
+              // one role that changes what pressing the button does, and
+              // somebody who does not know they can include it will keep
+              // making the second trip they no longer need to.
+              Text(
+                hasCareTag
+                    ? 'The care label is in here too, so it will be read in '
+                          'the same pass — no need to scan it separately after.'
+                    : 'Photograph the care label too and mark it "Care label", '
+                          'and it is read in the same pass.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: hasCareTag
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: 16),
@@ -570,11 +640,11 @@ class _Collected extends StatelessWidget {
                   child: FilledButton.icon(
                     onPressed: controller.scanCollected,
                     icon: const Icon(Icons.auto_awesome_outlined),
-                    label: Text(
-                      shots.length == 1
-                          ? 'Identify it'
-                          : 'Identify from these ${shots.length}',
-                    ),
+                    label: Text(switch ((shots.length, hasCareTag)) {
+                      (1, _) => 'Identify it',
+                      (final n, true) => 'Identify and read the label ($n)',
+                      (final n, false) => 'Identify from these $n',
+                    }),
                   ),
                 ),
               ],
@@ -598,12 +668,21 @@ class _ShotTile extends StatelessWidget {
   final ScanShot shot;
   final ValueChanged<PhotoRole> onRole;
 
-  /// The parts worth offering. Not every [PhotoRole] — a care label has its own
-  /// scanner, and offering `condition` or `worn` here would invite somebody to
-  /// file a stain photo as part of identifying the garment.
+  /// The parts worth offering.
+  ///
+  /// Not every [PhotoRole]: `condition` and `worn` are left out, because
+  /// offering them would invite somebody to file a stain photo as part of
+  /// identifying the garment, which is a different question with a different
+  /// screen.
+  ///
+  /// The care label *is* offered. It has its own scanner still, for a garment
+  /// already in the wardrobe, but requiring a second trip through it for a tag
+  /// sewn into the garment you are photographing right now was busywork. Marked
+  /// here, it is read in the same pass by the same label reader.
   static const _offered = [
     PhotoRole.front,
     PhotoRole.back,
+    PhotoRole.careTag,
     PhotoRole.detail,
     PhotoRole.logo,
     PhotoRole.brandTag,

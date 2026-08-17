@@ -96,6 +96,26 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.17.0',
+    name: 'One Trip',
+    date: DateTime.utc(2026, 8, 16),
+    headline: 'Photograph the care label with the garment',
+    changes: [
+      'Photograph the care label while you are adding a garment and mark it '
+          '"Care label" — it is read in the same pass. No more saving the '
+          'garment, opening it again, and starting a second scanner for a tag '
+          'sewn into the thing you were already holding.',
+      'What the label says wins over what the fabric suggested, so the '
+          'washing comes from the manufacturer rather than a guess. The '
+          'review screen says which of the two you are looking at.',
+      'A label that comes out blurred no longer costs you the garment. It is '
+          'identified and saved as usual, the screen says the label could not '
+          'be read, and you can scan it again whenever you like.',
+      'Scanning a label on its own from the item screen still works exactly '
+          'as before.',
+    ],
+  ),
+  Release(
     version: '0.16.0',
     name: 'Something Blue',
     date: DateTime.utc(2026, 8, 16),

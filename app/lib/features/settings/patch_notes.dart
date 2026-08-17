@@ -96,6 +96,20 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.18.1',
+    name: 'Button Up',
+    date: DateTime.utc(2026, 8, 17),
+    headline: 'The add buttons say what they do',
+    changes: [
+      'Fixed: the new "add several garments" button showed up blank in the '
+          'corner of the wardrobe, under a second round button that was not '
+          'much clearer. Neither said what it did without holding it down.',
+      'There is one add button now. Tap it and it asks whether you are adding '
+          'one garment or a pile, in words, with a line about what each is '
+          'for. Both flows are unchanged.',
+    ],
+  ),
+  Release(
     version: '0.18.0',
     name: 'Whole Load',
     date: DateTime.utc(2026, 8, 16),

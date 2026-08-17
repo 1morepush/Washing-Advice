@@ -23,6 +23,43 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  group('adding garments', () {
+    testWidgets('there is one add button, not a stack of mystery circles', (
+      tester,
+    ) async {
+      // Two unlabelled circles above a labelled button left the corner saying
+      // nothing about what either did — you had to long press for a tooltip.
+      await pump(tester);
+
+      expect(find.byType(FloatingActionButton), findsNWidgets(2));
+      expect(find.text('Sort laundry'), findsOneWidget);
+    });
+
+    testWidgets('it asks which job this is, in words', (tester) async {
+      await pump(tester);
+
+      await tester.tap(find.byTooltip('Add garments'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('One garment'), findsOneWidget);
+      expect(find.text('Several garments'), findsOneWidget);
+    });
+
+    testWidgets('and says what the bulk one saves you', (tester) async {
+      // The reason somebody standing over a laundry basket would pick it, and
+      // not something they should have to discover by trying it.
+      await pump(tester);
+
+      await tester.tap(find.byTooltip('Add garments'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('No waiting between garments'),
+        findsOneWidget,
+      );
+    });
+  });
+
   testWidgets('renders the items already in the wardrobe', (tester) async {
     await repository.saveAll([
       _item(id: 'a', name: 'Charcoal merino jumper'),

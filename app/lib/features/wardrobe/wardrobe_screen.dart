@@ -112,24 +112,16 @@ class WardrobeScreen extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Filling a wardrobe from nothing is a different job from adding
-          // today's purchase, and it wants the whole pile photographed before
-          // anything is sent. Its own entry rather than a mode buried inside
-          // the single scan, because somebody standing over a laundry basket
-          // needs to find it before they start rather than three garments in.
-          FloatingActionButton.small(
-            heroTag: 'add-many',
-            onPressed: () => context.go('/scan/bulk'),
-            tooltip: 'Add several garments',
-            child: const Icon(Icons.burst_mode_outlined),
-          ),
-          const SizedBox(height: 12),
-          // Adding one garment is the smaller action and gets the smaller
-          // button. Sorting a pile is what the app is for.
+          // One button for adding, which then asks whether it is one garment
+          // or a pile. Two of them side by side was worse in both directions:
+          // an unlabelled circle cannot say what it does — you had to long
+          // press for a tooltip to find out — and stacking a second one above
+          // it left three buttons in the corner, of which two were mystery
+          // circles. The sheet costs one tap and says both options in words.
           FloatingActionButton.small(
             heroTag: 'add-item',
-            onPressed: () => context.go('/scan'),
-            tooltip: 'Add a garment',
+            onPressed: () => _chooseHowToAdd(context),
+            tooltip: 'Add garments',
             child: const Icon(Icons.add_a_photo_outlined),
           ),
           const SizedBox(height: 12),
@@ -162,6 +154,50 @@ class WardrobeScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Asks whether this is one garment or a pile.
+///
+/// A sheet rather than a second button. The two jobs are genuinely different —
+/// one is "I bought a shirt", the other is "I am setting this app up" — but
+/// they are the same *verb*, and giving each its own unlabelled circle in the
+/// corner made the user guess which was which from an icon.
+///
+/// Both options say what they do and what it costs. Somebody standing over a
+/// laundry basket should be able to tell, without trying it, that the second
+/// one will not make them wait between garments.
+Future<void> _chooseHowToAdd(BuildContext context) async {
+  final choice = await showModalBottomSheet<String>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.camera_alt_outlined),
+            title: const Text('One garment'),
+            subtitle: const Text(
+              'Photograph it and its care label, and check the reading.',
+            ),
+            onTap: () => Navigator.pop(context, '/scan'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.checklist_outlined),
+            title: const Text('Several garments'),
+            subtitle: const Text(
+              'Photograph a whole pile first, then submit the lot at once. '
+              'No waiting between garments.',
+            ),
+            onTap: () => Navigator.pop(context, '/scan/bulk'),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    ),
+  );
+
+  if (choice != null && context.mounted) context.go(choice);
 }
 
 /// Switches between the grid and the list.

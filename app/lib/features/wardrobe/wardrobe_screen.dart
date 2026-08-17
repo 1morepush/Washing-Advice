@@ -112,6 +112,18 @@ class WardrobeScreen extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          // Filling a wardrobe from nothing is a different job from adding
+          // today's purchase, and it wants the whole pile photographed before
+          // anything is sent. Its own entry rather than a mode buried inside
+          // the single scan, because somebody standing over a laundry basket
+          // needs to find it before they start rather than three garments in.
+          FloatingActionButton.small(
+            heroTag: 'add-many',
+            onPressed: () => context.go('/scan/bulk'),
+            tooltip: 'Add several garments',
+            child: const Icon(Icons.burst_mode_outlined),
+          ),
+          const SizedBox(height: 12),
           // Adding one garment is the smaller action and gets the smaller
           // button. Sorting a pile is what the app is for.
           FloatingActionButton.small(

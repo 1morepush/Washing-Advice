@@ -199,9 +199,8 @@ class _Collecting extends StatelessWidget {
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        // Disabled with nothing in hand, because a garment
-                        // boundary with no garment either loses the tap or
-                        // creates an empty one to explain later.
+                        // Disabled with nothing in hand: an empty garment is
+                        // one more thing to explain in the review list.
                         onPressed: current.isEmpty
                             ? null
                             : controller.nextGarment,
@@ -228,10 +227,8 @@ class _Collecting extends StatelessWidget {
   }
 }
 
-/// The unattended wait.
-///
-/// Counted rather than spun at. This is the one screen in the app somebody is
-/// explicitly invited to walk away from, and "9 of 40" is what makes coming
+/// The unattended wait, counted rather than spun at: this is the one screen
+/// somebody is invited to walk away from, and "9 of 40" is what makes coming
 /// back at the right time possible.
 class _Processing extends StatelessWidget {
   const _Processing({required this.finished, required this.total});
@@ -327,9 +324,8 @@ class _Reviewing extends StatelessWidget {
                 ),
               if (state.failed.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                // Named rather than silently dropped. A batch that quietly
-                // returned thirty-seven of forty would leave somebody counting
-                // hangers to work out which three to do again.
+                // Named rather than silently dropped: thirty-seven back out
+                // of forty would leave somebody counting hangers.
                 Text(
                   '${state.failed.length} could not be read',
                   style: theme.textTheme.labelLarge,
@@ -436,9 +432,8 @@ class _OutcomeCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  // The label outcome, per garment. In a list of forty this is
-                  // the difference between care from the manufacturer and care
-                  // guessed from fabric, and it is not visible anywhere else.
+                  // Per garment, because in a list of forty this is the only
+                  // place the difference is visible.
                   if (read.label != null)
                     _Note(
                       icon: Icons.check_circle_outline,
@@ -555,11 +550,8 @@ class _Done extends StatelessWidget {
   );
 }
 
-/// One photograph, with what it shows.
-///
-/// The same roles the single scan screen offers, care label included, because
-/// including the tag with the garment is most of the point of doing this in
-/// bulk at all.
+/// One photograph, with what it shows. The same roles the single scan screen
+/// offers, care label included.
 class _ShotTile extends StatelessWidget {
   const _ShotTile({required this.shot, required this.onRole});
 

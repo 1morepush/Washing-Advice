@@ -26,11 +26,9 @@ import 'stylist_controller.dart';
 
 /// Whether to also ask what the wardrobe is missing.
 ///
-/// Off by default, and asked for rather than assumed. Naming clothes somebody
-/// does not own is a different thing from naming ones they do, and a wardrobe
-/// app that volunteered it would be answering a question nobody put — plenty of
-/// people keep one of these precisely to buy less. Same shape as
-/// `groupDuplicatesProvider`: a display preference, held where the feature is.
+/// Off by default. Naming clothes somebody does not own is a different thing
+/// from naming ones they do, and plenty of people keep a wardrobe app
+/// precisely to buy less.
 final suggestGapsProvider = StateProvider<bool>((ref) => false);
 
 class StylistTab extends ConsumerStatefulWidget {
@@ -133,10 +131,6 @@ class _Intro extends ConsumerWidget {
           minLines: 1,
         ),
         const SizedBox(height: 8),
-        // Opt-in, and worded as what it does rather than as a feature name.
-        // "Also suggest things to buy" would be a different promise: what comes
-        // back names a garment and a colour and stops there, with no brand, no
-        // shop and no price, because where to get one is not the app's business.
         CheckboxListTile(
           value: ref.watch(suggestGapsProvider),
           onChanged: (on) =>
@@ -235,11 +229,8 @@ class _Ideas extends ConsumerWidget {
           ),
         ],
         const SizedBox(height: 8),
-        // The same choice as on the intro, offered again where it can actually
-        // be changed. Without it the first answer decides the rest of the
-        // session: the intro is not reachable once ideas are on screen, so
-        // somebody who asked without this on had no way back to it, and
-        // somebody who asked with it on had no way to stick to their wardrobe.
+        // Offered again here because the intro is unreachable once ideas are
+        // on screen, which would let the first ask decide the whole session.
         CheckboxListTile(
           value: ref.watch(suggestGapsProvider),
           onChanged: (on) =>
@@ -266,15 +257,9 @@ class _Ideas extends ConsumerWidget {
 
 /// Pieces the wardrobe does not have.
 ///
-/// Below the outfits and visibly apart from them, because they are a different
-/// kind of answer and the difference matters: everything above this can be
-/// worn today, and nothing here can. A card that looked like the others would
-/// be offering somebody clothes they do not own, which is the exact failure
-/// [StyleVetting] exists to prevent on the other side.
-///
-/// No Save and no "Wearing this". Both resolve to real garments, and a piece
-/// with no id has none — a button that appeared to work and then quietly did
-/// nothing would be worse than its absence.
+/// Visibly apart from the outfits above, because everything there can be worn
+/// today and nothing here can. No Save and no "Wearing this" either: both
+/// resolve to real garments, and a piece with no id has none.
 class _Missing extends StatelessWidget {
   const _Missing({required this.pieces});
 
@@ -330,8 +315,8 @@ class _MissingCard extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      // Outlined rather than filled, so it reads as a note beside the outfits
-      // rather than as one more thing to wear.
+      // Outlined rather than filled, so it reads as a note rather than as one
+      // more thing to wear.
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -344,9 +329,8 @@ class _MissingCard extends StatelessWidget {
           children: [
             Text(piece.description, style: theme.textTheme.titleSmall),
             const SizedBox(height: 8),
-            // Named, not just counted. "Goes with 2 items" would make somebody
-            // ask which two, and the pairing is the whole reason this is advice
-            // rather than a shopping list.
+            // Named rather than counted: "goes with 2 items" leaves somebody
+            // asking which two.
             Text(
               'Goes with your '
               '${piece.pairsWith.map((item) => item.displayName).join(', ')}.',

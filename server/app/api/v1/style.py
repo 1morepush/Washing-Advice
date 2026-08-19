@@ -12,10 +12,9 @@ vetted there rather than here: the app has the facts and the server has a
 summary.
 
 When `suggest_gaps` is set the answer also names pieces the wardrobe does not
-have. Those are unchecked in exactly the same way and for the same reason:
-`GapVetting` in the core resolves the garments each one claims to go with, and
-refuses anything already hanging up — a judgement that needs the wardrobe, which
-this endpoint deliberately does not keep.
+have, unchecked in the same way: `GapVetting` in the core refuses anything
+already hanging up, a judgement that needs the wardrobe this endpoint does not
+keep.
 """
 
 from __future__ import annotations

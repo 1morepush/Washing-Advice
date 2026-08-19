@@ -112,12 +112,8 @@ class WardrobeScreen extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // One button for adding, which then asks whether it is one garment
-          // or a pile. Two of them side by side was worse in both directions:
-          // an unlabelled circle cannot say what it does — you had to long
-          // press for a tooltip to find out — and stacking a second one above
-          // it left three buttons in the corner, of which two were mystery
-          // circles. The sheet costs one tap and says both options in words.
+          // One button that asks, rather than two unlabelled circles neither
+          // of which said what it did without a long press.
           FloatingActionButton.small(
             heroTag: 'add-item',
             onPressed: () => _chooseHowToAdd(context),
@@ -158,14 +154,9 @@ class WardrobeScreen extends ConsumerWidget {
 
 /// Asks whether this is one garment or a pile.
 ///
-/// A sheet rather than a second button. The two jobs are genuinely different —
-/// one is "I bought a shirt", the other is "I am setting this app up" — but
-/// they are the same *verb*, and giving each its own unlabelled circle in the
-/// corner made the user guess which was which from an icon.
-///
-/// Both options say what they do and what it costs. Somebody standing over a
-/// laundry basket should be able to tell, without trying it, that the second
-/// one will not make them wait between garments.
+/// The two jobs are different — "I bought a shirt" against "I am setting this
+/// app up" — but they are the same verb, so they share a button and the sheet
+/// names both in words.
 Future<void> _chooseHowToAdd(BuildContext context) async {
   final choice = await showModalBottomSheet<String>(
     context: context,

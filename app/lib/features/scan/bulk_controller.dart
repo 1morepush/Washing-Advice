@@ -1,31 +1,14 @@
 /// Adding a whole wardrobe in one sitting.
 ///
-/// The single scan flow is right for one garment and wrong for forty. Its shape
-/// is photograph → wait → review → save, and the waiting is the problem: doing
-/// that forty times means forty round trips each of which you have to be
-/// present for, standing over a pile with a phone.
+/// The single scan flow interleaves photograph → wait → review → save per
+/// garment, which is right for one and unbearable for forty. This inverts it:
+/// photograph everything with nothing sent, hand the lot over, walk away.
 ///
-/// So this inverts it. Photograph everything first, with the camera never
-/// closing and nothing sent, then hand the lot over and walk away. The waiting
-/// happens once, unattended, and the reviewing happens once, afterwards, at a
-/// desk rather than over a laundry basket.
-///
-/// ## Where one garment ends and the next begins
-///
-/// The user says, by tapping "Next garment". Nothing tries to infer it.
-/// Guessing wrong is expensive in both directions — two garments merged into
-/// one loses a garment outright, and one garment split in two puts a phantom in
-/// the wardrobe — and the tap costs less than either mistake. It is also the
-/// only moment where the person holding the clothes knows something the
-/// pictures cannot say.
-///
-/// ## What is still not skipped
-///
-/// Review. It happens once for the whole batch instead of once per garment, and
-/// everything arrives pre-accepted so the fast path is a single button. But
-/// nothing is written to the wardrobe until somebody has looked, because forty
-/// unreviewed garments is forty wrong names to find and fix later, which is
-/// worse than the thing this screen exists to avoid.
+/// Two decisions worth keeping in mind. The boundary between garments is the
+/// user's tap rather than an inference — merging two loses a garment outright
+/// and splitting one puts a phantom in the wardrobe, and the tap costs less
+/// than either. And review is batched rather than skipped: forty unreviewed
+/// garments is forty wrong names to find later.
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -46,11 +29,8 @@ final class PendingGarment {
 
   bool get hasCareTag => shots.any((shot) => shot.role == PhotoRole.careTag);
 
-  /// What the next photograph of this garment is most likely to be.
-  ///
   /// Front, then back, then details — the same guess the single flow makes,
-  /// and the same reasoning: the order people photograph a garment in is
-  /// genuinely predictable, and a wrong guess costs one tap to fix.
+  /// and a wrong one costs a tap to fix.
   PhotoRole get nextRole => switch (shots.length) {
     0 => PhotoRole.front,
     1 => PhotoRole.back,
@@ -74,8 +54,8 @@ final class PendingGarment {
 final class BulkOutcome {
   const BulkOutcome({required this.index, this.read, this.failure});
 
-  /// Which garment in the batch this was, counting from one, so a failure can
-  /// be named as "the third one" rather than left for the user to work out.
+  /// Which garment in the batch this was, so a failure can be named rather
+  /// than left for the user to work out.
   final int index;
 
   /// The reading, when it worked.
@@ -129,9 +109,9 @@ final class BulkReviewing extends BulkState {
 
   final List<BulkOutcome> outcomes;
 
-  /// Indices the user has turned down, so they are kept on screen rather than
-  /// vanishing — a garment that disappeared when you tapped the wrong thing
-  /// would be a photograph session you cannot get back.
+  /// Indices the user has turned down. Kept on screen rather than vanishing:
+  /// a garment that disappeared on a mistaken tap is a photo session you
+  /// cannot get back.
   final Set<int> rejected;
 
   List<BulkOutcome> get readable => [
@@ -227,9 +207,6 @@ class BulkController extends StateNotifier<BulkState> {
   }
 
   /// Finishes this garment and starts the next.
-  ///
-  /// The only thing that separates one garment from another, and deliberately
-  /// a decision rather than an inference — see the library comment.
   void nextGarment() {
     if (state case final BulkCollecting collecting) {
       if (collecting.current.isEmpty) return;
@@ -240,11 +217,8 @@ class BulkController extends StateNotifier<BulkState> {
     }
   }
 
-  /// Drops the last photograph of the garment in hand.
-  ///
-  /// Falls back to reopening the previous garment once the current one is
-  /// empty, so an accidental "Next garment" is recoverable rather than
-  /// stranding a finished set.
+  /// Drops the last photograph, reopening the previous garment once this one
+  /// is empty so an accidental "Next garment" is recoverable.
   void discardLast() {
     if (state case final BulkCollecting collecting) {
       if (!collecting.current.isEmpty) {
@@ -265,15 +239,12 @@ class BulkController extends StateNotifier<BulkState> {
 
   /// Sends every garment collected, one after another.
   ///
-  /// Sequentially rather than all at once. Forty simultaneous uploads from a
-  /// phone is a good way to have most of them time out, and the honest
-  /// progress count this gives — "9 of 40" — is worth more here than shaving
-  /// time off a wait the user has already been told to walk away from.
+  /// Sequential rather than parallel: forty simultaneous uploads from a phone
+  /// is a good way to have most of them time out, and an honest "9 of 40" is
+  /// worth more than shaving time off a wait meant to be walked away from.
   ///
-  /// One garment failing never stops the rest. A batch this size will hit a
-  /// blurred photo or a dropped connection somewhere, and losing the other
-  /// thirty-nine to it would be the worst possible outcome for a screen whose
-  /// whole purpose is doing this once.
+  /// One garment failing never stops the rest — a batch this size will hit a
+  /// blurred photo somewhere.
   Future<void> submit() async {
     if (state case final BulkCollecting collecting) {
       final garments = collecting.all;
@@ -320,10 +291,8 @@ class BulkController extends StateNotifier<BulkState> {
         orElse: () => const BulkOutcome(index: -1),
       );
       if (outcome.read case final GarmentDraft read) {
-        // Re-resolved for the same reason the single flow does it: changing
-        // the fabric changes what the rules say about washing it, and a list
-        // still showing care derived from the old fibre would be quietly
-        // wrong in exactly the way that damages clothes.
+        // Re-resolved because changing the fabric changes what the rules say
+        // about washing it.
         state = reviewing.replacing(
           index,
           read.withDraft(
@@ -348,8 +317,7 @@ class BulkController extends StateNotifier<BulkState> {
           await intake.commit(read.draft, read.shots);
           saved++;
         } on Exception {
-          // One garment failing to write must not abandon the rest, for the
-          // same reason one failing to read does not.
+          // One garment failing to write must not abandon the rest.
           continue;
         }
       }

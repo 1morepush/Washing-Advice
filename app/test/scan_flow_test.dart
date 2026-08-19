@@ -316,10 +316,6 @@ void main() {
 
   group('the care label in the same handful of photos', () {
     /// Photograph the garment, then its tag, and identify the lot.
-    ///
-    /// The whole point of the feature: one trip through one screen, rather
-    /// than save the garment, reopen it, and start a second scanner for a
-    /// label sewn into the thing you were already holding.
     Future<void> captureBoth() async {
       await controller().capture();
       await controller().capture();
@@ -349,9 +345,7 @@ void main() {
     });
 
     test('the tag goes to the label reader, not the garment one', () async {
-      // Two different questions. A photograph of a care tag tells the garment
-      // reader almost nothing, and sending it there would spend an image to
-      // make the identification worse.
+      // A photograph of a care tag tells the garment reader almost nothing.
       await captureBoth();
 
       expect(gateway.imagesSent, 1);
@@ -359,9 +353,8 @@ void main() {
     });
 
     test('the manufacturer instruction wins over the fabric guess', () async {
-      // The reason this is worth doing at all. Without the label the care
-      // comes from the rule table reasoning about wool; with it, it comes
-      // from whoever made the garment.
+      // Without the label, care comes from the rule table reasoning about
+      // wool; with it, from whoever made the garment.
       await captureBoth();
 
       final reviewing = state() as ScanReviewing;
@@ -407,9 +400,7 @@ void main() {
     });
 
     test('an unreadable tag does not cost you the garment', () async {
-      // The important one. The garment has been identified and is worth
-      // saving; throwing that away because the tag photo was blurred would be
-      // the tail wagging the dog.
+      // The garment is identified and worth saving regardless.
       gateway.labelReading = null;
       await captureBoth();
 
@@ -430,9 +421,7 @@ void main() {
     });
 
     test('a tag with no garment identifies nothing, and says so', () async {
-      // A label on its own is not a garment scan. Better to say that than to
-      // hand a photo of a tag to the garment reader and relay whatever it
-      // makes of it.
+      // Better than handing a photo of a tag to the garment reader.
       await controller().capture();
       controller().setRole(0, PhotoRole.careTag);
       await controller().scanCollected();
@@ -443,8 +432,8 @@ void main() {
     });
 
     test('editing the draft does not lose the label that was read', () async {
-      // withDraft rebuilds the reviewing state, and dropping the label there
-      // would make the reading vanish the moment somebody corrected the name.
+      // withDraft rebuilds the reviewing state; dropping the label there would
+      // lose the reading the moment somebody corrected the name.
       await captureBoth();
       controller().reviseDraft((draft) => draft.copyWith(name: 'My jumper'));
 

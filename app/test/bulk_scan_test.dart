@@ -1,10 +1,8 @@
 /// Adding a whole wardrobe in one sitting.
 ///
-/// The thing being protected is the shape of the flow rather than any single
-/// reading: nothing leaves the phone until the user submits, one garment's
-/// photographs never bleed into the next, and a batch of forty survives the
-/// two or three that inevitably go wrong. A bulk screen that lost thirty-nine
-/// garments to one blurred photo would be worse than no bulk screen.
+/// What is protected is the shape of the flow: nothing leaves the phone until
+/// the user submits, one garment's photographs never bleed into the next, and
+/// a batch of forty survives the two or three that go wrong.
 library;
 
 import 'dart:typed_data';
@@ -70,8 +68,7 @@ void main() {
     });
 
     test('one garment does not bleed into the next', () async {
-      // The boundary is the tap, and it has to actually separate them: two
-      // garments merged into one loses a garment outright.
+      // Two merged into one loses a garment outright.
       await controller().capture();
       await controller().capture();
       controller().nextGarment();
@@ -84,8 +81,7 @@ void main() {
     });
 
     test('a garment boundary with no garment is not created', () async {
-      // An empty garment would be one more thing to explain in the review
-      // list, for a tap that was plainly a mistake.
+      // An empty garment is one more thing to explain in the review list.
       controller().nextGarment();
       controller().nextGarment();
 
@@ -93,8 +89,7 @@ void main() {
     });
 
     test('an accidental Next garment can be walked back', () async {
-      // Otherwise the finished set is stranded: undo would have nothing to
-      // work on and the photos would be unreachable.
+      // Otherwise the finished set is stranded and its photos unreachable.
       await controller().capture();
       controller().nextGarment();
       controller().discardLast();
@@ -136,9 +131,8 @@ void main() {
     });
 
     test('one bad garment does not take the batch with it', () async {
-      // The most important test here. A batch this size will hit a blurred
-      // photo somewhere, and losing the other thirty-nine to it would be the
-      // worst possible outcome for a screen whose point is doing this once.
+      // The most important one here: a batch this size will hit a blurred
+      // photo somewhere.
       gateway.failOnCall = 2;
       await photograph(3);
       await controller().submit();
@@ -160,8 +154,7 @@ void main() {
     });
 
     test('nothing has reached the wardrobe yet', () async {
-      // Reviewing is not skipped, only batched. Forty unreviewed garments is
-      // forty wrong names to find later.
+      // Reviewing is batched, not skipped.
       await photograph(2);
       await controller().submit();
 
@@ -202,8 +195,8 @@ void main() {
     });
 
     test('turning one down can be taken back', () async {
-      // It stays on screen rather than vanishing: a garment that disappeared
-      // on a mistaken tap would be a photo session you cannot get back.
+      // A garment that vanished on a mistaken tap is a photo session you
+      // cannot get back.
       await photograph(2);
       await controller().submit();
       controller().toggle(0);
@@ -235,9 +228,8 @@ void main() {
     });
 
     test('an event is logged for every garment saved', () async {
-      // The item row and the event are two records of one happening, and the
-      // history is only replayable if bulk keeps them in step like the single
-      // flow does.
+      // The history is only replayable if bulk keeps row and event in step,
+      // as the single flow does.
       await photograph(2);
       await controller().submit();
       await controller().saveAccepted();

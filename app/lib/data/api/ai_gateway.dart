@@ -281,14 +281,9 @@ class AiGateway implements VisionPort {
   /// and at roughly thirty tokens a garment even a large wardrobe is a small
   /// fraction of what a single photograph costs.
   /// With [suggestGaps] the same call also names pieces the wardrobe does not
-  /// have. One request rather than two: the whole wardrobe is already in the
-  /// prompt, so asking both questions costs a few hundred tokens instead of a
-  /// second round trip, and the answers agree with each other because one pass
-  /// produced them.
-  ///
-  /// The vocabulary of garment types goes up with the request rather than
-  /// living on the server, so the list the model may name from and the list
-  /// `GapVetting` resolves against are the same list.
+  /// have — one request rather than two, since the whole wardrobe is already
+  /// in the prompt. The type vocabulary goes up with it so the list the model
+  /// may name from and the list `GapVetting` resolves against cannot drift.
   Future<StyleAnswer> proposeOutfits({
     required List<WardrobeItem> wardrobe,
     required String occasion,
@@ -318,9 +313,7 @@ class AiGateway implements VisionPort {
 
     return (
       outfits: styleProposalsFromJson(styleResultList(body['result'])),
-      // Absent on a server built before gaps existed, which reads as "none"
-      // rather than as a failure: its answer to the outfit question is still
-      // perfectly good.
+      // Absent on a server built before gaps existed, which reads as "none".
       pieces: pieceProposalsFromJson(body['pieces']),
     );
   }

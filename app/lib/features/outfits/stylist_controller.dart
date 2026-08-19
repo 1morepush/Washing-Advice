@@ -54,10 +54,8 @@ final class StylistSuggested extends StylistState {
   final StyledOutfits result;
   final Occasion occasion;
 
-  /// Pieces the wardrobe does not have, if they were asked for.
-  ///
-  /// Kept apart from [result] rather than merged into it, because they are a
-  /// different kind of answer: nothing here can be opened, saved or worn.
+  /// Pieces the wardrobe does not have, if they were asked for. Kept apart
+  /// from [result]: nothing here can be opened, saved or worn.
   final SuggestedPieces gaps;
 
   List<StyledOutfit> get outfits => result.outfits;
@@ -86,10 +84,8 @@ class StylistController extends StateNotifier<StylistState> {
 
   /// Asks for ideas for [request], and checks what comes back.
   ///
-  /// With [suggestGaps] it also asks what the wardrobe is missing. Off unless
-  /// the screen says otherwise: a wardrobe app that started naming things to go
-  /// and find without being asked would be answering a question nobody put, and
-  /// plenty of people use one of these to buy less rather than more.
+  /// With [suggestGaps] it also asks what the wardrobe is missing, off unless
+  /// the screen says otherwise.
   Future<void> ask(
     OutfitRequest request, {
     String? note,
@@ -153,10 +149,8 @@ class StylistController extends StateNotifier<StylistState> {
     state = StylistSuggested(
       const StyleVetting().vet(answer.outfits, wardrobe: owned),
       occasion: request.occasion,
-      // Vetted against the whole wardrobe rather than the wearable subset, and
-      // that is the point of it: a suggestion to go and find dark blue jeans
-      // has to be refused when a pair is sitting in the laundry basket. They
-      // are still owned, and owning them is the whole question.
+      // Against the whole wardrobe rather than the wearable subset: jeans in
+      // the laundry basket are still owned, and owning them is the question.
       gaps: const GapVetting().vet(answer.pieces, wardrobe: owned),
     );
   }

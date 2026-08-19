@@ -36,8 +36,7 @@ class _Stylist extends AiGateway {
   String? sentOccasion;
   String? sentNote;
 
-  /// Whether the gaps were asked for, so a test can prove they are opt-in
-  /// rather than merely unshown.
+  /// So a test can prove the gaps are opt-in rather than merely unshown.
   bool askedForGaps = false;
 
   @override
@@ -323,8 +322,7 @@ void main() {
     testWidgets('nothing is asked about clothes you do not own by default', (
       tester,
     ) async {
-      // A wardrobe app that volunteered things to go and find would be
-      // answering a question nobody put. Plenty of people keep one to buy less.
+      // Plenty of people keep a wardrobe app to buy less.
       stylist = _Stylist(pieces: const [jeans]);
       await seed();
       await pump(tester);
@@ -350,8 +348,7 @@ void main() {
     testWidgets('it says which of your clothes it goes with, by name', (
       tester,
     ) async {
-      // The pairing is what makes this advice rather than a shopping list, and
-      // "goes with 1 item" would leave somebody asking which one.
+      // "Goes with 1 item" would leave somebody asking which one.
       stylist = _Stylist(pieces: const [jeans]);
       await seed();
       await pump(tester);
@@ -366,9 +363,8 @@ void main() {
     testWidgets(
       'a piece cannot be saved or worn, because you have not got it',
       (tester) async {
-        // Both actions resolve to real garments and a suggestion has no id. A
-        // button that appeared to work and quietly did nothing would be worse
-        // than its absence, so the card carries neither.
+        // Both resolve to real garments and a suggestion has no id, so a
+        // button would appear to work and quietly do nothing.
         stylist = _Stylist(proposals: const [], pieces: const [jeans]);
         await seed();
         await pump(tester);
@@ -383,14 +379,9 @@ void main() {
     testWidgets('something already in the wardrobe is never suggested', (
       tester,
     ) async {
-      // The failure that makes the feature look like it never read the list.
-      //
       // The chinos need a colour *word* for this to fire: the check compares
-      // names, and a garment whose colour was never named matches nothing, on
-      // purpose. That is the rule the duplicate grouping already follows, and
-      // it means this refusal is as good as the scan's colour naming — worth
-      // knowing, and the reason the test spells the colour out rather than
-      // leaning on the fixture default.
+      // names, and an unnamed colour matches nothing on purpose. So this
+      // refusal is only as good as the scan's colour naming.
       stylist = _Stylist(
         pieces: const [
           PieceProposal(
@@ -441,9 +432,7 @@ void main() {
     ) async {
       // The intro is unreachable once ideas are on screen, so a checkbox only
       // there would let the first ask decide the whole session. Both
-      // directions matter: somebody who asked without this on needs a way to
-      // turn it on, and somebody who asked with it on needs a way back to
-      // just their wardrobe.
+      // directions matter.
       stylist = _Stylist(pieces: const [jeans]);
       await seed();
       await pump(tester);

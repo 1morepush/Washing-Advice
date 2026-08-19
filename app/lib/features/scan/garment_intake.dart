@@ -1,14 +1,7 @@
 /// Turning a handful of photographs into a garment in the wardrobe.
 ///
-/// Extracted from the scan controller when a second caller appeared. Adding one
-/// garment and adding forty are the same work repeated, and the part that is
-/// genuinely fiddly — which shots go to which reader, how a label is laid over
-/// a draft, which photograph earns a cutout, keeping the item row and the event
-/// log in step — must not exist twice. The controllers differ in what they show
-/// while it happens, which is all they should differ in.
-///
-/// Nothing here touches state. It reads photographs and writes items, and the
-/// callers decide what that looks like on a screen.
+/// Shared by the single scan and the bulk flow, which differ only in what they
+/// show while it happens. Nothing here touches state.
 library;
 
 import 'dart:typed_data';
@@ -43,10 +36,9 @@ final class GarmentDraft {
 
   /// Whether a label was photographed and came back with nothing usable.
   ///
-  /// Distinct from [label] being null, which is also the ordinary case of no
-  /// tag at all. The user took that photograph on purpose, and a screen that
-  /// stayed silent would leave them believing the manufacturer's instructions
-  /// were in hand when a guess is showing.
+  /// Distinct from [label] being null, which also covers the ordinary case of
+  /// no tag at all. Screens say so rather than letting somebody believe the
+  /// manufacturer's instructions are in hand when a guess is showing.
   final bool labelUnread;
 
   final ScanDiagnostics? diagnostics;
@@ -63,9 +55,8 @@ final class GarmentDraft {
 
 /// A garment could not be identified.
 ///
-/// Carries the same retryable distinction the gateway does, because "the
-/// server is asleep" and "this version cannot read that reply" need different
-/// words and different buttons.
+/// Carries the gateway's retryable distinction: "the server is asleep" and
+/// "this version cannot read that reply" need different words and buttons.
 class IntakeFailure implements Exception {
   const IntakeFailure(this.message, {this.isRetryable = true});
 
@@ -84,11 +75,8 @@ class GarmentIntake {
   /// Reads a garment from photographs, including its label if one is among
   /// them.
   ///
-  /// Shots marked as the care label are split off and read by the label
-  /// scanner rather than being handed to the garment one. They are different
-  /// questions — what is this, and what does the manufacturer say about
-  /// washing it — and a photograph of a tag tells the garment reader almost
-  /// nothing.
+  /// Label shots go to the label reader rather than the garment one: a
+  /// photograph of a tag tells the garment reader almost nothing.
   Future<GarmentDraft> read(List<ScanShot> shots) async {
     final garment = [
       for (final shot in shots)
@@ -100,9 +88,8 @@ class GarmentIntake {
     ];
 
     if (garment.isEmpty) {
-      // A label on its own identifies nothing. Worth saying plainly rather
-      // than sending it to the garment reader and relaying whatever it makes
-      // of a photograph of a tag.
+      // A label on its own identifies nothing, and saying so beats relaying
+      // whatever the garment reader makes of a photograph of a tag.
       throw const IntakeFailure(
         'There is no photo of the garment itself here — only its label. Add a '
         'photo of the garment so it can be identified.',
@@ -117,8 +104,8 @@ class GarmentIntake {
     } on ScanFailure catch (failure) {
       throw IntakeFailure(failure.message, isRetryable: failure.isRetryable);
     } on ScanContractError catch (error) {
-      // Deliberately distinct wording. This is the app and the server
-      // disagreeing about the contract, and no amount of retrying fixes it.
+      // The app and the server disagreeing about the contract; retrying it
+      // cannot help, hence the different wording.
       throw IntakeFailure(
         'The server sent something this version cannot read. $error',
         isRetryable: false,
@@ -151,18 +138,14 @@ class GarmentIntake {
 
   /// Reads the label shots, or returns null if they said nothing usable.
   ///
-  /// Failure here never fails the scan. The garment has already been
-  /// identified and is worth saving; an unreadable tag costs the user the care
-  /// instructions, which they can scan again from the item screen at their
-  /// leisure. Throwing away a good garment reading because the label photo was
-  /// blurred would be the tail wagging the dog.
+  /// Never fails the scan: the garment is already identified and worth saving,
+  /// and the label can be scanned again later from the item screen.
   Future<CareTagScanResult?> _readLabel(List<ScanImage> images) async {
     try {
       final reading = await _ref.read(aiGatewayProvider).scanCareTag(images);
-      // A label stating nothing must not be attached. It would replace a
-      // rule-derived profile with an empty one recorded at `tagScan`
-      // provenance, making the app more confident about care it learned
-      // nothing new about.
+      // A label stating nothing must not be attached: it would replace a
+      // rule-derived profile with an empty one at `tagScan` provenance, making
+      // the app more confident about care it learned nothing about.
       return reading.instructions.statesNothing ? null : reading;
     } on ScanFailure {
       return null;
@@ -177,10 +160,8 @@ class GarmentIntake {
     final item = await _withPhotos(draft, shots);
 
     await _ref.read(wardrobeRepositoryProvider).save(item);
-    // The item row and the event are two records of the same happening. The
-    // row is what the wardrobe screen reads; the event is what makes the
-    // history replayable, and without it "added on" would be a field nobody
-    // could verify.
+    // The row is what the wardrobe screen reads; the event is what makes the
+    // history replayable.
     await _ref
         .read(eventLogProvider)
         .append(
@@ -196,26 +177,17 @@ class GarmentIntake {
 
   /// Recomputes the care profile from the item's own facts.
   ///
-  /// `forItem` rather than `resolve`, and that is load-bearing now that a
-  /// garment can arrive with its label already attached. It passes the label
-  /// and its confidence through, so correcting the fabric on the review screen
-  /// re-runs the rules *underneath* the manufacturer's instruction instead of
-  /// quietly demoting a tag scan back to a guess.
-  ///
-  /// For a garment scanned without a tag there is no label to pass and this
-  /// behaves exactly as the plain resolve did: the rule table reasoning about
-  /// fabric, reporting itself as inference, which is what raises the "scan the
-  /// label" prompt on the items that need it.
+  /// `forItem` rather than `resolve`, because a garment can now arrive with a
+  /// label attached: it passes that label through, so correcting the fabric
+  /// cannot quietly demote a tag scan back to a guess.
   WardrobeItem reresolveCare(WardrobeItem item) => item.copyWith(
     care: _ref.read(careResolverProvider).forItem(item).profile,
   );
 
   /// Stores the captured photographs and asks the server for a cutout.
   ///
-  /// Failures here are swallowed on purpose. A missing picture is a cosmetic
-  /// loss; refusing to save the garment over it would throw away a scan the
-  /// user has already reviewed and approved, which is a far worse outcome than
-  /// a row that falls back to its colour swatch.
+  /// Failures are swallowed: a missing picture is cosmetic, and refusing to
+  /// save over it would throw away a scan the user already approved.
   Future<WardrobeItem> _withPhotos(
     WardrobeItem item,
     List<ScanShot> shots,
@@ -227,17 +199,14 @@ class GarmentIntake {
     final now = DateTime.now();
 
     var photos = item.photos;
-    // The front is cut out, and only once. Two photographs both marked front —
-    // which the user is free to do — would otherwise mean two uploads and a
-    // second file overwriting the first.
+    // Only the front is cut out, and only once: two shots both marked front
+    // would otherwise mean two uploads and the second overwriting the first.
     var cutoutDone = false;
 
     for (final (index, shot) in shots.indexed) {
       final role = shot.role;
-      // Distinct per photograph, because the stored name is derived from it.
-      // Without this two details, or two backs, resolve to one name: the
-      // second overwrites the first and the set ends up with two records
-      // pointing at one file, carrying the wrong dimensions for one of them.
+      // Distinct per photograph, because the stored name derives from it:
+      // otherwise two details resolve to one name and overwrite each other.
       final capturedAt = now.add(Duration(microseconds: index));
 
       try {
@@ -269,8 +238,8 @@ class GarmentIntake {
           ),
         );
       } on Exception {
-        // Storage full, permission revoked, disk error. Keep going: the other
-        // photographs and the item itself are still worth saving.
+        // Storage full, permission revoked, disk error. The other photographs
+        // and the item itself are still worth saving.
         continue;
       }
     }
@@ -280,10 +249,10 @@ class GarmentIntake {
 
   /// Turns a scan result into a saveable item.
   ///
-  /// The care profile is *derived*, not carried over: the vision layer reports
-  /// what it saw, and the core's rule table decides what that means for washing
-  /// it. Letting a model state care directly would put laundry judgement in the
-  /// provider, which is exactly what the rule table exists to prevent.
+  /// The care profile is derived rather than carried over: the vision layer
+  /// reports what it saw and the core's rule table decides what that means.
+  /// Letting a model state care directly would put laundry judgement in the
+  /// provider.
   WardrobeItem _draftFrom(GarmentScanResult result) {
     final now = DateTime.now();
     final draft = WardrobeItem(

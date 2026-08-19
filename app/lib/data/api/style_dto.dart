@@ -82,11 +82,8 @@ List<Object?> styleResultList(Object? result) {
   return result;
 }
 
-/// Both halves of what the stylist answered.
-///
-/// The pieces are a separate list rather than more outfits because they are a
-/// different kind of thing: no ids, nothing to open, nothing to save. Keeping
-/// them apart on the wire is what lets the two vettings stay separate.
+/// Both halves of what the stylist answered. Separate lists because a piece
+/// has no id — nothing to open, nothing to save.
 typedef StyleAnswer = ({
   List<StyleProposal> outfits,
   List<PieceProposal> pieces,
@@ -94,11 +91,9 @@ typedef StyleAnswer = ({
 
 /// Reads the suggested pieces out of a `pieces` array.
 ///
-/// Absent entirely on a server built before they existed, which is the shape
-/// this has to survive most: an older backend answers the outfit question
-/// perfectly well and simply says nothing about gaps. Anything other than a
-/// list is treated the same way — no pieces — rather than failing a response
-/// whose outfits are perfectly good.
+/// Absent on a server built before they existed, which is the shape this has
+/// to survive most. Anything that is not a list reads as no pieces rather than
+/// failing a response whose outfits are perfectly good.
 List<PieceProposal> pieceProposalsFromJson(Object? json) {
   if (json is! List) return const [];
 
@@ -118,9 +113,8 @@ List<PieceProposal> pieceProposalsFromJson(Object? json) {
           for (final color in _list(entry['colors']))
             if (color is String && color.trim().isNotEmpty) color.trim(),
         ],
-        // Left empty rather than dropped when malformed. The vetting refuses a
-        // piece that pairs with nothing and says why, which is a better answer
-        // than the suggestion silently never existing.
+        // Left empty rather than dropped: the vetting refuses a piece that
+        // pairs with nothing and says why.
         pairsWithIds: [
           for (final id in _list(entry['pairsWith']))
             if (id is String && id.isNotEmpty) ItemId(id),

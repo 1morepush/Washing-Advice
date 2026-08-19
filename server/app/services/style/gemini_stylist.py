@@ -157,19 +157,13 @@ class GeminiStylist:
 def _parse(data: dict[str, Any]) -> StyleAnswer:
     """Builds the response, refusing one that proposes nothing.
 
-    An empty outfit list is not a usable answer: the endpoint would return a
-    success carrying no ideas, and the app would draw a heading with nothing
-    under it. Failing here reads as a provider problem and offers the user a
-    retry, which on this endpoint often works — the temperature is high enough
-    that the same request twice is genuinely a second attempt.
+    An empty outfit list is not a usable answer, and failing offers a retry
+    that often works here — the temperature is high enough that the same
+    request twice is genuinely a second attempt.
 
-    Empty *pieces* is the opposite: a wardrobe with no real gap in it should
-    come back with none, and the prompt says so explicitly. Treating that as a
-    failure would be paying the model to invent a need.
-
-    A malformed piece is dropped rather than failing the call. The outfits are
-    the answer to the question that was asked; losing all of them because one
-    suggested extra came back misshapen would be the tail wagging the dog.
+    Empty *pieces* is the opposite: a wardrobe with no real gap should come
+    back with none, and failing that would pay the model to invent a need. A
+    malformed piece is dropped rather than losing the outfits with it.
     """
     outfits = [ProposedOutfit.model_validate(outfit) for outfit in data.get("outfits", [])]
     if not outfits:

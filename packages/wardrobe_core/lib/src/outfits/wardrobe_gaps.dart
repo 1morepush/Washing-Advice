@@ -1,39 +1,19 @@
 /// Pieces the wardrobe does not have, checked before anybody is told to look
 /// for one.
 ///
-/// The stylist proposes outfits from what is owned. This is the other half of
-/// the same question: a light graphic tee is asking for dark blue jeans, and if
-/// there are none in the wardrobe then the most useful thing to say is so —
-/// naming the gap rather than quietly proposing the fourth-best trousers.
+/// The other half of the question [StyleVetting] answers: a light graphic tee
+/// is asking for dark blue jeans, and if there are none the useful answer says
+/// so rather than proposing the fourth-best trousers.
 ///
-/// ## Why this is not an outfit
+/// Not modelled as an outfit, because a suggested piece has no id — it cannot
+/// be saved, worn or tapped through to, and a [StyledOutfit] with a hole in it
+/// would break all three.
 ///
-/// [StyleVetting]'s first rule is that every id must exist, because an invented
-/// id puts a garment on screen that cannot be opened. A suggested piece has no
-/// id at all: it is a description of something that does not exist here yet. It
-/// cannot be saved as an outfit, cannot be recorded as worn, and cannot be
-/// tapped through to. Modelling it as a [StyledOutfit] with a hole in it would
-/// break all three, so it is its own type and the screen keeps it apart.
-///
-/// ## What is checked
-///
-/// * the type must be one the wardrobe vocabulary knows — the same invention
-///   guard the ids get, because "a pair of gorpcore silhouettes" is not
-///   something anyone can go and look for;
-/// * it must name garments it goes with, and those must exist and be wearable.
-///   A piece that pairs with nothing is a shopping list, not styling advice,
-///   and the whole value here is the pairing;
-/// * it must not describe something already hanging up. Being told to find
-///   dark blue jeans by an app that can see two pairs is the failure that makes
-///   this look stupid.
-///
-/// ## What is deliberately not checked
-///
-/// Whether it is a *good* idea. That is the judgement being asked for, and this
-/// file second-guessing it would defeat the point — the same line [StyleVetting]
-/// draws. Nothing here costs a garment: the worst a wrong suggestion does is
-/// waste a glance, which is why the checks below prefer letting a doubtful one
-/// through to refusing a good one.
+/// Three checks: the type must be one the wardrobe vocabulary knows, it must
+/// name owned garments it goes with, and it must not describe something already
+/// hanging up. Whether it is a *good* idea is the judgement being asked for and
+/// is deliberately not checked. Nothing here costs a garment, so the checks
+/// prefer letting a doubtful suggestion through to refusing a good one.
 library;
 
 import '../shared/ids.dart';
@@ -53,18 +33,14 @@ final class PieceProposal {
   /// [ItemType] by the vetting rather than trusted.
   final String type;
 
-  /// How it should look, in plain words — 'dark blue', 'cream'.
-  ///
-  /// Free text on purpose. This is a description of something to go and find,
-  /// not a colour the app is going to compute with, and 'washed indigo' is more
-  /// use to somebody standing in a shop than the nearest hex code.
+  /// How it should look, in plain words — 'dark blue', 'cream'. Free text: it
+  /// describes something to go and find rather than a colour to compute with.
   final List<String> colors;
 
   /// The owned garments it was proposed to go with.
   final List<ItemId> pairsWithIds;
 
-  /// Why, in the model's own words. Shown unabridged for the same reason a
-  /// styled outfit's is.
+  /// Why, in the model's own words. Shown unabridged.
   final String rationale;
 }
 
@@ -102,8 +78,8 @@ final class SuggestedPiece {
   final ItemType type;
   final List<String> colors;
 
-  /// The owned garments this would go with. Never empty — a piece that pairs
-  /// with nothing is refused, because the pairing is the whole point.
+  /// The owned garments this would go with. Never empty: the pairing is what
+  /// makes it advice rather than a shopping list.
   final List<WardrobeItem> pairsWith;
 
   final String rationale;
@@ -137,11 +113,9 @@ final class SuggestedPieces {
 
 /// Colour words that name the same colour twice.
 ///
-/// Small and deliberately so. This exists for one job — recognising that the
-/// navy trousers already hanging up are the 'dark blue' ones being suggested —
-/// and every entry earns its place by being a plain synonym rather than a
-/// neighbouring shade. 'Light blue' is not folded into 'blue', because a pale
-/// shirt and a mid-blue one are genuinely different things to own.
+/// Deliberately small, and only plain synonyms rather than neighbouring
+/// shades: 'light blue' is not folded into 'blue', because a pale shirt and a
+/// mid-blue one are different things to own.
 const _synonyms = <String, String>{
   'navy': 'dark blue',
   'indigo': 'dark blue',
@@ -161,11 +135,8 @@ String _fold(String color) {
   return _synonyms[cleaned] ?? cleaned;
 }
 
-/// The garment types it makes sense to suggest somebody go and find.
-///
-/// Underwear, sleepwear, swimwear and household linen are all things people
-/// own; none of them is an answer to "what would go with this shirt", and a
-/// stylist that suggested pyjamas would read as broken rather than as bold.
+/// Excluded because none of them answers "what would go with this shirt". A
+/// stylist that suggested pyjamas would read as broken rather than bold.
 const _notStylable = {
   ItemCategory.underwear,
   ItemCategory.sleepwear,
@@ -175,10 +146,8 @@ const _notStylable = {
 
 /// The vocabulary a proposed piece may name, as plain labels.
 ///
-/// Sent to the model with the request rather than restated on the server, so
-/// the list it may choose from and the list this file resolves against are the
-/// same list. A type added to [ItemType] shows up in both without anybody
-/// remembering to update a copy in another language.
+/// Sent with the request rather than restated on the server, so what the model
+/// may choose from and what this file resolves against cannot drift apart.
 List<String> get stylableTypeLabels => [
       for (final type in ItemType.values)
         if (!_notStylable.contains(type.category)) type.label,
@@ -260,14 +229,10 @@ final class GapVetting {
 
   /// Whether the wardrobe already holds this thing in this colour.
   ///
-  /// Whole phrases rather than loose words, so 'light blue' and 'dark blue' stay
-  /// apart — matching on the shared word 'blue' would refuse a genuinely useful
-  /// suggestion because a paler version of it is hanging up.
-  ///
-  /// A garment whose colour was never named cannot match anything: silence is
-  /// not sameness, the same rule the duplicate grouping follows. The wrong way
-  /// round here is cheap — a suggestion for something already owned costs one
-  /// glance to dismiss, where a refused good one is never seen at all.
+  /// Whole phrases rather than loose words, so 'light blue' and 'dark blue'
+  /// stay apart. A garment whose colour was never named matches nothing —
+  /// silence is not sameness, as in the duplicate grouping — which errs
+  /// towards showing a suggestion, the cheaper mistake of the two.
   bool _alreadyOwns(
     List<WardrobeItem> wardrobe, {
     required ItemType type,
@@ -288,9 +253,8 @@ final class GapVetting {
 
   /// The type this names, or null if it names nothing the wardrobe knows.
   ///
-  /// Labels first, because that is what the model was given and what it is
-  /// asked to copy. Enum names are accepted too: it costs one lookup and turns
-  /// a suggestion that would have been thrown away into a usable one.
+  /// Labels are what the model was given; enum names are accepted too, since
+  /// it costs one lookup and salvages a suggestion that would be thrown away.
   ItemType? _resolveType(String raw) {
     final wanted = raw.toLowerCase().trim();
     if (wanted.isEmpty) return null;

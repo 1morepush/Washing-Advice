@@ -38,10 +38,8 @@ class FakeStylist:
     def _pieces(self, request: StyleRequest) -> list[ProposedPiece]:
         """One usable suggestion, and two the client must throw away.
 
-        Same principle as the impossible outfit below: a fake that only ever
-        returned valid answers would leave the checking layer looking tested
-        when nothing had exercised it. The unanchored piece and the invented
-        type are the two refusals worth having covered by default.
+        Same principle as the impossible outfit below: a fake that only
+        returned valid answers would leave the checking layer untested.
         """
         tops = _of(request.wardrobe, "Tops")
         if not tops:

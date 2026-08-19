@@ -18,13 +18,9 @@ one the builder could have written, and if that is all the model has to say
 there was no point asking it. The reason is shown to the user in full, in the
 model's own words, so it has to be worth reading.
 
-`GAPS_PROMPT` asks the other half of the same question — which pieces the
-wardrobe is missing — and spends its length on the two ways that goes wrong. It
-must not suggest what somebody already owns, which is the fastest way to look
-like it never read the list. And it must not turn into shopping: no brands, no
-shops, no prices, no products. This is a wardrobe app, and plenty of people use
-one to buy less; describing the garment and stopping there leaves what to do
-about it where it belongs.
+`GAPS_PROMPT` asks the other half — which pieces the wardrobe is missing — and
+spends its length on the two ways that goes wrong: suggesting what somebody
+already owns, and turning into shopping. No brands, shops, prices or products.
 """
 
 from __future__ import annotations

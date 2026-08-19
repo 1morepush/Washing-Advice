@@ -62,11 +62,8 @@ final class ScanCollecting extends ScanState {
     _ => PhotoRole.detail,
   };
 
-  /// Whether a care label is among these shots.
-  ///
-  /// Drives the one thing the screen has to say differently: that pressing the
-  /// button will read the tag as well, rather than leaving it for a second
-  /// trip through a different scanner.
+  /// Whether a care label is among these shots, which changes what the button
+  /// says it will do.
   bool get hasCareTag => shots.any((shot) => shot.role == PhotoRole.careTag);
 }
 
@@ -89,17 +86,12 @@ final class ScanReviewing extends ScanState {
   });
 
   /// The care label read from the same batch, if one was photographed.
-  ///
-  /// Null when no tag was among the shots — the ordinary case — and also when
-  /// one was and could not be read, which [labelUnread] tells apart.
   final CareTagScanResult? label;
 
   /// Whether a label was photographed and came back with nothing usable.
   ///
-  /// Worth its own flag rather than being inferred from a null [label]. The
-  /// user took that photograph on purpose, and silently saving a garment with
-  /// rule-derived care would leave them believing the manufacturer's
-  /// instructions were in hand when they are not.
+  /// Its own flag rather than a null [label], which also covers the ordinary
+  /// case of no tag at all.
   final bool labelUnread;
 
   /// The photographs the reading came from, each with what it shows.
@@ -242,7 +234,6 @@ class ScanController extends StateNotifier<ScanState> {
   /// Sends photographs that are already in hand, each with what it shows.
   ///
   /// The reading itself lives in [GarmentIntake], shared with the bulk flow.
-  /// What belongs here is only what the screen does about it.
   Future<void> scanShots(List<ScanShot> shots) async {
     state = ScanAnalysing(shots.length);
 

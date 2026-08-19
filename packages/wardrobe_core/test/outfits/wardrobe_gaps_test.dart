@@ -1,10 +1,9 @@
 /// Checking pieces a model suggested the wardrobe does not have.
 ///
-/// The judgement — that a light graphic tee wants dark blue jeans — is the
-/// thing being asked for and nothing here second-guesses it. What is checked is
-/// that the suggestion is something a person could act on: a kind of garment
-/// that exists, anchored to clothes they actually own, and not already hanging
-/// in the wardrobe of the app doing the suggesting.
+/// The judgement is the thing being asked for and nothing here second-guesses
+/// it. What is checked is that the suggestion is something a person could act
+/// on: a garment type that exists, anchored to clothes they own, and not
+/// already hanging up.
 library;
 
 import 'package:test/test.dart';
@@ -83,8 +82,8 @@ void main() {
     });
 
     test('the reason survives whole, in the model words', () {
-      // The same rule the styled outfits follow. Summarising it would throw
-      // away the only thing this feature has that arithmetic does not.
+      // Summarising it would throw away the only thing this feature has that
+      // arithmetic does not.
       const said =
           'A mid-wash denim keeps the graphic reading as casual rather than '
           'fighting it, and the weight balances a thin jersey.';
@@ -112,8 +111,7 @@ void main() {
     });
 
     test('a piece suggested on its own is refused', () {
-      // Without a pairing this is a shopping list entry. The pairing is the
-      // entire value: "goes with the tee you own" is advice, "buy jeans" is not.
+      // "Goes with the tee you own" is advice; "buy jeans" is not.
       final result = vet([proposal(pairsWith: const [])]);
 
       expect(result.refused.single.refusal, PieceRefusal.pairsWithNothing);
@@ -128,9 +126,8 @@ void main() {
     });
 
     test('pairing with something in the wash is refused', () {
-      // Same reason a styled outfit cannot use it: being told what would go
-      // with a shirt that is in the machine is the failure that makes the
-      // whole feature look broken.
+      // Being told what goes with a shirt that is in the machine is the
+      // failure that makes the whole feature look broken.
       final result = vet([
         proposal(pairsWith: const ['washing'])
       ]);
@@ -157,8 +154,7 @@ void main() {
     });
 
     test('navy on the rail is the dark blue being suggested', () {
-      // The one synonym that matters most here, and the case a naive word
-      // comparison misses: nobody writes "dark blue" on a pair of navy chinos.
+      // Nobody writes "dark blue" on a pair of navy chinos.
       final owned = [
         tee,
         item(
@@ -174,8 +170,8 @@ void main() {
     });
 
     test('a paler version of the same thing is not the same thing', () {
-      // Whole phrases rather than shared words. Matching on 'blue' alone would
-      // refuse a genuinely useful suggestion because a light pair is hanging up.
+      // Matching on 'blue' alone would refuse a useful suggestion because a
+      // light pair is hanging up.
       final owned = [
         tee,
         item(
@@ -206,9 +202,8 @@ void main() {
     });
 
     test('a garment whose colour was never named blocks nothing', () {
-      // Silence is not sameness — the rule the duplicate grouping already
-      // follows. An unnamed colour is an unanswered question, and treating it
-      // as a match would hide suggestions on the strength of missing data.
+      // Silence is not sameness: treating an unnamed colour as a match would
+      // hide suggestions on the strength of missing data.
       final owned = [
         tee,
         item('unnamed', ItemType.jeans, colors: [ItemColor.fromHex('#24406E')]),
@@ -220,8 +215,8 @@ void main() {
     });
 
     test('a suggestion with no colour at all is not refused as owned', () {
-      // "A denim jacket" with no shade named cannot be checked against
-      // anything, and refusing it on suspicion would lose a fair suggestion.
+      // Nothing to check it against, and refusing on suspicion loses a fair
+      // suggestion.
       final result = vet([proposal(type: 'Jacket', colors: const [])]);
 
       expect(result.pieces.single.description, 'Jacket');
@@ -268,17 +263,14 @@ void main() {
     });
 
     test('leaves out what no stylist should be proposing', () {
-      // A suggestion to go and find pyjamas reads as broken rather than bold,
-      // and a duvet cover is not an answer to "what goes with this shirt".
+      // A duvet cover is not an answer to "what goes with this shirt".
       expect(stylableTypeLabels, isNot(contains('Underwear')));
       expect(stylableTypeLabels, isNot(contains('Pajamas')));
       expect(stylableTypeLabels, isNot(contains('Swimwear')));
     });
 
     test('a type outside the vocabulary is refused even when it is real', () {
-      // Underwear is a genuine ItemType. It is not something the stylist may
-      // name, so resolving must refuse it rather than quietly allowing it back
-      // in through the parser.
+      // Underwear is a real ItemType, so the parser must not let it back in.
       final result = vet([proposal(type: 'Underwear')]);
 
       expect(result.refused.single.refusal, PieceRefusal.unknownType);

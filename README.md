@@ -11,10 +11,12 @@ which cycle to select on *your* machine.
 
 - **Photograph your clothes.** The app works out what each one is — type,
   fabric, colour, brand — and keeps it. Take the back too if there is a print
-  on it.
+  on it. Adding a whole wardrobe? Photograph the pile first and submit the lot
+  in one go, with no waiting between garments.
 - **Scan the care label once.** Both sides if it has two, in whatever language
-  it is printed in. Scan it again later and the second reading adds to the
-  first rather than replacing it.
+  it is printed in. Photograph it along with the garment and both are read in
+  the same pass. Scan it again later and the second reading adds to the first
+  rather than replacing it.
 - **Say what is dirty.** Four piles — clean, to wash, washing, drying — and
   four ways to move a garment into the wash, including photographing the heap
   on the floor.
@@ -22,6 +24,8 @@ which cycle to select on *your* machine.
   spin for *your* machine, with the reason for each choice.
 - **Spilled something?** Say what it was and get a step-by-step treatment,
   checked against that garment before you see it.
+- **Ask what to wear.** Outfits built from what you own, and — if you ask — a
+  model's opinion on top, including which piece your wardrobe is missing.
 
 **The rule the whole thing is built around: no laundry decision is ever made by
 a language model.** The AI turns pixels into facts — what this garment is, what
@@ -114,6 +118,19 @@ changeable with a tap. They go up together as one garment, and a print on the
 back reaches the name and the description, which is what lets you pick that
 shirt out of a drawer of similar ones.
 
+**Adding a whole wardrobe at once.** Photographing forty garments through a
+flow that stops to think after each one means forty round trips you have to
+stand through. *Several garments* inverts it: photograph one, tap **Next
+garment**, carry on through the pile with nothing sent, then submit the lot and
+put the phone down. It reports "9 of 40" rather than spinning, and one garment
+failing never costs the batch — the ones that could not be read are listed by
+number so you know which few to redo. You still see everything before it is
+saved, but once for the whole batch rather than once per garment.
+
+Where one garment ends and the next begins is your tap rather than a guess.
+Merging two loses a garment outright and splitting one puts a phantom in the
+wardrobe, and the tap costs less than either mistake.
+
 Every item's background is removed, so the wardrobe is a wall of garments
 floating on the page — browsable by shape and colour before you read a word,
 the way you would look along an actual rail. That is not decoration: a grid of
@@ -167,6 +184,15 @@ disagreed with the rule the app had been applying.
 That is how you find out a particular wool jumper is superwash and can go in the
 machine at 40°, which is not something you learn by reading a label once and
 forgetting it.
+
+**Photograph the label with the garment.** Mark a shot *Care label* while you
+are adding a garment and it is read in the same pass — no saving the garment,
+reopening it, and starting a second scanner for a tag sewn into the thing you
+were still holding. What the manufacturer says then displaces what the fabric
+suggested, and the review screen tells you which of the two you are looking at.
+A label that comes out blurred does not cost you the garment: it is identified
+and saved as usual, and the screen says the label could not be read rather than
+letting you assume the real instructions are in hand.
 
 **Labels with more than one side.** Tags are routinely printed on both faces, or
 continue onto a second tag sewn behind the first. Photograph each one and they
@@ -301,6 +327,16 @@ The sheet says what the report will do *before* you make it, and says when it
 will do nothing — a broken zip is a repair, not a laundry decision, and slight
 fading is worth recording without changing a cycle.
 
+**Or photograph it.** *Check for wear* on any garment reads the places things
+actually go — cuffs, elbows, underarms, the seat — and says what it can see.
+Nothing is recorded until you agree: each finding is a separate question with
+its own yes and no, it tells you where to look so you can check it against the
+garment in your hand, and it says when accepting one would change how the thing
+is washed. "Nothing to report" is the usual answer and it says so plainly; a
+finding it was not sure enough about is dropped, and it tells you that rather
+than pretending it saw nothing. Reporting by hand still works — this is the
+quick way, not the replacement.
+
 ### Correct it
 
 Anything the camera got wrong can be fixed, and a correction outranks every
@@ -374,6 +410,44 @@ conditional rate — "when you wear the blazer, you wear those trousers" — shr
 toward zero when there is little evidence, so two observations out of two does
 not claim the same certainty as twenty out of twenty.
 
+### Ask a model what goes with what
+
+The suggestions above are arithmetic the app can defend line by line. They also
+have no opinion on pattern, texture, proportion or formality, and will happily
+put a pinstripe with a check because both are navy.
+
+The **Stylist** tab is where that judgement is delegated — the one place in the
+app a model's *opinion* is welcome, because nothing here can ruin a garment. A
+bad outfit is a bad day. It reads what your wardrobe is made of, not your
+photographs, and gives its reasoning in its own words so you can disagree with
+it. Its own tab rather than mixed in, because taste and arithmetic are
+different things and you are entitled to know which you are reading.
+
+What is *not* delegated is the facts. Every proposal is resolved against the
+real wardrobe first: an id it made up, a garment in the wash, two tops at once,
+or anything that does not add up to something wearable is refused before you
+see it, and the tab says how many were set aside and why.
+
+**What you are missing.** Tick a box and it also names pieces you do not own
+that would go with the ones you do — the dark blue jeans a light graphic tee has
+been asking for. Each says which of your clothes it goes with, by name. A
+suggestion anchored to nothing is dropped, because that is a shopping list
+rather than advice, and so is anything already hanging in your wardrobe. No
+brands, shops, prices or links: it describes the garment and stops there. Off
+unless you ask — plenty of people keep a wardrobe app precisely to buy less.
+
+### Six identical socks are one row
+
+Copies collapse into a single row, because six of them crowd out the garment you
+were actually looking for. Tap to open the group, tap again for one of them.
+
+The count still says six, because six is what you own, and picking a group picks
+every copy — a bulk move that took one sock and left five in the drawer is the
+worst thing this could do. Copies are recognised from facts that were actually
+established, so two garments with nothing recorded about them are *not* thereby
+the same garment. It is a display decision and nothing else, and it can be
+turned off.
+
 ### Pack for a trip
 
 Say how long, what kind of days, and whether there is a machine where you are
@@ -435,6 +509,36 @@ converted, because a total built on an invented exchange rate is worse than none
 The figure at the top is **readiness**: the share of washable items the app can
 actually advise on. It predicts how useful a pile scan will be before you find
 out at the machine, and it links straight to the next label worth scanning.
+
+---
+
+## Where your data lives
+
+On your phone, and nowhere else unless you send it somewhere.
+
+- **The wardrobe** is a SQLite database in the app's own documents directory —
+  IndexedDB or OPFS on the web. Photographs and cutouts sit beside it in the
+  same private storage. Nothing is uploaded in the background and there is no
+  account to sign into.
+- **Sync is off** until you turn it on, and it points at a server you run. See
+  [Turning on sync](#turning-on-sync), including what the credential is and is
+  not.
+- **Nothing in this repository is anybody's real wardrobe.** The screenshots are
+  a seeded demo build (`app/lib/main_demo.dart`) with invented garments and
+  drawn illustrations, generated in a container with no camera.
+
+**What does leave the phone: the photographs you scan.** Identifying a garment,
+reading a care label, sorting a pile, removing a background and looking at a
+stain all upload that image to the backend named in Settings, which forwards it
+to the model provider if a key is configured. The default is `localhost`, so
+out of the box the only machine involved is your own; point it at a hosted
+server and your photographs go there instead.
+
+The server keeps no wardrobe. It holds a cache keyed by the SHA-256 of an image
+so an identical re-scan is not paid for twice, and that cache stores the
+*reading* rather than the picture, in memory, bounded, and gone when the process
+restarts. The request itself still passes through, which is the thing to weigh
+when choosing a backend.
 
 ---
 
@@ -587,9 +691,9 @@ A few decisions worth reading about:
 
 | # | Scope | Status |
 |---|---|---|
-| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 529 core tests |
-| 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts, machine identification | **Done** — 266 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 502 app tests |
+| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 593 core tests |
+| 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts, machine identification | **Done** — 325 tests |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 584 app tests |
 | 4 | Care-label scanning, item editing, filter sheet, garment cutouts, grid view | **Done** |
 | 5 | Pile scanning, load grouping, machine profiles, wear and wash history | **Done** |
 | 6 | Outfit suggestions, laundry-aware packing, wardrobe insights | **Done** |
@@ -602,8 +706,14 @@ A few decisions worth reading about:
 | 10 | Stain treatment: proposed by a model, vetted by the core, streamed as written | **Done** |
 | 11 | Care labels from several photographs, in any language, merged across scans | **Done** |
 | 12 | Garments photographed from every side, with what each shot shows | **Done** |
+| 13 | Identical garments collapsed into one row, derived rather than stored | **Done** |
+| 14 | The Stylist tab: a model's outfit ideas, vetted against the real wardrobe | **Done** |
+| 15 | Wear detected from photographs, proposed as questions rather than recorded | **Done** |
+| 16 | Naming the pieces a wardrobe does not have, without becoming shopping | **Done** |
+| 17 | The care label read from the same photographs as the garment | **Done** |
+| 18 | A whole pile photographed first and submitted in one go | **Done** |
 
-Released as `0.12.1 — Spot Clean`; the app's own **Settings → What's new**
+Released as `0.18.1 — Button Up`; the app's own **Settings → What's new**
 carries the full list, and `app/lib/features/settings/patch_notes.dart` records
 which version digit moves for what.
 
@@ -677,20 +787,35 @@ Stated plainly, because the code says so too.
   suggestions rest on colour and usage alone. That is the designed behaviour
   rather than a failure state, but it does mean the feature is at its weakest
   exactly when someone first tries it.
-- **Outfit suggestions score colour only.** They have no opinion on pattern,
-  texture, proportion or fit, which is why every card shows its reasoning rather
-  than presenting a verdict.
+- **The built outfit suggestions score colour only.** They have no opinion on
+  pattern, texture, proportion or fit, which is why every card shows its
+  reasoning rather than presenting a verdict. The Stylist tab is where that
+  judgement is asked for instead, and it is somebody else's taste rather than
+  something the app can defend.
 - **Packing weights are typical dry weights for the garment type**, not for your
   particular coat. Useful for comparing two packing lists; not for an airline's
   scales.
 - **Nothing rescans a care label automatically** — deliberately, because labels
-  do not change. What changes is the garment, and that is now reportable: tell
-  the app something is pilling or has a loose seam and it washes cooler and
-  gentler from the next load onward, and drops a fabric class so it sorts into a
-  gentler pile. What is still missing is *detecting* that automatically, which
-  is the condition-detection gap below.
-- **Condition detection, embeddings and the on-device OCR stage are modelled but
-  not implemented.** The types and seams exist; the detection does not.
+  do not change. What changes is the garment, and that is both reportable and
+  now detectable: photograph the places things wear and the app says what it can
+  see, though it only ever asks rather than recording.
+- **Wear detection is a second opinion, not an inspection.** It sees what a
+  photograph shows, which is not the same as what a garment is doing. Findings
+  below a confidence floor are dropped rather than shown, so it is quieter than
+  a careful look and deliberately so — a feature that cried pilling at shadows
+  is one people learn to ignore, and then they miss the real one.
+- **Embeddings and the on-device OCR stage are modelled but not implemented.**
+  The types and seams exist; those two stages do not.
+- **"You already own this" is only as good as your colour names.** The check
+  that stops the Stylist suggesting jeans you have compares colour *words*, so a
+  garment whose colour was never named blocks nothing — silence is not sameness,
+  the same rule the duplicate grouping follows. It errs towards showing a
+  suggestion, which costs a glance, rather than hiding a good one.
+- **Bulk adding needs you to say where each garment ends.** Nothing infers it
+  from the photographs, and nothing is going to until getting it wrong costs
+  less than a tap does.
+- **The Stylist's "what I am missing" box is not remembered** between launches.
+  It is session state rather than a saved setting.
 - **The web build has never been used in anger.** It persists now — images live
   in a small database of their own that Drift keeps in IndexedDB or OPFS — but
   the target is phones, and the browser build exists mainly for trying the app

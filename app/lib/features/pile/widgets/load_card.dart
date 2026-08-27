@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
+import '../../../widgets/item_thumbnail.dart';
 import '../../history/wear_recorder.dart';
 
 /// The rationale entries that explain the settings, as opposed to instructing.
@@ -87,12 +88,30 @@ class _LoadCardState extends ConsumerState<LoadCard> {
             ),
 
             const SizedBox(height: 12),
+            // Pictures rather than a list of names, because this card is read
+            // with a basket in front of you. A name is what the app calls a
+            // garment; a photograph is what you are holding, and matching
+            // "heathered dark grey activewear pants" to the right pair by
+            // reading meant scrolling down to the list below and back up
+            // again for each one.
             for (final item in load.items)
               Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Text(
-                  '• ${item.displayName}',
-                  style: theme.textTheme.bodyMedium,
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    ItemThumbnail(item: item, size: 40),
+                    const SizedBox(width: 10),
+                    // Wrapped rather than clipped: these names run long and
+                    // the tail is often the part that tells two similar
+                    // garments apart.
+                    Expanded(
+                      child: Text(
+                        item.displayName,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
                 ),
               ),
 

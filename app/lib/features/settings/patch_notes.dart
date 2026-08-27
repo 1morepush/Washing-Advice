@@ -96,6 +96,20 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.20.0',
+    name: 'Picture This',
+    date: DateTime.utc(2026, 8, 21),
+    headline: 'The loads to run show the clothes, not just their names',
+    changes: [
+      'Each load now lists its garments with their pictures. Sorting a basket '
+          'meant reading "heathered dark grey activewear pants", scrolling '
+          'past the card to the list underneath to see which pair that was, '
+          'and scrolling back up — once per garment.',
+      'The same card is used after photographing a pile, so that got the '
+          'pictures too.',
+    ],
+  ),
+  Release(
     version: '0.19.0',
     name: 'Close Crop',
     date: DateTime.utc(2026, 8, 21),

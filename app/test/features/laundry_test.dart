@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 import 'package:washing_advice/core/providers.dart';
+import 'package:washing_advice/widgets/item_thumbnail.dart';
 import 'package:washing_advice/features/laundry/laundry_screen.dart';
 import 'package:washing_advice/core/settings.dart';
 import 'package:washing_advice/features/laundry/laundry_controller.dart';
@@ -213,6 +214,23 @@ void main() {
       await tester.tap(find.text(tab));
       await tester.pumpAndSettle();
     }
+
+    testWidgets('the load to run shows each garment, not just its name', (
+      tester,
+    ) async {
+      // This card is read with a basket in front of you. Matching "heathered
+      // dark grey activewear pants" to the right pair by reading meant
+      // scrolling past the card to the list below and back up again, once per
+      // garment.
+      final item = await save('tee');
+      await controller().move([item.id], LifecycleState.inLaundry);
+
+      await openOn(tester, 'To wash (1)');
+
+      // Two: one in the load card, one in the list of what is in the basket.
+      expect(find.byType(ItemThumbnail), findsNWidgets(2));
+      expect(find.text('Start this load'), findsOneWidget);
+    });
 
     testWidgets('the basket lets go of something put there by mistake', (
       tester,

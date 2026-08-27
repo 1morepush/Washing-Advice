@@ -87,6 +87,11 @@ final knownBrandsProvider = FutureProvider<List<String>>(
   (ref) => ref.watch(wardrobeRepositoryProvider).knownBrands(),
 );
 
+/// Countries any garment says it was made in, for the filter sheet.
+final knownCountriesProvider = FutureProvider<List<String>>(
+  (ref) => ref.watch(wardrobeRepositoryProvider).knownCountries(),
+);
+
 /// A single item, watched so an edit on the detail screen is reflected at once.
 final itemProvider = FutureProvider.family<WardrobeItem?, ItemId>(
   (ref, id) => ref.watch(wardrobeRepositoryProvider).byId(id),

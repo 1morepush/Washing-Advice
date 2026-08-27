@@ -72,6 +72,29 @@ class InsightsScreen extends ConsumerWidget {
                         (label: tally.key.label, tally: tally),
                     ],
                   ),
+                  // Only once a label has actually been read. On a young
+                  // wardrobe this is empty, and an empty chart headed "Where
+                  // it was made" reads as a broken feature rather than as a
+                  // question nobody has answered yet.
+                  if (data.byCountryOfOrigin.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    _Breakdown(
+                      title: 'Where it was made',
+                      // The unknowns are named rather than folded in. Without
+                      // this line a wardrobe with three read labels charts as
+                      // though it came overwhelmingly from one country.
+                      subtitle: data.withoutCountry == 0
+                          ? 'Read from care labels.'
+                          : 'Read from care labels. '
+                                '${data.withoutCountry} '
+                                '${data.withoutCountry == 1 ? 'garment has' : 'garments have'} '
+                                'no country on record.',
+                      tallies: [
+                        for (final tally in data.byCountryOfOrigin.take(8))
+                          (label: tally.key, tally: tally),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   _Neglected(summary: data),
                   const SizedBox(height: 16),

@@ -264,6 +264,8 @@ class _Details extends StatelessWidget {
             ),
             if (item.brand case final Confident<String> brand)
               _Fact(label: 'Brand', value: brand.value, belief: brand),
+            if (item.countryOfOrigin case final Confident<String> made)
+              _Fact(label: 'Made in', value: made.value, belief: made),
             _Fact(
               label: 'Fabric',
               value: item.composition.value.label,

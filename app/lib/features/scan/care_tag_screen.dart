@@ -255,6 +255,12 @@ class _Review extends StatelessWidget {
                 recorded: state.updated.composition,
               ),
 
+              if (state.reading.countryOfOrigin?.value case final String made)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: _Line(label: 'Made in', value: made),
+                ),
+
               if (!state.reading.isComplete) ...[
                 const SizedBox(height: 16),
                 _PartialWarning(count: state.reading.unreadableSymbolCount),

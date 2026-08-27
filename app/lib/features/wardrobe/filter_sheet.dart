@@ -114,6 +114,8 @@ class FilterSheet extends ConsumerWidget {
                 ),
               ),
               _BrandSection(query: query, update: update),
+              _OriginSection(query: query, update: update),
+              _OriginSection(query: query, update: update),
               _Section(
                 title: 'Show only',
                 child: Wrap(
@@ -216,6 +218,34 @@ class _BrandSection extends ConsumerWidget {
   }
 }
 
+/// Filtering by where things were made.
+///
+/// Offered only once something in the wardrobe says. Until a care label has
+/// been read this section is empty, and a filter with no options reads as a
+/// broken control rather than as a question nobody has answered.
+class _OriginSection extends ConsumerWidget {
+  const _OriginSection({required this.query, required this.update});
+
+  final WardrobeQuery query;
+  final void Function(WardrobeQuery Function(WardrobeQuery q)) update;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final countries = ref.watch(knownCountriesProvider).valueOrNull ?? const [];
+    if (countries.isEmpty) return const SizedBox.shrink();
+
+    return _Section(
+      title: 'Made in',
+      child: _ChipGroup<String>(
+        values: countries,
+        selected: query.countries,
+        label: (c) => c,
+        onChanged: (set) => update((q) => q.copyWith(countries: set)),
+      ),
+    );
+  }
+}
+
 class _Section extends StatelessWidget {
   const _Section({required this.title, required this.child});
 
@@ -298,4 +328,5 @@ String _sortLabel(WardrobeSort sort) => switch (sort) {
   WardrobeSort.recentlyWorn => 'Recently worn',
   WardrobeSort.leastRecentlyWorn => 'Least worn lately',
   WardrobeSort.costPerWear => 'Cost per wear',
+  WardrobeSort.countryOfOrigin => 'Where it was made',
 };

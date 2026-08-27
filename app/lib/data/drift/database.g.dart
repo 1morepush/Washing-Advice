@@ -101,6 +101,17 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _originLowerMeta = const VerificationMeta(
+    'originLower',
+  );
+  @override
+  late final GeneratedColumn<String> originLower = GeneratedColumn<String>(
+    'origin_lower',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _seasonsMeta = const VerificationMeta(
     'seasons',
   );
@@ -224,6 +235,7 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
     colorClass,
     lifecycle,
     brandLower,
+    originLower,
     seasons,
     fibers,
     tags,
@@ -312,6 +324,15 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
       context.handle(
         _brandLowerMeta,
         brandLower.isAcceptableOrUnknown(data['brand_lower']!, _brandLowerMeta),
+      );
+    }
+    if (data.containsKey('origin_lower')) {
+      context.handle(
+        _originLowerMeta,
+        originLower.isAcceptableOrUnknown(
+          data['origin_lower']!,
+          _originLowerMeta,
+        ),
       );
     }
     if (data.containsKey('seasons')) {
@@ -444,6 +465,10 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
         DriftSqlType.string,
         data['${effectivePrefix}brand_lower'],
       ),
+      originLower: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}origin_lower'],
+      ),
       seasons: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}seasons'],
@@ -507,6 +532,15 @@ class Item extends DataClass implements Insertable<Item> {
 
   /// Lower-cased, so brand filtering is case-insensitive without a scan.
   final String? brandLower;
+
+  /// Where the garment says it was made, lower-cased for matching.
+  ///
+  /// Lifted out of the payload for the same reason the brand is: the wardrobe
+  /// filters and sorts by it, and a scan of every row to read a JSON field is
+  /// fine at 50 items and not at 500. The display spelling stays in the
+  /// payload — this column exists for matching, not for showing somebody
+  /// "portugal".
+  final String? originLower;
   final String seasons;
   final String fibers;
   final String tags;
@@ -533,6 +567,7 @@ class Item extends DataClass implements Insertable<Item> {
     required this.colorClass,
     required this.lifecycle,
     this.brandLower,
+    this.originLower,
     required this.seasons,
     required this.fibers,
     required this.tags,
@@ -557,6 +592,9 @@ class Item extends DataClass implements Insertable<Item> {
     map['lifecycle'] = Variable<String>(lifecycle);
     if (!nullToAbsent || brandLower != null) {
       map['brand_lower'] = Variable<String>(brandLower);
+    }
+    if (!nullToAbsent || originLower != null) {
+      map['origin_lower'] = Variable<String>(originLower);
     }
     map['seasons'] = Variable<String>(seasons);
     map['fibers'] = Variable<String>(fibers);
@@ -588,6 +626,9 @@ class Item extends DataClass implements Insertable<Item> {
       brandLower: brandLower == null && nullToAbsent
           ? const Value.absent()
           : Value(brandLower),
+      originLower: originLower == null && nullToAbsent
+          ? const Value.absent()
+          : Value(originLower),
       seasons: Value(seasons),
       fibers: Value(fibers),
       tags: Value(tags),
@@ -620,6 +661,7 @@ class Item extends DataClass implements Insertable<Item> {
       colorClass: serializer.fromJson<String>(json['colorClass']),
       lifecycle: serializer.fromJson<String>(json['lifecycle']),
       brandLower: serializer.fromJson<String?>(json['brandLower']),
+      originLower: serializer.fromJson<String?>(json['originLower']),
       seasons: serializer.fromJson<String>(json['seasons']),
       fibers: serializer.fromJson<String>(json['fibers']),
       tags: serializer.fromJson<String>(json['tags']),
@@ -645,6 +687,7 @@ class Item extends DataClass implements Insertable<Item> {
       'colorClass': serializer.toJson<String>(colorClass),
       'lifecycle': serializer.toJson<String>(lifecycle),
       'brandLower': serializer.toJson<String?>(brandLower),
+      'originLower': serializer.toJson<String?>(originLower),
       'seasons': serializer.toJson<String>(seasons),
       'fibers': serializer.toJson<String>(fibers),
       'tags': serializer.toJson<String>(tags),
@@ -668,6 +711,7 @@ class Item extends DataClass implements Insertable<Item> {
     String? colorClass,
     String? lifecycle,
     Value<String?> brandLower = const Value.absent(),
+    Value<String?> originLower = const Value.absent(),
     String? seasons,
     String? fibers,
     String? tags,
@@ -688,6 +732,7 @@ class Item extends DataClass implements Insertable<Item> {
     colorClass: colorClass ?? this.colorClass,
     lifecycle: lifecycle ?? this.lifecycle,
     brandLower: brandLower.present ? brandLower.value : this.brandLower,
+    originLower: originLower.present ? originLower.value : this.originLower,
     seasons: seasons ?? this.seasons,
     fibers: fibers ?? this.fibers,
     tags: tags ?? this.tags,
@@ -716,6 +761,9 @@ class Item extends DataClass implements Insertable<Item> {
       brandLower: data.brandLower.present
           ? data.brandLower.value
           : this.brandLower,
+      originLower: data.originLower.present
+          ? data.originLower.value
+          : this.originLower,
       seasons: data.seasons.present ? data.seasons.value : this.seasons,
       fibers: data.fibers.present ? data.fibers.value : this.fibers,
       tags: data.tags.present ? data.tags.value : this.tags,
@@ -751,6 +799,7 @@ class Item extends DataClass implements Insertable<Item> {
           ..write('colorClass: $colorClass, ')
           ..write('lifecycle: $lifecycle, ')
           ..write('brandLower: $brandLower, ')
+          ..write('originLower: $originLower, ')
           ..write('seasons: $seasons, ')
           ..write('fibers: $fibers, ')
           ..write('tags: $tags, ')
@@ -776,6 +825,7 @@ class Item extends DataClass implements Insertable<Item> {
     colorClass,
     lifecycle,
     brandLower,
+    originLower,
     seasons,
     fibers,
     tags,
@@ -800,6 +850,7 @@ class Item extends DataClass implements Insertable<Item> {
           other.colorClass == this.colorClass &&
           other.lifecycle == this.lifecycle &&
           other.brandLower == this.brandLower &&
+          other.originLower == this.originLower &&
           other.seasons == this.seasons &&
           other.fibers == this.fibers &&
           other.tags == this.tags &&
@@ -822,6 +873,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
   final Value<String> colorClass;
   final Value<String> lifecycle;
   final Value<String?> brandLower;
+  final Value<String?> originLower;
   final Value<String> seasons;
   final Value<String> fibers;
   final Value<String> tags;
@@ -843,6 +895,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     this.colorClass = const Value.absent(),
     this.lifecycle = const Value.absent(),
     this.brandLower = const Value.absent(),
+    this.originLower = const Value.absent(),
     this.seasons = const Value.absent(),
     this.fibers = const Value.absent(),
     this.tags = const Value.absent(),
@@ -865,6 +918,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     required String colorClass,
     required String lifecycle,
     this.brandLower = const Value.absent(),
+    this.originLower = const Value.absent(),
     required String seasons,
     required String fibers,
     required String tags,
@@ -902,6 +956,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     Expression<String>? colorClass,
     Expression<String>? lifecycle,
     Expression<String>? brandLower,
+    Expression<String>? originLower,
     Expression<String>? seasons,
     Expression<String>? fibers,
     Expression<String>? tags,
@@ -924,6 +979,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
       if (colorClass != null) 'color_class': colorClass,
       if (lifecycle != null) 'lifecycle': lifecycle,
       if (brandLower != null) 'brand_lower': brandLower,
+      if (originLower != null) 'origin_lower': originLower,
       if (seasons != null) 'seasons': seasons,
       if (fibers != null) 'fibers': fibers,
       if (tags != null) 'tags': tags,
@@ -948,6 +1004,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     Value<String>? colorClass,
     Value<String>? lifecycle,
     Value<String?>? brandLower,
+    Value<String?>? originLower,
     Value<String>? seasons,
     Value<String>? fibers,
     Value<String>? tags,
@@ -970,6 +1027,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
       colorClass: colorClass ?? this.colorClass,
       lifecycle: lifecycle ?? this.lifecycle,
       brandLower: brandLower ?? this.brandLower,
+      originLower: originLower ?? this.originLower,
       seasons: seasons ?? this.seasons,
       fibers: fibers ?? this.fibers,
       tags: tags ?? this.tags,
@@ -1013,6 +1071,9 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     }
     if (brandLower.present) {
       map['brand_lower'] = Variable<String>(brandLower.value);
+    }
+    if (originLower.present) {
+      map['origin_lower'] = Variable<String>(originLower.value);
     }
     if (seasons.present) {
       map['seasons'] = Variable<String>(seasons.value);
@@ -1062,6 +1123,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
           ..write('colorClass: $colorClass, ')
           ..write('lifecycle: $lifecycle, ')
           ..write('brandLower: $brandLower, ')
+          ..write('originLower: $originLower, ')
           ..write('seasons: $seasons, ')
           ..write('fibers: $fibers, ')
           ..write('tags: $tags, ')
@@ -1932,6 +1994,7 @@ typedef $$ItemsTableCreateCompanionBuilder =
       required String colorClass,
       required String lifecycle,
       Value<String?> brandLower,
+      Value<String?> originLower,
       required String seasons,
       required String fibers,
       required String tags,
@@ -1955,6 +2018,7 @@ typedef $$ItemsTableUpdateCompanionBuilder =
       Value<String> colorClass,
       Value<String> lifecycle,
       Value<String?> brandLower,
+      Value<String?> originLower,
       Value<String> seasons,
       Value<String> fibers,
       Value<String> tags,
@@ -2018,6 +2082,11 @@ class $$ItemsTableFilterComposer extends Composer<_$AppDatabase, $ItemsTable> {
 
   ColumnFilters<String> get brandLower => $composableBuilder(
     column: $table.brandLower,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get originLower => $composableBuilder(
+    column: $table.originLower,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2126,6 +2195,11 @@ class $$ItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get originLower => $composableBuilder(
+    column: $table.originLower,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get seasons => $composableBuilder(
     column: $table.seasons,
     builder: (column) => ColumnOrderings(column),
@@ -2217,6 +2291,11 @@ class $$ItemsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get originLower => $composableBuilder(
+    column: $table.originLower,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get seasons =>
       $composableBuilder(column: $table.seasons, builder: (column) => column);
 
@@ -2295,6 +2374,7 @@ class $$ItemsTableTableManager
                 Value<String> colorClass = const Value.absent(),
                 Value<String> lifecycle = const Value.absent(),
                 Value<String?> brandLower = const Value.absent(),
+                Value<String?> originLower = const Value.absent(),
                 Value<String> seasons = const Value.absent(),
                 Value<String> fibers = const Value.absent(),
                 Value<String> tags = const Value.absent(),
@@ -2316,6 +2396,7 @@ class $$ItemsTableTableManager
                 colorClass: colorClass,
                 lifecycle: lifecycle,
                 brandLower: brandLower,
+                originLower: originLower,
                 seasons: seasons,
                 fibers: fibers,
                 tags: tags,
@@ -2339,6 +2420,7 @@ class $$ItemsTableTableManager
                 required String colorClass,
                 required String lifecycle,
                 Value<String?> brandLower = const Value.absent(),
+                Value<String?> originLower = const Value.absent(),
                 required String seasons,
                 required String fibers,
                 required String tags,
@@ -2360,6 +2442,7 @@ class $$ItemsTableTableManager
                 colorClass: colorClass,
                 lifecycle: lifecycle,
                 brandLower: brandLower,
+                originLower: originLower,
                 seasons: seasons,
                 fibers: fibers,
                 tags: tags,

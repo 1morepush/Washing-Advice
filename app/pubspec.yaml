@@ -49,6 +49,9 @@ dependencies:
   image: ^4.9.2
 
 dev_dependencies:
+  # Direct, not just transitive via drift: the migration test opens a raw
+  # database so it can stamp an old schema version and upgrade from it.
+  sqlite3: ^2.4.0
   flutter_test:
     sdk: flutter
 

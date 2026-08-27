@@ -76,6 +76,26 @@ class DriftWardrobeRepository implements WardrobeRepository {
     return brands.toList()..sort();
   }
 
+  @override
+  Future<List<String>> knownCountries() async {
+    final rows = await (_db.select(
+      _db.items,
+    )..where((t) => t.originLower.isNotNull())).get();
+
+    // Deduplicated on the lower-cased column but shown in the spelling the
+    // label used, so two tags printing one country differently are offered
+    // once rather than splitting a wardrobe by typography.
+    final byKey = <String, String>{};
+    for (final row in rows) {
+      if (itemFrom(row).countryOfOrigin?.value.trim() case final String country
+          when country.isNotEmpty) {
+        byKey.putIfAbsent(country.toLowerCase(), () => country);
+      }
+    }
+    return byKey.values.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+  }
+
   /// Builds the select for a query.
   SimpleSelectStatement<$ItemsTable, Item> _build(
     WardrobeQuery query, {
@@ -115,6 +135,16 @@ class DriftWardrobeRepository implements WardrobeRepository {
       select.where(
         (t) =>
             t.brandLower.isIn([for (final b in query.brands) b.toLowerCase()]),
+      );
+    }
+
+    if (query.countries.isNotEmpty) {
+      // Same shape as the brand filter, and the same consequence: a garment
+      // whose label never said is never a match, because NULL fails isIn.
+      select.where(
+        (t) => t.originLower.isIn([
+          for (final c in query.countries) c.trim().toLowerCase(),
+        ]),
       );
     }
 
@@ -189,6 +219,14 @@ class DriftWardrobeRepository implements WardrobeRepository {
           (t) => OrderingTerm(expression: t.addedAt, mode: OrderingMode.desc),
         ],
         WardrobeSort.nameAscending => [
+          (t) => OrderingTerm(expression: t.name.lower()),
+        ],
+        // Unknown last in a view whose whole point is grouping by place, then
+        // by name so one country's garments come out in a stable order rather
+        // than in whatever order they were saved.
+        WardrobeSort.countryOfOrigin => [
+          (t) =>
+              OrderingTerm(expression: t.originLower, nulls: NullsOrder.last),
           (t) => OrderingTerm(expression: t.name.lower()),
         ],
         WardrobeSort.mostWorn => [

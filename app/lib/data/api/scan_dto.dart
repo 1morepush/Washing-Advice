@@ -146,6 +146,13 @@ CareTagScanResult careTagResultFromJson(Map<String, Object?> json) {
             json['composition']! as Map<String, Object?>,
             (raw) => FabricComposition.fromJson(raw! as Map<String, Object?>),
           ),
+    // Dropped when it arrives blank rather than kept as an empty country,
+    // which would filter and tally as a real place with no name.
+    countryOfOrigin: switch (json['countryOfOrigin']) {
+      final Map<String, Object?> raw when _hasCountry(raw) =>
+        Confident.fromJson(raw, (value) => (value! as String).trim()),
+      _ => null,
+    },
     symbolsFound: [
       for (final symbol in (json['symbolsFound'] as List<Object?>?) ?? const [])
         symbol! as String,
@@ -156,6 +163,9 @@ CareTagScanResult careTagResultFromJson(Map<String, Object?> json) {
     language: json['language'] as String?,
   );
 }
+
+bool _hasCountry(Map<String, Object?> raw) =>
+    raw['value'] is String && (raw['value']! as String).trim().isNotEmpty;
 
 PileScanResult pileResultFromJson(Map<String, Object?> json) => PileScanResult(
   items: [

@@ -114,6 +114,15 @@ final patchNotes = <Release>[
       'If the label does not state a fabric, it says that too rather than '
           'showing nothing, because a blank row looks the same whether the '
           'label was silent or the reading missed it.',
+      'Care labels usually print where a garment was made, and that is now '
+          'kept too. It shows on the item, you can filter by it, and there is '
+          'a new "Where it was made" sort.',
+      'Insights has a section for it. Only the garments whose label actually '
+          'said are counted, and it tells you how many have no country on '
+          'record — otherwise a wardrobe with three read labels would look '
+          'like it came entirely from one country.',
+      'The country is kept exactly as printed and never translated, so a tag '
+          'reading "Fabriqué en Tunisie" stays that way.',
     ],
   ),
   Release(

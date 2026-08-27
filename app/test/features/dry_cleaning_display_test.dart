@@ -218,6 +218,61 @@ void main() {
       expect(find.textContaining('has been kept'), findsOneWidget);
     });
 
+    testWidgets('it names what the tag may have called the fibre', (
+      tester,
+    ) async {
+      // Reported from a real scan: the tag printed SPANDEX and the app said
+      // "Elastane". The reading was right and the word was not the one in the
+      // user's hand, which reads as a misread.
+      await withLabel(const CareConstraint(maxTempC: 30));
+      gateway.reading = CareTagScanResult(
+        instructions: const CareConstraint(maxTempC: 40),
+        confidence: 0.95,
+        composition: Confident(
+          FabricComposition(const {Fiber.cotton: 95, Fiber.elastane: 5}),
+          confidence: 0.95,
+          source: Provenance.tagScan,
+        ),
+      );
+
+      await pump(tester, const CareTagScreen(id: itemId));
+      final controller = container.read(
+        careTagControllerProvider(itemId).notifier,
+      );
+      await controller.capture();
+      await controller.readCollected();
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('5% Spandex'), findsOneWidget);
+      expect(find.textContaining('Elastane'), findsOneWidget);
+    });
+
+    testWidgets('a garment with no second name for anything stays quiet', (
+      tester,
+    ) async {
+      // The line earns its place only where there is a mismatch to explain.
+      await withLabel(const CareConstraint(maxTempC: 30));
+      gateway.reading = CareTagScanResult(
+        instructions: const CareConstraint(maxTempC: 40),
+        confidence: 0.95,
+        composition: Confident(
+          FabricComposition(const {Fiber.cotton: 100}),
+          confidence: 0.95,
+          source: Provenance.tagScan,
+        ),
+      );
+
+      await pump(tester, const CareTagScreen(id: itemId));
+      final controller = container.read(
+        careTagControllerProvider(itemId).notifier,
+      );
+      await controller.capture();
+      await controller.readCollected();
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('may call it'), findsNothing);
+    });
+
     testWidgets('a label silent about fabric says so', (tester) async {
       // The case that earns the section. Saying nothing would look identical
       // whether the label was silent or the reading missed it, and those want

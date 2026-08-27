@@ -123,6 +123,14 @@ final patchNotes = <Release>[
           'like it came entirely from one country.',
       'The country is kept exactly as printed and never translated, so a tag '
           'reading "Fabriqué en Tunisie" stays that way.',
+      'Fixed: a label printing SPANDEX showed up as "Elastane". They are the '
+          'same fibre under two names, and the reading was right, but the word '
+          'on screen was not the word on your tag — which reads as a misread. '
+          'The app says spandex and rayon now, matching both American labels '
+          'and the American English it writes everywhere else.',
+      'Where a fibre goes by more than one name, the label screen says so — '
+          '"your label may call it elastane" — so a European tag and the app '
+          'can be told apart from a mistake.',
     ],
   ),
   Release(

@@ -511,6 +511,20 @@ class _Composition extends StatelessWidget {
               known ? shown.value.label : 'Not known yet',
               style: theme.textTheme.bodyMedium,
             ),
+            // Named where the comparison actually happens. Somebody holding a
+            // tag that reads ELASTANE and an app that says Spandex has no way
+            // to tell whether it read the tag right — and reasonably assumes
+            // it did not.
+            if (_otherNames(shown.value) case final String others)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Your label may call it $others.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
             const SizedBox(height: 6),
             Text(
               switch ((fromLabel, known, kept)) {
@@ -537,6 +551,21 @@ class _Composition extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The other names for whichever fibres this garment is made of.
+///
+/// Null when every fibre in it goes by one name, which is most garments — the
+/// line is worth drawing only when there is a mismatch to explain.
+String? _otherNames(FabricComposition composition) {
+  final names = <String>[
+    for (final fiber in composition.fibers)
+      if (composition.isDescribedBy(fiber))
+        for (final alias in fiber.alsoKnownAs) alias,
+  ];
+  if (names.isEmpty) return null;
+  if (names.length == 1) return names.single;
+  return '${names.sublist(0, names.length - 1).join(', ')} or ${names.last}';
 }
 
 class _Line extends StatelessWidget {

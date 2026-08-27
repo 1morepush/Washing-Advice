@@ -41,6 +41,7 @@ final class WardrobeItem {
     this.countryOfOrigin,
     this.pattern,
     this.careLabel,
+    this.ownCare,
     this.photos = PhotoSet.empty,
     this.lifecycle = LifecycleState.active,
     this.condition = ConditionAssessment.pristine,
@@ -100,6 +101,18 @@ final class WardrobeItem {
   /// Partial by nature: a creased or faded label states only some fields, and
   /// an absent field means the rule table fills the gap.
   final Confident<CareConstraint>? careLabel;
+
+  /// What the user said about washing this particular garment.
+  ///
+  /// For the case the label cannot cover: worn away, cut out, or never there.
+  /// Partial like a label rather than a whole care profile, so somebody who
+  /// knows "wool, cold, do not tumble" states those and lets the rule table
+  /// cover the bleach symbol they have no opinion about.
+  ///
+  /// Outranks the scanned label. A legible tag is the better evidence and this
+  /// stays empty for garments that have one; when it is set, it is because the
+  /// person holding the garment knows something the photograph does not.
+  final CareConstraint? ownCare;
 
   final PhotoSet photos;
   final LifecycleState lifecycle;
@@ -287,6 +300,14 @@ final class WardrobeItem {
     Confident<Pattern>? pattern,
     CareProfile? care,
     Confident<CareConstraint>? careLabel,
+    CareConstraint? ownCare,
+
+    /// Removes what the user said about washing this garment.
+    ///
+    /// `copyWith` cannot otherwise express "set this back to nothing", since a
+    /// null argument means "leave it alone". Only this field has the flag,
+    /// because only this field has a way for a user to take back a statement.
+    bool clearOwnCare = false,
     PhotoSet? photos,
     LifecycleState? lifecycle,
     ConditionAssessment? condition,
@@ -315,6 +336,7 @@ final class WardrobeItem {
         pattern: pattern ?? this.pattern,
         care: care ?? this.care,
         careLabel: careLabel ?? this.careLabel,
+        ownCare: clearOwnCare ? null : (ownCare ?? this.ownCare),
         photos: photos ?? this.photos,
         lifecycle: lifecycle ?? this.lifecycle,
         condition: condition ?? this.condition,
@@ -355,6 +377,7 @@ final class WardrobeItem {
         'care': care.toJson(),
         if (careLabel != null)
           'careLabel': careLabel!.toJson((c) => c.toJson()),
+        if (ownCare != null) 'ownCare': ownCare!.toJson(),
         'photos': photos.toJson(),
         'lifecycle': lifecycle.name,
         'condition': condition.toJson(),
@@ -412,6 +435,9 @@ final class WardrobeItem {
                 (raw) => Pattern.values.byName(raw! as String),
               ),
         care: CareProfile.fromJson(json['care']! as Map<String, Object?>),
+        ownCare: json['ownCare'] == null
+            ? null
+            : CareConstraint.fromJson(json['ownCare']! as Map<String, Object?>),
         careLabel: json['careLabel'] == null
             ? null
             : Confident.fromJson(

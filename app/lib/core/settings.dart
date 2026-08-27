@@ -27,6 +27,7 @@ class SettingsStore {
   static const _customWasherKey = 'customWasherProfile';
   static const _customDryerKey = 'customDryerProfile';
   static const _splitDryingKey = 'splitDrying';
+  static const _separateWashingKey = 'separateWashing';
   static const _syncTokenKey = 'syncToken';
   static const _syncCursorKey = 'syncCursorRemote';
   static const _syncLocalCursorKey = 'syncCursorLocal';
@@ -53,6 +54,22 @@ class SettingsStore {
 
   Future<void> setSplitDrying(bool value) =>
       _prefs.setBool(_splitDryingKey, value);
+
+  /// Whether colours that could share a drum are kept in their own loads.
+  ///
+  /// Off by default: the sorter combines whatever it has judged safe to
+  /// combine, which is fewer, fuller loads. On, each colour class washes on
+  /// its own — more loads, more water, and the answer somebody wants when
+  /// they have been burnt by a dye run and no longer care what the rules say
+  /// is safe.
+  ///
+  /// Never the other direction. This can only separate loads the sorter would
+  /// have combined; it cannot combine ones the sorter separated, because
+  /// those were separated to stop a white shirt coming out pink.
+  bool get separateWashing => _prefs.getBool(_separateWashingKey) ?? false;
+
+  Future<void> setSeparateWashing(bool value) =>
+      _prefs.setBool(_separateWashingKey, value);
 
   /// The chosen machines, by catalogue key.
   ///
@@ -206,6 +223,12 @@ final backendUrlProvider = StateProvider<String>(
 /// wagging the dog. `main()` seeds it from the stored value at startup and the
 /// settings screen writes through to both.
 final splitDryingProvider = StateProvider<bool>((ref) => false);
+
+/// Whether each colour class washes in its own load.
+///
+/// Seeded and defaulted the same way, and for the same reason, as
+/// [splitDryingProvider].
+final separateWashingProvider = StateProvider<bool>((ref) => false);
 
 /// The user's machines, by catalogue key. Null means "not set up yet".
 final washerBrandProvider = StateProvider<String?>(

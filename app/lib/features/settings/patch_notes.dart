@@ -96,6 +96,25 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.23.0',
+    name: 'Separate Ways',
+    date: DateTime.utc(2026, 8, 27),
+    headline: 'Wash each colour on its own, if that is what you want',
+    changes: [
+      'New in Settings: wash each colour separately. The app used to put '
+          'colours that do not conflict in the same drum — lights with brights '
+          '— because that is fewer, fuller loads. Turn this on and each colour '
+          'washes on its own.',
+      'It sits next to the drying split, under "Washing and drying", and the '
+          'two combine: wash and dry together, wash together and dry apart, '
+          'wash apart and dry together, or keep everything separate. Settings '
+          'says in one line which of the four you have picked.',
+      'Neither setting can put two things in the same load that the app kept '
+          'apart. They only ever separate further — anything held back for a '
+          'dye run or a delicate stays held back whatever you choose.',
+    ],
+  ),
+  Release(
     version: '0.22.0',
     name: 'Hang It Up',
     date: DateTime.utc(2026, 8, 21),

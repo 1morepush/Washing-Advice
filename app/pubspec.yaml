@@ -41,6 +41,11 @@ dependencies:
   # "check for updates" flow talks to the service worker and Cache Storage
   # APIs itself.
   web: ^1.1.0
+
+  # JPEG encoding, for the crop. `dart:ui` can only hand back raw pixels or a
+  # PNG, and a PNG of a photograph is several megabytes where the JPEG it came
+  # from was a few hundred kilobytes — paid on every upload. Pure Dart, no
+  # platform channels.
   image: ^4.9.2
 
 dev_dependencies:

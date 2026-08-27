@@ -179,6 +179,54 @@ final class WardrobeSummary {
     return _tally(keys);
   }
 
+  /// Where the wardrobe was made.
+  ///
+  /// Counted only over garments whose label actually said, and
+  /// [withoutCountry] reports the rest. A chart that folded the unknowns into
+  /// the total would make a wardrobe with three read labels look like it came
+  /// overwhelmingly from one country.
+  ///
+  /// Grouped on the printed words, case-insensitively, so "Portugal" and
+  /// "PORTUGAL" are one entry — but nothing tries to map "PRC" onto "China".
+  /// That needs a table nobody has written, and a wrong mapping states a fact
+  /// about a garment that its label does not.
+  List<Tally<String>> get byCountryOfOrigin {
+    final display = <String, String>{};
+    final keys = <String>[];
+
+    for (final item in _items) {
+      if (item.countryOfOrigin?.value.trim() case final String country
+          when country.isNotEmpty) {
+        final key = country.toLowerCase();
+        // The first spelling seen wins, so the chart shows a real label rather
+        // than a lower-cased one.
+        display.putIfAbsent(key, () => country);
+        keys.add(key);
+      }
+    }
+
+    // Re-keyed to the printed spelling. The share is left as `_tally` worked
+    // it out: against the whole wardrobe, so the unknowns account for the
+    // remainder rather than being normalised away.
+    return [
+      for (final tally in _tally(keys))
+        Tally(
+          key: display[tally.key] ?? tally.key,
+          count: tally.count,
+          share: tally.share,
+        ),
+    ];
+  }
+
+  /// Garments whose label never said where they were made.
+  ///
+  /// Reported beside [byCountryOfOrigin] rather than hidden, because on a
+  /// young wardrobe it is most of them and the chart means little without it.
+  int get withoutCountry => [
+        for (final item in _items)
+          if (item.countryOfOrigin == null) item,
+      ].length;
+
   /// Items whose care is still a guess.
   ///
   /// The actionable backlog: each one is a label away from being sortable, and

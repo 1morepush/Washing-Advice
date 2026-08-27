@@ -38,6 +38,7 @@ final class WardrobeItem {
     required this.addedAt,
     required this.updatedAt,
     this.brand,
+    this.countryOfOrigin,
     this.pattern,
     this.careLabel,
     this.photos = PhotoSet.empty,
@@ -65,6 +66,20 @@ final class WardrobeItem {
   final Confident<FabricComposition> composition;
   final Confident<ColorPalette> colors;
   final Confident<String>? brand;
+
+  /// Where it was made, as the label prints it — "Portugal", "Bangladesh".
+  ///
+  /// Confident rather than a plain string for the same reason [brand] is: it
+  /// is read off a tag, it is often missing, and the user can correct it. A
+  /// country the app guessed from a brand would be a different kind of claim
+  /// from one printed on the garment, and provenance is what keeps those
+  /// apart.
+  ///
+  /// Stored as printed rather than normalised to a code. "Made in China" and
+  /// "中国製" are the same fact, but collapsing them needs a mapping table
+  /// nobody has written, and a wrong normalisation loses the printed words
+  /// where a missing one only loses tidiness.
+  final Confident<String>? countryOfOrigin;
   final Confident<Pattern>? pattern;
 
   /// How to wash it, and how much that belief can be trusted.
@@ -277,6 +292,7 @@ final class WardrobeItem {
     ConditionAssessment? condition,
     UsageStats? usage,
     PurchaseInfo? purchase,
+    Confident<String>? countryOfOrigin,
     String? sizeLabel,
     SleeveLength? sleeveLength,
     Fit? fit,
@@ -295,6 +311,7 @@ final class WardrobeItem {
         composition: composition ?? this.composition,
         colors: colors ?? this.colors,
         brand: brand ?? this.brand,
+        countryOfOrigin: countryOfOrigin ?? this.countryOfOrigin,
         pattern: pattern ?? this.pattern,
         care: care ?? this.care,
         careLabel: careLabel ?? this.careLabel,
@@ -332,6 +349,8 @@ final class WardrobeItem {
         'composition': composition.toJson((c) => c.toJson()),
         'colors': colors.toJson((c) => c.toJson()),
         if (brand != null) 'brand': brand!.toJson((b) => b),
+        if (countryOfOrigin != null)
+          'countryOfOrigin': countryOfOrigin!.toJson((c) => c),
         if (pattern != null) 'pattern': pattern!.toJson((p) => p.name),
         'care': care.toJson(),
         if (careLabel != null)
@@ -378,6 +397,12 @@ final class WardrobeItem {
             ? null
             : Confident.fromJson(
                 json['brand']! as Map<String, Object?>,
+                (raw) => raw! as String,
+              ),
+        countryOfOrigin: json['countryOfOrigin'] == null
+            ? null
+            : Confident.fromJson(
+                json['countryOfOrigin']! as Map<String, Object?>,
                 (raw) => raw! as String,
               ),
         pattern: json['pattern'] == null

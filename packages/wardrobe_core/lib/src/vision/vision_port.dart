@@ -87,6 +87,7 @@ final class CareTagScanResult {
     required this.instructions,
     required this.confidence,
     this.composition,
+    this.countryOfOrigin,
     this.symbolsFound = const [],
     this.unreadableSymbolCount = 0,
     this.rawText,
@@ -102,6 +103,13 @@ final class CareTagScanResult {
 
   /// Fibre composition printed on the label, when present.
   final Confident<FabricComposition>? composition;
+
+  /// Where the label says the garment was made, when it says.
+  ///
+  /// Usually printed on the same tag as the care symbols, which is why it is
+  /// read here rather than by the garment scan — a photograph of a jumper does
+  /// not show where it came from.
+  final Confident<String>? countryOfOrigin;
 
   /// Identifiers of the symbols recognised, for showing the user what was read.
   final List<String> symbolsFound;

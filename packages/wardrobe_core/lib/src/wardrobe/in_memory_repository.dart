@@ -90,6 +90,23 @@ final class InMemoryWardrobeRepository implements WardrobeRepository {
   }
 
   @override
+  Future<List<String>> knownCountries() async {
+    // Deduplicated case-insensitively, keeping the first spelling seen. Two
+    // labels printing the same country differently are one place, and offering
+    // both in the filter sheet would split a wardrobe by typography — the
+    // filter itself already matches either way.
+    final byKey = <String, String>{};
+    for (final item in _items.values) {
+      if (item.countryOfOrigin?.value.trim() case final String country
+          when country.isNotEmpty) {
+        byKey.putIfAbsent(country.toLowerCase(), () => country);
+      }
+    }
+    return byKey.values.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+  }
+
+  @override
   Future<List<String>> knownBrands() async {
     final brands = <String>{
       for (final item in _items.values)
@@ -156,6 +173,13 @@ final class InMemoryWardrobeRepository implements WardrobeRepository {
       if (!wanted.contains(brand)) return false;
     }
 
+    if (query.countries.isNotEmpty) {
+      final country = item.countryOfOrigin?.value.toLowerCase();
+      if (country == null) return false;
+      final wanted = {for (final c in query.countries) c.toLowerCase()};
+      if (!wanted.contains(country)) return false;
+    }
+
     // Seasons match on overlap: a query for summer should find an all-season
     // item, because that item is genuinely wearable in summer.
     if (query.seasons.isNotEmpty &&
@@ -208,11 +232,30 @@ final class InMemoryWardrobeRepository implements WardrobeRepository {
     return true;
   }
 
+  int _byCountry(WardrobeItem a, WardrobeItem b) {
+    final left = a.countryOfOrigin?.value.toLowerCase();
+    final right = b.countryOfOrigin?.value.toLowerCase();
+    if (left == null && right == null) {
+      return a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase());
+    }
+    if (left == null) return 1;
+    if (right == null) return -1;
+    final byCountry = left.compareTo(right);
+    // Then by name, so a country's garments come out in a stable order rather
+    // than in whatever order they were added.
+    return byCountry != 0
+        ? byCountry
+        : a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase());
+  }
+
   int _compare(WardrobeItem a, WardrobeItem b, WardrobeSort sort) =>
       switch (sort) {
         WardrobeSort.recentlyAdded => b.addedAt.compareTo(a.addedAt),
         WardrobeSort.nameAscending =>
           a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()),
+        // Unknown last: an absence is not a place, and burying the garments
+        // whose label never said would defeat the point of the view.
+        WardrobeSort.countryOfOrigin => _byCountry(a, b),
         WardrobeSort.mostWorn => b.usage.timesWorn.compareTo(a.usage.timesWorn),
         WardrobeSort.recentlyWorn => _byDate(
             a.usage.lastWornAt,

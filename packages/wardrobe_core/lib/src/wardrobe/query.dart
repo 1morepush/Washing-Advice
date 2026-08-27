@@ -31,6 +31,10 @@ enum WardrobeSort {
   mostWorn('Most worn'),
   nameAscending('Name'),
 
+  /// Grouped by where things were made, alphabetically. Items with no country
+  /// recorded sort last, since an absence is not a place.
+  countryOfOrigin('Where it was made'),
+
   /// Cheapest per wear first. Items with no price sort last, since a null is
   /// not a good score.
   costPerWear('Cost per wear');
@@ -51,6 +55,7 @@ final class WardrobeQuery {
     this.types = const {},
     this.colorClasses = const {},
     this.brands = const {},
+    this.countries = const {},
     this.seasons = const {},
     this.fibers = const {},
     this.lifecycleStates = const {},
@@ -92,6 +97,10 @@ final class WardrobeQuery {
   /// Matched case-insensitively; a storage layer is expected to normalise.
   final Set<String> brands;
 
+  /// Where the garment was made, matched case-insensitively against the words
+  /// printed on the label.
+  final Set<String> countries;
+
   final Set<Season> seasons;
 
   /// Matches an item any of these fibres genuinely describes — see
@@ -131,6 +140,7 @@ final class WardrobeQuery {
       types.isEmpty &&
       colorClasses.isEmpty &&
       brands.isEmpty &&
+      countries.isEmpty &&
       seasons.isEmpty &&
       fibers.isEmpty &&
       lifecycleStates.isEmpty &&
@@ -149,6 +159,7 @@ final class WardrobeQuery {
         types.isNotEmpty,
         colorClasses.isNotEmpty,
         brands.isNotEmpty,
+        countries.isNotEmpty,
         seasons.isNotEmpty,
         fibers.isNotEmpty,
         tags.isNotEmpty,
@@ -166,6 +177,7 @@ final class WardrobeQuery {
     Set<ItemType>? types,
     Set<ColorClass>? colorClasses,
     Set<String>? brands,
+    Set<String>? countries,
     Set<Season>? seasons,
     Set<Fiber>? fibers,
     Set<LifecycleState>? lifecycleStates,
@@ -186,6 +198,7 @@ final class WardrobeQuery {
         types: types ?? this.types,
         colorClasses: colorClasses ?? this.colorClasses,
         brands: brands ?? this.brands,
+        countries: countries ?? this.countries,
         seasons: seasons ?? this.seasons,
         fibers: fibers ?? this.fibers,
         lifecycleStates: lifecycleStates ?? this.lifecycleStates,

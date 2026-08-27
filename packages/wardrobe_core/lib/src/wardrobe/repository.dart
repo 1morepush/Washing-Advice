@@ -55,6 +55,12 @@ abstract interface class WardrobeRepository {
 
   /// Every brand present in the wardrobe, for building a filter list.
   Future<List<String>> knownBrands();
+
+  /// Every country any garment says it was made in, sorted.
+  ///
+  /// For the filter sheet, which offers what the wardrobe actually contains
+  /// rather than a list of every country in the world.
+  Future<List<String>> knownCountries();
 }
 
 /// Keeps cached usage counters in step with the event log.

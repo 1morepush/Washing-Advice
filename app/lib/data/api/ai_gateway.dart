@@ -17,6 +17,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
+import 'chat_dto.dart';
 import 'condition_dto.dart';
 import 'scan_dto.dart';
 import 'stain_dto.dart';
@@ -317,6 +318,81 @@ class AiGateway implements VisionPort {
       pieces: pieceProposalsFromJson(body['pieces']),
     );
   }
+
+  /// Answers a question in words.
+  ///
+  /// The wardrobe rides along so the answer can be about the user's actual
+  /// clothes rather than clothes in general — "can I tumble dry the navy
+  /// jumper" is the question people have, and it is unanswerable without
+  /// knowing what the navy jumper is made of.
+  ///
+  /// Capped at [wardrobeContextLimit] garments. A large wardrobe would
+  /// otherwise put its whole contents into the prompt of every message of
+  /// every conversation, which is slow and is billed by the token. The true
+  /// size goes up with it so the answer can say it is working from part of the
+  /// wardrobe — without that, a garment left out reads as a garment not owned.
+  ///
+  /// [history] is the conversation so far, oldest first, without the question
+  /// being asked now. The server holds none of it: it is a record of what
+  /// somebody asked about their clothes, and this service keeps nothing.
+  ///
+  /// Trimmed to the most recent [historyLimit] turns, for the reason the
+  /// wardrobe is capped — and with a sharper failure behind it. The server
+  /// refuses a longer history with a 422, which this client classes as *not*
+  /// retryable, so an uncapped conversation does not degrade: past the limit
+  /// every further question fails permanently, and the only way out is a
+  /// Clear button nobody would connect to the cause.
+  Future<String> askQuestion({
+    required String question,
+    required List<WardrobeItem> wardrobe,
+    List<({bool fromUser, String text})> history = const [],
+  }) async {
+    final trimmed = question.trim();
+    if (trimmed.isEmpty) {
+      throw const ScanFailure('Ask a question first.', isRetryable: false);
+    }
+
+    final sent = wardrobe.take(wardrobeContextLimit).toList();
+
+    // The *most recent* turns, not the first: a long conversation's opening
+    // exchange matters less than what was said a moment ago, and "and the
+    // black one?" is unanswerable without the turn above it.
+    final recent = history.length <= historyLimit
+        ? history
+        : history.sublist(history.length - historyLimit);
+
+    final body = await _postJsonBody('chat/ask', {
+      'question': trimmed,
+      if (recent.isNotEmpty)
+        'history': [
+          for (final turn in recent)
+            {'role': turn.fromUser ? 'user' : 'assistant', 'text': turn.text},
+        ],
+      'wardrobe': [for (final item in sent) chatGarmentJson(item)],
+      if (wardrobe.length > sent.length) 'wardrobeTotal': wardrobe.length,
+    });
+
+    final reply = body['reply'];
+    if (reply is! String || reply.trim().isEmpty) {
+      throw const ScanFailure('The answer came back empty. Try asking again.');
+    }
+    return reply.trim();
+  }
+
+  /// How many garments a question may carry with it.
+  ///
+  /// Matches the server's own cap. Kept the same number on both sides so a
+  /// wardrobe just over the line is trimmed here rather than rejected there —
+  /// a 422 in the middle of a conversation is a far worse answer than one
+  /// working from ninety-nine garments instead of a hundred and one.
+  static const wardrobeContextLimit = 120;
+
+  /// How many earlier turns a question may carry with it.
+  ///
+  /// Matches the server's own cap, for the same reason the wardrobe limit
+  /// does: trimming here costs a little context, and hitting the limit there
+  /// costs the conversation.
+  static const historyLimit = 40;
 
   /// The garment with its background removed.
   ///

@@ -503,6 +503,28 @@ against it, because that is the only place a cross-language wire break shows up
 — both halves pass their own unit tests happily while a renamed field silently
 drops data between them. It found two such bugs the first time it ran.
 
+### Ask it a question
+
+Most laundry questions are not ones a screen anticipates. What the triangle with
+two lines means, whether a jumper that says 30° survives 40°, how much detergent
+for half a drum. **Ask** is a plain chat box for those.
+
+It knows what is in your wardrobe, so a garment can be named rather than
+described: *can I tumble dry the navy jumper?* It also knows, per garment,
+whether the care it holds was **read off a label** or **worked out from the
+fabric**, and it is told to say which. That distinction is the one thing here
+that can cost you a garment — a rule-table inference relayed with the confidence
+of a sewn-in label is how a jumper ends up felted — so it is carried on every
+line of the prompt rather than flattened into "it says".
+
+It can only answer. There is no path from a question to a change: it cannot add
+a garment, start a wash, or edit a care label. An assistant that acted on a
+misread question would be a considerably worse thing to own than one that only
+talks.
+
+The conversation lasts as long as the app is open and is gone when you close it.
+Nothing you ask is written to the database or held by the server.
+
 ### Show what the wardrobe adds up to
 
 What it is made of, which piles it sorts into, what is never worn as against
@@ -538,11 +560,51 @@ to the model provider if a key is configured. The default is `localhost`, so
 out of the box the only machine involved is your own; point it at a hosted
 server and your photographs go there instead.
 
-The server keeps no wardrobe. It holds a cache keyed by the SHA-256 of an image
-so an identical re-scan is not paid for twice, and that cache stores the
-*reading* rather than the picture, in memory, bounded, and gone when the process
-restarts. The request itself still passes through, which is the thing to weigh
-when choosing a backend.
+**And two features send facts about your clothes rather than pictures of them.**
+The Stylist sends the wardrobe as text — type, colour, fabric — because it
+already holds those and re-deriving them from forty photographs would cost a
+multiple of the time. **Ask** sends the same kind of summary plus how each
+garment is washed, along with the question you typed and the conversation so
+far, so the answer can be about your actual clothes. Both go to the same backend
+as everything else, and both are capped so a large wardrobe does not put its
+whole contents into every request.
+
+The server keeps no wardrobe and no conversations. It holds a cache keyed by the
+SHA-256 of an image so an identical re-scan is not paid for twice, and that cache
+stores the *reading* rather than the picture, in memory, bounded, and gone when
+the process restarts. Questions are not cached at all: each one arrives with
+whatever context it needs, is answered, and is forgotten. The request itself
+still passes through, which is the thing to weigh when choosing a backend.
+
+### The free tier is free, not private
+
+Worth stating plainly, because it is the one part of this that is not the
+server's to decide. The model behind every AI feature here is Gemini, and
+Google's pricing page draws the line itself: on the **free tier your content is
+used to improve Google's products**, and on the paid tier it explicitly is not.
+
+That applies to everything described above once a key is configured — the
+photographs, the wardrobe facts the Stylist sends, and the questions Ask sends
+with them. Running with `VISION_PROVIDER=fake`, which is the default, sends
+nothing anywhere; there is no middle setting that keeps the features and opts
+out of the terms.
+
+So free and private pull in opposite directions here, and which one you want is
+a choice this repository cannot make for you. It is named rather than buried
+because the rest of this section is careful, and a careful section with one
+quiet omission is worse than no section at all.
+
+The free tier also has rate limits, sized for a person rather than a burst.
+Google no longer publishes fixed per-model numbers — your project's actual
+limits are in the AI Studio dashboard. In practice a bulk scan of a whole
+wardrobe is the one thing likely to hit them, which is survivable: a garment
+that fails comes back with its photograph so you can redo those few, and the
+rest of the batch is unaffected. Going over a limit is refused, not billed;
+nothing here can charge you unless you enable billing on the Google project the
+key belongs to.
+
+- [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing)
+- [Gemini API rate limits](https://ai.google.dev/gemini-api/docs/rate-limits)
 
 ---
 

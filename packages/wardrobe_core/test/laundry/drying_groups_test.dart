@@ -151,6 +151,28 @@ void main() {
       expect(load.driesInParts, isFalse);
     });
 
+    test('a damaged garment is never routed into the dryer', () {
+      // The split reads each garment's *effective* care, so observed wear
+      // still overrides a label that permits tumbling. Reading the raw
+      // profile here would put a pilling jumper in a dryer its label allows
+      // and its condition does not.
+      WardrobeItem pilling(String id) => item(id, tumbleDry: true).copyWith(
+            condition: ConditionAssessment([
+              WearObservation(
+                type: WearType.pilling,
+                severity: WearSeverity.moderate,
+                observedAt: now,
+              ),
+            ]),
+          );
+
+      final load = sortOne([pilling('a'), pilling('b')], split: true);
+
+      for (final group in load.dryingGroups) {
+        expect(group.isTumbleDried, isFalse);
+      }
+    });
+
     test('the load-level answer stays the conservative one', () {
       // Anything reading `drySpec` without knowing about groups — an older
       // screen, a saved record — must still get the answer that cannot ruin

@@ -115,6 +115,34 @@ void main() {
     });
   });
 
+  group('what it must not be able to do', () {
+    test('it cannot talk a damaged garment into a dryer', () async {
+      // The user wins on care, and observed wear still wins over the user.
+      // `effectiveCare` merges restrictively on top of the resolved profile,
+      // so somebody insisting a pilling jumper may be tumbled at 60 gets their
+      // instruction recorded and the garment still kept off the heat.
+      final pilling = ConditionAssessment([
+        WearObservation(
+          type: WearType.pilling,
+          severity: WearSeverity.moderate,
+          observedAt: now,
+        ),
+      ]);
+      final told = item(
+        ownCare: const CareConstraint(
+          maxTempC: 60,
+          tumbleDryAllowed: true,
+          tumbleDryHeat: TumbleDryHeat.high,
+        ),
+        fibers: const {Fiber.wool: 100},
+      ).copyWith(condition: pilling);
+
+      expect(told.care.instructions.wash.maxTempC, 60);
+      expect(told.effectiveCare.dry.tumbleDryAllowed, isFalse);
+      expect(told.effectiveCare.wash.maxTempC, lessThanOrEqualTo(30));
+    });
+  });
+
   group('keeping it', () {
     test('it survives a round trip through storage', () {
       final told = item(

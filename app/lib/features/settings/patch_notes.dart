@@ -96,6 +96,28 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.19.0',
+    name: 'Close Crop',
+    date: DateTime.utc(2026, 8, 21),
+    headline: 'Frame a photo on the garment before it is read',
+    changes: [
+      'Tap any photo while you are adding a garment and drag the corners in '
+          'so the garment fills the frame. Works when adding one garment or a '
+          'whole pile.',
+      'This is the fix for a bad cutout rather than a tidier picture. The '
+          'background is worked out from the colours at the edges of the '
+          'photo, so a shot with half a patterned duvet in it gives the app '
+          'the wrong idea about what the background even is. Crop that away '
+          'and it is being asked a much easier question.',
+      'It also helps the app identify the garment, for the plainer reason '
+          'that half a bedroom in shot is half a bedroom it has to ignore.',
+      'Nothing is cropped unless you drag something, and Reset puts the frame '
+          'back. A cropped photo is still a photo of the same size on your '
+          'phone bill — it is saved as a JPEG rather than being blown up into '
+          'something several times larger.',
+    ],
+  ),
+  Release(
     version: '0.18.1',
     name: 'Button Up',
     date: DateTime.utc(2026, 8, 17),

@@ -442,6 +442,44 @@ void main() {
       expect(reviewing.draft.careLabel, isNotNull);
     });
   });
+
+  group('framing a photo before it is sent', () {
+    test('a cropped shot is what goes to the server', () async {
+      // The whole point. A crop the flow kept locally and uploaded the
+      // original for would change nothing about the cutout it exists to fix.
+      await controller().capture();
+      controller().replaceShot(
+        0,
+        const ScanImage(bytes: [9, 9, 9, 9], mimeType: 'image/jpeg'),
+      );
+      await controller().scanCollected();
+
+      final reviewing = state() as ScanReviewing;
+      expect(reviewing.shots.single.image.bytes, [9, 9, 9, 9]);
+    });
+
+    test('cropping keeps what the photo shows', () async {
+      // Framing a picture does not change whether it is the front, the back
+      // or the label — and losing the role would send a tag to the garment
+      // reader.
+      await controller().capture();
+      controller().setRole(0, PhotoRole.careTag);
+      controller().replaceShot(
+        0,
+        const ScanImage(bytes: [1], mimeType: 'image/jpeg'),
+      );
+
+      final collecting = state() as ScanCollecting;
+      expect(collecting.shots.single.role, PhotoRole.careTag);
+    });
+
+    test('an index that is not there changes nothing', () async {
+      await controller().capture();
+      controller().replaceShot(7, const ScanImage(bytes: [0]));
+
+      expect((state() as ScanCollecting).shots, hasLength(1));
+    });
+  });
 }
 
 /// Stands in for the backend.

@@ -200,6 +200,20 @@ class ScanController extends StateNotifier<ScanState> {
     }
   }
 
+  /// Replaces one shot's photograph, keeping what it shows.
+  ///
+  /// Used by the cropper. The role survives because framing a photograph does
+  /// not change whether it is the front, the back or the label.
+  void replaceShot(int index, ScanImage image) {
+    if (state case ScanCollecting(
+      :final shots,
+    ) when index >= 0 && index < shots.length) {
+      final next = [...shots];
+      next[index] = ScanShot(image: image, role: next[index].role);
+      state = ScanCollecting(next);
+    }
+  }
+
   /// Drops the last photograph taken, for a shot that came out unusable.
   void discardLast() {
     if (state case ScanCollecting(:final shots) when shots.isNotEmpty) {

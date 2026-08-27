@@ -249,6 +249,18 @@ class _Review extends StatelessWidget {
                 ),
               ),
 
+              const SizedBox(height: 16),
+              _Composition(
+                fromLabel: state.reading.composition,
+                recorded: state.updated.composition,
+              ),
+
+              if (state.reading.countryOfOrigin?.value case final String made)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: _Line(label: 'Made in', value: made),
+                ),
+
               if (!state.reading.isComplete) ...[
                 const SizedBox(height: 16),
                 _PartialWarning(count: state.reading.unreadableSymbolCount),
@@ -435,6 +447,125 @@ class _PartialWarning extends StatelessWidget {
       ],
     );
   }
+}
+
+/// What the garment is made of, after the label was read.
+///
+/// Shown because the fibre content is on most labels, is taken when it is
+/// there, and outranks whatever was guessed from a photograph — and none of
+/// that was visible on this screen. Somebody scanning a tag had no way to tell
+/// whether the composition had been captured or never read at all.
+///
+/// The silent case earns its place as much as the other. Saying nothing would
+/// look identical whether the label was silent about fabric or the reading
+/// missed it, and those want different responses: one is the label's fault and
+/// one is worth another photograph.
+class _Composition extends StatelessWidget {
+  const _Composition({required this.fromLabel, required this.recorded});
+
+  /// What this label stated, if it stated anything.
+  final Confident<FabricComposition>? fromLabel;
+
+  /// What the garment will be recorded as. Usually the label's, but not
+  /// always: [Confident.resolve] keeps an existing value that is already at
+  /// least as well evidenced.
+  final Confident<FabricComposition> recorded;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    // The label's own words when it had any, because that is the question
+    // being answered — did the fabric come through — rather than what the
+    // garment happened to be recorded as beforehand.
+    final shown = fromLabel ?? recorded;
+    final known = !shown.value.isEmpty;
+
+    // Rare, and worth saying out loud rather than showing a figure that
+    // quietly is not the one about to be saved.
+    final kept = fromLabel != null && recorded.value != fromLabel!.value;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'What it is made of',
+                    style: theme.textTheme.titleSmall,
+                  ),
+                ),
+                if (known)
+                  ConfidenceChip(
+                    confidence: shown.confidence,
+                    source: shown.source,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              known ? shown.value.label : 'Not known yet',
+              style: theme.textTheme.bodyMedium,
+            ),
+            // Named where the comparison actually happens. Somebody holding a
+            // tag that reads ELASTANE and an app that says Spandex has no way
+            // to tell whether it read the tag right — and reasonably assumes
+            // it did not.
+            if (_otherNames(shown.value) case final String others)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Your label may call it $others.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            const SizedBox(height: 6),
+            Text(
+              switch ((fromLabel, known, kept)) {
+                (null, true, _) =>
+                  'This label did not state a fabric, so this is still what '
+                      'was worked out earlier.',
+                (null, false, _) =>
+                  'This label did not state a fabric, and none has been '
+                      'recorded. You can set it by editing the item.',
+                (_, _, true) =>
+                  'Read from this label. What is already recorded is at least '
+                      'as well evidenced, so it has been kept: '
+                      '\${recorded.value.label}.',
+                _ =>
+                  'Read from this label, which is why it outranks anything '
+                      'worked out from the photo.',
+              },
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The other names for whichever fibres this garment is made of.
+///
+/// Null when every fibre in it goes by one name, which is most garments — the
+/// line is worth drawing only when there is a mismatch to explain.
+String? _otherNames(FabricComposition composition) {
+  final names = <String>[
+    for (final fiber in composition.fibers)
+      if (composition.isDescribedBy(fiber))
+        for (final alias in fiber.alsoKnownAs) alias,
+  ];
+  if (names.isEmpty) return null;
+  if (names.length == 1) return names.single;
+  return '${names.sublist(0, names.length - 1).join(', ')} or ${names.last}';
 }
 
 class _Line extends StatelessWidget {

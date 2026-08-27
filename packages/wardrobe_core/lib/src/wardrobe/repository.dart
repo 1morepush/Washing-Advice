@@ -11,6 +11,8 @@
 /// test suite in `test/wardrobe/repository_test.dart` runs against both.
 library;
 
+import '../care/care_resolver.dart';
+import '../care/rules/care_rule.dart';
 import '../events/event_log.dart';
 import '../events/projections.dart';
 import '../events/wardrobe_event.dart';
@@ -55,6 +57,12 @@ abstract interface class WardrobeRepository {
 
   /// Every brand present in the wardrobe, for building a filter list.
   Future<List<String>> knownBrands();
+
+  /// Every country any garment says it was made in, sorted.
+  ///
+  /// For the filter sheet, which offers what the wardrobe actually contains
+  /// rather than a list of every country in the world.
+  Future<List<String>> knownCountries();
 }
 
 /// Keeps cached usage counters in step with the event log.
@@ -90,5 +98,32 @@ final class WardrobeRecorder {
     );
     await items.save(refreshed);
     return refreshed;
+  }
+
+  /// Records what the user says about washing [item], and re-resolves its care.
+  ///
+  /// Re-resolving here rather than leaving it to the caller is the same rule
+  /// the scan flow follows: a stored item whose `care` disagreed with the
+  /// facts it was derived from is the failure mode that damages clothes, and
+  /// the way to prevent it is to make the write and the derivation one step.
+  ///
+  /// An empty [care] clears the statement rather than recording an empty one,
+  /// so somebody who changes their mind gets the rule table back.
+  Future<WardrobeItem> setOwnCare({
+    required WardrobeItem item,
+    required CareConstraint care,
+    CareResolver resolver = const CareResolver(),
+    DateTime? now,
+  }) async {
+    final stated = care.statesNothing ? null : care;
+    final updated = item.copyWith(
+      ownCare: stated,
+      clearOwnCare: stated == null,
+      updatedAt: now ?? DateTime.now(),
+    );
+
+    final resolved = updated.copyWith(care: resolver.forItem(updated).profile);
+    await items.save(resolved);
+    return resolved;
   }
 }

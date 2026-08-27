@@ -14,6 +14,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../widgets/status_message.dart';
 import 'bulk_controller.dart';
+import 'crop_screen.dart';
 import 'scan_controller.dart' show ScanShot;
 
 class BulkScanScreen extends ConsumerWidget {
@@ -155,6 +156,15 @@ class _Collecting extends StatelessWidget {
                       _ShotTile(
                         shot: shot,
                         onRole: (role) => controller.setRole(index, role),
+                        onCrop: () async {
+                          final cropped = await showCropper(
+                            context,
+                            shot.image,
+                          );
+                          if (cropped != null) {
+                            controller.replaceShot(index, cropped);
+                          }
+                        },
                       ),
                   ],
                 ),
@@ -553,10 +563,15 @@ class _Done extends StatelessWidget {
 /// One photograph, with what it shows. The same roles the single scan screen
 /// offers, care label included.
 class _ShotTile extends StatelessWidget {
-  const _ShotTile({required this.shot, required this.onRole});
+  const _ShotTile({
+    required this.shot,
+    required this.onRole,
+    required this.onCrop,
+  });
 
   final ScanShot shot;
   final ValueChanged<PhotoRole> onRole;
+  final VoidCallback onCrop;
 
   static const _offered = [
     PhotoRole.front,
@@ -576,19 +591,41 @@ class _ShotTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ClipRRect(
+          InkWell(
+            onTap: onCrop,
             borderRadius: BorderRadius.circular(12),
-            child: Image.memory(
-              Uint8List.fromList(shot.image.bytes),
-              width: 96,
-              height: 96,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(
-                width: 96,
-                height: 96,
-                color: theme.colorScheme.surfaceContainerHighest,
-                child: const Icon(Icons.image_not_supported_outlined),
-              ),
+            child: Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.memory(
+                    Uint8List.fromList(shot.image.bytes),
+                    width: 96,
+                    height: 96,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Container(
+                      width: 96,
+                      height: 96,
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      child: const Icon(Icons.image_not_supported_outlined),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 4,
+                  bottom: 4,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface.withValues(alpha: 0.85),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Padding(
+                      padding: EdgeInsets.all(3),
+                      child: Icon(Icons.crop, size: 14),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 4),

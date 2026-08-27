@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 import 'package:washing_advice/core/providers.dart';
+import 'package:washing_advice/widgets/item_thumbnail.dart';
 import 'package:washing_advice/features/laundry/laundry_screen.dart';
 import 'package:washing_advice/core/settings.dart';
 import 'package:washing_advice/features/laundry/laundry_controller.dart';
@@ -52,8 +53,28 @@ void main() {
     return container.read(pileProvider(stage)).valueOrNull ?? [];
   }
 
-  Future<WardrobeItem> save(String id, {String? name}) async {
-    final item = confidentItem(id: id, name: name ?? 'Cotton tee');
+  Future<WardrobeItem> save(
+    String id, {
+    String? name,
+    bool tumbleDry = true,
+  }) async {
+    final base = confidentItem(id: id, name: name ?? 'Cotton tee');
+    // Stated on the label, so it is the manufacturer's instruction rather
+    // than something the rule table inferred and might change its mind about.
+    final labelled = base.copyWith(
+      careLabel: Confident(
+        CareConstraint(
+          method: WashMethod.machine,
+          maxTempC: 30,
+          tumbleDryAllowed: tumbleDry,
+        ),
+        confidence: 0.95,
+        source: Provenance.tagScan,
+      ),
+    );
+    final item = labelled.copyWith(
+      care: const CareResolver().forItem(labelled).profile,
+    );
     await repository.save(item);
     return item;
   }
@@ -213,6 +234,57 @@ void main() {
       await tester.tap(find.text(tab));
       await tester.pumpAndSettle();
     }
+
+    testWidgets('a load can wash together and dry apart', (tester) async {
+      // Off, one hang-dry garment sends the whole drum to the airer. On, the
+      // rest goes in the dryer and the user sorts them once.
+      final dryable = await save('tee');
+      final hangOnly = await save('shorts', tumbleDry: false);
+      await controller().move([
+        dryable.id,
+        hangOnly.id,
+      ], LifecycleState.inLaundry);
+
+      container.read(splitDryingProvider.notifier).state = true;
+      await openOn(tester, 'To wash (2)');
+
+      expect(find.text('Washed together, dried apart.'), findsOneWidget);
+      expect(find.text('In the dryer'), findsOneWidget);
+      expect(find.text('Hang these up'), findsOneWidget);
+    });
+
+    testWidgets('and dries as one when it has not been asked to split', (
+      tester,
+    ) async {
+      // The default, and what every earlier version did.
+      final dryable = await save('tee');
+      final hangOnly = await save('shorts', tumbleDry: false);
+      await controller().move([
+        dryable.id,
+        hangOnly.id,
+      ], LifecycleState.inLaundry);
+
+      await openOn(tester, 'To wash (2)');
+
+      expect(find.text('Washed together, dried apart.'), findsNothing);
+    });
+
+    testWidgets('the load to run shows each garment, not just its name', (
+      tester,
+    ) async {
+      // This card is read with a basket in front of you. Matching "heathered
+      // dark grey activewear pants" to the right pair by reading meant
+      // scrolling past the card to the list below and back up again, once per
+      // garment.
+      final item = await save('tee');
+      await controller().move([item.id], LifecycleState.inLaundry);
+
+      await openOn(tester, 'To wash (1)');
+
+      // Two: one in the load card, one in the list of what is in the basket.
+      expect(find.byType(ItemThumbnail), findsNWidgets(2));
+      expect(find.text('Start this load'), findsOneWidget);
+    });
 
     testWidgets('the basket lets go of something put there by mistake', (
       tester,

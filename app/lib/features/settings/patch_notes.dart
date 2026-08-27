@@ -96,6 +96,88 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.22.0',
+    name: 'Hang It Up',
+    date: DateTime.utc(2026, 8, 21),
+    headline: 'Tell it how to wash something, and split a load for drying',
+    changes: [
+      'New on any garment the app is still guessing about: "No label? Tell '
+          'it". For a tag that has worn away, been cut out, or was never '
+          'there. Set only what you know — cold wash, no tumble dry — and the '
+          'app keeps working the rest out from the fabric.',
+      'What you say is used instead of a scanned label, because an illegible '
+          'or missing tag is exactly the case it is for. It stops asking you '
+          'to scan that garment, and the wash plan follows what you said.',
+      'New in Settings: split a load for drying. Clothes that wash together '
+          'do not always dry together, and one hang-dry garment used to send '
+          'the whole drum to the airer. Turn it on and the rest goes in the '
+          'dryer, with the load telling you which garments go where.',
+      'Off by default, so nothing changes unless you ask. The load still '
+          'washes as one either way — only the drying splits.',
+    ],
+  ),
+  Release(
+    version: '0.21.0',
+    name: 'Full Disclosure',
+    date: DateTime.utc(2026, 8, 21),
+    headline: 'What your clothes are made of, and where they came from',
+    changes: [
+      'Scanning a care label now shows what the garment is made of. Most '
+          'labels print the fibre content and the app has always taken it — it '
+          'just never said so, which left no way to tell whether it had been '
+          'captured. If the label does not state one, it says that rather than '
+          'showing nothing.',
+      'Where a garment was made is kept too. It shows on the item, you can '
+          'filter by it, and there is a new "Where it was made" sort. Insights '
+          'has a section for it that counts only the garments whose label '
+          'actually said, and tells you how many have none on record.',
+      'The country is kept exactly as printed and never translated, so a tag '
+          'reading "Fabriqué en Tunisie" stays that way.',
+      'Fixed: a label printing SPANDEX showed up as "Elastane". Same fibre, '
+          'two names, and the reading was right — but the word on screen was '
+          'not the word on your tag. The app says spandex and rayon now, '
+          'matching American labels and the American English it writes '
+          'everywhere else, and the label screen names the alternative so a '
+          'European tag is not mistaken for a misread.',
+    ],
+  ),
+  Release(
+    version: '0.20.0',
+    name: 'Picture This',
+    date: DateTime.utc(2026, 8, 21),
+    headline: 'The loads to run show the clothes, not just their names',
+    changes: [
+      'Each load now lists its garments with their pictures. Sorting a basket '
+          'meant reading "heathered dark grey activewear pants", scrolling '
+          'past the card to the list underneath to see which pair that was, '
+          'and scrolling back up — once per garment.',
+      'The same card is used after photographing a pile, so that got the '
+          'pictures too.',
+    ],
+  ),
+  Release(
+    version: '0.19.0',
+    name: 'Close Crop',
+    date: DateTime.utc(2026, 8, 21),
+    headline: 'Frame a photo on the garment before it is read',
+    changes: [
+      'Tap any photo while you are adding a garment and drag the corners in '
+          'so the garment fills the frame. Works when adding one garment or a '
+          'whole pile.',
+      'This is the fix for a bad cutout rather than a tidier picture. The '
+          'background is worked out from the colours at the edges of the '
+          'photo, so a shot with half a patterned duvet in it gives the app '
+          'the wrong idea about what the background even is. Crop that away '
+          'and it is being asked a much easier question.',
+      'It also helps the app identify the garment, for the plainer reason '
+          'that half a bedroom in shot is half a bedroom it has to ignore.',
+      'Nothing is cropped unless you drag something, and Reset puts the frame '
+          'back. A cropped photo is still a photo of the same size on your '
+          'phone bill — it is saved as a JPEG rather than being blown up into '
+          'something several times larger.',
+    ],
+  ),
+  Release(
     version: '0.18.1',
     name: 'Button Up',
     date: DateTime.utc(2026, 8, 17),

@@ -71,14 +71,15 @@ enum Fiber {
 
   // Regenerated cellulosics. Viscose in particular is notoriously weak wet.
   viscose(
-    label: 'Viscose',
+    label: 'Rayon',
+    alsoKnownAs: {'Viscose'},
     naturalClass: FabricClass.delicate,
     weakensWhenWet: true,
     shrinksWithHeat: true,
     escalationThreshold: 20,
   ),
   modal(label: 'Modal', shrinksWithHeat: true),
-  lyocell(label: 'Lyocell'),
+  lyocell(label: 'Lyocell', alsoKnownAs: {'Tencel'}),
   acetate(
     label: 'Acetate',
     naturalClass: FabricClass.delicate,
@@ -95,6 +96,7 @@ enum Fiber {
   ),
   nylon(
     label: 'Nylon',
+    alsoKnownAs: {'Polyamide'},
     isThermoplastic: true,
     holdsOdour: true,
     attractsLint: true,
@@ -106,7 +108,8 @@ enum Fiber {
     attractsLint: true,
   ),
   elastane(
-    label: 'Elastane',
+    label: 'Spandex',
+    alsoKnownAs: {'Elastane', 'Lycra'},
     isThermoplastic: true,
     degradesWithHeat: true,
     // A few percent is enough to ruin a garment in a hot dryer, so even a
@@ -130,6 +133,7 @@ enum Fiber {
 
   const Fiber({
     required this.label,
+    this.alsoKnownAs = const {},
     this.naturalClass = FabricClass.normal,
     this.isProtein = false,
     this.isThermoplastic = false,
@@ -144,8 +148,27 @@ enum Fiber {
     this.escalationThreshold = 50,
   });
 
-  /// Human-readable name, as it would appear on a care label.
+  /// Human-readable name, in the American English the app writes throughout —
+  /// which is also what an American care label prints.
+  ///
+  /// This is a naming choice, not a claim that the other name is wrong.
+  /// Spandex and elastane are one fibre, as are rayon and viscose; the app
+  /// had to pick one word and picking the one on the tag in front of the
+  /// reader is the better default. See [alsoKnownAs] for the rest.
   final String label;
+
+  /// The same fibre's other names: regional, or a trade name in general use.
+  ///
+  /// Kept because a care label is read *against a physical tag*. Somebody
+  /// holding a label that says ELASTANE and an app that says Spandex has no
+  /// way to know whether it read the tag correctly, and reasonably assumes it
+  /// did not — which is exactly the doubt every confidence chip in this app
+  /// exists to avoid.
+  ///
+  /// Not used for matching. The server maps printed words onto this enum
+  /// before anything reaches here, and a second mapping in the client would be
+  /// a second thing to keep in step.
+  final Set<String> alsoKnownAs;
 
   /// How robust this fibre is on its own.
   final FabricClass naturalClass;

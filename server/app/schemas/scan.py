@@ -66,6 +66,7 @@ class CareTagScanResult(WireModel):
     instructions: CareConstraint
     confidence: float = Field(ge=0.0, le=1.0)
     composition: Confident[FabricComposition] | None = None
+    country_of_origin: Confident[str] | None = None
     symbols_found: list[str] = Field(default_factory=list)
     unreadable_symbol_count: int = Field(
         default=0,

@@ -117,6 +117,9 @@ class _BrokenRepository implements WardrobeRepository {
 
   @override
   Future<List<String>> knownBrands() async => _fail();
+
+  @override
+  Future<List<String>> knownCountries() async => _fail();
 }
 
 class _StorageUnavailable implements Exception {

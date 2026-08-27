@@ -19,6 +19,7 @@ import '../../core/theme.dart';
 import '../../data/api/ai_gateway.dart';
 import '../../data/api/scan_dto.dart';
 import '../../widgets/confidence_chip.dart';
+import 'crop_screen.dart';
 import 'scan_controller.dart';
 
 class ScanScreen extends ConsumerWidget {
@@ -599,6 +600,12 @@ class _Collected extends StatelessWidget {
                     _ShotTile(
                       shot: shot,
                       onRole: (role) => controller.setRole(index, role),
+                      onCrop: () async {
+                        final cropped = await showCropper(context, shot.image);
+                        if (cropped != null) {
+                          controller.replaceShot(index, cropped);
+                        }
+                      },
                     ),
                 ],
               ),
@@ -657,10 +664,15 @@ class _Collected extends StatelessWidget {
 /// something they would otherwise have to set on every single shot, and the
 /// order people photograph a garment in is genuinely predictable.
 class _ShotTile extends StatelessWidget {
-  const _ShotTile({required this.shot, required this.onRole});
+  const _ShotTile({
+    required this.shot,
+    required this.onRole,
+    required this.onCrop,
+  });
 
   final ScanShot shot;
   final ValueChanged<PhotoRole> onRole;
+  final VoidCallback onCrop;
 
   /// The parts worth offering. `condition` and `worn` are left out: filing a
   /// stain photo is a different question with its own screen. The care label
@@ -683,21 +695,47 @@ class _ShotTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ClipRRect(
+          // Tapping the picture crops it, with the badge saying so — an
+          // affordance that has to be visible, because nobody taps a
+          // thumbnail to find out what happens.
+          InkWell(
+            onTap: onCrop,
             borderRadius: BorderRadius.circular(12),
-            child: Image.memory(
-              Uint8List.fromList(shot.image.bytes),
-              width: 108,
-              height: 108,
-              fit: BoxFit.cover,
-              // A thumbnail that will not decode must not take the screen with
-              // it — the photograph is still perfectly good to the server.
-              errorBuilder: (_, _, _) => Container(
-                width: 108,
-                height: 108,
-                color: theme.colorScheme.surfaceContainerHighest,
-                child: const Icon(Icons.image_not_supported_outlined),
-              ),
+            child: Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.memory(
+                    Uint8List.fromList(shot.image.bytes),
+                    width: 108,
+                    height: 108,
+                    fit: BoxFit.cover,
+                    // A thumbnail that will not decode must not take the
+                    // screen with it — the photograph is still perfectly good
+                    // to the server.
+                    errorBuilder: (_, _, _) => Container(
+                      width: 108,
+                      height: 108,
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      child: const Icon(Icons.image_not_supported_outlined),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 4,
+                  bottom: 4,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface.withValues(alpha: 0.85),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Padding(
+                      padding: EdgeInsets.all(3),
+                      child: Icon(Icons.crop, size: 15),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 4),

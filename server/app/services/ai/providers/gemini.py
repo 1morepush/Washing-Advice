@@ -363,11 +363,39 @@ def _parse_care_tag(data: dict[str, Any]) -> CareTagScanResult:
             if composition is not None
             else None
         ),
+        country_of_origin=_country(
+            data.get("countryOfOrigin"),
+            data.get("countryOfOriginConfidence", 0.9),
+        ),
         symbols_found=[str(s) for s in data.get("symbolsFound", [])],
         unreadable_symbol_count=int(data.get("unreadableSymbolCount", 0)),
         raw_text=data.get("rawText"),
         language=_language(data.get("language")),
     )
+
+
+def _country(raw: Any, confidence: Any) -> Confident[str] | None:
+    """The country as printed, or nothing.
+
+    Trimmed, and the "Made in" stripped when a model includes it despite being
+    asked not to — the app groups and filters on these strings, so "Portugal"
+    and "Made in Portugal" arriving as two places would split a wardrobe on the
+    model's phrasing.
+
+    Anything that is not a usable string becomes nothing rather than an empty
+    country, which would filter and tally as a real place with no name.
+    """
+    if not isinstance(raw, str):
+        return None
+
+    country = raw.strip().strip(".,")
+    for prefix in ("made in ", "make in ", "manufactured in "):
+        if country.lower().startswith(prefix):
+            country = country[len(prefix) :].strip()
+
+    if not country:
+        return None
+    return _confident(country, confidence, Provenance.TAG_SCAN)
 
 
 def _language(raw: Any) -> str | None:

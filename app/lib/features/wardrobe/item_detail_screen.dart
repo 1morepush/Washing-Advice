@@ -13,6 +13,7 @@ import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
+import 'own_care_sheet.dart';
 import '../../widgets/confidence_chip.dart';
 import '../../widgets/item_thumbnail.dart';
 import '../../widgets/status_message.dart';
@@ -253,7 +254,7 @@ class _Details extends StatelessWidget {
             id: item.id,
             hasCutout: item.photos.displayPhoto?.hasCutout ?? false,
           ),
-        if (item.needsCareTagScan) _ScanPrompt(id: item.id),
+        if (item.needsCareTagScan) _ScanPrompt(item: item),
         _Section(
           title: 'What it is',
           children: [
@@ -264,6 +265,8 @@ class _Details extends StatelessWidget {
             ),
             if (item.brand case final Confident<String> brand)
               _Fact(label: 'Brand', value: brand.value, belief: brand),
+            if (item.countryOfOrigin case final Confident<String> made)
+              _Fact(label: 'Made in', value: made.value, belief: made),
             _Fact(
               label: 'Fabric',
               value: item.composition.value.label,
@@ -416,13 +419,13 @@ class _WoreItButtonState extends ConsumerState<_WoreItButton> {
 /// Shown only when [WardrobeItem.needsCareTagScan] — that is, when the belief
 /// is weak enough that acting on it risks damage. Prompting on every item would
 /// make the prompt meaningless.
-class _ScanPrompt extends StatelessWidget {
-  const _ScanPrompt({required this.id});
+class _ScanPrompt extends ConsumerWidget {
+  const _ScanPrompt({required this.item});
 
-  final ItemId id;
+  final WardrobeItem item;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -451,12 +454,31 @@ class _ScanPrompt extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: FilledButton.tonal(
-              onPressed: () => context.go('/item/${id.value}/care-label'),
-              child: const Text('Scan the label'),
-            ),
+          // Scanning is still the better answer where a label exists, so it
+          // keeps the emphasis. Telling the app is the way out for the case
+          // scanning cannot reach — worn away, cut out, never sewn in — which
+          // this prompt used to have no answer for at all.
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 8,
+            children: [
+              TextButton(
+                onPressed: () async {
+                  final stated = await showOwnCareSheet(context, item: item);
+                  if (stated == null) return;
+                  await ref
+                      .read(wardrobeRecorderProvider)
+                      .setOwnCare(item: item, care: stated);
+                  ref.invalidate(itemProvider(item.id));
+                },
+                child: const Text('No label? Tell it'),
+              ),
+              FilledButton.tonal(
+                onPressed: () =>
+                    context.go('/item/${item.id.value}/care-label'),
+                child: const Text('Scan the label'),
+              ),
+            ],
           ),
         ],
       ),

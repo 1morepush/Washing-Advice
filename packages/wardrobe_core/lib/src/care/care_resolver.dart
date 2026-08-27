@@ -70,6 +70,7 @@ extension ResolveCareFor on CareResolver {
         factsConfidence: item.factsConfidence,
         fromLabel: item.careLabel?.value,
         labelConfidence: item.careLabel?.confidence ?? 0.9,
+        fromUser: item.ownCare,
       );
 }
 
@@ -98,6 +99,7 @@ final class CareResolver {
     double labelConfidence = 0.9,
     CareConstraint? fromInference,
     double inferenceConfidence = 0.5,
+    CareConstraint? fromUser,
     CareInstructions? userOverride,
     double factsConfidence = 1.0,
   }) {
@@ -119,11 +121,40 @@ final class CareResolver {
       overridden = _fieldsChangedBy(beforeLabel, instructions, fromLabel);
     }
 
+    // 4.5: what the user said about this particular garment, over the label.
+    //
+    // Partial on purpose, unlike [userOverride] below. Somebody whose care
+    // label has worn away knows "this is wool, wash it cold" and does not know
+    // — and should not have to invent — a bleach symbol and an ironing
+    // temperature. Stating the two fields they are sure of and letting the
+    // rule table cover the rest is both easier and more honest than a form
+    // that makes them fill in the lot.
+    //
+    // Above the label because a label that is illegible, missing or cut out is
+    // exactly the case this exists for. Somebody correcting a reading is
+    // better informed about their own garment than a photograph of a worn tag.
+    final statedByUser = fromUser != null && !fromUser.statesNothing;
+    if (statedByUser) {
+      instructions = fromUser.overrideOnto(instructions);
+    }
+
     // 5: the user is always right.
     if (userOverride != null) {
       return CareResolution(
         profile: CareProfile(
           instructions: userOverride,
+          source: Provenance.userEdited,
+          confidence: 1.0,
+        ),
+        appliedRules: evaluation.applied,
+        fieldsOverriddenByLabel: overridden,
+      );
+    }
+
+    if (statedByUser) {
+      return CareResolution(
+        profile: CareProfile(
+          instructions: instructions,
           source: Provenance.userEdited,
           confidence: 1.0,
         ),

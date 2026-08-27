@@ -435,3 +435,96 @@ class TestScanImagePrivacy:
         assert "secret-image-data" not in rendered
         assert "PNG" not in rendered
         assert "image/png" in rendered
+
+
+class TestWhereTheGarmentWasMade:
+    """The country printed beside the fibre content.
+
+    Read here rather than by the garment scan, because a photograph of a
+    jumper does not show where it came from. Everything below is about the
+    string the app then groups, filters and sorts on: two spellings of one
+    country would split a wardrobe on the model's phrasing rather than on
+    anything printed on a tag.
+    """
+
+    def test_a_printed_country_is_read(self) -> None:
+        result = _parse_care_tag(
+            {
+                "instructions": {"maxTempC": 30},
+                "confidence": 0.9,
+                "countryOfOrigin": "Portugal",
+                "countryOfOriginConfidence": 0.94,
+            }
+        )
+
+        assert result.country_of_origin is not None
+        assert result.country_of_origin.value == "Portugal"
+        assert result.country_of_origin.source is Provenance.TAG_SCAN
+
+    def test_the_made_in_is_stripped_when_a_model_includes_it(self) -> None:
+        # Asked for the country alone, but models oblige inconsistently, and
+        # "Portugal" and "Made in Portugal" arriving as two places would split
+        # a wardrobe by phrasing.
+        result = _parse_care_tag(
+            {
+                "instructions": {"maxTempC": 30},
+                "confidence": 0.9,
+                "countryOfOrigin": "Made in Portugal",
+            }
+        )
+
+        assert result.country_of_origin is not None
+        assert result.country_of_origin.value == "Portugal"
+
+    def test_the_printed_language_survives(self) -> None:
+        # Never translated, for the same reason `rawText` is not: it is what
+        # somebody checks against the tag in their hand.
+        result = _parse_care_tag(
+            {
+                "instructions": {"maxTempC": 30},
+                "confidence": 0.9,
+                "countryOfOrigin": "Fabriqué en Tunisie",
+            }
+        )
+
+        assert result.country_of_origin is not None
+        assert result.country_of_origin.value == "Fabriqué en Tunisie"
+
+    def test_a_label_that_does_not_say_reports_nothing(self) -> None:
+        # The ordinary case, and it must stay null rather than becoming an
+        # empty country that filters and tallies as a real place.
+        result = _parse_care_tag({"instructions": {"maxTempC": 30}, "confidence": 0.9})
+
+        assert result.country_of_origin is None
+
+    @pytest.mark.parametrize("raw", ["", "   ", ".", 42, None, []])
+    def test_nothing_usable_becomes_nothing(self, raw: Any) -> None:
+        result = _parse_care_tag(
+            {
+                "instructions": {"maxTempC": 30},
+                "confidence": 0.9,
+                "countryOfOrigin": raw,
+            }
+        )
+
+        assert result.country_of_origin is None
+
+    def test_the_prompt_forbids_inferring_it(self) -> None:
+        # The country is on the tag or it is not. Guessing it from the brand
+        # or from the language of the words states a fact about the garment
+        # that its label does not.
+        from app.services.ai.prompts import CARE_TAG_PROMPT
+
+        assert "Do not infer a country from the brand" in CARE_TAG_PROMPT
+
+    async def test_the_fake_prints_it_in_the_labels_own_language(self) -> None:
+        # So the whole pipeline carries a country that must not be translated,
+        # without a test having to ask for one.
+        provider = FakeVisionProvider()
+        countries = set()
+        for seed in range(6):
+            result = await provider.scan_care_tag([scan_image(seed)])
+            if result.country_of_origin is not None:
+                countries.add(result.country_of_origin.value)
+
+        assert countries == {"Portugal", "Tunisie"}

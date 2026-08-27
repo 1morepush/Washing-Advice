@@ -3,7 +3,7 @@ description: >-
   AI wardrobe and laundry assistant. Presentation only — every judgement about
   how to treat a garment lives in the wardrobe_core package.
 publish_to: 'none'
-version: 0.18.1+1
+version: 0.22.0+1
 
 environment:
   sdk: ^3.12.2
@@ -42,7 +42,16 @@ dependencies:
   # APIs itself.
   web: ^1.1.0
 
+  # JPEG encoding, for the crop. `dart:ui` can only hand back raw pixels or a
+  # PNG, and a PNG of a photograph is several megabytes where the JPEG it came
+  # from was a few hundred kilobytes — paid on every upload. Pure Dart, no
+  # platform channels.
+  image: ^4.9.2
+
 dev_dependencies:
+  # Direct, not just transitive via drift: the migration test opens a raw
+  # database so it can stamp an old schema version and upgrade from it.
+  sqlite3: ^2.4.0
   flutter_test:
     sdk: flutter
 

@@ -44,6 +44,15 @@ class Items extends Table {
   /// Lower-cased, so brand filtering is case-insensitive without a scan.
   TextColumn get brandLower => text().nullable()();
 
+  /// Where the garment says it was made, lower-cased for matching.
+  ///
+  /// Lifted out of the payload for the same reason the brand is: the wardrobe
+  /// filters and sorts by it, and a scan of every row to read a JSON field is
+  /// fine at 50 items and not at 500. The display spelling stays in the
+  /// payload — this column exists for matching, not for showing somebody
+  /// "portugal".
+  TextColumn get originLower => text().nullable()();
+
   TextColumn get seasons => text()();
   TextColumn get fibers => text()();
   TextColumn get tags => text()();
@@ -128,7 +137,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -146,6 +155,9 @@ class AppDatabase extends _$AppDatabase {
       );
       await customStatement(
         'CREATE INDEX IF NOT EXISTS idx_items_brand ON items (brand_lower)',
+      );
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_items_origin ON items (origin_lower)',
       );
       await customStatement(
         'CREATE INDEX IF NOT EXISTS idx_events_item ON events (item_id)',
@@ -178,9 +190,18 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(events, events.recordedAt);
         await customStatement('UPDATE events SET recorded_at = occurred_at');
       }
+      if (from < 4) {
+        // Nothing to backfill: no build before this one ever read a country
+        // off a label, so every existing row genuinely has none. The column
+        // fills in as items are saved from here on.
+        await m.addColumn(items, items.originLower);
+      }
       await customStatement(
         'CREATE INDEX IF NOT EXISTS idx_events_recorded '
         'ON events (recorded_at)',
+      );
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_items_origin ON items (origin_lower)',
       );
     },
   );
@@ -240,6 +261,7 @@ ItemsCompanion rowFor(WardrobeItem item) {
     colorClass: item.colorClass.name,
     lifecycle: item.lifecycle.name,
     brandLower: Value(item.brand?.value.toLowerCase()),
+    originLower: Value(item.countryOfOrigin?.value.trim().toLowerCase()),
     seasons: _packed(item.seasons.map((s) => s.name)),
     fibers: _packed(notableFibers),
     tags: _packed(item.tags),

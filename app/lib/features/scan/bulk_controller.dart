@@ -206,6 +206,20 @@ class BulkController extends StateNotifier<BulkState> {
     }
   }
 
+  /// Replaces one shot's photograph on the garment in hand.
+  void replaceShot(int index, ScanImage image) {
+    if (state case final BulkCollecting collecting) {
+      final shots = collecting.current.shots;
+      if (index < 0 || index >= shots.length) return;
+      final next = [...shots];
+      next[index] = ScanShot(image: image, role: next[index].role);
+      state = BulkCollecting(
+        done: collecting.done,
+        current: PendingGarment(next),
+      );
+    }
+  }
+
   /// Finishes this garment and starts the next.
   void nextGarment() {
     if (state case final BulkCollecting collecting) {

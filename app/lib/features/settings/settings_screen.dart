@@ -159,6 +159,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 20),
           const MachineSection(kind: MachineKind.dryer),
 
+          const SizedBox(height: 24),
+          // Under the dryer, because that is what it is about, and phrased as
+          // the choice rather than as a setting name — "split drying" means
+          // nothing to somebody who has not read the code.
+          SwitchListTile(
+            value: ref.watch(splitDryingProvider),
+            onChanged: (on) async {
+              await ref.read(settingsStoreProvider).setSplitDrying(on);
+              ref.read(splitDryingProvider.notifier).state = on;
+            },
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Split a load for drying'),
+            subtitle: const Text(
+              'Clothes that wash together do not always dry together. Off, a '
+              'load dries as one and a single hang-dry garment sends the whole '
+              'lot to the airer. On, the rest goes in the dryer and you sort '
+              'them once.',
+            ),
+          ),
+
           // Only where there is a service worker to clear — a native build,
           // should one ever exist, has no stale cache to get past.
           if (kIsWeb) ...[const SizedBox(height: 32), const UpdateSection()],

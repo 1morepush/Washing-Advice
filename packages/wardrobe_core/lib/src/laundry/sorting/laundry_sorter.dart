@@ -27,6 +27,7 @@ import '../../care/model/care_instructions.dart';
 import '../../care/model/care_symbols.dart';
 import '../../care/model/wash_spec.dart';
 import '../../machines/model/dryer_profile.dart';
+import '../../machines/model/machine_setting.dart';
 import '../../machines/model/washer_profile.dart';
 import '../../machines/program_matcher.dart';
 import '../../shared/clock.dart';
@@ -41,6 +42,7 @@ final class SortingPreferences {
   const SortingPreferences({
     this.fillFraction = 0.8,
     this.mergeAcrossColorClasses = true,
+    this.splitDrying = false,
     this.minimumItemsPerLoad = 1,
   });
 
@@ -53,6 +55,18 @@ final class SortingPreferences {
   /// Whether to merge groups whose colour classes differ but do not conflict —
   /// lights with brights, for instance.
   final bool mergeAcrossColorClasses;
+
+  /// Whether a load may be split into more than one drying group.
+  ///
+  /// Off by default, which is what every earlier version did: the load dries
+  /// as one, at the most restrictive spec any member demands. That is safe and
+  /// it is wasteful — a single air-dry-only garment sends the whole drum to
+  /// the airer.
+  ///
+  /// On, the tumble-dryable part goes in the machine and the rest is hung. The
+  /// clothes are better served and the user has more to do, which is why this
+  /// is a preference rather than a decision made for them.
+  final bool splitDrying;
 
   /// Loads smaller than this are reported but flagged as inefficient.
   final int minimumItemsPerLoad;
@@ -351,8 +365,74 @@ final class LaundrySorter {
       totalWeightKg: _weightKg(items),
       washerSetting: washerSetting,
       dryerSetting: dryerSetting,
+      dryingGroups: _dryingGroups(items, drySpec, dryerSetting, dryer),
       rationale: _explain(items, care, washSpec, drySpec, capacityKg),
     );
+  }
+
+  /// How this load divides for drying.
+  ///
+  /// One group unless the user asked for the split, which keeps every earlier
+  /// version's behaviour intact: the load dries as one, at the most
+  /// restrictive spec any member demands.
+  ///
+  /// Split, the division is by what a garment can actually take rather than by
+  /// anything finer. Two tumble-dryable garments at different heats still dry
+  /// together, at the cooler of the two — the point is to stop one air-dry-only
+  /// garment holding back a whole drum, not to produce a group per garment.
+  List<DryingGroup> _dryingGroups(
+    List<WardrobeItem> items,
+    DrySpec loadSpec,
+    DryerSetting? loadSetting,
+    DryerProfile? dryer,
+  ) {
+    DryingGroup group(List<WardrobeItem> members) {
+      var spec = DrySpec.from(
+        members.first.effectiveCare,
+        members.first.fabricClass,
+      );
+      for (final item in members.skip(1)) {
+        spec = spec.restrictiveMerge(
+          DrySpec.from(item.effectiveCare, item.fabricClass),
+        );
+      }
+      return DryingGroup(
+        items: List.unmodifiable(members),
+        spec: spec,
+        dryerSetting: dryer == null ? null : matcher.matchDry(spec, dryer),
+      );
+    }
+
+    if (!preferences.splitDrying) {
+      return [
+        DryingGroup(
+          items: List.unmodifiable(items),
+          spec: loadSpec,
+          dryerSetting: loadSetting,
+        ),
+      ];
+    }
+
+    final tumble = <WardrobeItem>[];
+    final air = <WardrobeItem>[];
+    for (final item in items) {
+      (item.effectiveCare.dry.tumbleDryAllowed ? tumble : air).add(item);
+    }
+
+    // Nothing to split when they all agree, and a lone group here must look
+    // exactly like an unsplit one or the screen would announce a division
+    // that does not exist.
+    if (tumble.isEmpty || air.isEmpty) {
+      return [
+        DryingGroup(
+          items: List.unmodifiable(items),
+          spec: loadSpec,
+          dryerSetting: loadSetting,
+        ),
+      ];
+    }
+
+    return [group(tumble), group(air)];
   }
 
   String _labelFor(List<WardrobeItem> items, WashSpec spec) {

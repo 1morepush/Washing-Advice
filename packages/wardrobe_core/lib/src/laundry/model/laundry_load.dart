@@ -73,6 +73,37 @@ final class UnassignedItem {
 }
 
 /// One wash load.
+/// Part of a load that dries together.
+///
+/// A load is grouped for *washing*: the members share a drum because their
+/// wash requirements are compatible. Drying is a separate question, and the
+/// answers differ more often than they agree — a cotton tee and a technical
+/// short can be washed in one drum, and one of them must not go near a dryer.
+///
+/// Left as one group the whole load takes the most restrictive answer, which
+/// means one air-dry-only garment sends everything to the airer. Splitting is
+/// the finer answer and costs the user a sorting step, so which one they get
+/// is a preference rather than a decision made for them.
+final class DryingGroup {
+  const DryingGroup({
+    required this.items,
+    required this.spec,
+    this.dryerSetting,
+  });
+
+  final List<WardrobeItem> items;
+  final DrySpec spec;
+
+  /// Concrete settings for the user's dryer, when one is configured.
+  final DryerSetting? dryerSetting;
+
+  /// Whether this group goes in the machine or on the airer.
+  bool get isTumbleDried => spec.tumbleDryAllowed;
+
+  double get totalWeightKg =>
+      items.fold(0.0, (total, item) => total + item.drumLoadGrams) / 1000.0;
+}
+
 final class LaundryLoad {
   const LaundryLoad({
     required this.id,
@@ -84,6 +115,7 @@ final class LaundryLoad {
     required this.totalWeightKg,
     this.washerSetting,
     this.dryerSetting,
+    this.dryingGroups = const [],
     this.rationale = const [],
   });
 
@@ -96,7 +128,25 @@ final class LaundryLoad {
   final CareInstructions effectiveCare;
 
   final WashSpec washSpec;
+
+  /// What drying this load as one demands: the most restrictive of its
+  /// members. Unchanged in meaning, and still what a load dried together
+  /// follows.
   final DrySpec drySpec;
+
+  /// How the load divides for drying.
+  ///
+  /// One group when the load dries together, which is the default and is the
+  /// behaviour every earlier version had. More than one when the user asked
+  /// for drying to be split, in which case each group carries its own spec and
+  /// the tumble-dryable part is no longer held back by the rest.
+  ///
+  /// Never empty for a load the sorter built. Empty only on a load constructed
+  /// without them, where [items] is the whole answer.
+  final List<DryingGroup> dryingGroups;
+
+  /// Whether drying this load means more than one thing.
+  bool get driesInParts => dryingGroups.length > 1;
 
   /// A short description, e.g. `'Darks — cold, gentle'`.
   final String label;

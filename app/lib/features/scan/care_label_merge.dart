@@ -43,8 +43,14 @@ LabelledItem withCareLabel(
       ? reading.instructions
       : reading.instructions.mergedWith(earlier.value);
 
+  // Taken whenever the label states one. Unlike the composition there is
+  // nothing to resolve against: no other reading produces a country, so a
+  // stated one is the only claim there is.
+  final country = reading.countryOfOrigin ?? item.countryOfOrigin;
+
   final withLabel = item.copyWith(
     composition: composition,
+    countryOfOrigin: country,
     careLabel: Confident(
       instructions,
       // An unreadable symbol lowers confidence in the whole reading: if part

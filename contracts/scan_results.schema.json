@@ -132,6 +132,10 @@
         "instructions": { "$ref": "care_constraint.schema.json" },
         "confidence": { "$ref": "#/$defs/confidence" },
         "composition": { "$ref": "#/$defs/confident" },
+        "countryOfOrigin": {
+          "description": "Where the label says the garment was made, exactly as printed and never translated. Absent when the label does not say, which is common and is not a failure. Reported as a belief because it is read off a tag and can be corrected.",
+          "$ref": "#/$defs/confident"
+        },
         "symbolsFound": { "type": "array", "items": { "type": "string" } },
         "unreadableSymbolCount": {
           "description": "Symbols visible but not interpretable. Reported so the app can honestly say part of the label could not be read, rather than returning an incomplete answer as if it were complete.",

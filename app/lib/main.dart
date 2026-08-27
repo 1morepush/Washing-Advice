@@ -64,6 +64,9 @@ Future<void> main() async {
         splitDryingProvider.overrideWith(
           (ref) => SettingsStore(prefs).splitDrying,
         ),
+        separateWashingProvider.overrideWith(
+          (ref) => SettingsStore(prefs).separateWashing,
+        ),
         imageStoreProvider.overrideWithValue(images),
       ],
       child: const WashingAdviceApp(),

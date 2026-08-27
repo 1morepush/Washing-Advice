@@ -174,6 +174,7 @@ final matchResolverProvider = Provider<MatchResolver>(
 final laundrySorterProvider = Provider<LaundrySorter>(
   (ref) => LaundrySorter(
     preferences: SortingPreferences(
+      mergeAcrossColorClasses: !ref.watch(separateWashingProvider),
       splitDrying: ref.watch(splitDryingProvider),
     ),
   ),

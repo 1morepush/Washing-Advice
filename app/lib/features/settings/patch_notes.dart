@@ -96,6 +96,27 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.24.0',
+    name: 'Lost and Found',
+    date: DateTime.utc(2026, 8, 27),
+    headline: 'When a garment will not scan, you get its picture back',
+    changes: [
+      'Adding several garments at once: anything that could not be read now '
+          'shows the photo you took of it. A pile of forty is not something '
+          'you can search by number, and "Garment 12 could not be read" named '
+          'a thing you could not point at.',
+      'The count moved to the top, above the Save button. It used to sit '
+          'under every garment that worked, which in a batch of forty meant '
+          'you saved and put the phone down without ever seeing it.',
+      'Care labels too. If the tag photo did not come out the garment is '
+          'still saved — its washing is a guess, as before — but you now see '
+          'the picture of the label that failed, so you know which tag to go '
+          'back to.',
+      'If none of them could be read, the screen shows all the photos rather '
+          'than one apology. That is the moment you need them most.',
+    ],
+  ),
+  Release(
     version: '0.23.0',
     name: 'Separate Ways',
     date: DateTime.utc(2026, 8, 27),

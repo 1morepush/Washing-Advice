@@ -24,22 +24,7 @@ void main() {
   setUp(() {
     repository = InMemoryWardrobeRepository();
     gateway = _BatchGateway();
-    container = ProviderContainer(
-      overrides: [
-        imageStoreProvider.overrideWithValue(MemoryImageStore()),
-        wardrobeRepositoryProvider.overrideWithValue(repository),
-        eventLogProvider.overrideWithValue(InMemoryEventLog()),
-        aiGatewayProvider.overrideWithValue(gateway),
-        idGeneratorProvider.overrideWithValue(
-          SequentialIdGenerator(prefix: 'bulk'),
-        ),
-        imageCaptureProvider.overrideWithValue(
-          FixedImageCaptureSource([
-            const ScanImage(bytes: [1, 2, 3]),
-          ]),
-        ),
-      ],
-    );
+    container = _containerWith(gateway, repository);
   });
 
   tearDown(() => container.dispose());
@@ -153,12 +138,110 @@ void main() {
       expect(failed.failure, isNotNull);
     });
 
+    test('and keeps the photographs that were sent for it', () async {
+      // A number names nothing somebody can point at. Standing over a pile of
+      // forty, the photograph they took is the only handle they have on which
+      // garment "number 2" was.
+      gateway.failOnCall = 2;
+      await photograph(3);
+      await controller().submit();
+
+      final failed = (state() as BulkReviewing).failed.single;
+      expect(failed.shots, isNotEmpty);
+      expect(failed.identifyingShot, isNotNull);
+    });
+
+    test('the photographs kept are that garment\'s own', () async {
+      // The failure worth guarding: an off-by-one here shows the user a
+      // picture of the wrong garment, which is worse than showing none.
+      container.dispose();
+      container = _containerWith(
+        gateway,
+        repository,
+        capture: _SequenceCapture(const [
+          ScanImage(bytes: [10]),
+          ScanImage(bytes: [20]),
+          ScanImage(bytes: [30]),
+        ]),
+      );
+      gateway.failOnCall = 2;
+      await photograph(3);
+      await controller().submit();
+
+      final failed = (state() as BulkReviewing).failed.single;
+      expect(failed.shots.single.image.bytes, [20]);
+    });
+
     test('nothing has reached the wardrobe yet', () async {
       // Reviewing is batched, not skipped.
       await photograph(2);
       await controller().submit();
 
       expect(await repository.query(const WardrobeQuery.owned()), isEmpty);
+    });
+  });
+
+  group('finding a failure again', () {
+    test('the identifying shot is not the care label', () async {
+      // A photograph of a tag looks like every other photograph of a tag,
+      // which is the opposite of what this picture is for.
+      gateway.failOnCall = 1;
+      await controller().capture();
+      await controller().capture();
+      controller().setRole(0, PhotoRole.careTag);
+      await controller().submit();
+
+      final failed = (state() as BulkReviewing).failed.single;
+      expect(failed.identifyingShot!.role, isNot(PhotoRole.careTag));
+      expect(failed.labelShot, isNotNull);
+    });
+
+    test('a garment photographed only from its tag still shows that', () async {
+      // It cannot be read — a label identifies nothing — and the tag is then
+      // the only picture there is. Showing nothing at all would be worse.
+      await controller().capture();
+      controller().setRole(0, PhotoRole.careTag);
+      await controller().submit();
+
+      final failed = (state() as BulkReviewing).failed.single;
+      expect(failed.identifyingShot, isNotNull);
+      expect(failed.identifyingShot!.role, PhotoRole.careTag);
+    });
+
+    test('a label that said nothing is counted, not just noted', () async {
+      // The garment is fine and goes in the wardrobe. What needs doing again
+      // is the tag, and in a list of forty it goes unseen unless counted.
+      gateway.labelSaysNothing = true;
+      await controller().capture();
+      await controller().capture();
+      controller().setRole(1, PhotoRole.careTag);
+      await controller().submit();
+
+      final reviewing = state() as BulkReviewing;
+      expect(reviewing.failed, isEmpty);
+      expect(reviewing.labelUnread, hasLength(1));
+      expect(reviewing.labelUnread.single.labelShot, isNotNull);
+    });
+
+    test('a label that read fine is not counted', () async {
+      await controller().capture();
+      await controller().capture();
+      controller().setRole(1, PhotoRole.careTag);
+      await controller().submit();
+
+      expect((state() as BulkReviewing).labelUnread, isEmpty);
+    });
+
+    test('renaming a garment does not lose its photographs', () async {
+      // The revision path rebuilds the outcome, and rebuilding it is where a
+      // field quietly goes missing.
+      await photograph(1);
+      await controller().submit();
+      controller().revise(0, (draft) => draft.copyWith(name: 'Green jumper'));
+
+      final outcome = (state() as BulkReviewing).readable.single;
+      expect(outcome.read!.draft.name, 'Green jumper');
+      expect(outcome.shots, isNotEmpty);
     });
   });
 
@@ -241,11 +324,59 @@ void main() {
 }
 
 /// A backend that answers every garment, and can be told to fail one.
+/// A container wired for the bulk flow.
+///
+/// Built by a function rather than inline so a test needing a different
+/// camera — one handing back a *different* photograph each time, to tell the
+/// garments apart — can ask for one without restating the other six overrides.
+ProviderContainer _containerWith(
+  AiGateway gateway,
+  InMemoryWardrobeRepository repository, {
+  ImageCaptureSource? capture,
+}) => ProviderContainer(
+  overrides: [
+    imageStoreProvider.overrideWithValue(MemoryImageStore()),
+    wardrobeRepositoryProvider.overrideWithValue(repository),
+    eventLogProvider.overrideWithValue(InMemoryEventLog()),
+    aiGatewayProvider.overrideWithValue(gateway),
+    idGeneratorProvider.overrideWithValue(
+      SequentialIdGenerator(prefix: 'bulk'),
+    ),
+    imageCaptureProvider.overrideWithValue(
+      capture ??
+          FixedImageCaptureSource([
+            const ScanImage(bytes: [1, 2, 3]),
+          ]),
+    ),
+  ],
+);
+
+/// A camera that hands back a different photograph on each shot.
+class _SequenceCapture implements ImageCaptureSource {
+  _SequenceCapture(this.images);
+
+  final List<ScanImage> images;
+  int taken = 0;
+
+  @override
+  Future<ScanImage?> capture() async =>
+      taken < images.length ? images[taken++] : null;
+
+  @override
+  Future<List<ScanImage>> pickMultiple() async => images;
+}
+
 class _BatchGateway extends AiGateway {
   _BatchGateway() : super(baseUrl: Uri.parse('http://test.invalid/'));
 
   int garmentCalls = 0;
   int labelCalls = 0;
+
+  /// Whether the label reader comes back stating nothing usable.
+  ///
+  /// Not an exception: a blank reading is the commoner shape of a label that
+  /// did not come out, and the one the intake turns into `labelUnread`.
+  bool labelSaysNothing = false;
 
   /// Which call number to fail, counting from one. Null never fails.
   int? failOnCall;
@@ -284,6 +415,12 @@ class _BatchGateway extends AiGateway {
   @override
   Future<CareTagScanResult> scanCareTag(List<ScanImage> images) async {
     labelCalls++;
+    if (labelSaysNothing) {
+      return const CareTagScanResult(
+        instructions: CareConstraint(),
+        confidence: 0.1,
+      );
+    }
     return const CareTagScanResult(
       instructions: CareConstraint(maxTempC: 30),
       confidence: 0.93,

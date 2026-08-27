@@ -52,7 +52,12 @@ final class PendingGarment {
 
 /// What became of one garment once it was sent.
 final class BulkOutcome {
-  const BulkOutcome({required this.index, this.read, this.failure});
+  const BulkOutcome({
+    required this.index,
+    this.read,
+    this.failure,
+    this.shots = const [],
+  });
 
   /// Which garment in the batch this was, so a failure can be named rather
   /// than left for the user to work out.
@@ -64,7 +69,38 @@ final class BulkOutcome {
   /// Why it did not, when it did not.
   final String? failure;
 
+  /// The photographs that were sent, kept whatever came back.
+  ///
+  /// A number is no use to somebody standing over a pile of forty. "Garment 12
+  /// could not be read" names a thing they cannot point at; the photograph
+  /// they took of it is the only handle they have on which one it was.
+  ///
+  /// A successful reading carries its own copy in [GarmentDraft.shots]. This
+  /// is the same list, held here as well so a failure — which has no draft at
+  /// all — has somewhere to keep it.
+  final List<ScanShot> shots;
+
   bool get succeeded => read != null;
+
+  /// The shot most likely to identify the garment on sight.
+  ///
+  /// The label is skipped when anything else is available: a photograph of a
+  /// tag looks like every other photograph of a tag, which is the opposite of
+  /// what this is for.
+  ScanShot? get identifyingShot {
+    for (final shot in shots) {
+      if (shot.role != PhotoRole.careTag) return shot;
+    }
+    return shots.firstOrNull;
+  }
+
+  /// The label photograph, when one was taken.
+  ScanShot? get labelShot {
+    for (final shot in shots) {
+      if (shot.role == PhotoRole.careTag) return shot;
+    }
+    return null;
+  }
 }
 
 sealed class BulkState {
@@ -124,6 +160,16 @@ final class BulkReviewing extends BulkState {
       if (!outcome.succeeded) outcome,
   ];
 
+  /// Garments that were identified but whose label photograph said nothing.
+  ///
+  /// Not a failure of the garment — it is in the wardrobe either way — but it
+  /// is a photograph that needs taking again, and it goes unnoticed in a list
+  /// of forty unless it is counted somewhere.
+  List<BulkOutcome> get labelUnread => [
+    for (final outcome in readable)
+      if (outcome.read!.labelUnread) outcome,
+  ];
+
   /// The ones that would be saved if the user committed now.
   List<BulkOutcome> get accepted => [
     for (final outcome in readable)
@@ -140,7 +186,7 @@ final class BulkReviewing extends BulkState {
     outcomes: [
       for (final outcome in outcomes)
         if (outcome.index == index)
-          BulkOutcome(index: index, read: read)
+          BulkOutcome(index: index, read: read, shots: outcome.shots)
         else
           outcome,
     ],
@@ -272,10 +318,20 @@ class BulkController extends StateNotifier<BulkState> {
       for (final (index, garment) in garments.indexed) {
         try {
           outcomes.add(
-            BulkOutcome(index: index, read: await intake.read(garment.shots)),
+            BulkOutcome(
+              index: index,
+              read: await intake.read(garment.shots),
+              shots: garment.shots,
+            ),
           );
         } on IntakeFailure catch (failure) {
-          outcomes.add(BulkOutcome(index: index, failure: failure.message));
+          outcomes.add(
+            BulkOutcome(
+              index: index,
+              failure: failure.message,
+              shots: garment.shots,
+            ),
+          );
         }
 
         if (!mounted) return;

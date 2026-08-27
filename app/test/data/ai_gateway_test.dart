@@ -301,6 +301,7 @@ void main() {
     });
   });
   _askingForOutfits();
+  _askingAQuestion();
 }
 
 /// Asking for outfit ideas.
@@ -723,6 +724,95 @@ void _streamingStainAdvice() {
       );
 
       await expectLater(collect(gateway), throwsA(isA<ScanFailure>()));
+    });
+  });
+}
+
+/// Asking a question in words.
+///
+/// Its own function rather than more tests bolted onto another group: this is
+/// the only call that carries a *conversation*, and the cap on that is the one
+/// thing here with a sharp edge. The server refuses a longer history with a
+/// 422, which this client classes as not retryable — so an uncapped thread
+/// does not slow down, it stops working for good.
+void _askingAQuestion() {
+  group('askQuestion', () {
+    late Map<String, Object?> sent;
+
+    AiGateway gateway() {
+      final client = MockClient((request) async {
+        sent = jsonDecode(request.body) as Map<String, Object?>;
+        return http.Response(jsonEncode({'reply': 'Cold wash.'}), 200);
+      });
+      return AiGateway(
+        baseUrl: Uri.parse('https://washing-advice.onrender.com/'),
+        client: client,
+      );
+    }
+
+    List<({bool fromUser, String text})> turns(int count) => [
+      for (var i = 0; i < count; i++) (fromUser: i.isEven, text: 'turn $i'),
+    ];
+
+    test('a short conversation goes up whole', () async {
+      await gateway().askQuestion(
+        question: 'and the black one?',
+        wardrobe: const [],
+        history: turns(4),
+      );
+
+      expect((sent['history']! as List), hasLength(4));
+    });
+
+    test('a long one is trimmed to the cap', () async {
+      // The server refuses more than this with a 422, and a 422 is classed
+      // here as *not* retryable. Uncapped, a long conversation would not
+      // degrade — it would die: every further question failing for good, with
+      // the only way out a Clear button nobody would connect to the cause.
+      await gateway().askQuestion(
+        question: 'and the black one?',
+        wardrobe: const [],
+        history: turns(200),
+      );
+
+      expect((sent['history']! as List), hasLength(AiGateway.historyLimit));
+    });
+
+    test('and it is the most recent turns that survive', () async {
+      // The end of a conversation, not the start of it. "And the black one?"
+      // is unanswerable without the turn above it; the opening exchange of a
+      // long thread is the part that can be spared.
+      await gateway().askQuestion(
+        question: 'and the black one?',
+        wardrobe: const [],
+        history: turns(200),
+      );
+
+      final history = (sent['history']! as List).cast<Map<String, Object?>>();
+      expect(history.last['text'], 'turn 199');
+    });
+
+    test('an empty history is left out rather than sent empty', () async {
+      await gateway().askQuestion(question: 'hello', wardrobe: const []);
+
+      expect(sent.containsKey('history'), isFalse);
+    });
+
+    test('a question with no wardrobe is still a question', () async {
+      // Plenty of them are not about the user's clothes at all.
+      final answer = await gateway().askQuestion(
+        question: 'what does the triangle mean?',
+        wardrobe: const [],
+      );
+
+      expect(answer, 'Cold wash.');
+    });
+
+    test('an empty question never reaches the server', () async {
+      await expectLater(
+        gateway().askQuestion(question: '   ', wardrobe: const []),
+        throwsA(isA<ScanFailure>()),
+      );
     });
   });
 }

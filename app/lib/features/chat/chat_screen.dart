@@ -41,20 +41,36 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _input = TextEditingController();
   final _scroll = ScrollController();
+  final _focus = FocusNode();
 
   @override
   void dispose() {
     _input.dispose();
     _scroll.dispose();
+    _focus.dispose();
     super.dispose();
   }
 
-  void _send([String? preset]) {
-    final text = preset ?? _input.text;
+  void _send() {
+    final text = _input.text;
     if (text.trim().isEmpty) return;
     _input.clear();
     ref.read(chatControllerProvider.notifier).ask(text);
     _toBottom();
+  }
+
+  /// Puts an opener in the box rather than asking it.
+  ///
+  /// Tapping a suggestion is not the same as agreeing with its wording. "How
+  /// much detergent for a half load?" is nearly the question somebody has, and
+  /// sending it blind takes away the half-second in which they would have made
+  /// it theirs — for a wool wash, in hard water, in the machine they actually
+  /// own.
+  void _offer(String opener) {
+    _input
+      ..text = opener
+      ..selection = TextSelection.collapsed(offset: opener.length);
+    _focus.requestFocus();
   }
 
   /// Scrolls after the frame that adds the message, not before it.
@@ -91,7 +107,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         children: [
           Expanded(
             child: state.isEmpty
-                ? _Empty(onPick: _send)
+                ? _Empty(onPick: _offer)
                 : ListView.builder(
                     controller: _scroll,
                     padding: const EdgeInsets.all(16),
@@ -102,7 +118,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         : const _Thinking(),
                   ),
           ),
-          _InputBar(controller: _input, enabled: !state.waiting, onSend: _send),
+          _InputBar(
+            controller: _input,
+            focusNode: _focus,
+            enabled: !state.waiting,
+            onSend: _send,
+          ),
         ],
       ),
     );
@@ -134,7 +155,8 @@ class _Empty extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               'It knows what is in your wardrobe, so you can ask about a '
-              'garment by name. It cannot change anything — it only answers.',
+              'garment by name. It cannot change anything — it only answers. '
+              'Tap one to start, and edit it before you send.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -237,11 +259,13 @@ class _Thinking extends StatelessWidget {
 class _InputBar extends StatelessWidget {
   const _InputBar({
     required this.controller,
+    required this.focusNode,
     required this.enabled,
     required this.onSend,
   });
 
   final TextEditingController controller;
+  final FocusNode focusNode;
   final bool enabled;
   final VoidCallback onSend;
 
@@ -264,6 +288,7 @@ class _InputBar extends StatelessWidget {
             Expanded(
               child: TextField(
                 controller: controller,
+                focusNode: focusNode,
                 enabled: enabled,
                 minLines: 1,
                 maxLines: 4,

@@ -335,6 +335,13 @@ class AiGateway implements VisionPort {
   /// [history] is the conversation so far, oldest first, without the question
   /// being asked now. The server holds none of it: it is a record of what
   /// somebody asked about their clothes, and this service keeps nothing.
+  ///
+  /// Trimmed to the most recent [historyLimit] turns, for the reason the
+  /// wardrobe is capped — and with a sharper failure behind it. The server
+  /// refuses a longer history with a 422, which this client classes as *not*
+  /// retryable, so an uncapped conversation does not degrade: past the limit
+  /// every further question fails permanently, and the only way out is a
+  /// Clear button nobody would connect to the cause.
   Future<String> askQuestion({
     required String question,
     required List<WardrobeItem> wardrobe,
@@ -347,11 +354,18 @@ class AiGateway implements VisionPort {
 
     final sent = wardrobe.take(wardrobeContextLimit).toList();
 
+    // The *most recent* turns, not the first: a long conversation's opening
+    // exchange matters less than what was said a moment ago, and "and the
+    // black one?" is unanswerable without the turn above it.
+    final recent = history.length <= historyLimit
+        ? history
+        : history.sublist(history.length - historyLimit);
+
     final body = await _postJsonBody('chat/ask', {
       'question': trimmed,
-      if (history.isNotEmpty)
+      if (recent.isNotEmpty)
         'history': [
-          for (final turn in history)
+          for (final turn in recent)
             {'role': turn.fromUser ? 'user' : 'assistant', 'text': turn.text},
         ],
       'wardrobe': [for (final item in sent) chatGarmentJson(item)],
@@ -372,6 +386,13 @@ class AiGateway implements VisionPort {
   /// a 422 in the middle of a conversation is a far worse answer than one
   /// working from ninety-nine garments instead of a hundred and one.
   static const wardrobeContextLimit = 120;
+
+  /// How many earlier turns a question may carry with it.
+  ///
+  /// Matches the server's own cap, for the same reason the wardrobe limit
+  /// does: trimming here costs a little context, and hitting the limit there
+  /// costs the conversation.
+  static const historyLimit = 40;
 
   /// The garment with its background removed.
   ///

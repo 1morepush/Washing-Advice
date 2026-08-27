@@ -242,10 +242,36 @@ void main() {
       expect(find.byType(ActionChip), findsWidgets);
     });
 
-    testWidgets('tapping an opener asks it', (tester) async {
+    testWidgets('tapping an opener fills the box rather than sending', (
+      tester,
+    ) async {
+      // Tapping a suggestion is not the same as agreeing with its wording.
+      // Sending it blind takes away the half-second in which somebody would
+      // have made it their question rather than ours.
+      await open(tester);
+      final opener = tester.widget<Text>(
+        find.descendant(
+          of: find.byType(ActionChip).first,
+          matching: find.byType(Text),
+        ),
+      );
+
+      await tester.tap(find.byType(ActionChip).first);
+      await tester.pumpAndSettle();
+
+      expect(gateway.calls, 0);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller?.text,
+        opener.data,
+      );
+    });
+
+    testWidgets('and the filled question can then be sent', (tester) async {
       await open(tester);
 
       await tester.tap(find.byType(ActionChip).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.arrow_upward));
       await tester.pumpAndSettle();
 
       expect(gateway.calls, 1);
@@ -294,7 +320,8 @@ void main() {
       await open(tester);
       expect(find.byIcon(Icons.delete_outline), findsNothing);
 
-      await tester.tap(find.byType(ActionChip).first);
+      await tester.enterText(find.byType(TextField), 'anything');
+      await tester.tap(find.byIcon(Icons.arrow_upward));
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.delete_outline), findsOneWidget);

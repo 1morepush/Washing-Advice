@@ -297,6 +297,35 @@ class TestTheRoute:
             == 200
         )
 
+    def test_an_oversized_history_is_refused(self, client: TestClient) -> None:
+        # The client trims to this same number before sending. Both sides are
+        # pinned because the failure when they disagree is not a slow
+        # conversation but a dead one: this refusal is a 422, which the client
+        # classes as not retryable, so every further question in that thread
+        # fails for good.
+        response = client.post(
+            "/v1/chat/ask",
+            json={
+                "question": "hello",
+                "history": [{"role": "user", "text": f"turn {i}"} for i in range(41)],
+            },
+        )
+
+        assert response.status_code == 422
+
+    def test_a_history_at_the_cap_is_accepted(self, client: TestClient) -> None:
+        # The boundary itself, because an off-by-one here means the client
+        # trims to exactly the number the server rejects.
+        response = client.post(
+            "/v1/chat/ask",
+            json={
+                "question": "hello",
+                "history": [{"role": "user", "text": f"turn {i}"} for i in range(40)],
+            },
+        )
+
+        assert response.status_code == 200
+
     def test_an_oversized_wardrobe_is_refused(self, client: TestClient) -> None:
         # The cap is what stops one request carrying a whole wardrobe into a
         # prompt and being charged for it.

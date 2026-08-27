@@ -156,6 +156,14 @@ class FakeVisionProvider:
                 confidence=0.96,
                 source=Provenance.TAG_SCAN,
             ),
+            # Printed beside the fibre content on most tags, and in the
+            # label's own language — which is the case worth having in the
+            # fake, since nothing downstream may translate it.
+            country_of_origin=Confident[str](
+                value="Tunisie" if french else "Portugal",
+                confidence=0.94,
+                source=Provenance.TAG_SCAN,
+            ),
             symbols_found=["wash.30", "bleach.none", "iron.low"],
             unreadable_symbol_count=unreadable,
             # Never translated. It is what the user reads to check the app

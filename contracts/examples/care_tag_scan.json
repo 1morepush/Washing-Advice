@@ -15,6 +15,11 @@
       "confidence": 0.97,
       "source": "tagScan"
     },
+    "countryOfOrigin": {
+      "value": "Portugal",
+      "confidence": 0.94,
+      "source": "tagScan"
+    },
     "symbolsFound": ["wash.30", "bleach.none", "tumbleDry.low"],
     "unreadableSymbolCount": 1,
     "rawText": "95% COTTON 5% ELASTANE / MACHINE WASH COLD / WASH INSIDE OUT"

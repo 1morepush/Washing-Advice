@@ -205,6 +205,14 @@ CARE_TAG_SCHEMA: dict[str, Any] = {
         "confidence": _CONFIDENCE,
         "composition": _COMPOSITION,
         "compositionConfidence": _CONFIDENCE,
+        "countryOfOrigin": {
+            "type": "string",
+            "description": (
+                "The country named after 'Made in', exactly as printed and "
+                "never translated. Omit it when the label does not say."
+            ),
+        },
+        "countryOfOriginConfidence": _CONFIDENCE,
         "symbolsFound": {
             "type": "array",
             "items": {"type": "string"},
@@ -297,6 +305,22 @@ an instruction the manufacturer never gave, exactly like an invented drying
 symbol.
 
 Transcribe fibre percentages only if they are printed and legible.
+
+WHERE IT WAS MADE: labels usually print "Made in <country>" beside the fibre
+content, sometimes in several languages at once. Report the country in
+`countryOfOrigin`, exactly as printed and never translated — if the tag says
+"Fabriqué en Tunisie", that is what it says.
+
+The first rule governs here as well. Report it only when it is printed on the
+label. Do not infer a country from the brand, from the language of the words,
+or from where the garment looks like it came from. Those are guesses about a
+fact the label either states or does not, and the app treats a stated country
+as something the manufacturer put there.
+
+Report the country only, not the whole phrase: "Portugal", not "Made in
+Portugal". Where a tag names one country for the fabric and another for the
+making — "Fabric made in Italy, garment made in Romania" — report where the
+*garment* was made.
 
 MORE THAN ONE PHOTOGRAPH: care labels are often printed on both sides, or run
 onto a second tag sewn behind the first. When several photographs are given,

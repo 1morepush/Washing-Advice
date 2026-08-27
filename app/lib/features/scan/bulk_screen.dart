@@ -292,14 +292,46 @@ class _Reviewing extends StatelessWidget {
     final accepted = state.accepted.length;
 
     if (state.readable.isEmpty) {
-      return StatusMessage(
-        icon: Icons.error_outline,
-        title: 'None of them could be read',
-        detail: state.failed.firstOrNull?.failure ?? 'Nothing came back.',
-        action: FilledButton.tonal(
-          onPressed: controller.reset,
-          child: const Text('Start again'),
-        ),
+      // Still a list rather than a single message: even when every one of
+      // them failed, which garment was which is the thing the user has to
+      // work out before they can do anything about it.
+      return Column(
+        children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                Text(
+                  'None of them could be read',
+                  style: theme.textTheme.titleMedium,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Here is what you photographed, so you can find them again.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                for (final outcome in state.failed)
+                  _FailureCard(outcome: outcome),
+              ],
+            ),
+          ),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.tonal(
+                  onPressed: controller.reset,
+                  child: const Text('Start again'),
+                ),
+              ),
+            ),
+          ),
+        ],
       );
     }
 
@@ -321,6 +353,40 @@ class _Reviewing extends StatelessWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
+
+              // Said at the top and shown before the successes. Anything that
+              // needs the user to walk back to the pile has to be seen before
+              // they press Save and put the phone down — under forty cards it
+              // may as well not be there.
+              if (state.failed.isNotEmpty || state.labelUnread.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                _NeedsAnotherLook(
+                  failed: state.failed.length,
+                  labelUnread: state.labelUnread.length,
+                ),
+              ],
+
+              if (state.failed.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(
+                  state.failed.length == 1
+                      ? '1 could not be read'
+                      : '${state.failed.length} could not be read',
+                  style: theme.textTheme.labelLarge,
+                ),
+                const SizedBox(height: 8),
+                for (final outcome in state.failed)
+                  _FailureCard(outcome: outcome),
+                Text(
+                  'These are not saved. Photograph them again — the pictures '
+                  'above are here to help you find them, and go when you '
+                  'leave this screen.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+
               const SizedBox(height: 16),
               for (final outcome in state.readable)
                 _OutcomeCard(
@@ -332,33 +398,6 @@ class _Reviewing extends StatelessWidget {
                     (draft) => draft.copyWith(name: name),
                   ),
                 ),
-              if (state.failed.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                // Named rather than silently dropped: thirty-seven back out
-                // of forty would leave somebody counting hangers.
-                Text(
-                  '${state.failed.length} could not be read',
-                  style: theme.textTheme.labelLarge,
-                ),
-                const SizedBox(height: 4),
-                for (final failure in state.failed)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text(
-                      'Garment ${failure.index + 1}: ${failure.failure}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.error,
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 4),
-                Text(
-                  'Their photos are not kept. Add those few the usual way.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
             ],
           ),
         ),
@@ -450,12 +489,34 @@ class _OutcomeCard extends StatelessWidget {
                       text: 'Care label read',
                       color: theme.colorScheme.primary,
                     )
-                  else if (read.labelUnread)
+                  else if (read.labelUnread) ...[
                     _Note(
                       icon: Icons.error_outline,
                       text: 'Label photo unreadable — washing is a guess',
                       color: theme.colorScheme.error,
                     ),
+                    // The tag, not the garment. This garment is going into the
+                    // wardrobe either way; what needs finding again is the
+                    // label, and one crumpled tag looks much like another
+                    // until you see the one that was photographed.
+                    if (outcome.labelShot case final label?) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          _Thumb(shot: label, size: 40),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'This is the photo that could not be read.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
                 ],
               ),
             ),
@@ -496,6 +557,214 @@ class _OutcomeCard extends StatelessWidget {
             },
             child: const Text('Save'),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The count of what still needs the user, said before anything else.
+///
+/// A batch is submitted and walked away from. Coming back to "38 read" and a
+/// Save button, the natural move is to press it — and the two that failed are
+/// forty cards further down, discovered a week later when a garment is missing
+/// and the pile is long since put away.
+class _NeedsAnotherLook extends StatelessWidget {
+  const _NeedsAnotherLook({required this.failed, required this.labelUnread});
+
+  final int failed;
+  final int labelUnread;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    final parts = <String>[
+      if (failed > 0)
+        failed == 1
+            ? '1 garment could not be read'
+            : '$failed garments could not be read',
+      if (labelUnread > 0)
+        labelUnread == 1
+            ? "1 care label did not come out"
+            : '$labelUnread care labels did not come out',
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.photo_camera_outlined,
+            size: 18,
+            color: theme.colorScheme.onErrorContainer,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  parts.join(', and '),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onErrorContainer,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Each one is shown with the photo you took, so you can find '
+                  'it in the pile before you put it away.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onErrorContainer,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A garment that came back with nothing, shown as what was photographed.
+///
+/// Deliberately the same size and shape as a garment that worked. The
+/// difference between "in your wardrobe" and "still in the pile" is worth a
+/// card either way, and a failure rendered as a line of red text reads as a
+/// footnote about the batch rather than a thing to go and do.
+class _FailureCard extends StatelessWidget {
+  const _FailureCard({required this.outcome});
+
+  final BulkOutcome outcome;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final identifying = outcome.identifyingShot;
+    final others = [
+      for (final shot in outcome.shots)
+        if (!identical(shot, identifying)) shot,
+    ];
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (identifying != null) ...[
+                  _Thumb(shot: identifying, size: 72),
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Garment ${outcome.index + 1}',
+                        style: theme.textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        outcome.failure ?? 'Nothing came back for this one.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.error,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            // The rest of what was taken. The identifying shot is the one that
+            // finds the garment; a close-up of a seam or the tag is what says
+            // which photograph needs taking again.
+            if (others.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 48,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: others.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
+                  itemBuilder: (_, index) =>
+                      _Thumb(shot: others[index], size: 48, labelled: true),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One photograph, at whatever size the caller has room for.
+class _Thumb extends StatelessWidget {
+  const _Thumb({required this.shot, required this.size, this.labelled = false});
+
+  final ScanShot shot;
+  final double size;
+
+  /// Whether to mark a care-label shot as one. Only worth saying where several
+  /// photographs sit side by side and a tag is hard to tell from a sleeve.
+  final bool labelled;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final placeholder = Container(
+      width: size,
+      height: size,
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: Icon(
+        Icons.image_not_supported_outlined,
+        size: size / 3,
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
+    );
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Stack(
+        children: [
+          Image.memory(
+            Uint8List.fromList(shot.image.bytes),
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => placeholder,
+          ),
+          if (labelled && shot.role == PhotoRole.careTag)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                color: theme.colorScheme.scrim.withValues(alpha: 0.6),
+                padding: const EdgeInsets.symmetric(vertical: 1),
+                child: Text(
+                  'Label',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onInverseSurface,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

@@ -123,9 +123,13 @@ flow that stops to think after each one means forty round trips you have to
 stand through. *Several garments* inverts it: photograph one, tap **Next
 garment**, carry on through the pile with nothing sent, then submit the lot and
 put the phone down. It reports "9 of 40" rather than spinning, and one garment
-failing never costs the batch — the ones that could not be read are listed by
-number so you know which few to redo. You still see everything before it is
-saved, but once for the whole batch rather than once per garment.
+failing never costs the batch — anything that could not be read is counted at
+the top of the review, above the Save button, and shown *with the photograph
+you took of it*, because a pile of forty is not something you can search by
+number. Same for a care label that did not come out: the garment is saved
+either way, and the tag that needs photographing again is shown. You still see
+everything before it is saved, but once for the whole batch rather than once
+per garment.
 
 Where one garment ends and the next begins is your tap rather than a guess.
 Merging two loses a garment outright and splitting one puts a phantom in the

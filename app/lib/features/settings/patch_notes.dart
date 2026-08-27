@@ -107,6 +107,13 @@ final patchNotes = <Release>[
           'and scrolling back up — once per garment.',
       'The same card is used after photographing a pile, so that got the '
           'pictures too.',
+      'Scanning a care label now also shows what the garment is made of. Most '
+          'labels print the fibre content and the app takes it when they do — '
+          'it just never said so, which left no way to tell whether it had '
+          'been captured.',
+      'If the label does not state a fabric, it says that too rather than '
+          'showing nothing, because a blank row looks the same whether the '
+          'label was silent or the reading missed it.',
     ],
   ),
   Release(

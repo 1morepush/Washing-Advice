@@ -158,6 +158,91 @@ void main() {
     });
   });
 
+  group('what the garment is made of', () {
+    // The fibre content is printed on most labels, is taken when it is there,
+    // and outranks whatever was guessed from a photograph — and the review
+    // screen never mentioned it. Somebody scanning a tag could not tell
+    // whether the composition had been captured, corrected, or never read.
+
+    testWidgets('a fabric read off the label is shown as read', (tester) async {
+      await withLabel(const CareConstraint(maxTempC: 30));
+      gateway.reading = CareTagScanResult(
+        instructions: const CareConstraint(maxTempC: 40),
+        confidence: 0.95,
+        composition: Confident(
+          FabricComposition(const {Fiber.wool: 80, Fiber.nylon: 20}),
+          confidence: 0.95,
+          source: Provenance.tagScan,
+        ),
+      );
+
+      await pump(tester, const CareTagScreen(id: itemId));
+      final controller = container.read(
+        careTagControllerProvider(itemId).notifier,
+      );
+      await controller.capture();
+      await controller.readCollected();
+      await tester.pumpAndSettle();
+
+      expect(find.text('What it is made of'), findsOneWidget);
+      expect(find.textContaining('80% Wool'), findsOneWidget);
+      expect(find.textContaining('Read from this label'), findsOneWidget);
+    });
+
+    testWidgets('a fabric the label did not win is not claimed as read', (
+      tester,
+    ) async {
+      // The fixture's own composition is already a tag scan, so `resolve`
+      // keeps it. Showing the label's figure under a flat "read from this
+      // label" would claim a provenance the saved value does not have — the
+      // screen says which one is actually being kept instead.
+      await withLabel(const CareConstraint(maxTempC: 30));
+      gateway.reading = CareTagScanResult(
+        instructions: const CareConstraint(maxTempC: 40),
+        confidence: 0.95,
+        composition: Confident(
+          FabricComposition(const {Fiber.wool: 80, Fiber.nylon: 20}),
+          confidence: 0.95,
+          source: Provenance.tagScan,
+        ),
+      );
+
+      await pump(tester, const CareTagScreen(id: itemId));
+      final controller = container.read(
+        careTagControllerProvider(itemId).notifier,
+      );
+      await controller.capture();
+      await controller.readCollected();
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('has been kept'), findsOneWidget);
+    });
+
+    testWidgets('a label silent about fabric says so', (tester) async {
+      // The case that earns the section. Saying nothing would look identical
+      // whether the label was silent or the reading missed it, and those want
+      // different responses — one is the label's fault, one is worth another
+      // photograph.
+      await withLabel(const CareConstraint(maxTempC: 30));
+      gateway.reading = const CareTagScanResult(
+        instructions: CareConstraint(maxTempC: 40),
+        confidence: 0.95,
+      );
+
+      await pump(tester, const CareTagScreen(id: itemId));
+      final controller = container.read(
+        careTagControllerProvider(itemId).notifier,
+      );
+      await controller.capture();
+      await controller.readCollected();
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('did not state a fabric'), findsOneWidget);
+      // And what is still on record, so the row is not simply blank.
+      expect(find.textContaining('worked out earlier'), findsOneWidget);
+    });
+  });
+
   group('the care-label review screen', () {
     testWidgets('shows the prohibition it just announced in the diff', (
       tester,

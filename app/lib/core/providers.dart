@@ -172,7 +172,11 @@ final matchResolverProvider = Provider<MatchResolver>(
 
 /// Groups items into loads and names the programmes.
 final laundrySorterProvider = Provider<LaundrySorter>(
-  (ref) => const LaundrySorter(),
+  (ref) => LaundrySorter(
+    preferences: SortingPreferences(
+      splitDrying: ref.watch(splitDryingProvider),
+    ),
+  ),
 );
 
 /// The care rule table.

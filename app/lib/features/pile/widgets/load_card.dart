@@ -123,7 +123,13 @@ class _LoadCardState extends ConsumerState<LoadCard> {
               // no dial position. Saying so beats saying nothing.
               _Requirements(spec: load.washSpec),
 
-            if (dryer != null) ...[
+            // When the load dries in parts, the parts *are* the answer — a
+            // single "do not tumble dry" above them would describe the
+            // conservative reading the split exists to get past.
+            if (load.driesInParts) ...[
+              const SizedBox(height: 12),
+              _DryingParts(load: load),
+            ] else if (dryer != null) ...[
               const SizedBox(height: 12),
               _DrySettings(setting: dryer),
             ] else ...[
@@ -310,6 +316,87 @@ class _Requirements extends StatelessWidget {
           _Row(label: 'Spin', value: 'Up to $rpm rpm'),
         if (spec.needsExtraRinse) _Row(label: 'Rinse', value: 'Extra'),
         if (spec.avoidSoftener) _Row(label: 'Softener', value: 'Do not use'),
+      ],
+    );
+  }
+}
+
+/// A load that washes as one and dries as two.
+///
+/// Named by what happens to each part rather than by a spec, because the user
+/// is standing at a machine deciding what goes in it. "These four in the
+/// dryer, these two on the airer" is the instruction; the heat setting is
+/// detail underneath it.
+class _DryingParts extends StatelessWidget {
+  const _DryingParts({required this.load});
+
+  final LaundryLoad load;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Dry', style: theme.textTheme.labelLarge),
+        const SizedBox(height: 2),
+        Text(
+          'Washed together, dried apart.',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 8),
+        for (final group in load.dryingGroups)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      group.isTumbleDried
+                          ? Icons.local_laundry_service_outlined
+                          : Icons.air,
+                      size: 16,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        group.isTumbleDried
+                            ? 'In the dryer'
+                                  '${group.dryerSetting == null ? '' : ' — ${group.dryerSetting!.programName}'}'
+                            : 'Hang these up',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                // The garments themselves, for the same reason the load lists
+                // them: this is read with a basket in front of you.
+                for (final item in group.items)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 24, bottom: 6),
+                    child: Row(
+                      children: [
+                        ItemThumbnail(item: item, size: 32),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            item.displayName,
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
       ],
     );
   }

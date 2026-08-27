@@ -60,6 +60,10 @@ Future<void> main() async {
     ProviderScope(
       overrides: [
         settingsStoreProvider.overrideWithValue(SettingsStore(prefs)),
+        // Seeded here rather than read on demand: see `splitDryingProvider`.
+        splitDryingProvider.overrideWith(
+          (ref) => SettingsStore(prefs).splitDrying,
+        ),
         imageStoreProvider.overrideWithValue(images),
       ],
       child: const WashingAdviceApp(),

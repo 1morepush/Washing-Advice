@@ -53,8 +53,28 @@ void main() {
     return container.read(pileProvider(stage)).valueOrNull ?? [];
   }
 
-  Future<WardrobeItem> save(String id, {String? name}) async {
-    final item = confidentItem(id: id, name: name ?? 'Cotton tee');
+  Future<WardrobeItem> save(
+    String id, {
+    String? name,
+    bool tumbleDry = true,
+  }) async {
+    final base = confidentItem(id: id, name: name ?? 'Cotton tee');
+    // Stated on the label, so it is the manufacturer's instruction rather
+    // than something the rule table inferred and might change its mind about.
+    final labelled = base.copyWith(
+      careLabel: Confident(
+        CareConstraint(
+          method: WashMethod.machine,
+          maxTempC: 30,
+          tumbleDryAllowed: tumbleDry,
+        ),
+        confidence: 0.95,
+        source: Provenance.tagScan,
+      ),
+    );
+    final item = labelled.copyWith(
+      care: const CareResolver().forItem(labelled).profile,
+    );
     await repository.save(item);
     return item;
   }
@@ -214,6 +234,40 @@ void main() {
       await tester.tap(find.text(tab));
       await tester.pumpAndSettle();
     }
+
+    testWidgets('a load can wash together and dry apart', (tester) async {
+      // Off, one hang-dry garment sends the whole drum to the airer. On, the
+      // rest goes in the dryer and the user sorts them once.
+      final dryable = await save('tee');
+      final hangOnly = await save('shorts', tumbleDry: false);
+      await controller().move([
+        dryable.id,
+        hangOnly.id,
+      ], LifecycleState.inLaundry);
+
+      container.read(splitDryingProvider.notifier).state = true;
+      await openOn(tester, 'To wash (2)');
+
+      expect(find.text('Washed together, dried apart.'), findsOneWidget);
+      expect(find.text('In the dryer'), findsOneWidget);
+      expect(find.text('Hang these up'), findsOneWidget);
+    });
+
+    testWidgets('and dries as one when it has not been asked to split', (
+      tester,
+    ) async {
+      // The default, and what every earlier version did.
+      final dryable = await save('tee');
+      final hangOnly = await save('shorts', tumbleDry: false);
+      await controller().move([
+        dryable.id,
+        hangOnly.id,
+      ], LifecycleState.inLaundry);
+
+      await openOn(tester, 'To wash (2)');
+
+      expect(find.text('Washed together, dried apart.'), findsNothing);
+    });
 
     testWidgets('the load to run shows each garment, not just its name', (
       tester,

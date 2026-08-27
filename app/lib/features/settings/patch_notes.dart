@@ -96,6 +96,27 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.22.0',
+    name: 'Hang It Up',
+    date: DateTime.utc(2026, 8, 21),
+    headline: 'Tell it how to wash something, and split a load for drying',
+    changes: [
+      'New on any garment the app is still guessing about: "No label? Tell '
+          'it". For a tag that has worn away, been cut out, or was never '
+          'there. Set only what you know — cold wash, no tumble dry — and the '
+          'app keeps working the rest out from the fabric.',
+      'What you say is used instead of a scanned label, because an illegible '
+          'or missing tag is exactly the case it is for. It stops asking you '
+          'to scan that garment, and the wash plan follows what you said.',
+      'New in Settings: split a load for drying. Clothes that wash together '
+          'do not always dry together, and one hang-dry garment used to send '
+          'the whole drum to the airer. Turn it on and the rest goes in the '
+          'dryer, with the load telling you which garments go where.',
+      'Off by default, so nothing changes unless you ask. The load still '
+          'washes as one either way — only the drying splits.',
+    ],
+  ),
+  Release(
     version: '0.21.0',
     name: 'Full Disclosure',
     date: DateTime.utc(2026, 8, 21),

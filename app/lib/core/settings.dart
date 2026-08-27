@@ -26,6 +26,7 @@ class SettingsStore {
   static const _dryerKey = 'dryerBrand';
   static const _customWasherKey = 'customWasherProfile';
   static const _customDryerKey = 'customDryerProfile';
+  static const _splitDryingKey = 'splitDrying';
   static const _syncTokenKey = 'syncToken';
   static const _syncCursorKey = 'syncCursorRemote';
   static const _syncLocalCursorKey = 'syncCursorLocal';
@@ -42,6 +43,16 @@ class SettingsStore {
       trimmed.isEmpty ? defaultBackendUrl : trimmed,
     );
   }
+
+  /// Whether a load may be split into more than one drying group.
+  ///
+  /// Off by default, which is what the app has always done: the load dries as
+  /// one, at the most restrictive spec any member demands. Safe, and wasteful
+  /// — one air-dry-only garment sends the whole drum to the airer.
+  bool get splitDrying => _prefs.getBool(_splitDryingKey) ?? false;
+
+  Future<void> setSplitDrying(bool value) =>
+      _prefs.setBool(_splitDryingKey, value);
 
   /// The chosen machines, by catalogue key.
   ///
@@ -185,6 +196,16 @@ final settingsStoreProvider = Provider<SettingsStore>(
 final backendUrlProvider = StateProvider<String>(
   (ref) => ref.watch(settingsStoreProvider).backendUrl,
 );
+
+/// Whether a load is split into more than one drying group.
+///
+/// A plain default rather than a read of the store, unlike the settings around
+/// it. The laundry sorter watches this, and sorting laundry is something the
+/// core does without knowing anything about preferences — making every test
+/// that groups a basket wire up SharedPreferences first would be the tail
+/// wagging the dog. `main()` seeds it from the stored value at startup and the
+/// settings screen writes through to both.
+final splitDryingProvider = StateProvider<bool>((ref) => false);
 
 /// The user's machines, by catalogue key. Null means "not set up yet".
 final washerBrandProvider = StateProvider<String?>(

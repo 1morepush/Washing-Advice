@@ -96,6 +96,31 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.21.0',
+    name: 'Full Disclosure',
+    date: DateTime.utc(2026, 8, 21),
+    headline: 'What your clothes are made of, and where they came from',
+    changes: [
+      'Scanning a care label now shows what the garment is made of. Most '
+          'labels print the fibre content and the app has always taken it — it '
+          'just never said so, which left no way to tell whether it had been '
+          'captured. If the label does not state one, it says that rather than '
+          'showing nothing.',
+      'Where a garment was made is kept too. It shows on the item, you can '
+          'filter by it, and there is a new "Where it was made" sort. Insights '
+          'has a section for it that counts only the garments whose label '
+          'actually said, and tells you how many have none on record.',
+      'The country is kept exactly as printed and never translated, so a tag '
+          'reading "Fabriqué en Tunisie" stays that way.',
+      'Fixed: a label printing SPANDEX showed up as "Elastane". Same fibre, '
+          'two names, and the reading was right — but the word on screen was '
+          'not the word on your tag. The app says spandex and rayon now, '
+          'matching American labels and the American English it writes '
+          'everywhere else, and the label screen names the alternative so a '
+          'European tag is not mistaken for a misread.',
+    ],
+  ),
+  Release(
     version: '0.20.0',
     name: 'Picture This',
     date: DateTime.utc(2026, 8, 21),
@@ -107,30 +132,6 @@ final patchNotes = <Release>[
           'and scrolling back up — once per garment.',
       'The same card is used after photographing a pile, so that got the '
           'pictures too.',
-      'Scanning a care label now also shows what the garment is made of. Most '
-          'labels print the fibre content and the app takes it when they do — '
-          'it just never said so, which left no way to tell whether it had '
-          'been captured.',
-      'If the label does not state a fabric, it says that too rather than '
-          'showing nothing, because a blank row looks the same whether the '
-          'label was silent or the reading missed it.',
-      'Care labels usually print where a garment was made, and that is now '
-          'kept too. It shows on the item, you can filter by it, and there is '
-          'a new "Where it was made" sort.',
-      'Insights has a section for it. Only the garments whose label actually '
-          'said are counted, and it tells you how many have no country on '
-          'record — otherwise a wardrobe with three read labels would look '
-          'like it came entirely from one country.',
-      'The country is kept exactly as printed and never translated, so a tag '
-          'reading "Fabriqué en Tunisie" stays that way.',
-      'Fixed: a label printing SPANDEX showed up as "Elastane". They are the '
-          'same fibre under two names, and the reading was right, but the word '
-          'on screen was not the word on your tag — which reads as a misread. '
-          'The app says spandex and rayon now, matching both American labels '
-          'and the American English it writes everywhere else.',
-      'Where a fibre goes by more than one name, the label screen says so — '
-          '"your label may call it elastane" — so a European tag and the app '
-          'can be told apart from a mistake.',
     ],
   ),
   Release(

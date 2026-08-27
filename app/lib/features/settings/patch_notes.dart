@@ -96,6 +96,24 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.25.1',
+    name: 'Full Cycle',
+    date: DateTime.utc(2026, 8, 27),
+    headline: 'Answers in Ask no longer stop mid-sentence',
+    changes: [
+      'Ask was cutting its answers off partway through — "a plain triangle '
+          'means you can" and then nothing. Fixed.',
+      'The cause was a limit meant to keep answers short. It turns out to '
+          'cover the model thinking as well as the answer it writes, so a '
+          'tight limit did not make answers shorter, it made them stop '
+          'halfway. Keeping them brief is the question\'s job, not a counter.',
+      'If an answer ever does get cut off, you now get an error you can '
+          'retry rather than the half of it that arrived. Half an answer '
+          'about laundry is worse than none — the word after "you can" is '
+          'sometimes "not".',
+    ],
+  ),
+  Release(
     version: '0.25.0',
     name: 'Ask Me Anything',
     date: DateTime.utc(2026, 8, 27),

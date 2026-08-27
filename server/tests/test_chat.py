@@ -228,6 +228,105 @@ class TestGemini:
         assert seen["generationConfig"]["temperature"] <= 0.3
 
     @pytest.mark.anyio
+    async def test_an_answer_cut_off_is_refused_not_shown(self) -> None:
+        # Reported from a real conversation: replies arrived ending mid-word.
+        # A truncated reply still carries text, and it is the dangerous kind —
+        # "a plain triangle means you can" is a complete-looking sentence whose
+        # next word decides whether somebody bleaches a garment.
+        def handler(_: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={
+                    "candidates": [
+                        {
+                            "content": {"parts": [{"text": "A plain triangle means you can"}]},
+                            "finishReason": "MAX_TOKENS",
+                        }
+                    ]
+                },
+            )
+
+        with pytest.raises(ProviderError, match="cut off"):
+            await self._adviser(handler).answer(_request())
+
+    @pytest.mark.anyio
+    async def test_the_token_budget_leaves_room_to_think(self) -> None:
+        # The cause of that truncation. On these models the limit covers the
+        # model's thinking *and* its answer, so a tight cap does not shorten
+        # the reply — the thinking spends it and the answer stops partway. This
+        # guards the number against being "tidied" back down to something that
+        # looks like a sentence limit.
+        seen: dict[str, Any] = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            import json
+
+            seen.update(json.loads(request.content))
+            return self._reply("Cold wash.")
+
+        await self._adviser(handler).answer(_request())
+
+        assert seen["generationConfig"]["maxOutputTokens"] >= 1024
+
+    @pytest.mark.anyio
+    async def test_the_model_thinking_out_loud_is_not_the_answer(self) -> None:
+        # A thinking model can return its reasoning as one part and the answer
+        # as the next. Reading parts[0] would show the user the model working
+        # out what to say.
+        def handler(_: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={
+                    "candidates": [
+                        {
+                            "content": {
+                                "parts": [
+                                    {"text": "The user is asking...", "thought": True},
+                                    {"text": "No — it says do not tumble dry."},
+                                ]
+                            },
+                            "finishReason": "STOP",
+                        }
+                    ]
+                },
+            )
+
+        answer = await self._adviser(handler).answer(_request())
+
+        assert answer.reply == "No — it says do not tumble dry."
+
+    @pytest.mark.anyio
+    async def test_an_answer_split_across_parts_is_joined(self) -> None:
+        def handler(_: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={
+                    "candidates": [
+                        {"content": {"parts": [{"text": "Cold wash, "}, {"text": "hang it up."}]}}
+                    ]
+                },
+            )
+
+        answer = await self._adviser(handler).answer(_request())
+
+        assert answer.reply == "Cold wash, hang it up."
+
+    @pytest.mark.anyio
+    async def test_thinking_with_no_answer_is_not_passed_off_as_one(self) -> None:
+        def handler(_: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={
+                    "candidates": [
+                        {"content": {"parts": [{"text": "Thinking...", "thought": True}]}}
+                    ]
+                },
+            )
+
+        with pytest.raises(ProviderError, match="empty"):
+            await self._adviser(handler).answer(_request())
+
+    @pytest.mark.anyio
     async def test_an_http_error_becomes_a_provider_error(self) -> None:
         def handler(_: httpx.Request) -> httpx.Response:
             return httpx.Response(429, json={"error": {"message": "quota exceeded"}})

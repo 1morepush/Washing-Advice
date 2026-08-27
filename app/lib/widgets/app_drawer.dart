@@ -23,6 +23,9 @@ enum AppDestination {
   outfits('Outfits', '/outfits', Icons.style_outlined, Icons.style),
   packing('Packing', '/packing', Icons.luggage_outlined, Icons.luggage),
   insights('Insights', '/insights', Icons.insights_outlined, Icons.insights),
+  // Above settings rather than below it: this is a thing you use, and the
+  // bottom of a drawer is where the things you configure once live.
+  ask('Ask', '/ask', Icons.chat_bubble_outline, Icons.chat_bubble),
   settings('Settings', '/settings', Icons.settings_outlined, Icons.settings);
 
   const AppDestination(this.label, this.route, this.icon, this.selectedIcon);

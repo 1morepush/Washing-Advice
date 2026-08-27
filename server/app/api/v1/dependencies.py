@@ -21,6 +21,9 @@ from app.services.ai.knowledge_cache import (
 from app.services.ai.pipeline import VisionPipeline
 from app.services.ai.registry import registry
 from app.services.ai.stages import ProviderStage
+from app.services.chat.base import ChatAdviser
+from app.services.chat.fake import FakeChatAdviser
+from app.services.chat.gemini_adviser import GeminiChatAdviser
 from app.services.condition.base import ConditionReader
 from app.services.condition.fake import FakeConditionReader
 from app.services.condition.gemini_reader import GeminiConditionReader
@@ -130,6 +133,9 @@ _live_stylists: list[Stylist] = []
 _live_readers: list[ConditionReader] = []
 """And again for condition readers."""
 
+_live_chat_advisers: list[ChatAdviser] = []
+"""And again for chat advisers."""
+
 
 @lru_cache
 def get_stain_adviser() -> StainAdviser:
@@ -178,6 +184,30 @@ def get_stylist() -> Stylist:
 
     _live_stylists.append(stylist)
     return stylist
+
+
+@lru_cache
+def get_chat_adviser() -> ChatAdviser:
+    """The chat adviser described by the current settings.
+
+    Reuses `VISION_PROVIDER` like every other AI-backed dependency here, even
+    though this one never sees an image: there is one AI backend either way,
+    and a second setting would only ever move in lockstep with this one.
+    """
+    settings = get_settings()
+    if settings.vision_provider == "fake":
+        adviser: ChatAdviser = FakeChatAdviser()
+    else:
+        try:
+            adviser = GeminiChatAdviser.from_settings(settings)
+        except ProviderError as error:
+            raise ProviderUnavailableError(
+                str(error),
+                hint="set GEMINI_API_KEY, or set VISION_PROVIDER=fake",
+            ) from error
+
+    _live_chat_advisers.append(adviser)
+    return adviser
 
 
 @lru_cache
@@ -235,6 +265,7 @@ async def close_providers() -> None:
         *_live_advisers,
         *_live_stylists,
         *_live_readers,
+        *_live_chat_advisers,
     ):
         closer = getattr(provider, "aclose", None)
         if closer is not None:
@@ -244,6 +275,7 @@ async def close_providers() -> None:
     _live_advisers.clear()
     _live_stylists.clear()
     _live_readers.clear()
+    _live_chat_advisers.clear()
 
 
 def reset_wiring() -> None:
@@ -257,6 +289,7 @@ def reset_wiring() -> None:
     get_stain_adviser.cache_clear()
     get_stylist.cache_clear()
     get_condition_reader.cache_clear()
+    get_chat_adviser.cache_clear()
     get_knowledge_cache.cache_clear()
     get_background_remover.cache_clear()
     # Closed before it is dropped: a SQLite store left to the garbage collector
@@ -270,4 +303,5 @@ def reset_wiring() -> None:
     _live_advisers.clear()
     _live_stylists.clear()
     _live_readers.clear()
+    _live_chat_advisers.clear()
     get_settings.cache_clear()

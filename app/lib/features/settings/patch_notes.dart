@@ -96,6 +96,29 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.25.0',
+    name: 'Ask Me Anything',
+    date: DateTime.utc(2026, 8, 27),
+    headline: 'Ask the app a question and get an answer',
+    changes: [
+      'New in the menu: Ask. For the questions no screen anticipates — what '
+          'the triangle with two lines means, whether a jumper that says 30° '
+          'is safe at 40°, how much detergent for half a drum.',
+      'It knows what is in your wardrobe, so you can ask about a garment by '
+          'name: "can I tumble dry the navy jumper?" works without explaining '
+          'what the navy jumper is.',
+      'It knows the difference between a care label it read and care it '
+          'worked out from the fabric, and it says which. Being told a guess '
+          'as though it were the manufacturer\'s instruction is the one way '
+          'this could cost you a garment.',
+      'It can only answer. It cannot add a garment, start a wash, or change a '
+          'care label — an assistant that acted on a misread question would be '
+          'a much worse thing to have.',
+      'The conversation is kept while the app is open and is gone when you '
+          'close it. Nothing you ask is stored, on the phone or on the server.',
+    ],
+  ),
+  Release(
     version: '0.24.0',
     name: 'Lost and Found',
     date: DateTime.utc(2026, 8, 27),

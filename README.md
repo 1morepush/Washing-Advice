@@ -576,6 +576,36 @@ the process restarts. Questions are not cached at all: each one arrives with
 whatever context it needs, is answered, and is forgotten. The request itself
 still passes through, which is the thing to weigh when choosing a backend.
 
+### The free tier is free, not private
+
+Worth stating plainly, because it is the one part of this that is not the
+server's to decide. The model behind every AI feature here is Gemini, and
+Google's pricing page draws the line itself: on the **free tier your content is
+used to improve Google's products**, and on the paid tier it explicitly is not.
+
+That applies to everything described above once a key is configured — the
+photographs, the wardrobe facts the Stylist sends, and the questions Ask sends
+with them. Running with `VISION_PROVIDER=fake`, which is the default, sends
+nothing anywhere; there is no middle setting that keeps the features and opts
+out of the terms.
+
+So free and private pull in opposite directions here, and which one you want is
+a choice this repository cannot make for you. It is named rather than buried
+because the rest of this section is careful, and a careful section with one
+quiet omission is worse than no section at all.
+
+The free tier also has rate limits, sized for a person rather than a burst.
+Google no longer publishes fixed per-model numbers — your project's actual
+limits are in the AI Studio dashboard. In practice a bulk scan of a whole
+wardrobe is the one thing likely to hit them, which is survivable: a garment
+that fails comes back with its photograph so you can redo those few, and the
+rest of the batch is unaffected. Going over a limit is refused, not billed;
+nothing here can charge you unless you enable billing on the Google project the
+key belongs to.
+
+- [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing)
+- [Gemini API rate limits](https://ai.google.dev/gemini-api/docs/rate-limits)
+
 ---
 
 ## Running it

@@ -13,6 +13,14 @@ And the temperature is low. The stylist runs hot because it is being asked for
 taste and the failure there is four safe pairings every time. This is the
 opposite: it is being asked what a care symbol means and whether wool goes in a
 dryer, and a creative answer to that is a wrong one.
+
+`maxOutputTokens` is deliberately generous, which is the opposite of what it
+looks like it should be. On these models the limit is a *combined* budget for
+the model's thinking and its answer, so a tight cap does not produce a short
+reply — the thinking spends it and the answer stops mid-sentence. Brevity is
+the prompt's job. This number exists only so that a model which starts thinking
+in circles stops rather than hanging, and an answer that does hit it is refused
+rather than shown.
 """
 
 from __future__ import annotations
@@ -26,6 +34,16 @@ from app.schemas.chat import ChatAnswer, ChatRequest
 from app.services.ai.base import ProviderError
 from app.services.ai.gemini_errors import gemini_error_reason
 from app.services.chat.prompts import describe
+
+MAX_OUTPUT_TOKENS = 2048
+"""The ceiling on thinking *plus* answer.
+
+Not a brevity control, though it reads like one. Set to 400 it produced
+half-sentences: the model's reasoning consumed the budget and generation
+stopped partway through the reply. The prompt asks for one to four sentences
+and that is what keeps answers short; this is a stop on a runaway, since
+omitting the field entirely lets a model think without bound.
+"""
 
 
 class GeminiChatAdviser:
@@ -88,11 +106,7 @@ class GeminiChatAdviser:
             "generationConfig": {
                 # Low, unlike the stylist. See the module docstring.
                 "temperature": 0.2,
-                # Enough for a considered answer to a real question and not
-                # enough for an essay. The prompt asks for one to four
-                # sentences; this is what stops a model that ignores it from
-                # filling a phone screen.
-                "maxOutputTokens": 400,
+                "maxOutputTokens": MAX_OUTPUT_TOKENS,
             },
         }
 
@@ -111,11 +125,45 @@ class GeminiChatAdviser:
                 f"HTTP {response.status_code} from the Gemini API{gemini_error_reason(response)}",
             )
 
-        payload = response.json()
+        return self._answer_in(response.json())
+
+    def _answer_in(self, payload: dict[str, Any]) -> str:
+        """Pulls the answer out of a reply, refusing one that was cut off.
+
+        Its own method so the shapes below can be tested without a network:
+        every one of them was a live failure before it was a test.
+        """
         try:
-            return str(payload["candidates"][0]["content"]["parts"][0]["text"])
+            candidate = payload["candidates"][0]
         except (KeyError, IndexError, TypeError) as error:
-            # Covers the shape a safety block comes back as, which has
-            # candidates but no parts. The message names the shape rather than
-            # guessing at the cause.
             raise ProviderError(self.name, f"unexpected response shape: {error}") from error
+
+        # Checked before the text is read, not after. A truncated reply still
+        # carries text, and that text is the dangerous kind: "a plain triangle
+        # means you can" is a complete-looking sentence whose next word decides
+        # whether somebody bleaches a garment. Half an answer about laundry is
+        # worse than no answer, so this is an error rather than a shorter reply.
+        if candidate.get("finishReason") == "MAX_TOKENS":
+            raise ProviderError(
+                self.name,
+                "the answer was cut off before it finished",
+            )
+
+        try:
+            parts = candidate["content"]["parts"]
+        except (KeyError, TypeError) as error:
+            # The shape a safety block comes back as: a candidate with a
+            # finishReason and no content at all.
+            raise ProviderError(self.name, f"unexpected response shape: {error}") from error
+
+        # Every text part, not the first. A thinking model may put its
+        # reasoning in one part and the answer in the next, and `parts[0]`
+        # would then show the user the model working out what to say.
+        text = "".join(
+            part["text"]
+            for part in parts
+            if isinstance(part, dict) and not part.get("thought") and "text" in part
+        )
+        if not text.strip():
+            raise ProviderError(self.name, "the model returned an empty answer")
+        return text

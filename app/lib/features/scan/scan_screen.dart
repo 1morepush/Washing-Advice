@@ -194,9 +194,18 @@ class _Review extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              // Bounded, because this is a heading and a heading that grows
+              // without limit is not a heading. The server now trims a
+              // runaway name, but this screen is the one that showed a
+              // four-hundred-character one filling the phone and pushing
+              // every other reading off the bottom — the place a name is
+              // *drawn* should not depend on something upstream having
+              // behaved.
               Text(
                 draft.displayName,
                 style: Theme.of(context).textTheme.headlineSmall,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 16),
               _Reading(label: 'Type', belief: draft.type, show: (t) => t.label),

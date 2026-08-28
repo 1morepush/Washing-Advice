@@ -96,6 +96,24 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.25.2',
+    name: 'Name Dropping',
+    date: DateTime.utc(2026, 8, 27),
+    headline: 'A scan can no longer name a garment with an essay',
+    changes: [
+      'A scanned garment came back named with its real name followed by four '
+          'hundred characters of the model talking to itself. It filled the '
+          'review screen and pushed the type, fabric and colour off the '
+          'bottom.',
+      'Names, brands, printed slogans and countries are now kept to a '
+          'sensible length before they reach you. The front of a runaway is '
+          'the real answer, so it is trimmed at a word rather than thrown '
+          'away — you keep the garment and the name it should have had.',
+      'The review screen also holds the name to two lines, so nothing '
+          'upstream can take the screen from the readings again.',
+    ],
+  ),
+  Release(
     version: '0.25.1',
     name: 'Full Cycle',
     date: DateTime.utc(2026, 8, 27),

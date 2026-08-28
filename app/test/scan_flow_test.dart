@@ -12,6 +12,7 @@ library;
 
 import 'dart:typed_data';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
@@ -21,6 +22,7 @@ import 'package:washing_advice/data/api/scan_dto.dart';
 import 'package:washing_advice/data/capture/image_capture_source.dart';
 import 'package:washing_advice/data/images/memory_image_store.dart';
 import 'package:washing_advice/features/scan/scan_controller.dart';
+import 'package:washing_advice/features/scan/scan_screen.dart';
 
 void main() {
   late InMemoryWardrobeRepository repository;
@@ -480,6 +482,68 @@ void main() {
       expect((state() as ScanCollecting).shots, hasLength(1));
     });
   });
+
+  group('a name no human would type', () {
+    // Reported from a real scan: the reading came back with the garment's
+    // actual name followed by four hundred characters of the model talking to
+    // itself about JSON, which filled the review screen and pushed every other
+    // reading off the bottom of the phone.
+    //
+    // The server now trims a runaway before it is sent. This is the other
+    // half — the place a name is *drawn* should not depend on something
+    // upstream having behaved.
+    const runaway =
+        'Black t-shirt with Koshi no Kanbai pocket print & petals graphic '
+        'design pattern context details sample color code analysis complete '
+        'output formatting standard strict mode syntax structure layout '
+        'parsing clear summary validation success check finished payload '
+        'result object format output payload JSON structure complete string '
+        'result correctly formatted JSON string structure validate output';
+
+    /// Reaches the review screen with that name on it.
+    ///
+    /// At the default surface rather than a phone's. Whether this screen
+    /// *fits* is `layout_fit_test.dart`'s question, and it answers it at 320dp
+    /// with the real font loaded for a reason its docstring explains: the
+    /// default test font draws every glyph as a square, so text measures about
+    /// twice its true width and screens that fit perfectly well report
+    /// overflows. What is asserted here is structure — that the heading is
+    /// bounded and the readings survive — which that artefact would only
+    /// obscure.
+    Future<void> reviewing(WidgetTester tester) async {
+      gateway.suggestedName = runaway;
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: ScanScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await captureAndScan();
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('does not push the rest of the reading off the screen', (
+      tester,
+    ) async {
+      await reviewing(tester);
+
+      // The readings below the heading are the point of this screen. A name
+      // allowed to grow without limit takes the screen from them.
+      expect(find.text('Type'), findsOneWidget);
+      expect(find.text('Fabric'), findsOneWidget);
+      expect(find.text('Color'), findsOneWidget);
+    });
+
+    testWidgets('and the heading stays a heading', (tester) async {
+      await reviewing(tester);
+
+      final heading = tester.widget<Text>(find.text(runaway));
+      expect(heading.maxLines, isNotNull);
+      expect(heading.overflow, TextOverflow.ellipsis);
+    });
+  });
 }
 
 /// Stands in for the backend.
@@ -491,6 +555,10 @@ class _FakeGateway extends AiGateway {
   _FakeGateway() : super(baseUrl: Uri.parse('http://test.invalid/'));
 
   ScanFailure? failure;
+
+  /// The name the reading comes back with, so a test can hand the review
+  /// screen one no human would ever type.
+  String suggestedName = 'Navy Nike hoodie';
 
   /// Null stands for a server that refused to separate the garment.
   Uint8List? cutoutBytes = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47]);
@@ -568,7 +636,7 @@ class _FakeGateway extends AiGateway {
         confidence: 0.77,
         source: Provenance.aiInference,
       ),
-      suggestedName: 'Navy Nike hoodie',
+      suggestedName: suggestedName,
     );
   }
 }

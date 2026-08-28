@@ -8,11 +8,19 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from app.schemas.base import WireModel
 from app.schemas.care import CareConstraint
 from app.schemas.common import BoundingBox, Confident
+from app.schemas.limits import (
+    MAX_BRAND,
+    MAX_COUNTRY,
+    MAX_NAME,
+    MAX_PRINTED_TEXT,
+    MAX_RAW_TEXT,
+    clamp,
+)
 from app.schemas.wardrobe import (
     ColorPalette,
     FabricComposition,
@@ -59,6 +67,35 @@ class GarmentScanResult(WireModel):
         ),
     )
 
+    @field_validator("suggested_name", mode="after")
+    @classmethod
+    def _short_name(cls, value: str | None) -> str | None:
+        """Keeps a name to a name.
+
+        Applied here rather than in the Gemini provider so it covers every
+        provider and holds at the contract, which is where the app's trust in
+        this field actually begins. See `schemas/limits.py` for why a runaway
+        is trimmed rather than refused.
+        """
+        return clamp(value, MAX_NAME)
+
+    @field_validator("distinguishing_text", mode="after")
+    @classmethod
+    def _short_printed_text(cls, value: str | None) -> str | None:
+        return clamp(value, MAX_PRINTED_TEXT)
+
+    @field_validator("brand", mode="after")
+    @classmethod
+    def _short_brand(cls, value: Confident[str] | None) -> Confident[str] | None:
+        if value is None:
+            return None
+        shortened = clamp(value.value, MAX_BRAND)
+        # A brand that was only whitespace is no brand, and passing it on as an
+        # empty string would put a blank chip on the item screen.
+        if shortened is None:
+            return None
+        return value.model_copy(update={"value": shortened})
+
 
 class CareTagScanResult(WireModel):
     """What reading a care label produces."""
@@ -86,6 +123,24 @@ class CareTagScanResult(WireModel):
             "with none of this is a symbols-only label rather than a failure."
         ),
     )
+
+    @field_validator("raw_text", mode="after")
+    @classmethod
+    def _bounded_raw_text(cls, value: str | None) -> str | None:
+        return clamp(value, MAX_RAW_TEXT)
+
+    @field_validator("country_of_origin", mode="after")
+    @classmethod
+    def _short_country(cls, value: Confident[str] | None) -> Confident[str] | None:
+        # This one is filtered and sorted on, not just displayed: a runaway
+        # here becomes a permanent row in the insights chart and an entry in
+        # the filter sheet that matches one garment forever.
+        if value is None:
+            return None
+        shortened = clamp(value.value, MAX_COUNTRY)
+        if shortened is None:
+            return None
+        return value.model_copy(update={"value": shortened})
 
     @property
     def is_complete(self) -> bool:

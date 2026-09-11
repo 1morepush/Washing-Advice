@@ -96,6 +96,27 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.27.0',
+    name: 'Coming Home',
+    date: DateTime.utc(2026, 9, 11),
+    headline: 'Say what you wore in three taps, no photo',
+    changes: [
+      'New at the top of the basket: "What did you wear today?". Tap the '
+          'garments you had on and they are logged as worn and moved to the '
+          'basket in one go. No photograph — they are already in your '
+          'wardrobe.',
+      'The list puts the likely answers first, so the ones you want are '
+          'usually on screen before any scrolling: what you wore recently, '
+          'what is due a wash, and what you wear most.',
+      'Tap one and the list reorders around it — the things you usually wear '
+          'with it come to the top, and say so. Pick your work trousers and '
+          'the shirt that goes with them is right there.',
+      'It logs the wear as well as moving the garment, which is the half you '
+          'cannot see: cost per wear, "never worn", and the suggestions all '
+          'rest on that record.',
+    ],
+  ),
+  Release(
     version: '0.26.0',
     name: 'Armfuls',
     date: DateTime.utc(2026, 9, 11),

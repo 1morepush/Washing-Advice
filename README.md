@@ -268,6 +268,26 @@ Finishing one records it in the garment's history and puts it in the wash, and
 the load it lands in carries a warning to check that mark before anything goes
 near heat — drying sets whatever did not come out.
 
+### Say what you wore, at the front door
+
+The information only exists for about a minute — you are taking clothes off at
+the end of a working day and the next thing that happens is they land in a pile.
+Anything that costs more than a few seconds at that moment does not get done,
+and a wardrobe that quietly stops matching your wardrobe is worse than no
+record at all.
+
+**What did you wear today?** sits at the top of the basket. Tap the garments;
+they are logged as worn *and* moved to the basket together. No photograph —
+they are already in your wardrobe, so this is recognition rather than capture.
+
+The design is almost entirely in the ordering, because the failure mode is
+scrolling. Recently worn, due a wash (`wearsSinceWash` is the domain's own
+answer to that), and most worn put the likely answers on the first screen. Then
+tapping one reorders the rest around it: the co-wear graph, derived from the
+event log, brings up what you usually wear *with* it, and says so on the tile —
+a list that rearranges itself for no visible reason is worse than one that does
+not rearrange at all.
+
 ### Keep track of what is dirty
 
 Every garment sits in one of four piles — **clean**, **to wash**, **washing**,

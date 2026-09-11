@@ -108,15 +108,88 @@ class _PileView extends ConsumerWidget {
         title: 'Could not read your wardrobe',
         error: error,
       ),
-      data: (data) => data.isEmpty
+      data: (data) => data.isEmpty && pile != _Pile.toWash
           ? _Empty(pile: pile)
           : ListView(
               padding: const EdgeInsets.only(bottom: 32),
               children: [
-                if (pile == _Pile.toWash) const _Plan(),
-                _Items(items: data, pile: pile),
+                // Above the plan, and above the empty state. This is the one
+                // thing somebody opens the app to do on the way past the
+                // basket, and it is worth nothing if it is below a list.
+                if (pile == _Pile.toWash) const _WoreSomething(),
+                if (data.isEmpty)
+                  _Empty(pile: pile)
+                else ...[
+                  if (pile == _Pile.toWash) const _Plan(),
+                  _Items(items: data, pile: pile),
+                ],
               ],
             ),
+    );
+  }
+}
+
+/// The way into logging what you had on today.
+///
+/// Put at the top of the basket because of *when* it is used. The answer to
+/// "what did you wear today" exists for about a minute, at the front door, at
+/// the end of a working day — and anything that takes more than a few seconds
+/// at that moment does not get done, which is how clothes end up in the pile
+/// unrecorded and the wardrobe slowly stops matching the wardrobe.
+class _WoreSomething extends StatelessWidget {
+  const _WoreSomething();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Material(
+        color: theme.colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => context.go('/laundry/worn'),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.checkroom_outlined,
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'What did you wear today?',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: theme.colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Tap them once. No photo needed — they are already in '
+                        'your wardrobe.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

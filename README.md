@@ -131,6 +131,23 @@ either way, and the tag that needs photographing again is shown. You still see
 everything before it is saved, but once for the whole batch rather than once
 per garment.
 
+**One photo per garment** turns that into shoot, shoot, shoot: every photograph
+finishes its garment, so there is no tap between them. And photos can be
+imported straight from the camera roll, one garment each — a phone's own camera
+is faster than any in-app one, so the quickest route is to photograph everything
+with it and hand the lot over in a single tap. Both skip the back and the care
+label, which is the trade: documenting a wardrobe is a different job from adding
+a shirt properly.
+
+**Faster still: lay a few out.** *A few at once* takes one photograph of several
+garments spread on a bed and gives you a garment for each, with its own picture
+cut out of the shot by the box the detector drew around it. An armful at a time
+rather than a garment at a time. It needed no new model work — the pile scanner
+has read several garments from one photograph since the laundry planner shipped;
+it had just never been pointed at the wardrobe. Anything it finds that you
+already own is shown and left unticked, so photographing a drawer you half-did
+last week does not give you two of everything.
+
 Where one garment ends and the next begins is your tap rather than a guess.
 Merging two loses a garment outright and splitting one puts a phantom in the
 wardrobe, and the tap costs less than either mistake.

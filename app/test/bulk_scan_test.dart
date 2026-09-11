@@ -93,6 +93,167 @@ void main() {
     });
   });
 
+  group('documenting a wardrobe rather than adding a garment', () {
+    // The two jobs this screen serves are far apart: adding one shirt
+    // properly, against getting a hundred garments recorded at all. The
+    // second is what these cover, and the cost that matters there is taps.
+
+    test('one photo per garment finishes each on its own', () async {
+      // Shoot, shoot, shoot. Without this it is shoot, tap, shoot, tap.
+      controller().setOnePerGarment(true);
+      await controller().capture();
+      await controller().capture();
+      await controller().capture();
+
+      final collecting = state() as BulkCollecting;
+      expect(collecting.garmentCount, 3);
+      expect(collecting.current.isEmpty, isTrue);
+    });
+
+    test('and it is off unless asked for', () async {
+      // Off is the default because it is the one that cannot lose anything: a
+      // wrong tap here costs a tap, and the other way silently splits a
+      // garment in two.
+      await controller().capture();
+      await controller().capture();
+
+      expect((state() as BulkCollecting).garmentCount, 1);
+    });
+
+    test('turning it on puts away what is already in hand', () async {
+      // A half-photographed garment left in `current` while every later shot
+      // becomes its own garment is a state nothing else expects, and the next
+      // photograph would silently join it.
+      await controller().capture();
+      controller().setOnePerGarment(true);
+
+      final collecting = state() as BulkCollecting;
+      expect(collecting.done, hasLength(1));
+      expect(collecting.current.isEmpty, isTrue);
+    });
+
+    test('turning it on with nothing in hand adds no phantom', () async {
+      controller().setOnePerGarment(true);
+
+      expect((state() as BulkCollecting).garmentCount, 0);
+    });
+
+    test('turning it back off keeps everything photographed so far', () async {
+      controller().setOnePerGarment(true);
+      await controller().capture();
+      await controller().capture();
+      controller().setOnePerGarment(false);
+
+      final collecting = state() as BulkCollecting;
+      expect(collecting.garmentCount, 2);
+      expect(collecting.onePerGarment, isFalse);
+    });
+
+    test('the mode survives the other things the screen does', () async {
+      // Every rebuild of the collecting state has to carry it, and a rebuild
+      // is exactly where a field goes quietly missing.
+      controller().setOnePerGarment(true);
+      await controller().capture();
+      controller().discardLast();
+
+      expect((state() as BulkCollecting).onePerGarment, isTrue);
+    });
+  });
+
+  group('importing a camera roll', () {
+    // The point of the whole thing: a phone's own camera is faster than any
+    // in-app one, so somebody can photograph forty garments elsewhere and
+    // hand the lot over in a single tap.
+
+    test('each photo becomes its own garment', () async {
+      container.dispose();
+      container = _containerWith(
+        gateway,
+        repository,
+        capture: _SequenceCapture(const [
+          ScanImage(bytes: [10]),
+          ScanImage(bytes: [20]),
+          ScanImage(bytes: [30]),
+        ]),
+      );
+
+      await controller().importAsGarments();
+
+      final collecting = state() as BulkCollecting;
+      expect(collecting.garmentCount, 3);
+      expect(collecting.photoCount, 3);
+    });
+
+    test('and each is its own photograph, in order', () async {
+      // The failure worth guarding: an import that put every picked image on
+      // one garment, which is what `capture(fromGallery: true)` does and is
+      // the opposite reading of the same gesture.
+      container.dispose();
+      container = _containerWith(
+        gateway,
+        repository,
+        capture: _SequenceCapture(const [
+          ScanImage(bytes: [10]),
+          ScanImage(bytes: [20]),
+        ]),
+      );
+
+      await controller().importAsGarments();
+
+      final garments = (state() as BulkCollecting).all;
+      expect(garments.first.shots.single.image.bytes, [10]);
+      expect(garments.last.shots.single.image.bytes, [20]);
+    });
+
+    test('an imported photo is the front of its garment', () async {
+      await controller().importAsGarments();
+
+      final garment = (state() as BulkCollecting).all.first;
+      expect(garment.shots.single.role, PhotoRole.front);
+    });
+
+    test('a garment in hand is finished rather than merged into', () async {
+      // Absorbing an import into a half-photographed garment would put
+      // somebody else's front photo on its back.
+      await controller().capture();
+      await controller().importAsGarments();
+
+      final collecting = state() as BulkCollecting;
+      expect(collecting.garmentCount, 2);
+      expect(collecting.current.isEmpty, isTrue);
+    });
+
+    test('backing out of the picker changes nothing', () async {
+      container.dispose();
+      container = _containerWith(
+        gateway,
+        repository,
+        capture: FixedImageCaptureSource(const []),
+      );
+      await controller().importAsGarments();
+
+      expect(state(), isA<BulkCollecting>());
+      expect((state() as BulkCollecting).isEmpty, isTrue);
+    });
+
+    test('imported garments go to the server like any other', () async {
+      container.dispose();
+      container = _containerWith(
+        gateway,
+        repository,
+        capture: _SequenceCapture(const [
+          ScanImage(bytes: [10]),
+          ScanImage(bytes: [20]),
+        ]),
+      );
+      await controller().importAsGarments();
+      await controller().submit();
+
+      expect(gateway.garmentCalls, 2);
+      expect((state() as BulkReviewing).readable, hasLength(2));
+    });
+  });
+
   group('submitting the batch', () {
     test('each garment is read on its own', () async {
       await photograph(3);

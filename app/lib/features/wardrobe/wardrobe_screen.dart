@@ -182,6 +182,15 @@ Future<void> _chooseHowToAdd(BuildContext context) async {
             ),
             onTap: () => Navigator.pop(context, '/scan/bulk'),
           ),
+          ListTile(
+            leading: const Icon(Icons.grid_view_outlined),
+            title: const Text('A few at once'),
+            subtitle: const Text(
+              'Lay them out, take one photo, and get a garment for each. '
+              'Fastest way to record a wardrobe.',
+            ),
+            onTap: () => Navigator.pop(context, '/scan/spread'),
+          ),
           const SizedBox(height: 8),
         ],
       ),

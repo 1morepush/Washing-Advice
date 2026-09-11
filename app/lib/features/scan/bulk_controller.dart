@@ -112,6 +112,7 @@ final class BulkCollecting extends BulkState {
   const BulkCollecting({
     this.done = const [],
     this.current = const PendingGarment([]),
+    this.onePerGarment = false,
   });
 
   /// Garments finished with, oldest first.
@@ -119,6 +120,26 @@ final class BulkCollecting extends BulkState {
 
   /// The one being photographed now.
   final PendingGarment current;
+
+  /// Whether a photograph finishes its garment on its own.
+  ///
+  /// Off, a garment is as many photographs as it needs and the user says when
+  /// it ends — the right shape for adding a shirt whose back is the
+  /// interesting side. On, every shot is a garment and the session becomes
+  /// shoot, shoot, shoot.
+  ///
+  /// Which is the right default depends entirely on the job, and the two jobs
+  /// are far apart: adding one garment properly, against getting a hundred of
+  /// them recorded at all. Off is the default because it is the one that
+  /// cannot lose anything — a wrong tap here costs a tap, and a wrong tap the
+  /// other way silently splits a garment in two.
+  final bool onePerGarment;
+
+  BulkCollecting withMode({required bool onePerGarment}) => BulkCollecting(
+    done: done,
+    current: current,
+    onePerGarment: onePerGarment,
+  );
 
   /// Everything that would be sent, in order.
   List<PendingGarment> get all => [...done, if (!current.isEmpty) current];
@@ -238,7 +259,97 @@ class BulkController extends StateNotifier<BulkState> {
           ScanShot(image: image, role: current.nextRole),
         );
       }
-      state = BulkCollecting(done: collecting.done, current: current);
+
+      // One tap per garment: the shot that was just taken *is* the garment, so
+      // it is put away rather than waiting for a tap that would only ever say
+      // the same thing. Picking several from the gallery in this mode still
+      // makes one garment of them, because that was a deliberate multi-select
+      // and `importAsGarments` is the other reading of it.
+      if (collecting.onePerGarment && !fromGallery) {
+        state = BulkCollecting(
+          done: [...collecting.done, current],
+          current: const PendingGarment([]),
+          onePerGarment: true,
+        );
+        return;
+      }
+
+      state = BulkCollecting(
+        done: collecting.done,
+        current: current,
+        onePerGarment: collecting.onePerGarment,
+      );
+    }
+  }
+
+  /// Turns one-tap capture on or off.
+  ///
+  /// Turning it on puts away whatever is in hand rather than leaving it. A
+  /// half-photographed garment sitting in `current` while every later shot
+  /// becomes its own garment is a state nothing else in this flow expects, and
+  /// the next photograph would silently join it.
+  void setOnePerGarment(bool on) {
+    if (state case final BulkCollecting collecting) {
+      if (!on) {
+        state = collecting.withMode(onePerGarment: false);
+        return;
+      }
+      state = BulkCollecting(
+        done: [
+          ...collecting.done,
+          if (!collecting.current.isEmpty) collecting.current,
+        ],
+        current: const PendingGarment([]),
+        onePerGarment: true,
+      );
+    }
+  }
+
+  /// Takes in a camera roll, one garment per photograph.
+  ///
+  /// The other way round from [capture] with `fromGallery`, which adds every
+  /// picked image to the garment in hand — right for photographing one garment
+  /// from three angles, and wrong for the job this exists for.
+  ///
+  /// That job is documenting a wardrobe without using this app to do it. A
+  /// phone's own camera is faster than any in-app one: no round trip, no
+  /// screen to come back to, a volume button instead of a target. Somebody can
+  /// photograph forty garments in the time the in-app flow takes for ten, and
+  /// then hand the lot over in one go.
+  ///
+  /// One photograph each, and that is the trade. A garment imported this way
+  /// has no back and no care label, which the reading survives — the label was
+  /// always optional and the app says which garments still want one. What it
+  /// buys is the whole session taking one tap instead of forty.
+  Future<void> importAsGarments() async {
+    if (state case final BulkCollecting collecting) {
+      final List<ScanImage> images;
+      try {
+        images = await _ref.read(imageCaptureProvider).pickMultiple();
+      } on CaptureFailure catch (failure) {
+        state = BulkFailed(failure.message);
+        return;
+      } on Exception catch (error) {
+        state = BulkFailed('Those photos could not be opened. $error');
+        return;
+      }
+
+      if (images.isEmpty) return;
+
+      // Whatever is in hand is finished first rather than being merged with
+      // the first import: a half-photographed garment on screen is one the
+      // user is in the middle of, and silently absorbing an import into it
+      // would put someone else's front photo on their back.
+      state = BulkCollecting(
+        done: [
+          ...collecting.done,
+          if (!collecting.current.isEmpty) collecting.current,
+          for (final image in images)
+            PendingGarment([ScanShot(image: image, role: PhotoRole.front)]),
+        ],
+        current: const PendingGarment([]),
+        onePerGarment: collecting.onePerGarment,
+      );
     }
   }
 
@@ -248,6 +359,7 @@ class BulkController extends StateNotifier<BulkState> {
       state = BulkCollecting(
         done: collecting.done,
         current: collecting.current.withRole(index, role),
+        onePerGarment: collecting.onePerGarment,
       );
     }
   }
@@ -262,6 +374,7 @@ class BulkController extends StateNotifier<BulkState> {
       state = BulkCollecting(
         done: collecting.done,
         current: PendingGarment(next),
+        onePerGarment: collecting.onePerGarment,
       );
     }
   }
@@ -273,6 +386,7 @@ class BulkController extends StateNotifier<BulkState> {
       state = BulkCollecting(
         done: [...collecting.done, collecting.current],
         current: const PendingGarment([]),
+        onePerGarment: collecting.onePerGarment,
       );
     }
   }
@@ -285,6 +399,7 @@ class BulkController extends StateNotifier<BulkState> {
         state = BulkCollecting(
           done: collecting.done,
           current: collecting.current.withoutLast(),
+          onePerGarment: collecting.onePerGarment,
         );
         return;
       }
@@ -292,6 +407,7 @@ class BulkController extends StateNotifier<BulkState> {
         state = BulkCollecting(
           done: collecting.done.sublist(0, collecting.done.length - 1),
           current: collecting.done.last,
+          onePerGarment: collecting.onePerGarment,
         );
       }
     }

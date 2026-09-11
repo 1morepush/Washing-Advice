@@ -253,6 +253,15 @@ class GarmentIntake {
   /// reports what it saw and the core's rule table decides what that means.
   /// Letting a model state care directly would put laundry judgement in the
   /// provider.
+  /// Builds an unsaved garment from a reading.
+  ///
+  /// Public because more than one flow turns a reading into a draft, and the
+  /// interesting part is not the field copying — it is that the care profile
+  /// is resolved from the fabric before anybody sees it. A second copy of this
+  /// that forgot the last line would produce garments with no care at all, and
+  /// look right doing it.
+  WardrobeItem draftFrom(GarmentScanResult result) => _draftFrom(result);
+
   WardrobeItem _draftFrom(GarmentScanResult result) {
     final now = DateTime.now();
     final draft = WardrobeItem(

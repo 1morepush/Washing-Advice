@@ -132,15 +132,44 @@ class _Collecting extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
               ],
+              // Offered here rather than in Settings. It is a property of the
+              // session somebody is in the middle of — documenting a wardrobe
+              // against adding a garment — not a preference they hold, and a
+              // switch two screens away would be found by nobody standing over
+              // a pile.
+              SwitchListTile(
+                value: state.onePerGarment,
+                onChanged: controller.setOnePerGarment,
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                title: const Text('One photo per garment'),
+                subtitle: const Text(
+                  'For getting a whole wardrobe recorded. Each photo becomes '
+                  'its own garment, so it is shoot, shoot, shoot — no back, '
+                  'no label, no tap in between.',
+                ),
+              ),
+              const SizedBox(height: 12),
+
               Text(
-                current.isEmpty
+                state.onePerGarment
+                    ? 'Next garment'
+                    : current.isEmpty
                     ? 'This garment'
                     : 'This garment · ${current.shots.length} '
                           '${current.shots.length == 1 ? 'photo' : 'photos'}',
                 style: theme.textTheme.labelLarge,
               ),
               const SizedBox(height: 8),
-              if (current.isEmpty)
+              if (state.onePerGarment)
+                Text(
+                  'Every photo is a garment. Add the backs and the care '
+                  'labels later, whenever you get to them.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                )
+              else if (current.isEmpty)
                 Text(
                   'Take the front, the back if it differs, and the care label.',
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -198,6 +227,12 @@ class _Collecting extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                     IconButton(
+                      onPressed: controller.importAsGarments,
+                      icon: const Icon(Icons.photo_library_outlined),
+                      tooltip: 'Import photos — one garment each',
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton(
                       onPressed: controller.discardLast,
                       icon: const Icon(Icons.undo),
                       tooltip: 'Remove the last photo',
@@ -210,8 +245,11 @@ class _Collecting extends StatelessWidget {
                     Expanded(
                       child: OutlinedButton.icon(
                         // Disabled with nothing in hand: an empty garment is
-                        // one more thing to explain in the review list.
-                        onPressed: current.isEmpty
+                        // one more thing to explain in the review list. Gone
+                        // entirely in one-tap mode, where a photograph has
+                        // already finished its garment and this would only
+                        // ever say what just happened.
+                        onPressed: current.isEmpty || state.onePerGarment
                             ? null
                             : controller.nextGarment,
                         icon: const Icon(Icons.playlist_add),

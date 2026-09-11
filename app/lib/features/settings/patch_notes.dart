@@ -96,6 +96,31 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.26.0',
+    name: 'Armfuls',
+    date: DateTime.utc(2026, 9, 11),
+    headline: 'Three faster ways to get a wardrobe recorded',
+    changes: [
+      'New: "A few at once". Lay some garments out on a bed so none of them '
+          'overlaps, take one photo, and get a garment for each — with its '
+          'own picture cut out of the shot. An armful at a time instead of '
+          'one at a time.',
+      'Anything it finds that is already in your wardrobe is shown but left '
+          'unticked, so photographing a drawer you half-did last week does '
+          'not give you two of everything.',
+      'Adding several garments now has "One photo per garment". Shoot, shoot, '
+          'shoot — no tap in between, no back, no care label. For getting a '
+          'whole wardrobe in rather than adding one shirt properly.',
+      'And you can import photos straight from your camera roll, one garment '
+          'each. Photograph everything with your phone\'s own camera, which '
+          'is faster than any in-app one, then hand the lot over in a single '
+          'tap.',
+      'All three skip the care label on purpose. Insights already tells you '
+          'which garments still want one, and "No label? Tell it" is there '
+          'for the rest.',
+    ],
+  ),
+  Release(
     version: '0.25.2',
     name: 'Name Dropping',
     date: DateTime.utc(2026, 8, 27),

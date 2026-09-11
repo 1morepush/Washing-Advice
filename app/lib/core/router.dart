@@ -18,6 +18,7 @@ import '../features/scan/bulk_screen.dart';
 import '../features/scan/care_tag_screen.dart';
 import '../features/scan/retake_screen.dart';
 import '../features/scan/scan_screen.dart';
+import '../features/scan/spread_screen.dart';
 import '../features/stains/stain_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/wardrobe/edit_item_screen.dart';
@@ -79,6 +80,7 @@ GoRouter buildRouter({String initialLocation = '/'}) => GoRouter(
     GoRoute(path: '/ask', builder: (_, _) => const ChatScreen()),
     GoRoute(path: '/scan', builder: (_, _) => const ScanScreen()),
     GoRoute(path: '/scan/bulk', builder: (_, _) => const BulkScanScreen()),
+    GoRoute(path: '/scan/spread', builder: (_, _) => const SpreadScanScreen()),
     GoRoute(path: '/pile', builder: (_, _) => const PileScreen()),
     GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
   ],

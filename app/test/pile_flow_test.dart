@@ -35,10 +35,12 @@ void main() {
     List<ScanImage> captured = const [
       ScanImage(bytes: [1, 2, 3]),
     ],
+    MatchResolver? resolver,
   }) => ProviderContainer(
     overrides: [
       wardrobeRepositoryProvider.overrideWithValue(repository),
       aiGatewayProvider.overrideWithValue(gateway),
+      if (resolver != null) matchResolverProvider.overrideWithValue(resolver),
       // Moving garments to the basket writes a LifecycleChanged event; without
       // this the log resolves to the real Drift database.
       eventLogProvider.overrideWithValue(InMemoryEventLog()),
@@ -231,6 +233,93 @@ void main() {
 
     await controller().captureAndPlan();
     expect(state(), isA<PileIdle>());
+  });
+
+  group('a garment it half-recognises', () {
+    // The ambiguous middle: plausible enough to name, not certain enough to
+    // act on. Thresholds are raised so the hoodie the app would otherwise be
+    // sure of lands there, because what is under test is what happens with
+    // a maybe, not where the line is drawn.
+    const cautious = MatchResolver(recogniseAbove: 0.99, confirmAbove: 0.5);
+
+    setUp(() => container = build(resolver: cautious));
+
+    PileDetection hoodieDetection() =>
+        (state() as PilePlanned).detections.first;
+
+    test('is asked about rather than adopted or ignored', () async {
+      await repository.save(_hoodie());
+
+      await controller().captureAndPlan();
+
+      final detection = hoodieDetection();
+      expect(detection.needsConfirmation, isTrue);
+      expect(detection.isRecognized, isFalse);
+      expect(detection.lookalikes.map((i) => i.id.value), contains('hoodie'));
+      // And until it is answered, the plan treats it as a guess.
+      expect((state() as PilePlanned).plan.loads, isEmpty);
+    });
+
+    test('confirming it brings its real care label into the plan', () async {
+      // The whole reason to ask. The draft was a guess the sorter would not
+      // place; the wardrobe garment carries a scanned label it will.
+      await repository.save(_hoodie());
+      await controller().captureAndPlan();
+
+      await controller().confirm(hoodieDetection(), const ItemId('hoodie'));
+
+      final planned = state() as PilePlanned;
+      expect(planned.recognizedCount, 1);
+      expect(planned.toConfirmCount, 0);
+      expect(planned.plan.loads.single.items.single.id.value, 'hoodie');
+    });
+
+    test('saying it is none of them takes the question away', () async {
+      await repository.save(_hoodie());
+      await controller().captureAndPlan();
+
+      controller().reject(hoodieDetection());
+
+      final planned = state() as PilePlanned;
+      expect(planned.toConfirmCount, 0);
+      expect(planned.recognizedCount, 0);
+      expect(planned.detections.first.needsConfirmation, isFalse);
+    });
+
+    test('a garment cannot be the answer to two detections', () async {
+      await repository.save(_hoodie());
+      await controller().captureAndPlan();
+      final planned = state() as PilePlanned;
+      final first = planned.detections[0];
+      final second = planned.detections[1];
+
+      await controller().confirm(first, const ItemId('hoodie'));
+      await controller().confirm(second, const ItemId('hoodie'));
+
+      expect((state() as PilePlanned).recognizedCount, 1);
+    });
+
+    testWidgets('the screen asks, and one tap settles it', (tester) async {
+      tester.view.physicalSize = const Size(600, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await repository.save(_hoodie());
+      await controller().captureAndPlan();
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: PileScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Is this your Navy Nike hoodie?'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'Navy Nike hoodie'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Is this your Navy Nike hoodie?'), findsNothing);
+      expect(find.textContaining('1 recognized'), findsOneWidget);
+    });
   });
 
   group('the plan can seed the basket', () {

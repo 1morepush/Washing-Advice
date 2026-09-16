@@ -252,8 +252,11 @@ class _FormState extends ConsumerState<_Form> {
                 isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Status'),
                 items: [
+                  // Not "Removed". That is what Delete does, and it is a
+                  // tombstone rather than a status anyone sets by hand.
                   for (final state in LifecycleState.values)
-                    DropdownMenuItem(value: state, child: Text(state.label)),
+                    if (state != LifecycleState.removed)
+                      DropdownMenuItem(value: state, child: Text(state.label)),
                 ],
                 onChanged: (value) =>
                     setState(() => _lifecycle = value ?? _lifecycle),

@@ -22,7 +22,7 @@ from fastapi import APIRouter, Depends, File, Form, UploadFile
 
 from app.api.v1.dependencies import get_condition_reader
 from app.config import Settings, get_settings
-from app.core.errors import ProviderUnavailableError
+from app.core.errors import from_provider_error
 from app.core.limits import check_image, check_image_count
 from app.schemas.condition import ConditionResponse
 from app.schemas.scan import ScanDiagnostics
@@ -74,7 +74,7 @@ async def read_condition(
             )
         )
     except ProviderError as error:
-        raise ProviderUnavailableError(str(error)) from error
+        raise from_provider_error(error) from error
 
     return ConditionResponse(
         result=result,

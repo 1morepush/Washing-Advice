@@ -66,6 +66,7 @@ final class WardrobeQuery {
     this.needsCareTagScan = false,
     this.wornSince,
     this.notWornSince,
+    this.includeRemoved = false,
     this.sort = WardrobeSort.recentlyAdded,
     this.limit,
     this.offset = 0,
@@ -129,6 +130,16 @@ final class WardrobeQuery {
   /// *Not* worn since this instant, including never worn at all.
   final DateTime? notWornSince;
 
+  /// Whether items the user has deleted are returned.
+  ///
+  /// A deleted item stays stored as a tombstone — [LifecycleState.removed] —
+  /// so the deletion itself can reach other devices. Nothing a person looks
+  /// at should ever list one, so the default hides them even from an
+  /// otherwise unfiltered query, and only sync asks for them. Not a filter in
+  /// the [activeFilterCount] sense: it is about what exists, not what is
+  /// being looked for.
+  final bool includeRemoved;
+
   final WardrobeSort sort;
   final int? limit;
   final int offset;
@@ -188,6 +199,7 @@ final class WardrobeQuery {
     bool? needsCareTagScan,
     DateTime? wornSince,
     DateTime? notWornSince,
+    bool? includeRemoved,
     WardrobeSort? sort,
     int? limit,
     int? offset,
@@ -209,6 +221,7 @@ final class WardrobeQuery {
         needsCareTagScan: needsCareTagScan ?? this.needsCareTagScan,
         wornSince: wornSince ?? this.wornSince,
         notWornSince: notWornSince ?? this.notWornSince,
+        includeRemoved: includeRemoved ?? this.includeRemoved,
         sort: sort ?? this.sort,
         limit: limit ?? this.limit,
         offset: offset ?? this.offset,
@@ -240,6 +253,7 @@ final class WardrobeQuery {
           other.needsCareTagScan == needsCareTagScan &&
           other.wornSince == wornSince &&
           other.notWornSince == notWornSince &&
+          other.includeRemoved == includeRemoved &&
           other.sort == sort &&
           other.limit == limit &&
           other.offset == offset;
@@ -261,6 +275,7 @@ final class WardrobeQuery {
         needsCareTagScan,
         wornSince,
         notWornSince,
+        includeRemoved,
         sort,
         limit,
         offset,

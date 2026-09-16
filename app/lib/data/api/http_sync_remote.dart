@@ -12,6 +12,7 @@
 /// place that should have to say so.
 library;
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -44,12 +45,22 @@ class HttpSyncRemote implements SyncRemote {
     required this.baseUrl,
     required this.token,
     http.Client? client,
+    this.timeout = const Duration(seconds: 30),
   }) : _client = client ?? http.Client();
 
   final Uri baseUrl;
 
   /// The bearer credential. Whoever holds it owns the wardrobe.
   final String token;
+
+  /// How long one request may take before it is given up on.
+  ///
+  /// Without a limit a connection that stalls — a train tunnel, a phone
+  /// switching networks mid-request — left the sync sitting on "Syncing…"
+  /// with its button disabled until the operating system gave up, which can
+  /// be minutes. Generous, because a first pull of a large wardrobe on a
+  /// free-tier host that has just woken is genuinely slow.
+  final Duration timeout;
 
   final http.Client _client;
 
@@ -84,6 +95,14 @@ class HttpSyncRemote implements SyncRemote {
         for (final raw in (body['events'] as List<Object?>? ?? const []))
           WardrobeEvent.fromJson(raw! as Map<String, Object?>),
       ],
+      // The server's clock as it gathered the answer, which is what the
+      // engine records as the cursor. Left out, it used the later time of
+      // the push instead — and anything another device sent in between was
+      // never asked for again.
+      serverTime: switch (body['serverTime']) {
+        final String text => DateTime.parse(text).toUtc(),
+        _ => null,
+      },
     );
   }
 
@@ -115,7 +134,9 @@ class HttpSyncRemote implements SyncRemote {
   Future<http.Response> _send(Future<http.Response> Function() request) async {
     final http.Response response;
     try {
-      response = await request();
+      response = await request().timeout(timeout);
+    } on TimeoutException {
+      throw const SyncFailure('The server did not answer in time.');
     } on Exception catch (error) {
       throw SyncFailure('Could not reach the server: $error');
     }
@@ -130,9 +151,14 @@ class HttpSyncRemote implements SyncRemote {
         'This server does not offer sync.',
         isRetryable: false,
       ).throwIt(),
+      // The engine already sends changes in pieces well under the server's
+      // default ceiling, so this means the server has been configured to
+      // take fewer than a piece holds. Retrying sends the same piece and
+      // gets the same answer; the fix is on the server.
       413 => const SyncFailure(
-        'Too many changes to send at once. This will resolve itself as the '
-        'backlog clears.',
+        'The server is set to accept fewer changes at once than this app '
+        'sends. Raise its sync limit.',
+        isRetryable: false,
       ).throwIt(),
       // 5xx is the server's problem and is worth retrying; anything else in
       // the 4xx range is this client sending something wrong, and retrying an

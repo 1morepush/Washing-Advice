@@ -27,11 +27,14 @@
 /// reason the events are pulled *before* the items are reconciled.
 library;
 
+import 'dart:math' as math;
+
 import '../events/event_log.dart';
 import '../events/projections.dart';
 import '../events/wardrobe_event.dart';
 import '../shared/clock.dart';
 import '../shared/ids.dart';
+import '../wardrobe/model/lifecycle.dart';
 import '../wardrobe/model/wardrobe_item.dart';
 import '../wardrobe/query.dart';
 import '../wardrobe/repository.dart';
@@ -39,14 +42,50 @@ import 'merge.dart';
 
 /// Everything one side holds, as of a point in time.
 final class SyncPayload {
-  const SyncPayload({this.items = const [], this.events = const []});
+  const SyncPayload({
+    this.items = const [],
+    this.events = const [],
+    this.serverTime,
+  });
 
   final List<WardrobeItem> items;
   final List<WardrobeEvent> events;
 
+  /// The remote's clock at the moment it gathered this, when it said.
+  ///
+  /// Only meaningful on a pull, and it is what the cursor has to be recorded
+  /// as. The time the remote later *accepts a push* is too late: anything
+  /// another device sent in between carries a stamp before it, and a cursor
+  /// set there asks for everything after them — skipping them, silently and
+  /// for good. See [SyncEngine.sync].
+  final DateTime? serverTime;
+
   bool get isEmpty => items.isEmpty && events.isEmpty;
 
   int get length => items.length + events.length;
+
+  /// This payload as consecutive pieces of at most [size] records each.
+  ///
+  /// Items first, then events, each in their existing order. The remote may
+  /// receive the pieces in any order and lose any of them — events are a
+  /// union and items merge — so a piece landing without the rest is never a
+  /// broken state, only an incomplete one that the next run finishes.
+  Iterable<SyncPayload> chunked(int size) sync* {
+    assert(size > 0, 'a piece must hold something');
+    var itemsFrom = 0;
+    var eventsFrom = 0;
+    while (itemsFrom < items.length || eventsFrom < events.length) {
+      final itemsTo = math.min(items.length, itemsFrom + size);
+      final room = size - (itemsTo - itemsFrom);
+      final eventsTo = math.min(events.length, eventsFrom + room);
+      yield SyncPayload(
+        items: items.sublist(itemsFrom, itemsTo),
+        events: events.sublist(eventsFrom, eventsTo),
+      );
+      itemsFrom = itemsTo;
+      eventsFrom = eventsTo;
+    }
+  }
 
   @override
   String toString() =>
@@ -184,13 +223,25 @@ class SyncEngine {
     required this.remote,
     required this.cursor,
     this.clock = const SystemClock(),
+    this.pushBatchSize = defaultPushBatchSize,
   });
+
+  /// The most records offered to the remote in one request.
+  ///
+  /// The project's server refuses a request over 2,000 records, and the first
+  /// sync of a wardrobe that has been in use for a while — a few hundred
+  /// garments, each worn and washed many times over — is well past that. Sent
+  /// as one request it failed on every attempt, with nothing advancing the
+  /// cursor, and the device could never sync at all. Comfortably under the
+  /// ceiling, so a server configured a little tighter still accepts a piece.
+  static const defaultPushBatchSize = 500;
 
   final WardrobeRepository items;
   final EventLog events;
   final SyncRemote remote;
   final SyncCursor cursor;
   final Clock clock;
+  final int pushBatchSize;
 
   /// Runs one reconciliation.
   ///
@@ -236,7 +287,19 @@ class SyncEngine {
       }
 
       final result = local.mergedWith(remoteItem);
-      await items.save(result.item);
+      var merged = result.item;
+      if (merged.lifecycle == LifecycleState.removed &&
+          (local.lifecycle != LifecycleState.removed ||
+              remoteItem.lifecycle != LifecycleState.removed)) {
+        // A deletion just won against a side that had not seen it. The
+        // remote keeps one row per item — whichever was pushed last — so if
+        // an edit was pushed after the tombstone, the remote's row is the
+        // edit and a fresh install would pull the garment back. Re-stamping
+        // puts the tombstone in this run's push, where it overwrites that
+        // row. Once both sides hold the tombstone nothing here fires again.
+        merged = merged.copyWith(updatedAt: clock.now());
+      }
+      await items.save(merged);
       decisions[remoteItem.id] = result.decisions;
     }
 
@@ -252,12 +315,13 @@ class SyncEngine {
 
     final DateTime acceptedAt;
     try {
-      acceptedAt = await remote.push(outgoing);
+      acceptedAt = await _push(outgoing);
     } on Exception catch (error) {
       // The pull already applied. Not recording the cursor means the next run
       // re-pulls the same events, which is harmless because appending an event
       // already held is a no-op — and far better than recording a cursor for a
-      // push that never landed.
+      // push that never landed. A push that landed in part is the same case:
+      // what reached the remote is offered again next time, at no cost.
       return SyncReport.failed(
         '$error',
         at: clock.now(),
@@ -265,7 +329,13 @@ class SyncEngine {
       );
     }
 
-    await cursor.record(acceptedAt, localAt: startedAt);
+    // The remote cursor is the remote's clock at the *pull*, not at the push.
+    // Between the two, another device may have pushed. Its records carry a
+    // stamp earlier than this push's acceptance, so a cursor set at the
+    // acceptance would ask for everything after them and never see them —
+    // silently, and for good. A remote that does not say its time gets the
+    // acceptance instead, which is at least never wrong for a single device.
+    await cursor.record(incoming.serverTime ?? acceptedAt, localAt: startedAt);
 
     return SyncReport(
       pulled: incoming.length,
@@ -273,6 +343,20 @@ class SyncEngine {
       merged: decisions,
       at: acceptedAt,
     );
+  }
+
+  /// Offers [outgoing] to the remote, in pieces it will accept.
+  ///
+  /// An empty payload is still sent once: the remote's time of acceptance is
+  /// the fallback cursor, and a run that had nothing to send still needs one.
+  Future<DateTime> _push(SyncPayload outgoing) async {
+    if (outgoing.length <= pushBatchSize) return remote.push(outgoing);
+
+    late DateTime acceptedAt;
+    for (final piece in outgoing.chunked(pushBatchSize)) {
+      acceptedAt = await remote.push(piece);
+    }
+    return acceptedAt;
   }
 
   /// Recomputes an item's counters from the whole log.
@@ -300,7 +384,10 @@ class SyncEngine {
   /// Inclusive on both, for the same reason the server's `since` is: sending a
   /// record the remote already has is free, and missing one is not.
   Future<SyncPayload> _localChangesSince(DateTime? since) async {
-    final all = await items.query(const WardrobeQuery());
+    // Tombstones included. Every other query hides a deleted garment; this
+    // is the one place that must see it, because the deletion is the change
+    // most worth telling the other devices about.
+    final all = await items.query(const WardrobeQuery(includeRemoved: true));
     return SyncPayload(
       items: [
         for (final item in all)

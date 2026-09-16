@@ -80,6 +80,12 @@ class SyncController extends StateNotifier<SyncState> {
   /// Returns whether it succeeded, for callers that chain — but the state is
   /// the real output, because every screen showing sync wants the reason too.
   Future<bool> run() async {
+    // One at a time. A sync started while another is in flight — the app
+    // resuming while "Sync now" is mid-tap — would push the same changes
+    // twice and race the first run to the cursor. The running one is the
+    // answer to both callers.
+    if (state is SyncRunning) return false;
+
     final token = _ref.read(syncTokenProvider);
     if (token == null) {
       state = const SyncOff();
@@ -112,12 +118,26 @@ class SyncController extends StateNotifier<SyncState> {
         return false;
       }
 
+      // A garment deleted on another device has just become a tombstone
+      // here. Queries hide it, but a saved outfit still names it — the same
+      // cleanup deleting locally does, applied to the deletions that arrived.
+      final repository = _ref.read(wardrobeRepositoryProvider);
+      for (final id in report.merged.keys) {
+        final item = await repository.byId(id);
+        if (item?.lifecycle == LifecycleState.removed) {
+          await _ref.read(outfitRepositoryProvider).removeItem(id);
+        }
+      }
+
       // Everything downstream of storage is now potentially stale: items were
       // merged, events appended, counters rebuilt. Invalidated in one place
-      // rather than left to each screen to notice.
+      // rather than left to each screen to notice — including every open
+      // detail screen, which otherwise showed the pre-sync garment until it
+      // was closed and reopened.
       _ref
         ..invalidate(ownedItemsProvider)
         ..invalidate(ownedCountProvider)
+        ..invalidate(itemProvider)
         ..invalidate(coWearGraphProvider)
         ..invalidate(savedOutfitsProvider);
 

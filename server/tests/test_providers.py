@@ -9,6 +9,8 @@ part most likely to break silently, so it is covered properly.
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime, timedelta
+from email.utils import format_datetime
 from typing import Any
 
 import httpx
@@ -19,6 +21,7 @@ from app.schemas.common import Provenance
 from app.schemas.wardrobe import Fiber, ItemType
 from app.services.ai.base import ProviderError, ScanImage
 from app.services.ai.color import hex_to_lab, rgb_to_lab
+from app.services.ai.gemini_errors import DEFAULT_RETRY_AFTER_SECONDS, retry_after_seconds
 from app.services.ai.providers.fake import FakeVisionProvider
 from app.services.ai.providers.gemini import (
     GeminiVisionProvider,
@@ -255,6 +258,37 @@ class TestGeminiTransport:
             200,
             json={"candidates": [{"content": {"parts": [{"text": json.dumps(payload)}]}}]},
         )
+
+    async def test_a_rate_limit_says_how_long_to_wait(self) -> None:
+        """The free tier's ordinary failure, kept apart from every other one.
+
+        Anything else from the model is a stage declining and the pipeline
+        carrying on. A 429 carries a wait, so the client can hold off rather
+        than retake a photograph that was never the problem.
+        """
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                429,
+                headers={"Retry-After": "7"},
+                json={"error": {"message": "Quota exceeded for this minute"}},
+            )
+
+        with pytest.raises(ProviderError) as raised:
+            await self._provider(handler).scan_garment([scan_image()])
+
+        assert raised.value.retry_after == 7.0
+        assert "rate limited" in str(raised.value)
+        assert "Quota exceeded" in str(raised.value)
+
+    async def test_any_other_failure_carries_no_wait(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(500, json={"error": {"message": "boom"}})
+
+        with pytest.raises(ProviderError) as raised:
+            await self._provider(handler).scan_garment([scan_image()])
+
+        assert raised.value.retry_after is None
 
     async def test_sends_the_key_as_a_header_not_in_the_url(self) -> None:
         """URLs are logged by proxies and error trackers as a matter of course."""
@@ -528,3 +562,35 @@ class TestWhereTheGarmentWasMade:
                 countries.add(result.country_of_origin.value)
 
         assert countries == {"Portugal", "Tunisie"}
+
+
+class TestRetryAfter:
+    """How long a 429 asked to be left alone for."""
+
+    @staticmethod
+    def _response(**headers: str) -> httpx.Response:
+        return httpx.Response(429, headers=headers)
+
+    def test_reads_seconds(self) -> None:
+        assert retry_after_seconds(self._response(**{"Retry-After": "7"})) == 7.0
+
+    def test_reads_an_http_date_as_seconds_from_now(self) -> None:
+        soon = datetime.now(UTC) + timedelta(seconds=90)
+        header = format_datetime(soon, usegmt=True)
+
+        wait = retry_after_seconds(self._response(**{"Retry-After": header}))
+
+        assert 85.0 <= wait <= 90.0
+
+    def test_a_date_in_the_past_is_no_wait_rather_than_a_negative_one(self) -> None:
+        header = format_datetime(datetime.now(UTC) - timedelta(minutes=5), usegmt=True)
+        assert retry_after_seconds(self._response(**{"Retry-After": header})) == 0.0
+
+    def test_absent_or_unreadable_falls_back_to_a_real_wait(self) -> None:
+        # Never zero. A rate limit with no wait attached is a retry into the
+        # same wall.
+        assert retry_after_seconds(self._response()) == DEFAULT_RETRY_AFTER_SECONDS
+        assert (
+            retry_after_seconds(self._response(**{"Retry-After": "soon"}))
+            == DEFAULT_RETRY_AFTER_SECONDS
+        )

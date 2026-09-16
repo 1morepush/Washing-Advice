@@ -115,8 +115,10 @@ class LaundryController {
   /// basket the app thinks it just washed; moving without recording loses the
   /// only evidence a wash happened, which is what "times washed" and every
   /// later fading and shrinkage judgement rest on.
-  Future<void> start(LaundryLoad load) async {
-    await _ref.read(wearRecorderProvider).recordWash(load);
+  Future<void> start(LaundryLoad load, {bool? followedRecommendation}) async {
+    await _ref
+        .read(wearRecorderProvider)
+        .recordWash(load, followedRecommendation: followedRecommendation);
     await move([
       for (final item in load.items) item.id,
     ], LifecycleState.beingWashed);

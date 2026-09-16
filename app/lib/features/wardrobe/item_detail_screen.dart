@@ -162,7 +162,12 @@ class ItemDetailScreen extends ConsumerWidget {
 /// sold, discarded) that keep an item's history for statistics while taking it
 /// out of the active wardrobe. This is for the record that should never have
 /// existed at all: a duplicate, a scan of the wrong garment, a test entry.
-/// There is no lifecycle to move it to, because nothing is being kept.
+///
+/// "For good" from the user's side. Underneath, the row stays as a tombstone
+/// — [LifecycleState.removed], hidden from every query — because a row that
+/// is simply gone cannot be told to another device: the garment came back
+/// from any phone that still had it, and from the server on a reinstall.
+/// Kept as a state, the deletion is one more change that syncs.
 Future<void> _confirmAndDelete(
   BuildContext context,
   WidgetRef ref,
@@ -215,9 +220,34 @@ Future<void> _confirmAndDelete(
   // left with fewer than two members.
   await ref.read(outfitRepositoryProvider).removeItem(item.id);
 
-  await ref.read(wardrobeRepositoryProvider).delete(item.id);
+  // Set directly rather than through `transitionTo`: deletion is not a
+  // lifecycle transition anything should be able to refuse, and a duplicate
+  // that had already been marked donated must still be deletable. The photo
+  // paths go with the files — a row nothing will show has no use for them.
+  final now = DateTime.now();
+  await ref
+      .read(wardrobeRepositoryProvider)
+      .save(
+        item.copyWith(
+          lifecycle: LifecycleState.removed,
+          photos: PhotoSet.empty,
+          updatedAt: now,
+        ),
+      );
+  await ref
+      .read(eventLogProvider)
+      .append(
+        LifecycleChanged(
+          id: EventId(ref.read(idGeneratorProvider).next()),
+          itemId: item.id,
+          occurredAt: now,
+          recordedAt: now,
+          to: LifecycleState.removed,
+        ),
+      );
 
   ref
+    ..invalidate(itemProvider(item.id))
     ..invalidate(ownedItemsProvider)
     ..invalidate(ownedCountProvider)
     ..invalidate(coWearGraphProvider)

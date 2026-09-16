@@ -96,6 +96,51 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.28.0',
+    name: 'Lint Trap',
+    date: DateTime.utc(2026, 9, 16),
+    headline: 'The audit release: twelve things found, twelve fixed',
+    changes: [
+      'When the pile scan half-recognises a garment it now asks — "Is this '
+          'your navy hoodie?" — with the likeliest matches as buttons. One '
+          'tap brings that garment\'s real care label into the plan instead '
+          'of a guess the sorter would not place. Before, the question was '
+          'never put, and the garment landed in "Left out".',
+      'Deleting a garment now reaches your other devices, and survives a '
+          'reinstall. A hidden marker stays behind so the deletion itself can '
+          'sync, and a wear logged elsewhere afterwards no longer brings the '
+          'garment back.',
+      'Sync no longer skips changes another device made while this one was '
+          'mid-sync. The bookmark is now the server\'s clock at the pull, not '
+          'at the push, which closed a small window where such changes were '
+          'never fetched again.',
+      'A first sync of a large wardrobe works. Changes go up in batches '
+          'under the server\'s limit rather than as one request that failed '
+          'every time — and the message claiming it would sort itself out is '
+          'gone.',
+      'Sync gives up on a stalled connection after thirty seconds instead of '
+          'sitting on "Syncing…" with its button disabled; a second tap while '
+          'one is running does nothing rather than starting two; and an open '
+          'garment screen refreshes after a sync.',
+      '"Wearing this" on an outfit now also puts the garments in the basket, '
+          'the same as "What did you wear today?" — so the app stops offering '
+          'them, and does not log the same wear twice at the front door '
+          'tonight.',
+      'When the AI service is rate-limited — the free tier\'s ordinary state '
+          '— the app says so and how long to wait, and a batch scan waits it '
+          'out instead of failing every remaining garment. It used to say '
+          '"The scan failed (429)".',
+      'Starting a load asks whether you ran it on the recommended programme, '
+          'ticked by default. The record used to say yes for every load, '
+          'including loads with no programme recommended at all.',
+      'Searching the wardrobe for "100%" or "t_shirt" finds those rather '
+          'than everything: % and _ are no longer wildcards.',
+      'Deleted garments no longer offer their brand in the filter sheet, and '
+          'the server no longer remembers every brand it has ever seen '
+          'forever.',
+    ],
+  ),
+  Release(
     version: '0.27.0',
     name: 'Coming Home',
     date: DateTime.utc(2026, 9, 11),

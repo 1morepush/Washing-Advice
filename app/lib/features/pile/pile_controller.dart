@@ -33,6 +33,7 @@ final class PileDetection {
     required this.detected,
     required this.decision,
     required this.item,
+    this.lookalikes = const [],
   });
 
   /// What the vision layer saw, including where in the frame.
@@ -47,6 +48,14 @@ final class PileDetection {
   /// otherwise a draft built from the reading alone.
   final WardrobeItem item;
 
+  /// Wardrobe garments this might be, best first, while it needs confirming.
+  ///
+  /// Resolved to items here rather than left as ids on the decision, because
+  /// the question on screen is "is this your navy Nike hoodie?" and a screen
+  /// should not have to go and look anything up to ask it. Empty once the
+  /// question is settled either way.
+  final List<WardrobeItem> lookalikes;
+
   bool get isRecognized => decision is RecognizedItem;
 
   /// Whether the user should be asked before this is treated as known.
@@ -55,6 +64,25 @@ final class PileDetection {
   /// enough to act on. Three identical black t-shirts land here, which is
   /// exactly where they belong.
   bool get needsConfirmation => decision is NeedsConfirmation;
+
+  /// Why it needs confirming, in words meant for the prompt.
+  String? get confirmReason => switch (decision) {
+    NeedsConfirmation(:final reason) => reason,
+    _ => null,
+  };
+
+  /// This detection with [id] no longer on offer as a lookalike.
+  PileDetection without(ItemId id) => lookalikes.any((match) => match.id == id)
+      ? PileDetection(
+          detected: detected,
+          decision: decision,
+          item: item,
+          lookalikes: [
+            for (final match in lookalikes)
+              if (match.id != id) match,
+          ],
+        )
+      : this;
 }
 
 sealed class PileState {
@@ -93,6 +121,11 @@ final class PilePlanned extends PileState {
   int get recognizedCount => detections.where((d) => d.isRecognized).length;
 
   int get unrecognizedCount => detections.length - recognizedCount;
+
+  /// Detections with a question still open about which garment they are.
+  int get toConfirmCount => detections
+      .where((d) => d.needsConfirmation && d.lookalikes.isNotEmpty)
+      .length;
 }
 
 final class PileFailed extends PileState {
@@ -200,31 +233,66 @@ class PileController extends StateNotifier<PileState> {
 
       if (decision is RecognizedItem) claimed.add(decision.itemId);
       detections.add(
-        PileDetection(detected: detected, decision: decision, item: item),
+        PileDetection(
+          detected: detected,
+          decision: decision,
+          item: item,
+          lookalikes: switch (decision) {
+            // The best few, resolved to garments the screen can name. More
+            // than three and the question stops being a question.
+            NeedsConfirmation(:final candidates) => [
+              for (final candidate in candidates.take(3))
+                if (byId[candidate.itemId] case final WardrobeItem match) match,
+            ],
+            _ => const [],
+          },
+        ),
       );
     }
+
+    // A lookalike some later detection was sure about is not on offer: two
+    // garments in one pile cannot both be the same hoodie.
+    final offered = [
+      for (final detection in detections)
+        claimed.fold(detection, (d, id) => d.without(id)),
+    ];
 
     final plan = _ref
         .read(laundrySorterProvider)
         .sort(
-          [for (final detection in detections) detection.item],
+          [for (final detection in offered) detection.item],
           washer: _ref.read(washerProvider),
           dryer: _ref.read(dryerProvider),
         );
 
     return PilePlanned(
       plan: plan,
-      detections: detections,
+      detections: offered,
       obscuredCount: reading.partiallyObscuredCount,
       diagnostics: _ref.read(aiGatewayProvider).lastDiagnostics,
     );
   }
 
   /// Confirms a detection as an existing wardrobe item, and replans.
+  ///
+  /// This is where the ambiguous middle gets its answer, and the answer is
+  /// worth a lot: a confirmed garment brings its stored care label into the
+  /// plan, where the draft it replaces was a guess the sorter would not
+  /// place. One tap can move a garment from "left out" into a load.
   Future<void> confirm(PileDetection detection, ItemId itemId) async {
     if (state case final PilePlanned planned) {
+      // Already the answer to another detection. Two garments in one pile
+      // cannot both be this one, and planning it twice would wash one item
+      // as two.
+      if (planned.detections.any(
+        (d) => d.isRecognized && d.item.id == itemId,
+      )) {
+        return;
+      }
+
       final item = await _ref.read(wardrobeRepositoryProvider).byId(itemId);
       if (item == null) return;
+      if (state != planned) return;
 
       final updated = [
         for (final existing in planned.detections)
@@ -238,10 +306,39 @@ class PileController extends StateNotifier<PileState> {
               item: item,
             )
           else
-            existing,
+            // Nor is it still on offer to any other detection.
+            existing.without(itemId),
       ];
 
-      state = PilePlanned(
+      state = _replanned(planned, updated);
+    }
+  }
+
+  /// Says a detection is none of the garments it resembled.
+  ///
+  /// The plan does not change — an unconfirmed detection was already being
+  /// treated as new — but the question leaves the screen, which is what the
+  /// answer was for.
+  void reject(PileDetection detection) {
+    if (state case final PilePlanned planned) {
+      state = _replanned(planned, [
+        for (final existing in planned.detections)
+          if (identical(existing, detection))
+            PileDetection(
+              detected: existing.detected,
+              decision: UnrecognizedItem(
+                candidates: existing.decision.candidates,
+              ),
+              item: existing.item,
+            )
+          else
+            existing,
+      ]);
+    }
+  }
+
+  PilePlanned _replanned(PilePlanned planned, List<PileDetection> updated) =>
+      PilePlanned(
         plan: _ref
             .read(laundrySorterProvider)
             .sort(
@@ -253,8 +350,6 @@ class PileController extends StateNotifier<PileState> {
         obscuredCount: planned.obscuredCount,
         diagnostics: planned.diagnostics,
       );
-    }
-  }
 
   void reset() => state = const PileIdle();
 

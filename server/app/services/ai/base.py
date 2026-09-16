@@ -181,6 +181,11 @@ class ProviderError(RuntimeError):
     is an ordinary outcome and not an error.
     """
 
-    def __init__(self, provider: str, message: str) -> None:
+    def __init__(self, provider: str, message: str, *, retry_after: float | None = None) -> None:
         super().__init__(f"{provider}: {message}")
         self.provider = provider
+        # Seconds the provider asked for before being called again, set when
+        # the failure was a rate limit. Kept apart from the message because
+        # a client can act on it: the one thing that makes a rate limit worse
+        # is the next request, and the free tier meters by the minute.
+        self.retry_after = retry_after

@@ -2,9 +2,14 @@
 ///
 /// Retiring (`retiring_an_item_test.dart`) moves an item to a terminal
 /// lifecycle state and keeps it — its history and photos stay, because the
-/// point is statistics over garments that are gone. Deleting has no lifecycle
-/// to move to: the record itself should never have existed, so it and
-/// everything it produced — photos, cutouts, outfit membership — go too.
+/// point is statistics over garments that are gone. Deleting is for the record
+/// that should never have existed, so everything it produced — photos,
+/// cutouts, outfit membership — goes too.
+///
+/// What stays is a tombstone: the row, marked removed and hidden from every
+/// query. Not for the user's sake but for the other devices', because a row
+/// that is simply gone cannot be told to anyone, and the garment came back
+/// from whichever phone still had it.
 library;
 
 import 'dart:typed_data';
@@ -22,12 +27,14 @@ import '../support/fixtures.dart';
 void main() {
   late InMemoryWardrobeRepository repository;
   late InMemoryOutfitRepository outfits;
+  late InMemoryEventLog log;
   late MemoryImageStore images;
   late ProviderContainer container;
 
   setUp(() async {
     repository = InMemoryWardrobeRepository();
     outfits = InMemoryOutfitRepository();
+    log = InMemoryEventLog();
     images = MemoryImageStore();
 
     final frontUri = await images.save(
@@ -68,7 +75,7 @@ void main() {
       overrides: [
         wardrobeRepositoryProvider.overrideWithValue(repository),
         outfitRepositoryProvider.overrideWithValue(outfits),
-        eventLogProvider.overrideWithValue(InMemoryEventLog()),
+        eventLogProvider.overrideWithValue(log),
         imageStoreProvider.overrideWithValue(images),
       ],
     );
@@ -116,8 +123,28 @@ void main() {
   testWidgets('deleting removes the item from the wardrobe', (tester) async {
     await deleteFromDetailScreen(tester);
 
-    expect(await repository.byId(const ItemId('tee')), isNull);
-    expect(await repository.byId(const ItemId('jeans')), isNotNull);
+    final owned = await repository.query(const WardrobeQuery.owned());
+    expect([for (final item in owned) item.id.value], ['jeans']);
+    // Not even an unfiltered query lists it.
+    expect(await repository.count(const WardrobeQuery()), 1);
+  });
+
+  testWidgets('what stays is a tombstone, so the deletion can sync', (
+    tester,
+  ) async {
+    // A row that is simply gone cannot be told to another device. The row
+    // stays, marked removed, and is what sync sends; it is hidden everywhere
+    // a person looks.
+    await deleteFromDetailScreen(tester);
+
+    final tombstone = await repository.byId(const ItemId('tee'));
+    expect(tombstone?.lifecycle, LifecycleState.removed);
+    // The files are gone, so the paths to them go too.
+    expect(tombstone?.photos.photos, isEmpty);
+    // And the deletion is in the history like any other change of state.
+    final changed = (await log.all()).whereType<LifecycleChanged>().single;
+    expect(changed.itemId.value, 'tee');
+    expect(changed.to, LifecycleState.removed);
   });
 
   testWidgets('deleting frees every photo the item held, cutout included', (

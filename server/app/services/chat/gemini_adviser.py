@@ -32,7 +32,7 @@ import httpx
 from app.config import Settings, get_settings
 from app.schemas.chat import ChatAnswer, ChatRequest
 from app.services.ai.base import ProviderError
-from app.services.ai.gemini_errors import gemini_error_reason
+from app.services.ai.gemini_errors import gemini_error_reason, retry_after_seconds
 from app.services.chat.prompts import describe
 
 MAX_OUTPUT_TOKENS = 2048
@@ -118,6 +118,16 @@ class GeminiChatAdviser:
             response = await self._http().post(url, json=body, headers=headers)
         except httpx.HTTPError as error:
             raise ProviderError(self.name, f"request failed: {error}") from error
+
+        if response.status_code == 429:
+            # The free tier's ordinary failure, and a temporary one. Said as
+            # such, with the wait, so the client can hold off rather than
+            # retake a photograph that was never the problem.
+            raise ProviderError(
+                self.name,
+                f"rate limited by the Gemini API{gemini_error_reason(response)}",
+                retry_after=retry_after_seconds(response),
+            )
 
         if response.status_code != 200:
             raise ProviderError(

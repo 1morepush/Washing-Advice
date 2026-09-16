@@ -24,7 +24,7 @@ from fastapi.responses import StreamingResponse
 
 from app.api.v1.dependencies import get_stain_adviser
 from app.config import Settings, get_settings
-from app.core.errors import ProviderUnavailableError
+from app.core.errors import from_provider_error
 from app.core.limits import check_image
 from app.schemas.scan import ScanDiagnostics
 from app.schemas.stains import StainAdviceRequest, StainAdviceResponse
@@ -63,7 +63,7 @@ async def advise_on_stain(
     try:
         result = await adviser.advise(request, image)
     except ProviderError as error:
-        raise ProviderUnavailableError(str(error)) from error
+        raise from_provider_error(error) from error
 
     return StainAdviceResponse(
         result=result,

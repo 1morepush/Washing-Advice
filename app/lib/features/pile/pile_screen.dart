@@ -146,6 +146,17 @@ class _Plan extends ConsumerWidget {
           ),
         ),
 
+        // Questions before answers. A detection the wardrobe half-recognised
+        // is planned as a guess until somebody says which garment it is, and
+        // the sorter will not place a guess — so the difference between
+        // asking and not asking is a garment in a load or in "left out".
+        for (final detection in state.detections)
+          if (detection.needsConfirmation &&
+              detection.lookalikes.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _Confirm(detection: detection, controller: controller),
+          ],
+
         if (state.obscuredCount > 0) ...[
           const SizedBox(height: 12),
           _Notice(
@@ -221,9 +232,71 @@ class _Plan extends ConsumerWidget {
       '${state.detections.length} items found',
       if (state.recognizedCount > 0)
         '${state.recognizedCount} recognized from your wardrobe',
-      if (state.unrecognizedCount > 0) '${state.unrecognizedCount} new',
+      if (state.toConfirmCount > 0) '${state.toConfirmCount} to confirm',
+      if (state.unrecognizedCount - state.toConfirmCount > 0)
+        '${state.unrecognizedCount - state.toConfirmCount} new',
     ];
     return parts.join(' · ');
+  }
+}
+
+/// "Is this your navy Nike hoodie?" — the ambiguous middle, put to the user.
+///
+/// The resolver refuses to adopt a garment on a maybe, which is right: acting
+/// on one is how a care label ends up applied to a different garment. But a
+/// maybe left unasked is planned as a *guess*, and the sorter will not place a
+/// guess — so the garment lands in "left out" when its real label was in the
+/// wardrobe all along. One tap settles it either way.
+class _Confirm extends StatelessWidget {
+  const _Confirm({required this.detection, required this.controller});
+
+  final PileDetection detection;
+  final PileController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final best = detection.lookalikes.first;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Is this your ${best.displayName}?',
+              style: theme.textTheme.titleSmall,
+            ),
+            if (detection.confirmReason case final String reason) ...[
+              const SizedBox(height: 4),
+              Text(
+                reason,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final match in detection.lookalikes)
+                  FilledButton.tonal(
+                    onPressed: () => controller.confirm(detection, match.id),
+                    child: Text(match.displayName),
+                  ),
+                TextButton(
+                  onPressed: () => controller.reject(detection),
+                  child: const Text('None of these'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

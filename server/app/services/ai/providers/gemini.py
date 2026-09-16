@@ -50,7 +50,7 @@ from app.schemas.wardrobe import (
 )
 from app.services.ai.base import ProviderError, ScanImage
 from app.services.ai.color import hex_to_lab
-from app.services.ai.gemini_errors import gemini_error_reason
+from app.services.ai.gemini_errors import gemini_error_reason, retry_after_seconds
 from app.services.ai.prompts import (
     CARE_TAG_PROMPT,
     CARE_TAG_SCHEMA,
@@ -192,6 +192,16 @@ class GeminiVisionProvider:
             response = await self._http().post(url, json=body, headers=headers)
         except httpx.HTTPError as error:
             raise ProviderError(self.name, f"request failed: {error}") from error
+
+        if response.status_code == 429:
+            # The free tier's ordinary failure, and a temporary one. Said as
+            # such, with the wait, so the client can hold off rather than
+            # retake a photograph that was never the problem.
+            raise ProviderError(
+                self.name,
+                f"rate limited by the Gemini API{gemini_error_reason(response)}",
+                retry_after=retry_after_seconds(response),
+            )
 
         if response.status_code != 200:
             # Never the body verbatim — an error body can echo the request back

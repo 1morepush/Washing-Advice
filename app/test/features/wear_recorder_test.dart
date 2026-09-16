@@ -149,6 +149,46 @@ void main() {
       expect(washed.record.followedRecommendation, isTrue);
     });
 
+    test('a load run on a different programme says so', () async {
+      // The field exists to learn whether the advice is taken. It used to
+      // read true on every load, which is not learning anything.
+      await recorder().recordWash(
+        load([await stored()]),
+        followedRecommendation: false,
+      );
+
+      final washed = (await events.all()).whereType<ItemWashed>().single;
+      expect(washed.record.followedRecommendation, isFalse);
+    });
+
+    test('with no programme to follow, nothing is claimed', () async {
+      // No machine set: the plan states requirements rather than naming a
+      // programme, so "followed the recommendation" would be a claim about
+      // advice never given.
+      final bare = LaundryLoad(
+        id: const LoadId('load-2'),
+        items: [await stored()],
+        effectiveCare: const CareInstructions.conservative(),
+        washSpec: const WashSpec(
+          method: WashMethod.machine,
+          agitation: Agitation.normal,
+          fabricClass: FabricClass.normal,
+        ),
+        drySpec: const DrySpec(
+          tumbleDryAllowed: false,
+          maxHeat: TumbleDryHeat.noHeat,
+          fabricClass: FabricClass.normal,
+        ),
+        label: 'Darks',
+        totalWeightKg: 1.2,
+      );
+
+      await recorder().recordWash(bare);
+
+      final washed = (await events.all()).whereType<ItemWashed>().single;
+      expect(washed.record.followedRecommendation, isNull);
+    });
+
     test("stores the machine's name, not only its id", () async {
       // So the history stays readable after the user replaces or deletes a
       // machine profile. A wash that happened is a fact.

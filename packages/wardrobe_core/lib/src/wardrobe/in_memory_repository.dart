@@ -13,6 +13,7 @@ library;
 import 'dart:async';
 
 import '../shared/ids.dart';
+import 'model/lifecycle.dart';
 import 'model/wardrobe_item.dart';
 import 'query.dart';
 import 'repository.dart';
@@ -97,6 +98,7 @@ final class InMemoryWardrobeRepository implements WardrobeRepository {
     // filter itself already matches either way.
     final byKey = <String, String>{};
     for (final item in _items.values) {
+      if (item.lifecycle == LifecycleState.removed) continue;
       if (item.countryOfOrigin?.value.trim() case final String country
           when country.isNotEmpty) {
         byKey.putIfAbsent(country.toLowerCase(), () => country);
@@ -108,9 +110,12 @@ final class InMemoryWardrobeRepository implements WardrobeRepository {
 
   @override
   Future<List<String>> knownBrands() async {
+    // A deleted garment's brand is not one the filter sheet should offer:
+    // choosing it would find nothing, which reads as a bug.
     final brands = <String>{
       for (final item in _items.values)
-        if (item.brand?.value case final String brand) brand,
+        if (item.lifecycle != LifecycleState.removed)
+          if (item.brand?.value case final String brand) brand,
     };
     return brands.toList()..sort();
   }
@@ -148,6 +153,11 @@ final class InMemoryWardrobeRepository implements WardrobeRepository {
 
   /// What a query *means*. The Drift implementation must agree with this.
   bool _matches(WardrobeItem item, WardrobeQuery query) {
+    // First, before any filter: a tombstone is not a garment that happens to
+    // match nothing, it is one that must not be listed at all.
+    if (!query.includeRemoved && item.lifecycle == LifecycleState.removed) {
+      return false;
+    }
     if (query.kinds.isNotEmpty && !query.kinds.contains(item.kind))
       return false;
     if (query.categories.isNotEmpty &&

@@ -342,6 +342,32 @@ void main() {
     });
   });
 
+  group('when the service is rate-limited mid-batch', () {
+    test('the batch waits it out and carries on', () async {
+      // The free tier meters by the minute, and a rate limit is the one
+      // failure the next photograph makes worse: sending straight on used to
+      // fail every garment after the first refusal the same way.
+      await photograph(3);
+      gateway.busyOnCall = 2;
+
+      await controller().submit();
+
+      final reviewing = state() as BulkReviewing;
+      expect(reviewing.outcomes.where((o) => o.succeeded), hasLength(3));
+      // Three garments, one of them read twice.
+      expect(gateway.garmentCalls, 4);
+    });
+
+    test('a refusal with no wait attached is an ordinary failure', () async {
+      await photograph(3);
+      gateway.failOnCall = 2;
+
+      await controller().submit();
+
+      expect(gateway.garmentCalls, 3);
+    });
+  });
+
   group('finding a failure again', () {
     test('the identifying shot is not the care label', () async {
       // A photograph of a tag looks like every other photograph of a tag,
@@ -542,6 +568,12 @@ class _BatchGateway extends AiGateway {
   /// Which call number to fail, counting from one. Null never fails.
   int? failOnCall;
 
+  /// Which call number the server is too busy for, counting from one.
+  ///
+  /// Fails that one call with a wait attached, the way a 429 does; the next
+  /// call goes through. What a batch does with the wait is the behaviour.
+  int? busyOnCall;
+
   @override
   Future<Uint8List?> cutout(ScanImage image) async =>
       Uint8List.fromList([0x89, 0x50, 0x4E, 0x47]);
@@ -551,6 +583,12 @@ class _BatchGateway extends AiGateway {
     garmentCalls++;
     if (garmentCalls == failOnCall) {
       throw const ScanFailure('That photo was too blurred to read.');
+    }
+    if (garmentCalls == busyOnCall) {
+      throw const ScanFailure(
+        'The AI service is busy right now.',
+        retryAfter: Duration(milliseconds: 20),
+      );
     }
 
     return GarmentScanResult(

@@ -8,6 +8,7 @@ machine holding a garment, and "something went wrong" gives them nothing.
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from fastapi import FastAPI, Request, status
@@ -58,6 +59,45 @@ class PayloadTooLargeError(ApiError):
 class ProviderUnavailableError(ApiError):
     status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     code = "provider_unavailable"
+
+
+class RateLimitedError(ApiError):
+    """The model behind this call is rate-limited, and said for how long.
+
+    Its own status rather than a 503, and with a `Retry-After` header, because
+    the client can do something specific with it: wait that long, then send
+    the same request. A 503 reads as "the server is down", and the app's
+    answer to that is a spinner and a retry straight back into the limit.
+    """
+
+    status_code = status.HTTP_429_TOO_MANY_REQUESTS
+    code = "rate_limited"
+
+    def __init__(self, detail: str, *, retry_after: float, hint: str | None = None) -> None:
+        super().__init__(detail, hint=hint)
+        self.retry_after = retry_after
+
+    def to_response(self) -> JSONResponse:
+        response = super().to_response()
+        response.headers["Retry-After"] = str(max(1, math.ceil(self.retry_after)))
+        return response
+
+
+def from_provider_error(error: Exception, *, hint: str | None = None) -> ApiError:
+    """The API error a failed model call maps to.
+
+    A rate limit becomes [RateLimitedError]; anything else is the provider
+    being unavailable. Duck-typed on `retry_after` rather than importing the
+    provider layer here, which would put a service import under `core`.
+    """
+    retry_after = getattr(error, "retry_after", None)
+    if isinstance(retry_after, (int, float)):
+        return RateLimitedError(
+            "The AI service is busy right now.",
+            retry_after=float(retry_after),
+            hint="Wait that long, then try the same request again.",
+        )
+    return ProviderUnavailableError(str(error), hint=hint)
 
 
 class ScanFailedError(ApiError):

@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, File, Form, UploadFile
 
 from app.api.v1.dependencies import get_pipeline
 from app.config import Settings, get_settings
-from app.core.errors import ScanFailedError
+from app.core.errors import ScanFailedError, from_provider_error
 from app.core.limits import check_image, check_image_count
 from app.schemas.scan import (
     CareTagScanResponse,
@@ -22,8 +22,8 @@ from app.schemas.scan import (
     PileScanResult,
     ScanKind,
 )
-from app.services.ai.base import ScanImage, ScanRequest
-from app.services.ai.pipeline import VisionPipeline
+from app.services.ai.base import ProviderError, ScanImage, ScanRequest
+from app.services.ai.pipeline import PipelineResult, VisionPipeline
 
 router = APIRouter(prefix="/scan", tags=["scan"])
 
@@ -32,6 +32,20 @@ async def _read_image(upload: UploadFile, settings: Settings) -> ScanImage:
     data = await upload.read()
     mime_type = check_image(data, upload.content_type, max_bytes=settings.max_image_bytes)
     return ScanImage(data=data, mime_type=mime_type)
+
+
+async def _run(pipeline: VisionPipeline, request: ScanRequest) -> PipelineResult:
+    """The pipeline, with a rate limit surfaced as what it is.
+
+    Every other provider failure is a stage declining and the pipeline
+    carrying on. A rate limit is let through instead — no cheaper stage is
+    left to try, and "try a better photo" is the wrong answer to a limit that
+    lifts by itself — and becomes a 429 that says how long to wait.
+    """
+    try:
+        return await pipeline.run(request)
+    except ProviderError as error:
+        raise from_provider_error(error) from error
 
 
 @router.post(
@@ -55,8 +69,8 @@ async def scan_garment(
     check_image_count(len(images), maximum=settings.max_images_per_request)
     scan_images = [await _read_image(upload, settings) for upload in images]
 
-    outcome = await pipeline.run(
-        ScanRequest(kind=ScanKind.GARMENT, images=scan_images, known_brand=brand)
+    outcome = await _run(
+        pipeline, ScanRequest(kind=ScanKind.GARMENT, images=scan_images, known_brand=brand)
     )
 
     if not isinstance(outcome.result, GarmentScanResult):
@@ -105,8 +119,8 @@ async def scan_care_tag(
     check_image_count(len(uploads), maximum=settings.max_images_per_request)
     scan_images = [await _read_image(upload, settings) for upload in uploads]
 
-    outcome = await pipeline.run(
-        ScanRequest(kind=ScanKind.CARE_TAG, images=scan_images, known_brand=brand)
+    outcome = await _run(
+        pipeline, ScanRequest(kind=ScanKind.CARE_TAG, images=scan_images, known_brand=brand)
     )
 
     if not isinstance(outcome.result, CareTagScanResult):
@@ -131,7 +145,7 @@ async def scan_pile(
 ) -> PileScanResponse:
     scan_image = await _read_image(image, settings)
 
-    outcome = await pipeline.run(ScanRequest(kind=ScanKind.PILE, images=[scan_image]))
+    outcome = await _run(pipeline, ScanRequest(kind=ScanKind.PILE, images=[scan_image]))
 
     if not isinstance(outcome.result, PileScanResult):
         raise ScanFailedError(

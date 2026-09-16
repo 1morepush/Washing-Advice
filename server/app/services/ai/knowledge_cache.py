@@ -71,10 +71,15 @@ class InMemoryKnowledgeCache:
     more than one process — no caller changes when that happens.
     """
 
-    def __init__(self, max_entries: int = 2048) -> None:
+    def __init__(self, max_entries: int = 2048, max_observations: int = 32) -> None:
         self._max_entries = max_entries
+        # Per brand-and-type. The prior wants the most common composition,
+        # and thirty-odd recent readings say that as well as a thousand would
+        # — while a thousand, for every brand ever scanned, is how a process
+        # that is meant to run for months quietly runs out of memory.
+        self._max_observations = max_observations
         self._care: OrderedDict[str, CareTagScanResult] = OrderedDict()
-        self._compositions: dict[str, list[FabricComposition]] = {}
+        self._compositions: OrderedDict[str, list[FabricComposition]] = OrderedDict()
 
     async def care_for_signature(self, signature: str) -> CareTagScanResult | None:
         result = self._care.get(signature)
@@ -96,9 +101,11 @@ class InMemoryKnowledgeCache:
     async def composition_prior(
         self, brand: str, item_type: ItemType | str
     ) -> Confident[FabricComposition] | None:
-        observations = self._compositions.get(brand_key(brand, item_type))
+        prior_key = brand_key(brand, item_type)
+        observations = self._compositions.get(prior_key)
         if not observations:
             return None
+        self._compositions.move_to_end(prior_key)
 
         # The most common composition seen for this brand and type. Averaging
         # percentages across garments would invent a blend nobody makes.
@@ -129,11 +136,25 @@ class InMemoryKnowledgeCache:
     ) -> None:
         if not composition.is_plausible:
             return
-        self._compositions.setdefault(brand_key(brand, item_type), []).append(composition)
+        key = brand_key(brand, item_type)
+        observations = self._compositions.setdefault(key, [])
+        observations.append(composition)
+        # Newest kept. A brand's blends do change over the years, and the
+        # readings being dropped are the ones least likely to describe what
+        # is on the shelf now.
+        del observations[: max(0, len(observations) - self._max_observations)]
+        self._compositions.move_to_end(key)
+        while len(self._compositions) > self._max_entries:
+            self._compositions.popitem(last=False)
 
     @property
     def size(self) -> int:
         return len(self._care)
+
+    @property
+    def brands_known(self) -> int:
+        """How many brand-and-type priors are held."""
+        return len(self._compositions)
 
 
 class KnowledgeCacheStage:

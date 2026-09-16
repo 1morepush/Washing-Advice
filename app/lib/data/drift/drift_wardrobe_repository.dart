@@ -63,9 +63,15 @@ class DriftWardrobeRepository implements WardrobeRepository {
 
   @override
   Future<List<String>> knownBrands() async {
-    final rows = await (_db.select(
-      _db.items,
-    )..where((t) => t.brandLower.isNotNull())).get();
+    // A deleted garment's brand is not one the filter sheet should offer:
+    // choosing it would find nothing, which reads as a bug.
+    final rows =
+        await (_db.select(_db.items)..where(
+              (t) =>
+                  t.brandLower.isNotNull() &
+                  t.lifecycle.isNotValue(LifecycleState.removed.name),
+            ))
+            .get();
 
     // Read the display-cased brand back from the payload: `brandLower` exists
     // for matching, not for showing a user "nike".
@@ -78,9 +84,13 @@ class DriftWardrobeRepository implements WardrobeRepository {
 
   @override
   Future<List<String>> knownCountries() async {
-    final rows = await (_db.select(
-      _db.items,
-    )..where((t) => t.originLower.isNotNull())).get();
+    final rows =
+        await (_db.select(_db.items)..where(
+              (t) =>
+                  t.originLower.isNotNull() &
+                  t.lifecycle.isNotValue(LifecycleState.removed.name),
+            ))
+            .get();
 
     // Deduplicated on the lower-cased column but shown in the spelling the
     // label used, so two tags printing one country differently are offered
@@ -120,6 +130,12 @@ class DriftWardrobeRepository implements WardrobeRepository {
       select.where(
         (t) => t.colorClass.isIn([for (final c in query.colorClasses) c.name]),
       );
+    }
+    // Before any filter, as in the in-memory `_matches`: a tombstone is not
+    // a garment that happens to match nothing, it is one that must not be
+    // listed at all.
+    if (!query.includeRemoved) {
+      select.where((t) => t.lifecycle.isNotValue(LifecycleState.removed.name));
     }
     if (query.lifecycleStates.isNotEmpty) {
       select.where(
@@ -187,7 +203,15 @@ class DriftWardrobeRepository implements WardrobeRepository {
     }
 
     if (query.text?.trim() case final String text when text.isNotEmpty) {
-      select.where((t) => t.searchText.like('%${text.toLowerCase()}%'));
+      // A substring test rather than LIKE, whose `%` and `_` are wildcards:
+      // typing "100%" matched the whole wardrobe and "t_shirt" matched a
+      // t-shirt. Nobody typing into a search box means either of those.
+      select.where(
+        (t) => FunctionCallExpression<int>('instr', [
+          t.searchText,
+          Variable<String>(text.toLowerCase()),
+        ]).isBiggerThanValue(0),
+      );
     }
 
     select.orderBy(_ordering(query.sort));

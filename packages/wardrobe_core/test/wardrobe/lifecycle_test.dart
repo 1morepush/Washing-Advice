@@ -84,6 +84,34 @@ void main() {
     });
   });
 
+  group('a deleted item', () {
+    // A tombstone: the row stays so the deletion can sync, and everything
+    // about the state exists to keep it out of sight and out of reach.
+    test('is not owned, and the owned preset does not list it', () {
+      expect(LifecycleState.removed.isOwned, isFalse);
+      expect(
+        const WardrobeQuery.owned().lifecycleStates,
+        isNot(contains(LifecycleState.removed)),
+      );
+    });
+
+    test('cannot be worn or laundered', () {
+      expect(LifecycleState.removed.isWearable, isFalse);
+      expect(LifecycleState.removed.isLaunderable, isFalse);
+    });
+
+    test('is final', () {
+      for (final next in LifecycleState.values) {
+        if (next == LifecycleState.removed) continue;
+        expect(
+          LifecycleState.removed.canTransitionTo(next),
+          isFalse,
+          reason: next.label,
+        );
+      }
+    });
+  });
+
   group('reading a state that was stored', () {
     test('round-trips through the name it is stored under', () {
       for (final state in LifecycleState.values) {

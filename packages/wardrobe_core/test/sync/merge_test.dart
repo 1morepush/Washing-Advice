@@ -22,10 +22,12 @@ void main() {
     UsageStats usage = const UsageStats.none(),
     PhotoSet photos = PhotoSet.empty,
     DateTime? addedAt,
+    LifecycleState lifecycle = LifecycleState.active,
   }) =>
       WardrobeItem(
         id: const ItemId('jumper'),
         name: name,
+        lifecycle: lifecycle,
         type: Confident(
           ItemType.sweater,
           confidence: 0.9,
@@ -168,6 +170,22 @@ void main() {
       final merged = earlier.mergedWith(later);
       expect(merged.item.composition.value.percentOf(Fiber.linen), 100);
       expect(merged.decisions['composition'], MergeOutcome.byRecency);
+    });
+
+    test('a deletion beats a later edit, in either direction', () {
+      // The phone deleted the jumper on Monday. The tablet, which never saw
+      // that, logged a wear on Tuesday and so has the later timestamp. Last
+      // writer would bring the jumper back; the deletion is the one answer a
+      // person gave on purpose, and it must stand.
+      final phone =
+          jumper(updatedAt: monday, lifecycle: LifecycleState.removed);
+      final tablet = jumper(updatedAt: tuesday, name: 'Renamed');
+
+      for (final (mine, theirs) in [(phone, tablet), (tablet, phone)]) {
+        final result = mine.mergedWith(theirs);
+        expect(result.item.lifecycle, LifecycleState.removed);
+        expect(result.decisions['lifecycle'], MergeOutcome.byTombstone);
+      }
     });
 
     test('a plain field takes the more recent value', () {

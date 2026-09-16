@@ -432,23 +432,19 @@ class BulkController extends StateNotifier<BulkState> {
       final outcomes = <BulkOutcome>[];
 
       for (final (index, garment) in garments.indexed) {
-        try {
-          outcomes.add(
-            BulkOutcome(
-              index: index,
-              read: await intake.read(garment.shots),
-              shots: garment.shots,
-            ),
-          );
-        } on IntakeFailure catch (failure) {
-          outcomes.add(
-            BulkOutcome(
-              index: index,
-              failure: failure.message,
-              shots: garment.shots,
-            ),
-          );
+        var attempt = await _read(intake, index, garment);
+        if (attempt.retryAfter case final Duration wait
+            when wait <= longestRateLimitWait) {
+          // A rate limit is the one failure the next photograph makes worse:
+          // the free tier meters by the minute, and sending straight on
+          // fails every garment after this one the same way. Waiting the
+          // window out once costs seconds; not waiting costs a review list
+          // that is mostly failures.
+          await Future<void>.delayed(wait);
+          if (!mounted) return;
+          attempt = await _read(intake, index, garment);
         }
+        outcomes.add(attempt.outcome);
 
         if (!mounted) return;
         state = BulkProcessing(
@@ -459,6 +455,41 @@ class BulkController extends StateNotifier<BulkState> {
 
       if (!mounted) return;
       state = BulkReviewing(outcomes: outcomes);
+    }
+  }
+
+  /// The longest a batch will pause for a rate limit before moving on.
+  ///
+  /// Past this the wait is a better fit for "come back later" than for a
+  /// spinner: the failures are reported, and the garments can be sent again
+  /// from the review list once the limit has lifted.
+  static const longestRateLimitWait = Duration(minutes: 2);
+
+  /// Reads one garment, as an outcome either way, with how long the server
+  /// asked for if it was too busy to say.
+  Future<({BulkOutcome outcome, Duration? retryAfter})> _read(
+    GarmentIntake intake,
+    int index,
+    PendingGarment garment,
+  ) async {
+    try {
+      return (
+        outcome: BulkOutcome(
+          index: index,
+          read: await intake.read(garment.shots),
+          shots: garment.shots,
+        ),
+        retryAfter: null,
+      );
+    } on IntakeFailure catch (failure) {
+      return (
+        outcome: BulkOutcome(
+          index: index,
+          failure: failure.message,
+          shots: garment.shots,
+        ),
+        retryAfter: failure.retryAfter,
+      );
     }
   }
 

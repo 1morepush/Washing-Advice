@@ -240,6 +240,189 @@ void main() {
     });
   });
 
+  group('the remote cursor', () {
+    test("is the remote's clock at the pull, not at the push", () async {
+      // Between this device's pull and its push, another device may push.
+      // Those records are stamped before this push is accepted, so a cursor
+      // set at the acceptance asks for everything after them and never sees
+      // them — silently, and for good. The pull's own time has no such gap.
+      remote
+        ..serverTime = DateTime.utc(2026, 8, 4, 10)
+        ..acceptAt = DateTime.utc(2026, 8, 4, 10, 0, 5);
+
+      await engine.sync();
+
+      expect(await cursor.lastSyncedAt(), DateTime.utc(2026, 8, 4, 10));
+    });
+
+    test('falls back to the acceptance when the remote does not say', () async {
+      // A remote that predates the field still works, exactly as before.
+      remote
+        ..serverTime = null
+        ..acceptAt = DateTime.utc(2026, 8, 4, 10, 0, 5);
+
+      await engine.sync();
+
+      expect(await cursor.lastSyncedAt(), DateTime.utc(2026, 8, 4, 10, 0, 5));
+    });
+  });
+
+  group('pushing in pieces', () {
+    setUp(() {
+      engine = SyncEngine(
+        items: items,
+        events: events,
+        remote: remote,
+        cursor: cursor,
+        clock: FixedClock(tuesday),
+        pushBatchSize: 2,
+      );
+    });
+
+    test('a backlog past the ceiling goes as pieces the remote accepts',
+        () async {
+      // The first sync of a wardrobe in use for a while is thousands of
+      // records. Sent as one request it fails every time, with nothing to
+      // advance the cursor, and the device can never sync at all.
+      await items.save(_jumper(updatedAt: monday));
+      for (var i = 0; i < 4; i++) {
+        await events.append(_worn('e$i', monday));
+      }
+
+      final report = await engine.sync();
+
+      expect(report.pushed, 5);
+      expect(remote.received, hasLength(3));
+      for (final piece in remote.received) {
+        expect(piece.length, lessThanOrEqualTo(2));
+      }
+      expect(remote.received.expand((p) => p.items), hasLength(1));
+      expect(remote.received.expand((p) => p.events), hasLength(4));
+    });
+
+    test('a piece failing leaves the cursor where it was', () async {
+      // What already landed is harmless to send again; what did not must
+      // be. Only a cursor left alone gets both.
+      await items.save(_jumper(updatedAt: monday));
+      for (var i = 0; i < 4; i++) {
+        await events.append(_worn('e$i', monday));
+      }
+      remote.failPushAt = 1;
+
+      final report = await engine.sync();
+
+      expect(report.succeeded, isFalse);
+      expect(remote.received, hasLength(1));
+      expect(await cursor.lastSyncedAt(), isNull);
+      expect(await cursor.lastPushedAt(), isNull);
+    });
+
+    test('every record goes exactly once', () {
+      final payload = SyncPayload(
+        items: [_jumper(updatedAt: monday)],
+        events: [for (var i = 0; i < 6; i++) _worn('e$i', monday)],
+      );
+
+      final pieces = payload.chunked(3).toList();
+
+      expect(pieces, hasLength(3));
+      expect(pieces.map((p) => p.length), [3, 3, 1]);
+      expect(pieces.expand((p) => p.events).map((e) => e.id.value),
+          ['e0', 'e1', 'e2', 'e3', 'e4', 'e5']);
+    });
+
+    test('nothing to send is still one push, for its acceptance time',
+        () async {
+      await engine.sync();
+
+      expect(remote.received, hasLength(1));
+      expect(remote.received.single.isEmpty, isTrue);
+    });
+  });
+
+  group('deletions', () {
+    test('a garment deleted elsewhere is removed here, and hidden', () async {
+      await items.save(_jumper(updatedAt: monday));
+      remote.available = SyncPayload(
+        items: [
+          _jumper(updatedAt: tuesday, lifecycle: LifecycleState.removed),
+        ],
+      );
+
+      await engine.sync();
+
+      final stored = await items.byId(const ItemId('jumper'));
+      expect(stored?.lifecycle, LifecycleState.removed);
+      expect(await items.query(const WardrobeQuery.owned()), isEmpty);
+      expect(await items.query(const WardrobeQuery()), isEmpty);
+    });
+
+    test('a deletion outlives an edit made elsewhere afterwards', () async {
+      // The tablet renamed it on Tuesday, never having seen Monday's
+      // deletion. Recency would resurrect it. "Deleted" is the one answer a
+      // person gave on purpose.
+      await items.save(
+        _jumper(updatedAt: monday, lifecycle: LifecycleState.removed),
+      );
+      remote.available = SyncPayload(
+        items: [_jumper(updatedAt: tuesday, name: 'Renamed')],
+      );
+
+      await engine.sync();
+
+      final stored = await items.byId(const ItemId('jumper'));
+      expect(stored?.lifecycle, LifecycleState.removed);
+    });
+
+    test('and is offered back, so the remote learns it too', () async {
+      // The remote keeps one row per item, whichever was pushed last. If the
+      // edit was pushed after the tombstone, the remote's row is the edit and
+      // a fresh install would pull the garment back. The tombstone that just
+      // won is re-stamped so this run pushes it over that row.
+      await engine.sync(); // Establishes cursors; nothing to send yet.
+      remote.received.clear();
+
+      // Both older than the local push mark, so neither is due to be sent on
+      // its own account.
+      await items.save(
+        _jumper(updatedAt: monday, lifecycle: LifecycleState.removed),
+      );
+      remote.available = SyncPayload(
+        items: [
+          _jumper(
+            updatedAt: monday.add(const Duration(hours: 1)),
+            name: 'Renamed',
+          ),
+        ],
+      );
+
+      await engine.sync();
+
+      final pushed = remote.received.single.items;
+      expect(pushed, hasLength(1));
+      expect(pushed.single.lifecycle, LifecycleState.removed);
+    });
+
+    test('two devices that both hold the tombstone stop re-sending it',
+        () async {
+      await items.save(
+        _jumper(updatedAt: monday, lifecycle: LifecycleState.removed),
+      );
+      await engine.sync();
+      remote
+        ..received.clear()
+        ..available = SyncPayload(
+          items: [
+            _jumper(updatedAt: monday, lifecycle: LifecycleState.removed),
+          ],
+        );
+
+      await engine.sync();
+
+      expect(remote.received.single.items, isEmpty);
+    });
+  });
+
   test('syncing twice changes nothing the second time', () async {
     // Idempotence at the level of a whole run: a device that reconnects
     // repeatedly must not drift.
@@ -263,10 +446,12 @@ WardrobeItem _jumper({
   required DateTime updatedAt,
   String name = 'Wool jumper',
   Confident<FabricComposition>? composition,
+  LifecycleState lifecycle = LifecycleState.active,
 }) =>
     WardrobeItem(
       id: const ItemId('jumper'),
       name: name,
+      lifecycle: lifecycle,
       type: Confident(
         ItemType.sweater,
         confidence: 0.9,
@@ -298,8 +483,15 @@ class _FakeRemote implements SyncRemote {
   /// The remote's clock, which is deliberately not the device's.
   DateTime acceptAt = DateTime.utc(2026, 8, 4);
 
+  /// What the remote says its clock read when it gathered a pull, if it says.
+  DateTime? serverTime;
+
   bool failPull = false;
   bool failPush = false;
+
+  /// Fail the push with this index — the second piece of a batch is 1 — so
+  /// a run can land some of its pieces and not the rest.
+  int? failPushAt;
 
   /// A specific failure to throw from `pull`, for cases where *which* failure
   /// it is changes the outcome rather than merely that one happened.
@@ -309,12 +501,16 @@ class _FakeRemote implements SyncRemote {
   Future<SyncPayload> pull({DateTime? since}) async {
     if (failPullWith case final failure?) throw failure;
     if (failPull) throw const _Offline();
-    return available;
+    return SyncPayload(
+      items: available.items,
+      events: available.events,
+      serverTime: serverTime,
+    );
   }
 
   @override
   Future<DateTime> push(SyncPayload payload) async {
-    if (failPush) throw const _Offline();
+    if (failPush || failPushAt == received.length) throw const _Offline();
     received.add(payload);
     return acceptAt;
   }

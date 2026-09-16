@@ -28,10 +28,17 @@ import 'style_dto.dart';
 /// Carries whether retrying is worth the user's time, because "no internet" and
 /// "that photo is not a care label" need different words on screen.
 class ScanFailure implements Exception {
-  const ScanFailure(this.message, {this.isRetryable = true});
+  const ScanFailure(this.message, {this.isRetryable = true, this.retryAfter});
 
   final String message;
   final bool isRetryable;
+
+  /// How long the server asked for before trying again, when it said.
+  ///
+  /// Set from a 429's `Retry-After`. The free tier meters by the minute, so
+  /// a batch that hits the limit and sends the next photograph straight away
+  /// hits it again; a caller that can wait should wait this long.
+  final Duration? retryAfter;
 
   @override
   String toString() => message;
@@ -630,10 +637,65 @@ class AiGateway implements VisionPort {
         detail ?? 'That photo could not be read.',
         isRetryable: false,
       ),
+      // The free tier's ordinary failure, and a temporary one: the same
+      // request works a minute later. Said so, with the wait when the server
+      // gave one, because "The scan failed (429)" reads as broken and sends
+      // someone straight back into the same limit.
+      429 => ScanFailure(
+        _busy(detail, _retryAfterOf(response.headers['retry-after'])),
+        retryAfter: _retryAfterOf(response.headers['retry-after']),
+      ),
       503 => ScanFailure(detail ?? 'Scanning is unavailable right now.'),
       _ => ScanFailure(detail ?? 'The scan failed (${response.statusCode}).'),
     };
   }
+
+  static String _busy(String? detail, Duration? wait) {
+    final what = detail ?? 'The AI service is busy right now.';
+    return switch (wait) {
+      null => '$what Wait a minute and try again.',
+      final wait when wait.inSeconds < 1 => '$what Try again.',
+      final wait => '$what Try again in about ${wait.inSeconds} seconds.',
+    };
+  }
+
+  /// A `Retry-After` header as a duration: seconds, or an HTTP date.
+  static Duration? _retryAfterOf(String? header) {
+    if (header == null) return null;
+    final seconds = int.tryParse(header.trim());
+    if (seconds != null) return Duration(seconds: seconds < 0 ? 0 : seconds);
+    final at = _httpDate(header.trim());
+    if (at == null) return null;
+    final wait = at.difference(DateTime.now());
+    return wait.isNegative ? Duration.zero : wait;
+  }
+
+  /// An IMF-fixdate — `Sun, 06 Nov 1994 08:49:37 GMT` — or null.
+  ///
+  /// By hand rather than `dart:io`'s `HttpDate`, which the web build has no
+  /// access to. Only the one format the standard requires servers to send.
+  static DateTime? _httpDate(String text) {
+    final match = _fixdate.firstMatch(text);
+    if (match == null) return null;
+    final month = _months.indexOf(match.group(2)!.toLowerCase());
+    if (month < 0) return null;
+    return DateTime.utc(
+      int.parse(match.group(3)!),
+      month + 1,
+      int.parse(match.group(1)!),
+      int.parse(match.group(4)!),
+      int.parse(match.group(5)!),
+      int.parse(match.group(6)!),
+    );
+  }
+
+  static final _fixdate = RegExp(
+    r'^[A-Za-z]{3}, (\d{2}) ([A-Za-z]{3}) (\d{4}) (\d{2}):(\d{2}):(\d{2}) GMT$',
+  );
+  static const _months = [
+    'jan', 'feb', 'mar', 'apr', 'may', 'jun', //
+    'jul', 'aug', 'sep', 'oct', 'nov', 'dec',
+  ];
 }
 
 /// The content type to send a part as.

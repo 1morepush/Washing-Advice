@@ -37,6 +37,7 @@ library;
 
 import '../care/model/care_instructions.dart';
 import '../shared/confidence.dart';
+import '../wardrobe/model/lifecycle.dart';
 import '../wardrobe/model/ownership.dart';
 import '../wardrobe/model/photo.dart';
 import '../wardrobe/model/wardrobe_item.dart';
@@ -54,6 +55,9 @@ enum MergeOutcome {
 
   /// Both sides contributed — sets, photos, counters.
   combined,
+
+  /// One side had deleted the item, and the deletion won regardless of time.
+  byTombstone,
 }
 
 /// The result of reconciling two versions of one item.
@@ -138,6 +142,21 @@ extension MergeItems on WardrobeItem {
       return Confident.resolve(mine, theirs);
     }
 
+    LifecycleState lifecycleOf(LifecycleState mine, LifecycleState theirs) {
+      // A deletion is not an edit to be outvoted by a later one. Whichever
+      // side removed the item wins, whatever the other did afterwards: a wear
+      // logged on the tablet the same afternoon must not resurrect a garment
+      // deleted on the phone that morning. "Deleted" is the one answer a
+      // person gave on purpose; the other is a counter ticking over.
+      if (mine != theirs &&
+          (mine == LifecycleState.removed ||
+              theirs == LifecycleState.removed)) {
+        decisions['lifecycle'] = MergeOutcome.byTombstone;
+        return LifecycleState.removed;
+      }
+      return plain('lifecycle', mine, theirs);
+    }
+
     Confident<T>? optional<T extends Object>(
       String field,
       Confident<T>? mine,
@@ -173,7 +192,7 @@ extension MergeItems on WardrobeItem {
         preferMine: mineWins(care.source.name, other.care.source.name),
       ),
       photos: _mergePhotos(decisions, photos, other.photos),
-      lifecycle: plain('lifecycle', lifecycle, other.lifecycle),
+      lifecycle: lifecycleOf(lifecycle, other.lifecycle),
       condition: plain('condition', condition, other.condition),
       usage: _mergeUsage(decisions, usage, other.usage),
       purchase: _mergePurchase(

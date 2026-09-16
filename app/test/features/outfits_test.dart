@@ -124,12 +124,34 @@ void main() {
     await tester.tap(find.widgetWithText(TextButton, 'Wearing this').first);
     await tester.pumpAndSettle();
 
-    final logged = await events.all();
+    // The wears specifically: moving to the basket writes its own events.
+    final logged = (await events.all()).whereType<ItemWorn>().toList();
     expect(logged, hasLength(2));
-    expect(logged.every((e) => e is ItemWorn), isTrue);
     // One instant, so the log reads as one outfit rather than two coincidences.
     expect(logged.map((e) => e.occurredAt).toSet(), hasLength(1));
     expect(find.textContaining('worn together'), findsOneWidget);
+  });
+
+  testWidgets('and puts them in the basket, as every other wear does', (
+    tester,
+  ) async {
+    // Otherwise the wardrobe keeps offering a shirt that is on its way to the
+    // pile — and "What did you wear today?" offers it again tonight, where a
+    // second tap logs the same wear twice.
+    await repository.saveAll([
+      confidentItem(id: 'tee', name: 'Cream tee', hex: '#F2E8D5'),
+      confidentItem(id: 'jeans', name: 'Navy jeans', type: ItemType.jeans),
+    ]);
+
+    await pump(tester);
+    await tester.tap(find.widgetWithText(TextButton, 'Wearing this').first);
+    await tester.pumpAndSettle();
+
+    for (final id in ['tee', 'jeans']) {
+      final stored = await repository.byId(ItemId(id));
+      expect(stored?.lifecycle, LifecycleState.inLaundry, reason: id);
+    }
+    expect(find.textContaining('basket'), findsOneWidget);
   });
 
   testWidgets('a tagged item overrides the occasion default', (tester) async {

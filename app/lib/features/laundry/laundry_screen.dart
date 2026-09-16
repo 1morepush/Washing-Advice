@@ -194,6 +194,60 @@ class _WoreSomething extends StatelessWidget {
   }
 }
 
+/// Starts a load, and asks the one thing the app cannot see.
+///
+/// The record of a wash keeps whether the recommended programme was the one
+/// actually run. The app knows what it recommended; only the person at the
+/// machine knows what they selected, and most of the time it is the same
+/// thing — so the box starts ticked and costs nothing to leave alone. It is
+/// there for the other times, because a record that can only ever say "yes"
+/// is no evidence that the advice is any good.
+class _StartLoad extends ConsumerStatefulWidget {
+  const _StartLoad({required this.load});
+
+  final LaundryLoad load;
+
+  @override
+  ConsumerState<_StartLoad> createState() => _StartLoadState();
+}
+
+class _StartLoadState extends ConsumerState<_StartLoad> {
+  bool _followed = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final programme = widget.load.washerSetting?.programName;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        // Only when there is a programme to have followed. Without a machine
+        // set the card states requirements, and there is nothing to ask.
+        if (programme != null)
+          CheckboxListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            value: _followed,
+            onChanged: (value) => setState(() => _followed = value ?? true),
+            title: Text('Ran it on $programme'),
+          ),
+        FilledButton.icon(
+          // Records the wash as well as moving the clothes: this is the last
+          // moment the settings are known, because once the load is running
+          // it is just a set of items in the machine.
+          onPressed: () => ref
+              .read(laundryControllerProvider)
+              .start(widget.load, followedRecommendation: _followed),
+          icon: const Icon(Icons.local_laundry_service_outlined),
+          label: const Text('Start this load'),
+        ),
+      ],
+    );
+  }
+}
+
 /// The loads to run, for what is in the basket.
 class _Plan extends ConsumerWidget {
   const _Plan();
@@ -212,15 +266,7 @@ class _Plan extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
             child: LoadCard(
               load: load,
-              action: FilledButton.icon(
-                // Records the wash as well as moving the clothes: this is the
-                // last moment the settings are known, because once the load is
-                // running it is just a set of items in the machine.
-                onPressed: () =>
-                    ref.read(laundryControllerProvider).start(load),
-                icon: const Icon(Icons.local_laundry_service_outlined),
-                label: const Text('Start this load'),
-              ),
+              action: _StartLoad(load: load),
             ),
           ),
 

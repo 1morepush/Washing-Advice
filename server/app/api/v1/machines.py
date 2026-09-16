@@ -14,7 +14,7 @@ import time
 from fastapi import APIRouter, Depends
 
 from app.api.v1.dependencies import get_machine_identifier
-from app.core.errors import MachineNotIdentifiedError, ProviderUnavailableError
+from app.core.errors import MachineNotIdentifiedError, from_provider_error
 from app.schemas.machines import (
     DryerIdentifyResponse,
     MachineIdentifyRequest,
@@ -46,7 +46,7 @@ async def identify_washer(
     except NotIdentifiedError as error:
         raise MachineNotIdentifiedError(str(error), hint=_NOT_IDENTIFIED_HINT) from error
     except ProviderError as error:
-        raise ProviderUnavailableError(str(error)) from error
+        raise from_provider_error(error) from error
 
     return WasherIdentifyResponse(
         result=result,
@@ -74,7 +74,7 @@ async def identify_dryer(
     except NotIdentifiedError as error:
         raise MachineNotIdentifiedError(str(error), hint=_NOT_IDENTIFIED_HINT) from error
     except ProviderError as error:
-        raise ProviderUnavailableError(str(error)) from error
+        raise from_provider_error(error) from error
 
     return DryerIdentifyResponse(
         result=result,

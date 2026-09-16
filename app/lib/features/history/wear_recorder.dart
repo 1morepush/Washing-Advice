@@ -127,7 +127,14 @@ class WearRecorder {
   /// user replacing or deleting a machine profile — a wash that happened is a
   /// fact, and it should not become unreadable because they bought a new
   /// washer.
-  Future<void> recordWash(LaundryLoad load) async {
+  ///
+  /// [followedRecommendation] is what the person at the machine says about
+  /// the programme they actually selected; left unsaid, it was the one on the
+  /// card, which is the one they pressed Start under.
+  Future<void> recordWash(
+    LaundryLoad load, {
+    bool? followedRecommendation,
+  }) async {
     final ids = _ref.read(idGeneratorProvider);
     final washer = _ref.read(washerProvider);
     final dryer = _ref.read(dryerProvider);
@@ -142,10 +149,14 @@ class WearRecorder {
       dryerName: dryer?.displayName,
       dryProgramName: load.dryerSetting?.programName,
       loadId: load.id,
-      // The user is following a plan the app produced. Recording that lets a
-      // later version ask whether its advice actually gets taken, which is the
-      // only honest way to find out if it is any good.
-      followedRecommendation: true,
+      // Recorded so a later version can ask whether the advice actually gets
+      // taken, which is the only honest way to find out if it is any good —
+      // and a record that can only ever say "yes" is not evidence of that.
+      // With no machine set the plan states requirements rather than naming
+      // a programme, so there was nothing to follow and nothing is claimed.
+      followedRecommendation: load.washerSetting == null
+          ? null
+          : followedRecommendation ?? true,
     );
 
     for (final item in load.items) {

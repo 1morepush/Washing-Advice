@@ -129,7 +129,12 @@ class _SavedCard extends ConsumerWidget {
                   await controller.wear(outfit);
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Recorded ${outfit.name} as worn.')),
+                    SnackBar(
+                      content: Text(
+                        'Recorded ${outfit.name} as worn, and put it in the '
+                        'basket.',
+                      ),
+                    ),
                   );
                 },
                 icon: const Icon(Icons.checkroom_outlined, size: 18),

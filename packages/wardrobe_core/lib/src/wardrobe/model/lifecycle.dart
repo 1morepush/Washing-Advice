@@ -45,7 +45,17 @@ enum LifecycleState {
   discarded('Discarded'),
 
   /// Gone missing.
-  lost('Lost');
+  lost('Lost'),
+
+  /// Deleted by the user.
+  ///
+  /// A tombstone rather than a missing row. Deleting the row outright cannot
+  /// be told to another device — there is nothing left to send — so a
+  /// garment deleted on the phone came back from any tablet that still had
+  /// it, and from the server on a reinstall. Kept as a state, the deletion
+  /// is one more change that syncs like any other. Hidden from every query
+  /// unless asked for, and terminal, so nothing revives it by accident.
+  removed('Removed');
 
   const LifecycleState(this.label);
 
@@ -72,7 +82,7 @@ enum LifecycleState {
         beingDried ||
         beingRepaired =>
           true,
-        donated || sold || discarded || lost => false,
+        donated || sold || discarded || lost || removed => false,
       };
 
   /// Whether the item can be worn or put in an outfit right now.
@@ -109,7 +119,7 @@ enum LifecycleState {
       beingDried ||
       beingRepaired =>
         true,
-      donated || sold || discarded || lost => false,
+      donated || sold || discarded || lost || removed => false,
     };
   }
 }

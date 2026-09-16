@@ -137,6 +137,57 @@ void runRepositoryContractTests(String name, RepositoryFactory create) {
     });
   });
 
+  group('$name: deleted garments', () {
+    // A deleted garment stays stored as a tombstone so the deletion can reach
+    // other devices. Nothing a person looks at may list it, and only the one
+    // caller that asks — sync — gets it back.
+    late WardrobeRepository repository;
+
+    setUp(() async {
+      repository = await create();
+      await repository.saveAll([
+        buildItem(id: 'kept', brand: 'Nike'),
+        buildItem(id: 'gone', brand: 'Gap', lifecycle: LifecycleState.removed),
+      ]);
+    });
+
+    test('are hidden from an otherwise unfiltered query', () async {
+      final ids = [
+        for (final item in await repository.query(const WardrobeQuery()))
+          item.id.value,
+      ];
+      expect(ids, ['kept']);
+      expect(await repository.count(const WardrobeQuery()), 1);
+    });
+
+    test('are hidden from the owned preset', () async {
+      final ids = [
+        for (final item in await repository.query(const WardrobeQuery.owned()))
+          item.id.value,
+      ];
+      expect(ids, ['kept']);
+    });
+
+    test('come back when asked for by name', () async {
+      final ids = {
+        for (final item in await repository.query(
+          const WardrobeQuery(includeRemoved: true),
+        ))
+          item.id.value,
+      };
+      expect(ids, {'kept', 'gone'});
+    });
+
+    test('are still there by id, so a sync can merge against them', () async {
+      final stored = await repository.byId(const ItemId('gone'));
+      expect(stored?.lifecycle, LifecycleState.removed);
+    });
+
+    test('do not put their brand in the filter sheet', () async {
+      expect(await repository.knownBrands(), ['Nike']);
+    });
+  });
+
   group('$name: filtering', () {
     late WardrobeRepository repository;
 

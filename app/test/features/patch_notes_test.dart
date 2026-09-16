@@ -100,6 +100,9 @@ void main() {
       final earlier = patchNotes[1];
       expect(find.text(earlier.headline), findsNothing);
 
+      // A long newest release pushes the fold below the test viewport, and a
+      // tap on something off-screen lands on nothing.
+      await tester.ensureVisible(find.text('Earlier changes'));
       await tester.tap(find.text('Earlier changes'));
       await tester.pumpAndSettle();
 

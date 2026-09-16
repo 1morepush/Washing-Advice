@@ -332,6 +332,13 @@ load on that — it says which items need identifying first. That is the same
 rule as everywhere else, applied at the last possible step: the cost of being
 wrong is a ruined jumper, and there is no undo.
 
+The middle case is asked about. When a garment in the heap *might* be one you
+own — three near-identical black tees, or a hoodie photographed badly — the
+plan puts the question with the likeliest matches as buttons: "Is this your
+navy Nike hoodie?" One tap brings that garment's real care label into the
+plan; "None of these" leaves it as new. Acting on a maybe without asking is
+how one garment's label ends up on a different garment, so it never does.
+
 ### Explain itself
 
 Every recommendation carries its reasoning:
@@ -439,7 +446,9 @@ that they were worn together *as that outfit*. Saving and wearing are separate
 acts, because "keep this" is not "I am wearing it today".
 
 Tap **Wearing this** and every item in the outfit is logged at the same
-instant, which the app reads back as one occasion. Pairings that recur become
+instant, which the app reads back as one occasion — and moved to the laundry
+basket, the same as saying what you wore at the front door, so the wardrobe
+stops offering them and nothing logs the same wear twice. Pairings that recur become
 `wornWith` links, and those links feed the next round of suggestions — so the
 app gets better at your wardrobe by being used. The links are *derived* from
 the event log rather than stored, which means no second source of truth to keep
@@ -534,6 +543,20 @@ reconciled.
 The server is deliberately a relay that knows nothing about garments. Putting
 the merge rules there too would mean maintaining the same subtle logic in two
 languages, and the copy that matters is the one that has to work on a train.
+
+Deleting a garment syncs too. The row stays behind as a hidden marker — a
+tombstone — because a row that is simply gone cannot be told to anyone, and
+without one the garment came back from whichever phone still had it. A
+deletion wins the merge outright: a wear logged on the tablet that afternoon
+does not resurrect what the phone deleted that morning.
+
+Two details of the bookkeeping are worth knowing because both were bugs once.
+The bookmark a device keeps is the server's clock *at the pull*, not the time
+its own push was accepted — between the two, another device may have pushed,
+and a bookmark set at the acceptance skipped those changes for good. And
+changes go up in batches of a few hundred records, so the first sync of a
+wardrobe that has been in use for a while does not fail on the server's
+per-request limit every time it tries.
 
 There is a suite that starts the real server and drives two independent devices
 against it, because that is the only place a cross-language wire break shows up

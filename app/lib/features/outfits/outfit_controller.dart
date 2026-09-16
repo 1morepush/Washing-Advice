@@ -11,6 +11,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../history/wear_recorder.dart';
+import '../laundry/laundry_controller.dart';
 
 class OutfitController {
   const OutfitController(this._ref);
@@ -59,8 +60,30 @@ class OutfitController {
     return outfit;
   }
 
-  /// Records the outfit as worn: every item at the same instant, and the
-  /// outfit's own counters kept in step.
+  /// Records [ids] as worn together, and puts them in the basket.
+  ///
+  /// Both, and in that order, for the same reason "What did you wear today?"
+  /// does both. A wear recorded without the move leaves the wardrobe offering
+  /// a shirt that is on its way to the pile — and offering it again at the
+  /// front door tonight, where a second tap logs the same wear twice. Every
+  /// "wearing this" in the app now means the same thing.
+  Future<void> wearItems(
+    Iterable<ItemId> ids, {
+    String? occasion,
+    DateTime? at,
+  }) async {
+    final now = at ?? DateTime.now();
+    final worn = ids.toList();
+    await _ref
+        .read(wearRecorderProvider)
+        .recordOutfit(worn, occasion: occasion, at: now);
+    await _ref
+        .read(laundryControllerProvider)
+        .move(worn, LifecycleState.inLaundry);
+  }
+
+  /// Records the outfit as worn: every item at the same instant, into the
+  /// basket, and the outfit's own counters kept in step.
   ///
   /// The item events are the log; the outfit's [UsageStats] is a cache of how
   /// often this particular combination was chosen, which no per-item event can
@@ -68,9 +91,7 @@ class OutfitController {
   /// they were worn together *as this saved outfit*.
   Future<void> wear(Outfit outfit) async {
     final now = DateTime.now();
-    await _ref
-        .read(wearRecorderProvider)
-        .recordOutfit(outfit.itemIds, occasion: outfit.occasion.name, at: now);
+    await wearItems(outfit.itemIds, occasion: outfit.occasion.name, at: now);
 
     await _ref
         .read(outfitRepositoryProvider)

@@ -58,10 +58,16 @@ final class GarmentDraft {
 /// Carries the gateway's retryable distinction: "the server is asleep" and
 /// "this version cannot read that reply" need different words and buttons.
 class IntakeFailure implements Exception {
-  const IntakeFailure(this.message, {this.isRetryable = true});
+  const IntakeFailure(this.message, {this.isRetryable = true, this.retryAfter});
 
   final String message;
   final bool isRetryable;
+
+  /// How long the server asked for before trying again, when it said.
+  ///
+  /// Carried through from the gateway so a batch can wait it out rather than
+  /// walking every remaining garment into the same limit.
+  final Duration? retryAfter;
 
   @override
   String toString() => message;
@@ -102,7 +108,11 @@ class GarmentIntake {
     try {
       result = await gateway.scanGarment(garment);
     } on ScanFailure catch (failure) {
-      throw IntakeFailure(failure.message, isRetryable: failure.isRetryable);
+      throw IntakeFailure(
+        failure.message,
+        isRetryable: failure.isRetryable,
+        retryAfter: failure.retryAfter,
+      );
     } on ScanContractError catch (error) {
       // The app and the server disagreeing about the contract; retrying it
       // cannot help, hence the different wording.

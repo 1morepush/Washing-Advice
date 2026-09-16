@@ -139,9 +139,15 @@ void main() {
     expect((await outfits.all()).single.usage.timesWorn, 1);
     // And the items were logged too, at one instant, so the co-wear projection
     // reads it as one occasion.
-    final logged = await events.all();
-    expect(logged, hasLength(2));
-    expect(logged.map((e) => e.occurredAt).toSet(), hasLength(1));
+    final worn = (await events.all()).whereType<ItemWorn>().toList();
+    expect(worn, hasLength(2));
+    expect(worn.map((e) => e.occurredAt).toSet(), hasLength(1));
+    // And went to the basket, so the app stops offering them and does not
+    // log the same wear twice at the front door tonight.
+    for (final id in ['tee', 'jeans']) {
+      final stored = await repository.byId(ItemId(id));
+      expect(stored?.lifecycle, LifecycleState.inLaundry, reason: id);
+    }
   });
 
   testWidgets('saving is separate from wearing', (tester) async {

@@ -148,6 +148,42 @@ class TestCompositionPrior:
         )
         assert await cache.composition_prior("Nike", ItemType.HOODIE) is None
 
+    async def test_brands_are_evicted_least_recently_used(self) -> None:
+        """The prior table is bounded like the care table beside it.
+
+        It was not, once: every brand and type ever scanned kept a growing
+        list forever, which on a server meant to run for months is a leak with
+        a slow fuse.
+        """
+        cache = InMemoryKnowledgeCache(max_entries=2)
+        cotton = FabricComposition({Fiber.COTTON: 100})
+
+        await cache.observe_composition("Nike", ItemType.HOODIE, cotton)
+        await cache.observe_composition("Uniqlo", ItemType.T_SHIRT, cotton)
+        # Reading Nike keeps it alive; Uniqlo is now the one to go.
+        await cache.composition_prior("Nike", ItemType.HOODIE)
+        await cache.observe_composition("Levi's", ItemType.JEANS, cotton)
+
+        assert cache.brands_known == 2
+        assert await cache.composition_prior("Nike", ItemType.HOODIE) is not None
+        assert await cache.composition_prior("Uniqlo", ItemType.T_SHIRT) is None
+
+    async def test_only_the_newest_observations_are_kept(self) -> None:
+        cache = InMemoryKnowledgeCache(max_observations=3)
+        cotton = FabricComposition({Fiber.COTTON: 100})
+        blend = FabricComposition({Fiber.COTTON: 80, Fiber.POLYESTER: 20})
+
+        for _ in range(10):
+            await cache.observe_composition("Nike", ItemType.HOODIE, cotton)
+        for _ in range(3):
+            await cache.observe_composition("Nike", ItemType.HOODIE, blend)
+
+        prior = await cache.composition_prior("Nike", ItemType.HOODIE)
+        assert prior is not None
+        # Ten cotton readings would have outvoted three blends; only the last
+        # three readings are in the vote at all.
+        assert prior.value.root == {Fiber.COTTON: 80, Fiber.POLYESTER: 20}
+
     def test_brand_keys_are_case_and_space_insensitive(self) -> None:
         assert brand_key("  Nike ", ItemType.HOODIE) == brand_key("nike", ItemType.HOODIE)
         assert brand_key("Nike", ItemType.HOODIE) != brand_key("Nike", ItemType.T_SHIRT)

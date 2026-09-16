@@ -21,7 +21,7 @@ import time
 from fastapi import APIRouter, Depends
 
 from app.api.v1.dependencies import get_chat_adviser
-from app.core.errors import ProviderUnavailableError
+from app.core.errors import from_provider_error
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.schemas.scan import ScanDiagnostics
 from app.services.ai.base import ProviderError
@@ -45,7 +45,7 @@ async def ask(
     try:
         answer = await adviser.answer(request)
     except ProviderError as error:
-        raise ProviderUnavailableError(str(error)) from error
+        raise from_provider_error(error) from error
 
     return ChatResponse(
         reply=answer.reply,

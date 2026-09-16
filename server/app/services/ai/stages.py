@@ -64,6 +64,13 @@ class ProviderStage:
                 case ScanKind.PILE:
                     return await self._pile(request)
         except ProviderError as error:
+            if error.retry_after is not None:
+                # Not a verdict on the photograph, and no later stage could
+                # read it either — stages run cheapest first, so everything
+                # cheaper has already had its turn. Declining would answer
+                # "try a better photo" to a limit that will lift by itself;
+                # the route turns this into a 429 that says so.
+                raise
             # A provider failing is an ordinary outcome for a stage: the
             # pipeline should carry on and let another stage try, not collapse.
             # Logged rather than surfaced to the client — the client sees a

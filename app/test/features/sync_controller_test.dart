@@ -169,6 +169,22 @@ void main() {
     expect(container.read(syncControllerProvider), isA<SyncOff>());
   });
 
+  test('a second run while one is in flight is refused', () async {
+    // The app resuming while "Sync now" is mid-tap would otherwise start two
+    // engines over the same cursor, pushing the same changes twice and
+    // racing each other to record where they got to.
+    await controller().setToken('e' * 48);
+    container.read(backendUrlProvider.notifier).state = 'http://127.0.0.1:9/';
+
+    final first = controller().run();
+    final second = await controller().run();
+
+    expect(second, isFalse);
+    await first;
+    // And the first one still finishes, so the button comes back.
+    expect(container.read(syncControllerProvider), isA<SyncFailed>());
+  });
+
   test('an unreachable server is reported, not thrown', () async {
     // Offline-first: a dead network is the expected case, and it must not
     // become an exception every caller has to wrap.

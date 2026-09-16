@@ -6,6 +6,7 @@
 /// separate suite runs the whole thing against the real FastAPI service.
 library;
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -111,6 +112,29 @@ void main() {
       expect((await remote.pull()).isEmpty, isTrue);
     });
 
+    test("the server's own time comes back with a pull, as UTC", () async {
+      // It is what the engine records as the cursor. Dropped, the engine
+      // used the later time of the push — and anything another device sent
+      // in between was never asked for again.
+      final remote = remoteThat(
+        (_) => ok({
+          'items': [],
+          'events': [],
+          'serverTime': '2026-08-05T12:00:00+02:00',
+        }),
+      );
+
+      final pulled = await remote.pull();
+      expect(pulled.serverTime, DateTime.utc(2026, 8, 5, 10));
+      expect(pulled.serverTime!.isUtc, isTrue);
+    });
+
+    test('a server that does not say its time is not an error', () async {
+      final remote = remoteThat((_) => ok({'items': [], 'events': []}));
+
+      expect((await remote.pull()).serverTime, isNull);
+    });
+
     test('the accepted time comes back as UTC', () async {
       final remote = remoteThat(
         (_) => ok({'acceptedAt': '2026-08-05T12:00:00+02:00'}),
@@ -166,13 +190,31 @@ void main() {
       expect((await failureFrom(remote.pull)).isRetryable, isTrue);
     });
 
-    test('an oversized push is, because the backlog drains', () async {
+    test('an oversized push is not, and says where the fix is', () async {
+      // The engine already sends in pieces well under the server's default
+      // ceiling, so a 413 means the server was configured tighter than a
+      // piece. The same piece will get the same answer; it used to say the
+      // backlog would clear on its own, which it never could.
       final remote = remoteThat((_) => http.Response('{}', 413));
 
-      expect(
-        (await failureFrom(() => remote.push(const SyncPayload()))).isRetryable,
-        isTrue,
+      final failure = await failureFrom(() => remote.push(const SyncPayload()));
+      expect(failure.isRetryable, isFalse);
+      expect(failure.message, contains('limit'));
+    });
+
+    test('a server that never answers is given up on, and retryable', () async {
+      // A stalled connection used to leave the sync on "Syncing…" with its
+      // button disabled until the operating system gave up.
+      final remote = HttpSyncRemote(
+        baseUrl: Uri.parse('https://example.invalid/'),
+        token: 'a-token-long-enough-to-be-accepted-xxxx',
+        client: MockClient((_) => Completer<http.Response>().future),
+        timeout: const Duration(milliseconds: 20),
       );
+
+      final failure = await failureFrom(remote.pull);
+      expect(failure.isRetryable, isTrue);
+      expect(failure.message, contains('in time'));
     });
 
     test('a malformed body is not', () async {

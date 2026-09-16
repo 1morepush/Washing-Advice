@@ -18,7 +18,6 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../../widgets/status_message.dart';
-import '../history/wear_recorder.dart';
 import 'outfit_controller.dart';
 import 'outfit_pieces.dart';
 import 'saved_outfits.dart';
@@ -413,16 +412,13 @@ class _IdeaCard extends ConsumerWidget {
                 TextButton.icon(
                   onPressed: () async {
                     await ref
-                        .read(wearRecorderProvider)
-                        .recordOutfit(
-                          outfit.itemIds.toList(),
-                          occasion: occasion.name,
-                        );
+                        .read(outfitControllerProvider)
+                        .wearItems(outfit.itemIds, occasion: occasion.name);
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text(
-                          'Recorded. These now count as worn together.',
+                          'Recorded as worn together, and put in the basket.',
                         ),
                       ),
                     );

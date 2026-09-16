@@ -5,8 +5,12 @@
 /// asks a provider for what it needs.
 library;
 
+import 'dart:async';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/providers.dart';
@@ -16,6 +20,9 @@ import 'core/theme.dart';
 import 'data/images/image_store.dart';
 import 'data/images/memory_image_store.dart';
 import 'data/images/store_factory.dart';
+import 'data/notifications/local_nudges.dart';
+import 'data/notifications/nudges.dart';
+import 'features/laundry/evening_nudge.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -56,20 +63,41 @@ Future<void> main() async {
     images = MemoryImageStore();
   }
 
+  // Reminders: the platform's own notifications on a phone, nothing on the
+  // web, where no browser can schedule one for later. A phone whose
+  // notifications will not start still has a wardrobe, so that failure is
+  // logged and the feature is absent rather than the app.
+  Nudges nudges = const NoNudges();
+  if (!kIsWeb) {
+    try {
+      nudges = await LocalNudges.open();
+    } catch (error, stack) {
+      debugPrint('Washing Advice could not set up reminders: $error\n$stack');
+    }
+  }
+
+  final settings = SettingsStore(prefs);
+
+  // The platform's schedule is re-stated from the stored setting on every
+  // launch rather than trusted to survive updates and cleared data. Not
+  // awaited: nothing on screen depends on it.
+  unawaited(NudgeScheduler(nudges).apply(nudgeTimeOf(settings)));
+
+  // Read before the first frame, so a tap on the reminder while the app was
+  // closed opens the screen it was for — not the wardrobe, then a jump.
+  final launchRoute = await nudges.launchRoute();
+
   runApp(
     ProviderScope(
       overrides: [
-        settingsStoreProvider.overrideWithValue(SettingsStore(prefs)),
+        settingsStoreProvider.overrideWithValue(settings),
         // Seeded here rather than read on demand: see `splitDryingProvider`.
-        splitDryingProvider.overrideWith(
-          (ref) => SettingsStore(prefs).splitDrying,
-        ),
-        separateWashingProvider.overrideWith(
-          (ref) => SettingsStore(prefs).separateWashing,
-        ),
+        splitDryingProvider.overrideWith((ref) => settings.splitDrying),
+        separateWashingProvider.overrideWith((ref) => settings.separateWashing),
         imageStoreProvider.overrideWithValue(images),
+        nudgesProvider.overrideWithValue(nudges),
       ],
-      child: const WashingAdviceApp(),
+      child: WashingAdviceApp(initialLocation: launchRoute ?? '/'),
     ),
   );
 }
@@ -133,8 +161,37 @@ class StartupFailureApp extends StatelessWidget {
   );
 }
 
-class WashingAdviceApp extends StatelessWidget {
-  const WashingAdviceApp({super.key});
+class WashingAdviceApp extends ConsumerStatefulWidget {
+  const WashingAdviceApp({this.initialLocation = '/', super.key});
+
+  /// Where to open. The wardrobe, unless a reminder's tap launched the app.
+  final String initialLocation;
+
+  @override
+  ConsumerState<WashingAdviceApp> createState() => _WashingAdviceAppState();
+}
+
+class _WashingAdviceAppState extends ConsumerState<WashingAdviceApp> {
+  late final GoRouter _router = buildRouter(
+    initialLocation: widget.initialLocation,
+  );
+  StreamSubscription<String>? _taps;
+
+  @override
+  void initState() {
+    super.initState();
+    // A reminder tapped while the app is running, or in the background, goes
+    // to the screen it was for. A tap on a closed app is handled before this
+    // widget exists, through `initialLocation`.
+    _taps = ref.read(nudgesProvider).taps.listen(_router.go);
+  }
+
+  @override
+  void dispose() {
+    _taps?.cancel();
+    _router.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -146,7 +203,7 @@ class WashingAdviceApp extends StatelessWidget {
       // Follows the system. A laundry app is used in a utility room at night
       // as often as in daylight.
       themeMode: ThemeMode.system,
-      routerConfig: buildRouter(),
+      routerConfig: _router,
     );
   }
 }

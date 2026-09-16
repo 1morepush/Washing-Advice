@@ -3,7 +3,7 @@ description: >-
   AI wardrobe and laundry assistant. Presentation only — every judgement about
   how to treat a garment lives in the wardrobe_core package.
 publish_to: 'none'
-version: 0.28.0+1
+version: 0.29.0+1
 
 environment:
   sdk: ^3.12.2
@@ -41,6 +41,14 @@ dependencies:
   # "check for updates" flow talks to the service worker and Cache Storage
   # APIs itself.
   web: ^1.1.0
+
+  # The evening reminder. One scheduled notification, repeated daily by the
+  # operating system; the time-zone pair is what makes "half past eight"
+  # mean half past eight after the clocks change. None of it runs on the
+  # web, which gets a no-op instead — no browser can schedule a notification.
+  flutter_local_notifications: ^22.3.1
+  flutter_timezone: ^5.1.0
+  timezone: ^0.11.1
 
   # JPEG encoding, for the crop. `dart:ui` can only hand back raw pixels or a
   # PNG, and a PNG of a photograph is several megabytes where the JPEG it came

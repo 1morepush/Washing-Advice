@@ -13,6 +13,7 @@ import '../../data/api/ai_gateway.dart';
 import '../../widgets/app_drawer.dart';
 import '../sync/sync_section.dart';
 import 'machine_section.dart';
+import 'nudge_section.dart';
 import 'patch_notes.dart';
 import 'sorting_section.dart';
 import 'update_section.dart';
@@ -162,6 +163,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           const SizedBox(height: 32),
           const SortingSection(),
+
+          const SizedBox(height: 32),
+          const NudgeSection(),
 
           // Only where there is a service worker to clear — a native build,
           // should one ever exist, has no stale cache to get past.

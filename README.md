@@ -288,6 +288,14 @@ event log, brings up what you usually wear *with* it, and says so on the tile �
 a list that rearranges itself for no visible reason is worse than one that does
 not rearrange at all.
 
+The screen is only half of it, because an app that has to be remembered in
+that minute is not opened. **Settings → Evening reminder** schedules a
+notification at a time you choose — half past eight by default — that asks the
+question; its tap opens the three-tap screen directly, whether the app was
+running or closed. The phone runs the schedule rather than the app, so it
+keeps coming on evenings the app is never opened. Phone builds only: no
+browser can schedule a notification for later, and the web version says so.
+
 ### Keep track of what is dirty
 
 Every garment sits in one of four piles — **clean**, **to wash**, **washing**,

@@ -31,6 +31,7 @@ class SettingsStore {
   static const _syncTokenKey = 'syncToken';
   static const _syncCursorKey = 'syncCursorRemote';
   static const _syncLocalCursorKey = 'syncCursorLocal';
+  static const _nudgeMinutesKey = 'eveningNudgeMinutes';
 
   final SharedPreferences _prefs;
 
@@ -107,6 +108,25 @@ class SettingsStore {
 
   Future<void> setCustomDryer(DryerProfile? profile) =>
       _writeProfile(_customDryerKey, profile?.toJson());
+
+  /// When the evening reminder fires, as minutes after midnight, or null when
+  /// it is off.
+  ///
+  /// Minutes rather than a serialised time, so the value is one integer that
+  /// cannot be half-written, and null rather than a separate "enabled" flag,
+  /// so on and off cannot disagree with each other.
+  int? get nudgeMinutes {
+    final stored = _prefs.getInt(_nudgeMinutesKey);
+    return stored != null && stored >= 0 && stored < 24 * 60 ? stored : null;
+  }
+
+  Future<void> setNudgeMinutes(int? minutes) async {
+    if (minutes == null) {
+      await _prefs.remove(_nudgeMinutesKey);
+    } else {
+      await _prefs.setInt(_nudgeMinutesKey, minutes);
+    }
+  }
 
   /// The sync credential, or null when sync has not been set up.
   ///

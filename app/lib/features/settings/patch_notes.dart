@@ -96,6 +96,23 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.29.0',
+    name: 'Lights Out',
+    date: DateTime.utc(2026, 9, 16),
+    headline: 'A reminder each evening: "What did you wear today?"',
+    changes: [
+      'New in Settings: an evening reminder. Turn it on and a notification '
+          'arrives at a time you choose — half past eight unless you say '
+          'otherwise — asking what you wore today. Tap it and the three-tap '
+          'screen is already open.',
+      'It keeps coming whether or not you open the app, because the phone '
+          'runs it, not the app. Turn it off in the same place.',
+      'Phone app only. A browser cannot schedule a notification for later, '
+          'so the web version says so instead of offering a switch that '
+          'would do nothing.',
+    ],
+  ),
+  Release(
     version: '0.28.0',
     name: 'Lint Trap',
     date: DateTime.utc(2026, 9, 16),

@@ -273,6 +273,36 @@ void main() {
       expect(report.failure, isNotNull);
     },
   );
+
+  group('where a token may be sent', () {
+    // The token is the only credential, with no revocation. Over plain HTTP
+    // to the open internet it is readable by every network in between.
+    for (final url in [
+      'https://washing.example.com/',
+      'http://localhost:8000/',
+      'http://127.0.0.1:8000/',
+      'http://10.0.2.2:8000/', // the Android emulator's view of the host
+      'http://192.168.1.20:8000/',
+      'http://172.20.0.5/',
+      'http://nas.local/',
+    ]) {
+      test('allowed: $url', () {
+        expect(tokenMayTravelTo(Uri.parse(url)), isTrue);
+      });
+    }
+
+    for (final url in [
+      'http://washing.example.com/',
+      'http://203.0.113.9/',
+      'http://172.32.0.1/', // just past the private 172.16/12 block
+      'http://192.169.1.1/',
+      'ftp://localhost/',
+    ]) {
+      test('refused: $url', () {
+        expect(tokenMayTravelTo(Uri.parse(url)), isFalse);
+      });
+    }
+  });
 }
 
 /// Stands in for a socket failure without depending on `dart:io`, so this

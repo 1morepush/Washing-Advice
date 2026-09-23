@@ -6,11 +6,14 @@
 /// plain words at the point where they would otherwise assume an account.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/settings.dart';
+import '../../data/api/ai_gateway.dart' show wakingAfter;
 import 'sync_controller.dart';
 
 class SyncSection extends ConsumerStatefulWidget {
@@ -26,8 +29,32 @@ class _SyncSectionState extends ConsumerState<SyncSection> {
   );
   bool _revealed = false;
 
+  /// Whether a sync has been running long enough to need explaining.
+  ///
+  /// The same idea as the settings screen's server check: a free-tier host
+  /// that has gone to sleep takes the better part of a minute to answer, and
+  /// "Syncing…" with nothing else for that long reads as a hang.
+  bool _waking = false;
+  Timer? _wakingTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    ref.listenManual(syncControllerProvider, (_, next) {
+      _wakingTimer?.cancel();
+      if (next is SyncRunning) {
+        _wakingTimer = Timer(wakingAfter, () {
+          if (mounted) setState(() => _waking = true);
+        });
+      } else if (_waking) {
+        setState(() => _waking = false);
+      }
+    }, fireImmediately: true);
+  }
+
   @override
   void dispose() {
+    _wakingTimer?.cancel();
     _token.dispose();
     super.dispose();
   }
@@ -102,7 +129,7 @@ class _SyncSectionState extends ConsumerState<SyncSection> {
           ],
         ),
         const SizedBox(height: 12),
-        _Status(state: state),
+        _Status(state: state, waking: _waking),
         const SizedBox(height: 12),
         _Warning(),
       ],
@@ -111,9 +138,10 @@ class _SyncSectionState extends ConsumerState<SyncSection> {
 }
 
 class _Status extends StatelessWidget {
-  const _Status({required this.state});
+  const _Status({required this.state, this.waking = false});
 
   final SyncState state;
+  final bool waking;
 
   @override
   Widget build(BuildContext context) {
@@ -134,7 +162,10 @@ class _Status extends StatelessWidget {
       ),
       SyncRunning() => (
         Icons.sync,
-        'Syncing…',
+        waking
+            ? 'Still syncing. A server that sleeps when idle can take up to a '
+                  'minute to wake, and this is the request that wakes it.'
+            : 'Syncing…',
         theme.colorScheme.onSurfaceVariant,
       ),
       SyncDone(:final report) => (

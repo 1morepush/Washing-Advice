@@ -121,7 +121,7 @@ class RetakeController extends StateNotifier<RetakeState> {
   }
 
   Future<void> identify(ScanImage image) async {
-    final item = await _ref.read(wardrobeRepositoryProvider).byId(itemId);
+    final item = await _ref.read(wardrobeRepositoryProvider).liveById(itemId);
     if (item == null) {
       state = const RetakeFailed(
         'That item is no longer in your wardrobe.',

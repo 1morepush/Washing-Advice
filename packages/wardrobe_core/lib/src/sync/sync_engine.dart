@@ -27,6 +27,7 @@
 /// reason the events are pulled *before* the items are reconciled.
 library;
 
+import 'dart:convert';
 import 'dart:math' as math;
 
 import '../events/event_log.dart';
@@ -138,6 +139,10 @@ final class SyncReport {
         pushed = 0,
         merged = const {};
 
+  /// Records from the remote that changed something here.
+  ///
+  /// Not how many arrived: every run pulls back this device's own previous
+  /// push, and those change nothing.
   final int pulled;
   final int pushed;
 
@@ -268,6 +273,16 @@ class SyncEngine {
       );
     }
 
+    // What was already held, so the report can count only what is new here.
+    // Since the cursor is the pull's own time, every run pulls back whatever
+    // this device pushed the run before — harmless, because appending a held
+    // event is a no-op, but counted as received it told somebody who had just
+    // sent a thousand records that a thousand had arrived.
+    final held = incoming.events.isEmpty
+        ? const <EventId>{}
+        : {for (final event in await events.all()) event.id};
+    var received = incoming.events.where((e) => !held.contains(e.id)).length;
+
     // Events first. They are the source of truth for the counters, so folding
     // them in before reconciling items means the merge works from complete
     // history rather than from two partial views of it.
@@ -283,6 +298,7 @@ class SyncEngine {
       if (local == null) {
         await items.save(remoteItem);
         decisions[remoteItem.id] = const {};
+        received++;
         continue;
       }
 
@@ -298,6 +314,11 @@ class SyncEngine {
         // puts the tombstone in this run's push, where it overwrites that
         // row. Once both sides hold the tombstone nothing here fires again.
         merged = merged.copyWith(updatedAt: clock.now());
+      }
+      // Compared as stored, so an item that came back exactly as it left —
+      // this device's own last push — is not news.
+      if (jsonEncode(merged.toJson()) != jsonEncode(local.toJson())) {
+        received++;
       }
       await items.save(merged);
       decisions[remoteItem.id] = result.decisions;
@@ -338,7 +359,7 @@ class SyncEngine {
     await cursor.record(incoming.serverTime ?? acceptedAt, localAt: startedAt);
 
     return SyncReport(
-      pulled: incoming.length,
+      pulled: received,
       pushed: outgoing.length,
       merged: decisions,
       at: acceptedAt,

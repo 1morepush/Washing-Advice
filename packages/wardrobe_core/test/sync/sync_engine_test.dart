@@ -240,6 +240,35 @@ void main() {
     });
   });
 
+  group('what is reported as received', () {
+    test('what this device sent last time is not news', () async {
+      // The cursor is the pull's own time, so each run pulls back the last
+      // push. It changes nothing, and must not be counted as though it did.
+      await items.save(_jumper(updatedAt: monday));
+      await events.append(_worn('e1', monday));
+      remote.available = SyncPayload(
+        items: [_jumper(updatedAt: monday)],
+        events: [_worn('e1', monday)],
+      );
+
+      final report = await engine.sync();
+
+      expect(report.pulled, 0);
+    });
+
+    test('something new or changed is', () async {
+      await items.save(_jumper(updatedAt: monday));
+      remote.available = SyncPayload(
+        items: [_jumper(updatedAt: tuesday, name: 'Renamed')],
+        events: [_worn('fresh', tuesday)],
+      );
+
+      final report = await engine.sync();
+
+      expect(report.pulled, 2);
+    });
+  });
+
   group('the remote cursor', () {
     test("is the remote's clock at the pull, not at the push", () async {
       // Between this device's pull and its push, another device may push.

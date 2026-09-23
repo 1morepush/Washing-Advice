@@ -19,8 +19,11 @@ so nobody has to infer them:
   generate a new one and re-sync, abandoning the old bucket.
 * **No sharing or multi-user.** One token is one wardrobe.
 * **Transport is the only confidentiality.** The token is a bearer credential,
-  so it must travel over TLS. The service refuses to accept sync over plain
-  HTTP unless explicitly configured otherwise for local development.
+  so it must travel over TLS. The *app* enforces that: it will not send a token
+  over plain HTTP except to its own machine or a private network address. This
+  service does not check, and could not usefully — behind a TLS-terminating
+  host every request arrives as plain HTTP, and by the time a server could
+  object to a cleartext request the token has already crossed the network.
 
 Hashing before storage means a dump of the database does not hand an attacker
 working credentials — they would still have to invert SHA-256. It does not make

@@ -60,7 +60,7 @@ class CutoutController extends StateNotifier<CutoutStatus> {
 
     try {
       final repository = _ref.read(wardrobeRepositoryProvider);
-      final item = await repository.byId(itemId);
+      final item = await repository.liveById(itemId);
       final photo = item?.photos.displayPhoto;
 
       if (!mounted) return;

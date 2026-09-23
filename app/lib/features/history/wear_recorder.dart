@@ -102,7 +102,7 @@ class WearRecorder {
     // `WardrobeRecorder` rebuilds usage counters, which is all it knows about;
     // the condition is a different projection and is folded in here. Read back
     // after the append so this builds on whatever the recorder just wrote.
-    final item = await _ref.read(wardrobeRepositoryProvider).byId(id);
+    final item = await _ref.read(wardrobeRepositoryProvider).liveById(id);
     if (item == null) return;
 
     await _ref

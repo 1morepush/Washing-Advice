@@ -185,6 +185,23 @@ void main() {
     expect(container.read(syncControllerProvider), isA<SyncFailed>());
   });
 
+  test(
+    'a public server over plain http is refused before the token leaves',
+    () async {
+      await controller().setToken('e' * 48);
+      container.read(backendUrlProvider.notifier).state =
+          'http://washing.example.com/';
+
+      expect(await controller().run(), isFalse);
+
+      final state = container.read(syncControllerProvider) as SyncFailed;
+      expect(state.message, contains('https://'));
+      // Not retryable: the same address will be refused the same way, and the
+      // fix is the user's, in the address field.
+      expect(state.isRetryable, isFalse);
+    },
+  );
+
   test('an unreachable server is reported, not thrown', () async {
     // Offline-first: a dead network is the expected case, and it must not
     // become an exception every caller has to wrap.

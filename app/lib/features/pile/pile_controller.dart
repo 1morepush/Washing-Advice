@@ -290,7 +290,7 @@ class PileController extends StateNotifier<PileState> {
         return;
       }
 
-      final item = await _ref.read(wardrobeRepositoryProvider).byId(itemId);
+      final item = await _ref.read(wardrobeRepositoryProvider).liveById(itemId);
       if (item == null) return;
       if (state != planned) return;
 

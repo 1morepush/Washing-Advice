@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Resources a release build must not strip.
+
+     Nothing in code refers to the reminder's icon by resource id — the plugin
+     looks it up by name at the moment the notification is shown — so the
+     shrinker sees it as unused and removes it. The notification then fails
+     silently, or shows with no icon. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_stat_nudge" />

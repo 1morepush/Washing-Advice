@@ -98,7 +98,7 @@ class StainController extends StateNotifier<StainState> {
   }) async {
     if (substance.trim().isEmpty) return;
 
-    final item = await _ref.read(wardrobeRepositoryProvider).byId(itemId);
+    final item = await _ref.read(wardrobeRepositoryProvider).liveById(itemId);
     if (item == null) {
       state = const StainFailed(
         'That item is no longer in your wardrobe.',

@@ -186,6 +186,12 @@ void runRepositoryContractTests(String name, RepositoryFactory create) {
     test('do not put their brand in the filter sheet', () async {
       expect(await repository.knownBrands(), ['Nike']);
     });
+
+    test('are missing to anything that would act on them', () async {
+      // `byId` keeps the tombstone for sync; `liveById` is for screens.
+      expect(await repository.liveById(const ItemId('gone')), isNull);
+      expect(await repository.liveById(const ItemId('kept')), isNotNull);
+    });
   });
 
   group('$name: filtering', () {

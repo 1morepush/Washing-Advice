@@ -98,13 +98,9 @@ final knownCountriesProvider = FutureProvider<List<String>>(
 /// deletion can sync — but it is not an item anyone can look at, and null is
 /// what the detail screen already renders as "no longer exists". That is what
 /// a deep link to a garment deleted on another device should see.
-final itemProvider = FutureProvider.family<WardrobeItem?, ItemId>((
-  ref,
-  id,
-) async {
-  final item = await ref.watch(wardrobeRepositoryProvider).byId(id);
-  return item?.lifecycle == LifecycleState.removed ? null : item;
-});
+final itemProvider = FutureProvider.family<WardrobeItem?, ItemId>(
+  (ref, id) => ref.watch(wardrobeRepositoryProvider).liveById(id),
+);
 
 /// The scan backend, rebuilt when the configured URL changes.
 ///

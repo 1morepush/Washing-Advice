@@ -92,12 +92,22 @@ class SyncController extends StateNotifier<SyncState> {
       return false;
     }
 
+    final baseUrl = _ref.read(syncBaseUrlProvider);
+    if (!tokenMayTravelTo(baseUrl)) {
+      // Refused here rather than trusted to the server: by the time a server
+      // could object, the token has already crossed the network in the clear.
+      state = const SyncFailed(
+        'The server address starts with http://, which would send your sync '
+        'token unencrypted. Use an https:// address — plain http only works '
+        'for this device or your own home network.',
+        isRetryable: false,
+      );
+      return false;
+    }
+
     state = const SyncRunning();
 
-    final remote = HttpSyncRemote(
-      baseUrl: _ref.read(syncBaseUrlProvider),
-      token: token,
-    );
+    final remote = HttpSyncRemote(baseUrl: baseUrl, token: token);
 
     try {
       final report = await SyncEngine(

@@ -40,12 +40,42 @@ class SyncFailure implements Exception, RetryableFailure {
   String toString() => message;
 }
 
+/// Whether a bearer token may be sent to [server].
+///
+/// HTTPS anywhere, and plain HTTP only to this machine or a private network:
+/// a development server on the laptop, the Android emulator's `10.0.2.2`, a
+/// box on the home Wi-Fi. Anything else over plain HTTP would put the only
+/// credential to the wardrobe on the wire in the clear, readable by every
+/// network between here and the server — and with no revocation, a token
+/// read once is a wardrobe read for good.
+bool tokenMayTravelTo(Uri server) {
+  if (server.scheme == 'https') return true;
+  if (server.scheme != 'http') return false;
+
+  final host = server.host.toLowerCase();
+  if (host == 'localhost' || host.endsWith('.localhost')) return true;
+  // mDNS names — `nas.local` — only resolve on the network you are on.
+  if (host.endsWith('.local')) return true;
+  if (host == '::1' || host == '[::1]') return true;
+
+  final octets = host.split('.').map(int.tryParse).toList();
+  if (octets.length != 4 || octets.any((o) => o == null || o < 0 || o > 255)) {
+    return false;
+  }
+  final [a, b, _, _] = octets.cast<int>();
+  return a == 127 || // loopback
+      a == 10 ||
+      (a == 172 && b >= 16 && b <= 31) ||
+      (a == 192 && b == 168) ||
+      (a == 169 && b == 254); // link-local
+}
+
 class HttpSyncRemote implements SyncRemote {
   HttpSyncRemote({
     required this.baseUrl,
     required this.token,
     http.Client? client,
-    this.timeout = const Duration(seconds: 30),
+    this.timeout = const Duration(seconds: 90),
   }) : _client = client ?? http.Client();
 
   final Uri baseUrl;
@@ -57,9 +87,11 @@ class HttpSyncRemote implements SyncRemote {
   ///
   /// Without a limit a connection that stalls — a train tunnel, a phone
   /// switching networks mid-request — left the sync sitting on "Syncing…"
-  /// with its button disabled until the operating system gave up, which can
-  /// be minutes. Generous, because a first pull of a large wardrobe on a
-  /// free-tier host that has just woken is genuinely slow.
+  /// with its button disabled until the operating system gave up. Ninety
+  /// seconds, the same as the scan calls, because a free-tier host that has
+  /// gone to sleep takes the better part of a minute to answer its first
+  /// request: thirty, which this once was, failed the first sync after every
+  /// idle spell and only worked on the second tap.
   final Duration timeout;
 
   final http.Client _client;

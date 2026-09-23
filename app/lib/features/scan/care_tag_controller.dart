@@ -161,7 +161,7 @@ class CareTagController extends StateNotifier<CareTagState> {
   }
 
   Future<void> readImages(List<ScanImage> images) async {
-    final item = await _ref.read(wardrobeRepositoryProvider).byId(itemId);
+    final item = await _ref.read(wardrobeRepositoryProvider).liveById(itemId);
     if (item == null) {
       state = const CareTagFailed(
         'That item is no longer in your wardrobe.',
@@ -243,7 +243,7 @@ class CareTagController extends StateNotifier<CareTagState> {
   /// is how somebody says "start from this reading alone".
   Future<void> replaceEarlierLabel() async {
     if (state case final CareTagReviewing reviewing) {
-      final item = await _ref.read(wardrobeRepositoryProvider).byId(itemId);
+      final item = await _ref.read(wardrobeRepositoryProvider).liveById(itemId);
       if (item == null) return;
       state = _review(item, reviewing.reading, reviewing.images, true);
     }

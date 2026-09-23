@@ -96,6 +96,33 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.29.1',
+    name: 'Spot Treatment',
+    date: DateTime.utc(2026, 9, 23),
+    headline: 'Six repairs from a second read of the code',
+    changes: [
+      'The first sync after the server has been asleep no longer fails. It '
+          'gave up after thirty seconds, and a sleeping free-tier server can '
+          'take most of a minute to wake — so it only worked on the second '
+          'tap. It now waits, and says why it is taking a while.',
+      'Your sync token is never sent unencrypted. The app refuses to sync '
+          'to a plain http:// address unless it is this device or your own '
+          'home network, and says so, instead of putting the only key to your '
+          'wardrobe on the wire in the clear.',
+      'The evening reminder has a proper icon on Android — a coat hanger — '
+          'instead of what would have shown as a white square, and a release '
+          'build keeps it.',
+      'After a sync, "received" counts only what actually changed here. It '
+          'used to count your own last upload coming back, so sending a '
+          'thousand changes was followed by "1000 received".',
+      'A garment deleted on another phone can no longer be edited through a '
+          'link to its stain, care-label or photo screens. They say it no '
+          'longer exists, as its main screen already did.',
+      'With two loads in the basket, starting one no longer resets the other '
+          'one\'s "Ran it on …" tick.',
+    ],
+  ),
+  Release(
     version: '0.29.0',
     name: 'Lights Out',
     date: DateTime.utc(2026, 9, 16),

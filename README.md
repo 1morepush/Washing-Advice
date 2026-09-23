@@ -767,7 +767,11 @@ Sync is off until you configure it, and the app is fully usable without it.
    *is* the account — there is no signup.
 
 **Put it behind TLS if it leaves your own network.** The token is a bearer
-credential, so anything that can read the traffic can read the wardrobe.
+credential, so anything that can read the traffic can read the wardrobe. The
+app enforces this: it syncs to an `https://` address, or over plain `http://`
+only to this device or a private network (`localhost`, `10.x`, `192.168.x`,
+`172.16–31.x`, `*.local`), and refuses anything else before the token leaves
+the phone.
 
 To check the whole thing works, the end-to-end suite starts the real server and
 drives two devices against it:

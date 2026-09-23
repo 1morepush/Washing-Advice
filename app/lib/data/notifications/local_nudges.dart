@@ -27,10 +27,20 @@ final class LocalNudges implements Nudges {
   /// replace it rather than pile up a second.
   static const _id = 1;
 
+  /// The status-bar icon, a drawable in `android/app/src/main/res`.
+  ///
+  /// Not the launcher icon. Android draws this as a silhouette from its
+  /// alpha channel alone, so a full-colour icon becomes a white square; and
+  /// it is looked up by name, so `res/raw/keep.xml` has to stop a release
+  /// build stripping it. A test holds the name, the file and the keep rule
+  /// together.
+  static const androidIcon = 'ic_stat_nudge';
+
   static const _channel = AndroidNotificationDetails(
     'evening-nudge',
     'Evening reminder',
     channelDescription: 'Asks what you wore today, once a day.',
+    icon: androidIcon,
   );
 
   final FlutterLocalNotificationsPlugin _plugin;
@@ -65,7 +75,7 @@ final class LocalNudges implements Nudges {
     final nudges = LocalNudges._(plugin, location);
     await plugin.initialize(
       settings: const InitializationSettings(
-        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        android: AndroidInitializationSettings(androidIcon),
         // Not asked for at startup. Permission is requested when the switch
         // is turned on, which is the moment the question makes sense.
         iOS: DarwinInitializationSettings(

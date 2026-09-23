@@ -57,8 +57,9 @@ void main() {
     String id, {
     String? name,
     bool tumbleDry = true,
+    String hex = '#3C3F44',
   }) async {
-    final base = confidentItem(id: id, name: name ?? 'Cotton tee');
+    final base = confidentItem(id: id, name: name ?? 'Cotton tee', hex: hex);
     // Stated on the label, so it is the manufacturer's instruction rather
     // than something the rule table inferred and might change its mind about.
     final labelled = base.copyWith(
@@ -365,6 +366,46 @@ void main() {
 
       expect(find.text('Move to washing'), findsNothing);
       expect(find.textContaining('drum'), findsNothing);
+    });
+  });
+
+  group('two loads in the basket', () {
+    testWidgets('starting one leaves the other its own "Ran it on" answer', (
+      tester,
+    ) async {
+      // Load ids are positional, and so was the checkbox's state: once the
+      // first load started and left the list, the second took its slot and
+      // inherited its box. Somebody who had unticked the second load's box
+      // found it ticked again, and the record said yes when they had said no.
+      container.read(washerBrandProvider.notifier).state = 'Bosch';
+      final white = await save('white', name: 'White tee', hex: '#FAFAFA');
+      final dark = await save('dark', name: 'Black tee', hex: '#111111');
+      await controller().move([white.id, dark.id], LifecycleState.inLaundry);
+
+      tester.view.physicalSize = const Size(1000, 2600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: LaundryScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('To wash (2)'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CheckboxListTile), findsNWidgets(2));
+      await tester.tap(find.byType(CheckboxListTile).last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Start this load').first);
+      await tester.pumpAndSettle();
+
+      final remaining = tester.widget<CheckboxListTile>(
+        find.byType(CheckboxListTile),
+      );
+      expect(remaining.value, isFalse);
     });
   });
 }

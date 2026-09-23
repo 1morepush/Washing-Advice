@@ -17,8 +17,24 @@ import '../events/event_log.dart';
 import '../events/projections.dart';
 import '../events/wardrobe_event.dart';
 import '../shared/ids.dart';
+import 'model/lifecycle.dart';
 import 'model/wardrobe_item.dart';
 import 'query.dart';
+
+/// Lookups for code that acts on a garment somebody is looking at.
+extension LiveItems on WardrobeRepository {
+  /// The item, or null if it does not exist *or has been deleted*.
+  ///
+  /// [WardrobeRepository.byId] returns a deleted item's tombstone, because
+  /// sync has to merge against it. Every screen that edits a garment — a care
+  /// label, a stain, a retake — wants this instead: reached by a deep link to
+  /// a garment deleted on another phone, those screens used to carry on and
+  /// write onto a row nobody can see.
+  Future<WardrobeItem?> liveById(ItemId id) async {
+    final item = await byId(id);
+    return item?.lifecycle == LifecycleState.removed ? null : item;
+  }
+}
 
 /// Reads and writes wardrobe items.
 abstract interface class WardrobeRepository {

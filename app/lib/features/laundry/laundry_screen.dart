@@ -263,6 +263,14 @@ class _Plan extends ConsumerWidget {
       children: [
         for (final load in plan.loads)
           Padding(
+            // Keyed by what is in the load, so its card — and the "Ran it on
+            // …" box inside — travels with it when an earlier load starts and
+            // leaves the list. Not by position, and not by id: load ids are
+            // positional too (`load.1`, `load.2`), so either way the second
+            // load inherited the first one's box.
+            key: ValueKey(
+              [for (final item in load.items) item.id.value].join('|'),
+            ),
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
             child: LoadCard(
               load: load,

@@ -26,6 +26,11 @@ which cycle to select on *your* machine.
   checked against that garment before you see it.
 - **Ask what to wear.** Outfits built from what you own, and — if you ask — a
   model's opinion on top, including which piece your wardrobe is missing.
+- **Say what you wore, in three taps.** At the front door, tired: tap what you
+  had on and it is logged and put in the basket, no photo. An optional evening
+  reminder opens that screen for you.
+- **Ask it anything.** "Can this go in the dryer?" answered against your own
+  wardrobe, with a label reading kept apart from a guess.
 
 **The rule the whole thing is built around: no laundry decision is ever made by
 a language model.** The AI turns pixels into facts — what this garment is, what
@@ -829,9 +834,9 @@ A few decisions worth reading about:
 
 | # | Scope | Status |
 |---|---|---|
-| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 593 core tests |
-| 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts, machine identification | **Done** — 325 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 584 app tests |
+| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 657 core tests |
+| 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts, machine identification | **Done** — 404 tests |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 793 app tests |
 | 4 | Care-label scanning, item editing, filter sheet, garment cutouts, grid view | **Done** |
 | 5 | Pile scanning, load grouping, machine profiles, wear and wash history | **Done** |
 | 6 | Outfit suggestions, laundry-aware packing, wardrobe insights | **Done** |
@@ -850,8 +855,15 @@ A few decisions worth reading about:
 | 16 | Naming the pieces a wardrobe does not have, without becoming shopping | **Done** |
 | 17 | The care label read from the same photographs as the garment | **Done** |
 | 18 | A whole pile photographed first and submitted in one go | **Done** |
+| 19 | Cropping a photo to the garment; loads shown as pictures; fabric and origin charts | **Done** |
+| 20 | Your own care instructions; a load split for drying, or each colour washed alone | **Done** |
+| 21 | A failed scan in a batch handed back with its photo, to find in the heap | **Done** |
+| 22 | Ask: questions answered against your own wardrobe, on the free tier | **Done** |
+| 23 | Several garments from one photo, a camera roll imported, one tap per garment | **Done** |
+| 24 | "What did you wear today?" in three taps, and an evening reminder that opens it | **Done** |
+| 25 | Deletion that syncs, a pile scan that asks about near-matches, rate limits handled | **Done** |
 
-Released as `0.18.1 — Button Up`; the app's own **Settings → What's new**
+Released as `0.29.1 — Spot Treatment`; the app's own **Settings → What's new**
 carries the full list, and `app/lib/features/settings/patch_notes.dart` records
 which version digit moves for what.
 
@@ -872,10 +884,11 @@ Stated plainly, because the code says so too.
   from the start; an AI-identified exact model is only as good as its own
   knowledge of that appliance. Both are meant to be corrected the first time
   a programme does not match the dial.
-- **The Gemini provider has never run against the live API.** It is written to
-  the documented interface and tested with a stubbed transport, which proves the
-  code does what it was written to do and says nothing about whether the API
-  agrees. Only a key settles that:
+- **The Gemini provider is tested against a stub, not the live API.** It has
+  been run for real — scans, labels and Ask answers from a live key are what
+  found the cut-off answers fixed in 0.25.1 and the runaway names fixed in
+  0.25.2 — but CI has no key, so nothing checks the live contract on each
+  change. A smoke test does, when run by hand with a key:
 
   ```sh
   cd server
@@ -949,15 +962,24 @@ Stated plainly, because the code says so too.
   garment whose colour was never named blocks nothing — silence is not sameness,
   the same rule the duplicate grouping follows. It errs towards showing a
   suggestion, which costs a glance, rather than hiding a good one.
-- **Bulk adding needs you to say where each garment ends.** Nothing infers it
-  from the photographs, and nothing is going to until getting it wrong costs
-  less than a tap does.
+- **Bulk adding needs you to say where each garment ends** — or to switch on
+  one photo per garment, which makes every shot its own garment. Nothing infers
+  the boundary from the photographs, and nothing is going to until getting it
+  wrong costs less than a tap does.
 - **The Stylist's "what I am missing" box is not remembered** between launches.
   It is session state rather than a saved setting.
 - **The web build has never been used in anger.** It persists now — images live
   in a small database of their own that Drift keeps in IndexedDB or OPFS — but
   the target is phones, and the browser build exists mainly for trying the app
   and taking these screenshots.
+- **The phone builds' notification setup has not been compiled here.** The
+  evening reminder's Android manifest, Gradle desugaring, status-bar icon and
+  iOS delegate follow the plugin's own example, but CI builds neither platform,
+  so the first local `flutter build apk` or iOS build is what proves them.
+- **Sync only runs when you tap "Sync now".** Nothing syncs on launch or in the
+  background yet, so two devices drift until one of them is told to catch up.
+- **There is no export.** Sync is the only copy off the phone, and its token
+  cannot be recovered; a JSON backup of garments and history does not exist yet.
 - **Sync has no hosted deployment.** The endpoints, the client and the
   reconciliation all exist and are exercised end to end against a real server in
   CI, but nobody is running that server anywhere. You point the app at your own.

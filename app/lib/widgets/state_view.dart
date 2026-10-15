@@ -13,7 +13,8 @@ library;
 
 import 'package:flutter/material.dart';
 
-/// The layout all of them share: centred, scrollable-safe, padded.
+/// The layout all of them share: a padded, centred column. It does not
+/// scroll, so content taller than the screen (very large text) would overflow.
 class _Centered extends StatelessWidget {
   const _Centered({required this.children, this.padded = true});
 

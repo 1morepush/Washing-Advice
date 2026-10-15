@@ -13,6 +13,7 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 // The ten-year database: today's rules for every zone, about a sixth of the
@@ -58,23 +59,42 @@ final class LocalNudges implements Nudges {
   /// before the first frame, for a reminder that a launch with the setting
   /// off never schedules, and that one that does schedule it does not wait
   /// for. Cancelling needs no zone at all.
-  Future<tz.Location> _locate() => _location ??= _findLocation();
-  Future<tz.Location>? _location;
-
-  static Future<tz.Location> _findLocation() async {
-    tzdata.initializeTimeZones();
-    tz.Location location;
-    try {
-      final zone = await FlutterTimezone.getLocalTimezone();
-      location = tz.getLocation(zone.identifier);
-    } on Exception {
-      // A zone the database does not know, or a platform that would not say.
-      // UTC keeps the reminder firing; only the clock-change drift is lost.
-      location = tz.UTC;
-    }
-    tz.setLocalLocation(location);
+  Future<tz.Location> _locate() async {
+    if (_location case final tz.Location known) return known;
+    final (location, complete) = await findLocation();
+    // A fallback is used but not kept, so a later schedule tries again.
+    if (complete) _location = location;
     return location;
   }
+
+  tz.Location? _location;
+
+  /// Loads the database and finds the phone's zone, or falls back to UTC.
+  ///
+  /// `complete` is false when anything failed, including the database itself
+  /// not loading. UTC keeps the reminder firing; only the clock-change drift
+  /// is lost. [loadDatabase] and [zoneId] are seams for a test.
+  @visibleForTesting
+  static Future<(tz.Location, bool)> findLocation({
+    void Function() loadDatabase = tzdata.initializeTimeZones,
+    Future<String> Function() zoneId = _deviceZone,
+  }) async {
+    var location = tz.UTC;
+    var complete = true;
+    try {
+      loadDatabase();
+      location = tz.getLocation(await zoneId());
+    } on Object {
+      // A zone the database does not know, a platform that would not say, or
+      // a database that would not load.
+      complete = false;
+    }
+    tz.setLocalLocation(location);
+    return (location, complete);
+  }
+
+  static Future<String> _deviceZone() async =>
+      (await FlutterTimezone.getLocalTimezone()).identifier;
 
   final _taps = StreamController<String>.broadcast();
 

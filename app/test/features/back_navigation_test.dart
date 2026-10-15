@@ -9,12 +9,20 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 import 'package:washing_advice/core/providers.dart';
+import 'package:washing_advice/core/router.dart';
 import 'package:washing_advice/core/settings.dart';
 import 'package:washing_advice/data/images/memory_image_store.dart';
+import 'package:washing_advice/data/capture/image_capture_source.dart';
 import 'package:washing_advice/features/laundry/evening_nudge.dart';
+import 'package:washing_advice/features/pile/pile_screen.dart';
+import 'package:washing_advice/features/scan/crop_screen.dart';
+import 'package:washing_advice/features/scan/scan_controller.dart';
+import 'package:washing_advice/features/scan/scan_screen.dart';
+import 'package:washing_advice/features/settings/settings_screen.dart';
 import 'package:washing_advice/features/laundry/laundry_screen.dart';
 import 'package:washing_advice/features/laundry/worn_today_screen.dart';
 import 'package:washing_advice/features/stains/stain_screen.dart';
@@ -45,6 +53,11 @@ void main() {
         eventLogProvider.overrideWithValue(InMemoryEventLog()),
         imageStoreProvider.overrideWithValue(MemoryImageStore()),
         nudgesProvider.overrideWithValue(nudges),
+        imageCaptureProvider.overrideWithValue(
+          FixedImageCaptureSource([
+            const ScanImage(bytes: [1, 2, 3]),
+          ]),
+        ),
       ],
     );
     addTearDown(container.dispose);
@@ -151,5 +164,79 @@ void main() {
 
     await backArrow(tester);
     expect(find.byType(LaundryScreen), findsOneWidget);
+  });
+
+  testWidgets('settings pushed from the pile has a back arrow', (tester) async {
+    await open(tester, location: '/pile');
+    await tester.tap(find.text('Set your machine to get exact programs'));
+    await tester.pumpAndSettle();
+    expect(find.byType(SettingsScreen), findsOneWidget);
+    expect(find.byType(BackButton), findsOneWidget);
+    expect(find.byTooltip('Open navigation menu'), findsNothing);
+
+    await backArrow(tester);
+    expect(find.byType(PileScreen), findsOneWidget);
+  });
+
+  testWidgets('settings from the drawer keeps the hamburger', (tester) async {
+    await open(tester, location: '/settings');
+
+    expect(find.byType(BackButton), findsNothing);
+    expect(find.byTooltip('Open navigation menu'), findsOneWidget);
+  });
+
+  group('the scan screen forgets its photos when left', () {
+    Future<void> collectOnePhoto(WidgetTester tester) async {
+      await open(tester);
+      await tester.tap(find.byTooltip('Add garments'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('One garment'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Take a photo'));
+      await tester.pumpAndSettle();
+      expect(container.read(scanControllerProvider), isA<ScanCollecting>());
+    }
+
+    testWidgets('by the Back arrow', (tester) async {
+      await collectOnePhoto(tester);
+
+      await backArrow(tester);
+
+      expect(find.byType(ScanScreen), findsNothing);
+      expect(container.read(scanControllerProvider), isA<ScanIdle>());
+    });
+
+    testWidgets('by the system gesture', (tester) async {
+      await collectOnePhoto(tester);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ScanScreen), findsNothing);
+      expect(container.read(scanControllerProvider), isA<ScanIdle>());
+    });
+
+    testWidgets('but not when a screen on top of it is closed', (tester) async {
+      await collectOnePhoto(tester);
+
+      await tester.tap(find.byType(InkWell).first);
+      await tester.pumpAndSettle();
+      expect(find.byType(CropScreen), findsOneWidget);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CropScreen), findsNothing);
+      expect(find.byType(ScanScreen), findsOneWidget);
+      expect(container.read(scanControllerProvider), isA<ScanCollecting>());
+    });
+  });
+
+  test('the address bar follows pushed screens', () {
+    // Off by default in go_router, which left the browser on `/` after a push
+    // and made a reload or a shared link of a pushed screen open the wrong one.
+    GoRouter.optionURLReflectsImperativeAPIs = false;
+    buildRouter().dispose();
+    expect(GoRouter.optionURLReflectsImperativeAPIs, isTrue);
   });
 }

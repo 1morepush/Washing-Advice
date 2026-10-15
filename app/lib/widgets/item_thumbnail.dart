@@ -108,7 +108,7 @@ class ItemThumbnail extends ConsumerWidget {
     final ImageProvider source;
     final store = ref.watch(imageStoreProvider);
     final path = switch (store) {
-      FileBackedImageStore() => (store as FileBackedImageStore).pathFor(uri),
+      final FileBackedImageStore files => files.pathFor(uri),
       _ => null,
     };
     if (path != null) {

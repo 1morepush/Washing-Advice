@@ -15,13 +15,15 @@ import 'dart:async';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
-import 'package:timezone/data/latest_all.dart' as tzdata;
+// The ten-year database: today's rules for every zone, about a sixth of the
+// size of the full history, and a reminder only ever looks forward.
+import 'package:timezone/data/latest_10y.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'nudges.dart';
 
 final class LocalNudges implements Nudges {
-  LocalNudges._(this._plugin, this._location);
+  LocalNudges._(this._plugin);
 
   /// The one daily reminder. A fixed id is what makes scheduling again
   /// replace it rather than pile up a second.
@@ -45,20 +47,21 @@ final class LocalNudges implements Nudges {
 
   final FlutterLocalNotificationsPlugin _plugin;
 
-  /// Where "half past eight in the evening" is.
+  /// Where "half past eight in the evening" is, found the first time a
+  /// reminder is scheduled rather than at startup.
   ///
   /// The daily repeat matches the time of day in *this* zone, so it has to
   /// be the phone's real one: scheduled in UTC, a reminder set for 20:30
   /// would move by an hour every time the clocks changed.
-  final tz.Location _location;
-
-  final _taps = StreamController<String>.broadcast();
-
-  /// Starts the plugin and finds the local time zone.
   ///
-  /// Throws if the platform refuses, which `main()` turns into [NoNudges]:
-  /// a phone whose notifications cannot be set up still has a wardrobe.
-  static Future<LocalNudges> open() async {
+  /// Lazy because opening the store used to parse the time zone database
+  /// before the first frame, for a reminder that a launch with the setting
+  /// off never schedules, and that one that does schedule it does not wait
+  /// for. Cancelling needs no zone at all.
+  Future<tz.Location> _locate() => _location ??= _findLocation();
+  Future<tz.Location>? _location;
+
+  static Future<tz.Location> _findLocation() async {
     tzdata.initializeTimeZones();
     tz.Location location;
     try {
@@ -70,9 +73,18 @@ final class LocalNudges implements Nudges {
       location = tz.UTC;
     }
     tz.setLocalLocation(location);
+    return location;
+  }
 
+  final _taps = StreamController<String>.broadcast();
+
+  /// Starts the plugin and finds the local time zone.
+  ///
+  /// Throws if the platform refuses, which `main()` turns into [NoNudges]:
+  /// a phone whose notifications cannot be set up still has a wardrobe.
+  static Future<LocalNudges> open() async {
     final plugin = FlutterLocalNotificationsPlugin();
-    final nudges = LocalNudges._(plugin, location);
+    final nudges = LocalNudges._(plugin);
     await plugin.initialize(
       settings: const InitializationSettings(
         android: AndroidInitializationSettings(androidIcon),
@@ -133,21 +145,24 @@ final class LocalNudges implements Nudges {
     required String title,
     required String body,
     required String route,
-  }) => _plugin.zonedSchedule(
-    id: _id,
-    title: title,
-    body: body,
-    payload: route,
-    // The same instant, expressed in the phone's zone, so the daily match on
-    // time of day is a match on the wall clock the person set.
-    scheduledDate: tz.TZDateTime.from(firstAt, _location),
-    notificationDetails: const NotificationDetails(
-      android: _channel,
-      iOS: DarwinNotificationDetails(),
-    ),
-    androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-    matchDateTimeComponents: DateTimeComponents.time,
-  );
+  }) async {
+    final location = await _locate();
+    await _plugin.zonedSchedule(
+      id: _id,
+      title: title,
+      body: body,
+      payload: route,
+      // The same instant, expressed in the phone's zone, so the daily match on
+      // time of day is a match on the wall clock the person set.
+      scheduledDate: tz.TZDateTime.from(firstAt, location),
+      notificationDetails: const NotificationDetails(
+        android: _channel,
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+  }
 
   @override
   Future<void> cancel() => _plugin.cancel(id: _id);

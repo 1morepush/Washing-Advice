@@ -65,6 +65,24 @@ async function tapText(page, text) {
   await page.waitForTimeout(1200);
 }
 
+/** Fails unless the bottom bar's five places are on screen.
+ *
+ * The bar replaced a drawer, and every other step here navigates by address,
+ * which would carry on happily with no bar at all. This is the one place the
+ * script looks at the navigation itself, so a build that lost it fails the run
+ * instead of producing a full set of screenshots of a screen with no way
+ * between them. Same two lookups as `tapText`, for the same reason.
+ */
+async function expectBar(page) {
+  for (const label of ['Wardrobe', 'Laundry', 'Outfits', 'Ask', 'More']) {
+    const byText = page.getByText(label, { exact: true });
+    const byLabel = page.getByLabel(label, { exact: false });
+    const found =
+      (await byText.count()) > 0 || (await byLabel.count()) > 0;
+    if (!found) throw new Error(`The bottom bar has no "${label}"`);
+  }
+}
+
 /** Taps the wardrobe's grid/list toggle and fails unless the view changed.
  *
  * `from` is the label of the button to press, which names what pressing it
@@ -106,6 +124,7 @@ for (const theme of ['light', 'dark']) {
   });
   await page.waitForTimeout(800);
 
+  await expectBar(page);
   await shot(page, `wardrobe-${theme}`);
 
   // The list view, reached through the toggle. Both are worth showing: the
@@ -188,8 +207,8 @@ for (const theme of ['light', 'dark']) {
     await page.waitForTimeout(3000);
     await shot(page, 'laundry-plan');
 
-    // The four piles. `laundry-piles` predates the way back out of one, so
-    // both the basket and the machine are shot from the current build.
+    // The three stages (basket, washing, drying). `laundry-piles` predates the
+    // way back out of one, so the stages are shot from the current build.
     await page.goto(`${BASE}/#/laundry`, { waitUntil: 'load' });
     await ready(page);
     await shot(page, 'laundry-piles');
@@ -213,9 +232,10 @@ for (const theme of ['light', 'dark']) {
     await ready(page);
     await shot(page, 'outfits');
 
-    // The saved tab, reached by its own address rather than by tapping — a
+    // The Saved tab, reached by its own address rather than by tapping — a
     // Flutter TabBar label is not reliably in the accessibility tree, and the
-    // route exists precisely so screens are drivable without one.
+    // route exists precisely so screens are drivable without one. Ideas, the
+    // other tab, is `/outfits`, shot just above.
     await page.goto(`${BASE}/#/outfits/saved`, { waitUntil: 'load' });
     await ready(page);
     await shot(page, 'outfits-saved');
@@ -224,8 +244,13 @@ for (const theme of ['light', 'dark']) {
     await ready(page);
     await shot(page, 'packing');
 
-    await page.goto(`${BASE}/#/settings`, { waitUntil: 'load' });
+    // Settings the way a person gets there now: through More. Failing to find
+    // either word means the list or the bar has lost its way in.
+    await page.goto(`${BASE}/#/more`, { waitUntil: 'load' });
     await ready(page);
+    await expectBar(page);
+    await tapText(page, 'Settings');
+    await page.waitForTimeout(1200);
     await shot(page, 'settings');
   }
 

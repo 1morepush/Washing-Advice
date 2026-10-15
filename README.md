@@ -294,7 +294,7 @@ a list that rearranges itself for no visible reason is worse than one that does
 not rearrange at all.
 
 The screen is only half of it, because an app that has to be remembered in
-that minute is not opened. **Settings → Evening reminder** schedules a
+that minute is not opened. **Settings → Reminders** schedules a
 notification at a time you choose — half past eight by default — that asks the
 question; its tap opens the three-tap screen directly, whether the app was
 running or closed. The phone runs the schedule rather than the app, so it
@@ -303,10 +303,13 @@ browser can schedule a notification for later, and the web version says so.
 
 ### Keep track of what is dirty
 
-Every garment sits in one of four piles — **clean**, **to wash**, **washing**,
-**drying** — and the Laundry screen moves things between them. The to-wash pile
-is not a list: it is run through the same sorting engine as a pile scan, so it
-shows the loads to run, the programme and temperature for each, and why.
+Every garment sits in one of four piles — **clean**, **in the basket**,
+**washing**, **drying** — and the Laundry tab shows the last three as **Basket,
+Washing, Drying** (the clean pile is the Wardrobe, one tap along the bottom bar)
+and moves things between them. The basket is not a list: it is run through the
+same sorting engine as a pile scan, so it shows the loads to run, the programme
+and temperature for each, and why. **Photograph a pile** is at the top of the
+Basket, where the washing is.
 
 Four ways in, because the moment you notice something is dirty varies:
 
@@ -479,17 +482,19 @@ The suggestions above are arithmetic the app can defend line by line. They also
 have no opinion on pattern, texture, proportion or formality, and will happily
 put a pinstripe with a check because both are navy.
 
-The **Stylist** tab is where that judgement is delegated — the one place in the
+The **Stylist** section of **Outfits → Ideas** is where that judgement is delegated — the one place in the
 app a model's *opinion* is welcome, because nothing here can ruin a garment. A
 bad outfit is a bad day. It reads what your wardrobe is made of, not your
 photographs, and gives its reasoning in its own words so you can disagree with
-it. Its own tab rather than mixed in, because taste and arithmetic are
-different things and you are entitled to know which you are reading.
+it. Under the same occasion filter as the built suggestions but in a section of
+its own, and every card is labelled — "From your wardrobe" or "Stylist idea" —
+because taste and arithmetic are different things and you are entitled to know
+which you are reading.
 
 What is *not* delegated is the facts. Every proposal is resolved against the
 real wardrobe first: an id it made up, a garment in the wash, two tops at once,
 or anything that does not add up to something wearable is refused before you
-see it, and the tab says how many were set aside and why.
+see it, and the section says how many were set aside and why.
 
 **What you are missing.** Tick a box and it also names pieces you do not own
 that would go with the ones you do — the dark blue jeans a light graphic tee has
@@ -746,7 +751,7 @@ development.
 
 A web build saved to a phone's home screen as a PWA does not reliably notice
 a new deployment on its own — Safari's background service-worker checks are
-particularly unreliable. **Settings → App updates → Check for updates**
+particularly unreliable. **Settings → Advanced → App updates → Check for updates**
 forces a fresh copy from inside the app: it unregisters the service worker,
 clears what the browser cached, and reloads — the same result as deleting the
 icon and re-adding it, without doing either.
@@ -773,7 +778,7 @@ Sync is off until you configure it, and the app is fully usable without it.
 1. Run the server somewhere both devices can reach. It stores synced records in
    `data/sync.db` by default; set `SYNC_DB_PATH` to move it, or `SYNC_ENABLED=false`
    to serve no sync endpoints at all.
-2. In the app: **Settings → Sync between devices → Generate**, then **Save**.
+2. In the app: **Settings → Sync → Generate**, then **Save**.
 3. Copy that same token into the other device and save it there too. The token
    *is* the account — there is no signup.
 
@@ -842,7 +847,7 @@ A few decisions worth reading about:
 |---|---|---|
 | 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 662 core tests |
 | 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts, machine identification | **Done** — 404 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 871 app tests |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 904 app tests |
 | 4 | Care-label scanning, item editing, filter sheet, garment cutouts, grid view | **Done** |
 | 5 | Pile scanning, load grouping, machine profiles, wear and wash history | **Done** |
 | 6 | Outfit suggestions, laundry-aware packing, wardrobe insights | **Done** |
@@ -869,8 +874,9 @@ A few decisions worth reading about:
 | 24 | "What did you wear today?" in three taps, and an evening reminder that opens it | **Done** |
 | 25 | Deletion that syncs, a pile scan that asks about near-matches, rate limits handled | **Done** |
 | 26 | Appearance: match the phone, light, dark, or true black for OLED screens | **Done** |
+| 27 | A bottom bar that keeps each place's history; Laundry in three stages; Outfits as Ideas and Saved with labelled sources; Settings in groups | **Done** |
 
-Released as `0.30.1 — Shrink to Fit`; the app's own **Settings → What's new**
+Released as `0.31.0 — Quick Cycle`; the app's own **Settings → What's new**
 carries the full list, and `app/lib/features/settings/patch_notes.dart` records
 which version digit moves for what.
 
@@ -947,7 +953,7 @@ Stated plainly, because the code says so too.
   exactly when someone first tries it.
 - **The built outfit suggestions score colour only.** They have no opinion on
   pattern, texture, proportion or fit, which is why every card shows its
-  reasoning rather than presenting a verdict. The Stylist tab is where that
+  reasoning rather than presenting a verdict. The Stylist's section of Outfits is where that
   judgement is asked for instead, and it is somebody else's taste rather than
   something the app can defend.
 - **Packing weights are typical dry weights for the garment type**, not for your

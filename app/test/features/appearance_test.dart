@@ -117,7 +117,10 @@ void main() {
       find.widgetWithText(RadioListTile<Appearance>, label);
 
   Future<void> choose(WidgetTester tester, String label) async {
-    await tester.ensureVisible(look(label));
+    // Centred, not merely on screen: at the very top the row would sit under
+    // the app bar and the tap would land on that instead.
+    await Scrollable.ensureVisible(tester.element(look(label)), alignment: 0.5);
+    await tester.pumpAndSettle();
     await tester.tap(look(label));
     await tester.pumpAndSettle();
   }

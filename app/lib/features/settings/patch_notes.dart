@@ -98,6 +98,34 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.31.0',
+    name: 'Quick Cycle',
+    date: DateTime.utc(2026, 10, 16),
+    headline:
+        'A bottom bar, Laundry in three stages, one Outfits, tidier Settings',
+    changes: [
+      'The menu is gone. Wardrobe, Laundry, Outfits, Ask and More are along '
+          'the bottom of the screen, and each keeps its place: leave Laundry '
+          'halfway through "What did you wear today?", come back, and you are '
+          'still there. Tap the one you are in to start it over. Back goes '
+          'where you were, then to the Wardrobe, then out of the app. '
+          'Packing, Insights and Settings are under More.',
+      'Laundry is three stages that fit a phone — Basket, Washing, Drying. '
+          'The Clean tab, which was the Wardrobe again, is gone, and '
+          '"Photograph a pile" moved into the Basket from the Wardrobe, where '
+          'the washing is.',
+      'Outfits is two tabs, Ideas and Saved. One occasion picks both the '
+          'outfits built from your wardrobe and the stylist\'s ideas, in '
+          'sections of their own, and every card says which it is: "From your '
+          'wardrobe" or "Stylist idea". The stylist is still asked only when '
+          'you ask. Saved outfits keep their wear counts.',
+      'Settings is in groups — Appearance, Washing and drying, Reminders, '
+          'Sync, Advanced, About — and each row says what it is set to. The '
+          'long explanations are behind an info button instead of between the '
+          'rows, and the server address is folded under Advanced.',
+    ],
+  ),
+  Release(
     version: '0.30.1',
     name: 'Shrink to Fit',
     date: DateTime.utc(2026, 10, 15),

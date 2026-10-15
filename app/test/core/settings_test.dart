@@ -5,6 +5,10 @@
 /// catalogue that keeps improving — a custom profile is deliberately the
 /// opposite, a frozen answer for one exact machine, which is the entire
 /// reason asking AI for it was worth doing.
+///
+/// The appearance choice is here too, for a different reason: it is read
+/// before the first frame, so a stored value this build cannot make sense of
+/// has to read as the default and not as a crash.
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 import 'package:washing_advice/core/settings.dart';
+import 'package:washing_advice/core/theme.dart';
 
 void main() {
   late SettingsStore settings;
@@ -104,6 +109,71 @@ void main() {
         expect(settings.customWasher, isNull);
       },
     );
+  });
+
+  group('appearance', () {
+    test('is Match phone until somebody chooses', () {
+      // What every install did before there was a choice, so an update changes
+      // nothing for anyone who does not go looking.
+      expect(settings.appearance, Appearance.system);
+    });
+
+    test('remembers each choice', () async {
+      for (final choice in Appearance.values) {
+        await settings.setAppearance(choice);
+
+        expect(settings.appearance, choice, reason: choice.name);
+      }
+    });
+
+    test('is stored under its name, not its position', () async {
+      // The name is also what the web shell compares against before Flutter
+      // has started. A position would change meaning the day a fifth look was
+      // added anywhere but the end.
+      await settings.setAppearance(Appearance.amoled);
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('appearance'), 'amoled');
+    });
+
+    test('reads a name this build does not know as Match phone', () async {
+      // Written by a newer build with a look this one lacks, or by hand. Either
+      // way the colour of a screen is not worth failing to start over.
+      SharedPreferences.setMockInitialValues({'appearance': 'sepia'});
+      settings = SettingsStore(await SharedPreferences.getInstance());
+
+      expect(settings.appearance, Appearance.system);
+    });
+
+    test('reads a name in the wrong case as one it does not know', () async {
+      // `amoled` is the stored form. Guessing at near-misses would be a second
+      // opinion about what was meant, and the default is the safe answer.
+      SharedPreferences.setMockInitialValues({'appearance': 'AMOLED'});
+      settings = SettingsStore(await SharedPreferences.getInstance());
+
+      expect(settings.appearance, Appearance.system);
+    });
+
+    test('reads something that is not text as Match phone', () async {
+      // `getString` throws a cast error on this. Nobody has a reason to write
+      // a number under the key, but the read happens before the first frame,
+      // where a throw is a blank page with nothing to report it.
+      SharedPreferences.setMockInitialValues({'appearance': 2});
+      settings = SettingsStore(await SharedPreferences.getInstance());
+
+      expect(settings.appearance, Appearance.system);
+    });
+
+    test('starts the provider from what is stored', () async {
+      SharedPreferences.setMockInitialValues({'appearance': 'dark'});
+      final stored = SettingsStore(await SharedPreferences.getInstance());
+      final container = ProviderContainer(
+        overrides: [settingsStoreProvider.overrideWithValue(stored)],
+      );
+      addTearDown(container.dispose);
+
+      expect(container.read(appearanceProvider), Appearance.dark);
+    });
   });
 
   group('precedence', () {

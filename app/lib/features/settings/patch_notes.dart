@@ -96,6 +96,26 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.30.0',
+    name: 'Darks Only',
+    date: DateTime.utc(2026, 10, 15),
+    headline: 'Choose how the app looks: light, dark, or true black',
+    changes: [
+      'New in Settings: Appearance. Match phone, Light, Dark or AMOLED — tap '
+          'one and the whole app changes there and then, with no restart.',
+      'Match phone is where it starts, so nothing is different until you '
+          'choose. The app has always followed your phone\'s light or dark '
+          'setting, and it still does.',
+      'AMOLED is dark on true black. On an OLED screen a black pixel is simply '
+          'switched off, which is easier on the eyes in a dark utility room '
+          'and lighter on the battery. Cards keep a thin outline in place of '
+          'a lighter fill, and your garments sit on a backdrop that stands '
+          'out from the black.',
+      'In a browser, the page opens in the colours you chose with no flash '
+          'of the wrong ones first, and the browser\'s bar matches.',
+    ],
+  ),
+  Release(
     version: '0.29.1',
     name: 'Spot Treatment',
     date: DateTime.utc(2026, 9, 23),

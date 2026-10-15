@@ -20,6 +20,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../core/providers.dart';
+import '../core/theme.dart';
 
 /// Bytes for one stored image, or null when it cannot be read.
 final imageBytesProvider = FutureProvider.family<Uint8List?, String>(
@@ -129,7 +130,18 @@ class ItemThumbnail extends ConsumerWidget {
     // lightening a near-black one by 10% barely moves it at all, and lands
     // almost exactly on a charcoal garment — which is how the first version of
     // this made a charcoal jumper disappear in dark mode.
-    final lift = scheme.onSurface.withValues(alpha: isDarkTheme ? 0.30 : 0.10);
+    //
+    // Nor is the dark one the same size on true black. The lift is a fraction
+    // of onSurface laid over whatever is behind the tile, so it climbs only as
+    // far as there is ground to climb from. Over dark's blue-grey, 30% lands on
+    // (80, 81, 87), a step above a charcoal garment's (60, 63, 68); over black
+    // the same 30% is (68, 68, 70), square on top of it, and the jumper is gone
+    // again. Garments do not get darker with the theme, so the lift has to land
+    // in the same place, which over black takes 36%.
+    final darkLift = scheme.hasTrueBlackGround ? 0.36 : 0.30;
+    final lift = scheme.onSurface.withValues(
+      alpha: isDarkTheme ? darkLift : 0.10,
+    );
 
     return switch (item.colorClass) {
       // Pale garments need something to sit against in a light theme; in a

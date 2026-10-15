@@ -11,6 +11,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
+import 'theme.dart';
+
 /// Where the scan backend lives.
 ///
 /// A physical device cannot reach the developer's `localhost`, so this is
@@ -32,6 +34,7 @@ class SettingsStore {
   static const _syncCursorKey = 'syncCursorRemote';
   static const _syncLocalCursorKey = 'syncCursorLocal';
   static const _nudgeMinutesKey = 'eveningNudgeMinutes';
+  static const _appearanceKey = 'appearance';
 
   final SharedPreferences _prefs;
 
@@ -127,6 +130,27 @@ class SettingsStore {
       await _prefs.setInt(_nudgeMinutesKey, minutes);
     }
   }
+
+  /// How the app is dressed. [Appearance.system] until somebody chooses.
+  ///
+  /// Stored as the enum's name and not its index: an index is a fact about the
+  /// order this build happens to declare the values in, and adding one in the
+  /// middle later would quietly re-label everybody's choice. A name this build
+  /// does not know — written by a newer one, or by hand — reads as the default,
+  /// which is what the app did before there was a choice. The colour of a
+  /// screen is not worth a crash at startup.
+  ///
+  /// The web shell reads this same key straight out of local storage before
+  /// Flutter has started, to paint the right colour in the first moment; see
+  /// `web/index.html`, and the test that keeps the two in step.
+  Appearance get appearance => switch (_prefs.get(_appearanceKey)) {
+    final String name =>
+      Appearance.values.asNameMap()[name] ?? Appearance.system,
+    _ => Appearance.system,
+  };
+
+  Future<void> setAppearance(Appearance value) =>
+      _prefs.setString(_appearanceKey, value.name);
 
   /// The sync credential, or null when sync has not been set up.
   ///
@@ -232,6 +256,11 @@ final settingsStoreProvider = Provider<SettingsStore>(
 /// The current backend URL, as state so editing it rebuilds the gateway.
 final backendUrlProvider = StateProvider<String>(
   (ref) => ref.watch(settingsStoreProvider).backendUrl,
+);
+
+/// How the app is dressed, as state so choosing one repaints everything at once.
+final appearanceProvider = StateProvider<Appearance>(
+  (ref) => ref.watch(settingsStoreProvider).appearance,
 );
 
 /// Whether a load is split into more than one drying group.

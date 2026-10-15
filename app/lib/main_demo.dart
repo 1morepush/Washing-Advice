@@ -19,6 +19,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import 'core/providers.dart';
@@ -99,17 +100,40 @@ Future<void> main() async {
   );
 }
 
-class _DemoApp extends StatelessWidget {
+class _DemoApp extends ConsumerStatefulWidget {
   const _DemoApp();
 
   @override
-  Widget build(BuildContext context) => MaterialApp.router(
-    title: 'Washing Advice',
-    debugShowCheckedModeBanner: false,
-    theme: AppTheme.light(),
-    darkTheme: AppTheme.dark(),
-    routerConfig: buildRouter(),
-  );
+  ConsumerState<_DemoApp> createState() => _DemoAppState();
+}
+
+class _DemoAppState extends ConsumerState<_DemoApp> {
+  // Built once, here, and not in `build`. Choosing an appearance rebuilds this
+  // widget, and a router made fresh each time would send whoever was on the
+  // Settings screen choosing it back to the wardrobe.
+  late final GoRouter _router = buildRouter();
+
+  @override
+  void dispose() {
+    _router.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Honoured here as in the real app. The screenshots are taken from this
+    // build, and a stored choice is the only way to ask it for true black.
+    final appearance = ref.watch(appearanceProvider);
+
+    return MaterialApp.router(
+      title: 'Washing Advice',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light(),
+      darkTheme: appearance.darkTheme,
+      themeMode: appearance.themeMode,
+      routerConfig: _router,
+    );
+  }
 }
 
 /// Attaches the prepared cutouts to the seeded items.

@@ -55,7 +55,8 @@
     Two values, so the browser chrome follows the theme the app is actually
     rendering. A single fixed colour is wrong half the time: this app follows
     the system, because a laundry app is used in a utility room at night as
-    often as in daylight.
+    often as in daylight. Unless somebody has chosen a look of their own in
+    Settings, in which case the script at the end of this head rewrites both.
   -->
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9ff">
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#111318">
@@ -89,7 +90,70 @@
         background-color: #111318;
       }
     }
+
+    /*
+      A look chosen in Settings → Appearance beats the phone's. The script below
+      sets the attribute before the first paint and the app keeps it current
+      afterwards (lib/core/browser_chrome_web.dart). Later than the media query
+      so that it wins, and more specific besides. One rule for each look that
+      names a surface: "Match phone" has none, and is the rules above.
+    */
+    html[data-appearance="light"],
+    html[data-appearance="light"] body {
+      background-color: #f9f9ff;
+    }
+
+    html[data-appearance="dark"],
+    html[data-appearance="dark"] body {
+      background-color: #111318;
+    }
+
+    html[data-appearance="amoled"],
+    html[data-appearance="amoled"] body {
+      background-color: #000000;
+    }
   </style>
+
+  <!--
+    The look chosen in Settings → Appearance, applied before anything paints.
+
+    The two tags and the media query above all ask the phone, which is right
+    until somebody tells the app otherwise. Then it is wrong in the way that
+    looks broken: AMOLED on a phone in light mode would open on a white flash
+    under a white status bar, over an app that is about to be black. Flutter has
+    not started, so the stored choice is read straight out of local storage.
+
+    The preferences plugin keeps it under its `flutter.` prefix and as JSON, so
+    a string comes back with its quotes on — hence the parse. Anything that is
+    not one of the three looks below, "system" included, leaves every colour on
+    this page as the phone decides it. The whole thing is allowed to fail
+    quietly: local storage can refuse a page outright (private browsing is the
+    usual way), and a page that cannot read its own preference is only a page
+    that starts in the phone's colours before the app says its own.
+
+    The names and colours here are pinned to `AppTheme` and to the key that
+    `SettingsStore` writes by test/web_shell_test.dart.
+  -->
+  <script>
+    (function () {
+      var surfaces = {
+        light: '#f9f9ff',
+        dark: '#111318',
+        amoled: '#000000'
+      };
+
+      try {
+        var choice = JSON.parse(localStorage.getItem('flutter.appearance'));
+        if (!Object.prototype.hasOwnProperty.call(surfaces, choice)) return;
+
+        document.documentElement.dataset.appearance = choice;
+        var tags = document.querySelectorAll('meta[name="theme-color"]');
+        for (var i = 0; i < tags.length; i++) {
+          tags[i].setAttribute('content', surfaces[choice]);
+        }
+      } catch (error) {}
+    })();
+  </script>
 </head>
 <body>
   <!--

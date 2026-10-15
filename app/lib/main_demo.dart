@@ -453,6 +453,10 @@ class _CannedGateway extends AiGateway {
   }
 }
 
+/// The demo wardrobe as the app opens on it, laundry piles included.
+@visibleForTesting
+List<WardrobeItem> demoWardrobe() => _inPiles(_seed());
+
 /// A small wardrobe covering the cases the UI has to handle.
 ///
 /// Chosen so the screenshots show real behaviour rather than a uniform list:
@@ -656,6 +660,25 @@ List<WardrobeItem> _seed() {
         lastWornAt: now.subtract(const Duration(days: 11)),
       ),
       addedDaysAgo: 300,
+    ),
+    build(
+      id: 'demo-trousers',
+      name: 'Black tailored trousers',
+      type: ItemType.trousers,
+      composition: const {Fiber.wool: 55, Fiber.polyester: 45},
+      hex: '#1E1E22',
+      colorName: 'Black',
+      brand: 'COS',
+      // Clean and in the wardrobe, which is the point of them: every other
+      // bottom is in the wash, and with none clean the Outfits screen had
+      // nothing to put together and showed its empty state instead of an
+      // outfit.
+      usage: UsageStats(
+        timesWorn: 5,
+        timesWashed: 1,
+        lastWornAt: now.subtract(const Duration(days: 9)),
+      ),
+      addedDaysAgo: 90,
     ),
     build(
       id: 'demo-jacket',

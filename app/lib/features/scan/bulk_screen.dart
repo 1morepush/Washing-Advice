@@ -16,6 +16,7 @@ import '../../widgets/status_message.dart';
 import 'bulk_controller.dart';
 import 'crop_screen.dart';
 import 'scan_controller.dart' show ScanShot;
+import '../../widgets/back_navigation.dart';
 
 class BulkScanScreen extends ConsumerWidget {
   const BulkScanScreen({super.key});
@@ -25,44 +26,42 @@ class BulkScanScreen extends ConsumerWidget {
     final state = ref.watch(bulkControllerProvider);
     final controller = ref.read(bulkControllerProvider.notifier);
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: BackButton(
-          onPressed: () {
-            controller.reset();
-            context.go('/');
-          },
+    return LeaveScope(
+      onLeave: controller.reset,
+      child: Scaffold(
+        appBar: AppBar(
+          leading: backLeading(context, '/', onLeave: controller.reset),
+          title: const Text('Add several garments'),
         ),
-        title: const Text('Add several garments'),
-      ),
-      body: switch (state) {
-        final BulkCollecting collecting => _Collecting(
-          state: collecting,
-          controller: controller,
-        ),
-        BulkProcessing(:final finished, :final total) => _Processing(
-          finished: finished,
-          total: total,
-        ),
-        final BulkReviewing reviewing => _Reviewing(
-          state: reviewing,
-          controller: controller,
-        ),
-        BulkSaved(:final saved, :final skipped) => _Done(
-          saved: saved,
-          skipped: skipped,
-          controller: controller,
-        ),
-        BulkFailed(:final message) => StatusMessage(
-          icon: Icons.error_outline,
-          title: 'Could not take that photo',
-          detail: message,
-          action: FilledButton.tonal(
-            onPressed: controller.reset,
-            child: const Text('Start again'),
+        body: switch (state) {
+          final BulkCollecting collecting => _Collecting(
+            state: collecting,
+            controller: controller,
           ),
-        ),
-      },
+          BulkProcessing(:final finished, :final total) => _Processing(
+            finished: finished,
+            total: total,
+          ),
+          final BulkReviewing reviewing => _Reviewing(
+            state: reviewing,
+            controller: controller,
+          ),
+          BulkSaved(:final saved, :final skipped) => _Done(
+            saved: saved,
+            skipped: skipped,
+            controller: controller,
+          ),
+          BulkFailed(:final message) => StatusMessage(
+            icon: Icons.error_outline,
+            title: 'Could not take that photo',
+            detail: message,
+            action: FilledButton.tonal(
+              onPressed: controller.reset,
+              child: const Text('Start again'),
+            ),
+          ),
+        },
+      ),
     );
   }
 }

@@ -16,6 +16,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../widgets/status_message.dart';
 import 'spread_controller.dart';
+import '../../widgets/back_navigation.dart';
 
 class SpreadScanScreen extends ConsumerWidget {
   const SpreadScanScreen({super.key});
@@ -25,40 +26,41 @@ class SpreadScanScreen extends ConsumerWidget {
     final state = ref.watch(spreadControllerProvider);
     final controller = ref.read(spreadControllerProvider.notifier);
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: BackButton(
-          onPressed: () {
-            controller.reset();
-            context.go('/');
-          },
+    return LeaveScope(
+      onLeave: controller.reset,
+      child: Scaffold(
+        appBar: AppBar(
+          leading: backLeading(context, '/', onLeave: controller.reset),
+          title: const Text('Lay several out'),
         ),
-        title: const Text('Lay several out'),
+        body: switch (state) {
+          SpreadIdle() => _Start(controller: controller),
+          SpreadAnalysing() => const _Analysing(),
+          final SpreadReviewing reviewing => _Reviewing(
+            state: reviewing,
+            controller: controller,
+          ),
+          final SpreadSaved saved => _Done(
+            state: saved,
+            controller: controller,
+          ),
+          final SpreadFailed failed => StatusMessage(
+            icon: Icons.error_outline,
+            title: 'That did not work',
+            detail: failed.message,
+            action: failed.isRetryable
+                ? FilledButton.icon(
+                    onPressed: controller.capture,
+                    icon: const Icon(Icons.camera_alt_outlined),
+                    label: const Text('Take another photo'),
+                  )
+                : FilledButton.tonal(
+                    onPressed: controller.reset,
+                    child: const Text('Start again'),
+                  ),
+          ),
+        },
       ),
-      body: switch (state) {
-        SpreadIdle() => _Start(controller: controller),
-        SpreadAnalysing() => const _Analysing(),
-        final SpreadReviewing reviewing => _Reviewing(
-          state: reviewing,
-          controller: controller,
-        ),
-        final SpreadSaved saved => _Done(state: saved, controller: controller),
-        final SpreadFailed failed => StatusMessage(
-          icon: Icons.error_outline,
-          title: 'That did not work',
-          detail: failed.message,
-          action: failed.isRetryable
-              ? FilledButton.icon(
-                  onPressed: controller.capture,
-                  icon: const Icon(Icons.camera_alt_outlined),
-                  label: const Text('Take another photo'),
-                )
-              : FilledButton.tonal(
-                  onPressed: controller.reset,
-                  child: const Text('Start again'),
-                ),
-        ),
-      },
     );
   }
 }

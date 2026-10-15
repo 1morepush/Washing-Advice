@@ -12,7 +12,6 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
@@ -21,6 +20,7 @@ import '../../widgets/item_thumbnail.dart';
 import '../../widgets/status_message.dart';
 import 'cutout_controller.dart';
 import 'mask_edit.dart';
+import '../../widgets/back_navigation.dart';
 
 /// The paint surface itself.
 ///
@@ -40,7 +40,7 @@ class MaskEditorScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        leading: BackButton(onPressed: () => context.go('/item/${id.value}')),
+        leading: backLeading(context, '/item/${id.value}'),
         title: const Text('Tidy the cutout'),
       ),
       body: item.when(
@@ -220,7 +220,7 @@ class _EditorState extends ConsumerState<_Editor> {
       // page showed the old cutout.
       ref.invalidate(imageBytesProvider(uri));
       forgetDecodedImages();
-      if (mounted) context.go('/item/${widget.item.id.value}');
+      if (mounted) context.backOr('/item/${widget.item.id.value}');
     } on Exception catch (error) {
       if (mounted) {
         setState(() {
@@ -501,7 +501,7 @@ class _EditorState extends ConsumerState<_Editor> {
           onBrush: (width) => setState(() => _brush = width),
           onUndo: _undo,
           onRefine: _refine,
-          onCancel: () => context.go('/item/${widget.item.id.value}'),
+          onCancel: () => context.backOr('/item/${widget.item.id.value}'),
           onSave: _save,
         ),
       ],

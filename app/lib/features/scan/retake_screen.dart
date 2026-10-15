@@ -10,11 +10,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../widgets/status_message.dart';
 import 'retake_controller.dart';
+import '../../widgets/back_navigation.dart';
 
 class RetakeScreen extends ConsumerWidget {
   const RetakeScreen({required this.id, super.key});
@@ -28,25 +28,32 @@ class RetakeScreen extends ConsumerWidget {
 
     void back() {
       controller.reset();
-      context.go('/item/${id.value}');
+      context.backOr('/item/${id.value}');
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: BackButton(onPressed: back),
-        title: const Text('Take a new photo'),
-      ),
-      body: switch (state) {
-        RetakeIdle() => _Capture(controller: controller),
-        RetakeIdentifying() => const _Identifying(),
-        RetakeReviewing() => _Review(state: state, controller: controller),
-        RetakeSaved() => _Saved(onDone: back),
-        RetakeFailed(:final message, :final isRetryable) => _Failed(
-          message: message,
-          isRetryable: isRetryable,
-          controller: controller,
+    return LeaveScope(
+      onLeave: controller.reset,
+      child: Scaffold(
+        appBar: AppBar(
+          leading: backLeading(
+            context,
+            '/item/${id.value}',
+            onLeave: controller.reset,
+          ),
+          title: const Text('Take a new photo'),
         ),
-      },
+        body: switch (state) {
+          RetakeIdle() => _Capture(controller: controller),
+          RetakeIdentifying() => const _Identifying(),
+          RetakeReviewing() => _Review(state: state, controller: controller),
+          RetakeSaved() => _Saved(onDone: back),
+          RetakeFailed(:final message, :final isRetryable) => _Failed(
+            message: message,
+            isRetryable: isRetryable,
+            controller: controller,
+          ),
+        },
+      ),
     );
   }
 }

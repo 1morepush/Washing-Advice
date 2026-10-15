@@ -111,7 +111,7 @@ class _SavedCard extends ConsumerWidget {
                   itemBuilder: (_, index) {
                     final item = list[index];
                     return InkWell(
-                      onTap: () => context.go('/item/${item.id.value}'),
+                      onTap: () => context.push('/item/${item.id.value}'),
                       borderRadius: BorderRadius.circular(12),
                       child: Tooltip(
                         message: item.displayName,

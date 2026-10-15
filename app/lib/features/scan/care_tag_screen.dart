@@ -11,12 +11,12 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../widgets/confidence_chip.dart';
 import '../wardrobe/care_text.dart';
 import 'care_tag_controller.dart';
+import '../../widgets/back_navigation.dart';
 
 class CareTagScreen extends ConsumerWidget {
   const CareTagScreen({required this.id, super.key});
@@ -30,29 +30,36 @@ class CareTagScreen extends ConsumerWidget {
 
     void back() {
       controller.reset();
-      context.go('/item/${id.value}');
+      context.backOr('/item/${id.value}');
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: BackButton(onPressed: back),
-        title: const Text('Scan the care label'),
+    return LeaveScope(
+      onLeave: controller.reset,
+      child: Scaffold(
+        appBar: AppBar(
+          leading: backLeading(
+            context,
+            '/item/${id.value}',
+            onLeave: controller.reset,
+          ),
+          title: const Text('Scan the care label'),
+        ),
+        body: switch (state) {
+          CareTagIdle() => _Capture(controller: controller),
+          CareTagCollecting(:final images) => _Collected(
+            images: images,
+            controller: controller,
+          ),
+          CareTagReading() => const _Reading(),
+          CareTagReviewing() => _Review(state: state, controller: controller),
+          CareTagSaved() => _Saved(onDone: back),
+          CareTagFailed(:final message, :final isRetryable) => _Failed(
+            message: message,
+            isRetryable: isRetryable,
+            controller: controller,
+          ),
+        },
       ),
-      body: switch (state) {
-        CareTagIdle() => _Capture(controller: controller),
-        CareTagCollecting(:final images) => _Collected(
-          images: images,
-          controller: controller,
-        ),
-        CareTagReading() => const _Reading(),
-        CareTagReviewing() => _Review(state: state, controller: controller),
-        CareTagSaved() => _Saved(onDone: back),
-        CareTagFailed(:final message, :final isRetryable) => _Failed(
-          message: message,
-          isRetryable: isRetryable,
-          controller: controller,
-        ),
-      },
     );
   }
 }

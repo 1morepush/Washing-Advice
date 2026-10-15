@@ -29,6 +29,12 @@ import '../features/wardrobe/wardrobe_screen.dart';
 
 /// Builds the app's router.
 ///
+/// Two kinds of destination. The places in the drawer are reached with `go`,
+/// which replaces the stack, and Back from them leaves the app. Everything
+/// else — a garment, a scan, a stain, the settings from a link inside a
+/// screen — is reached with `push`, so Back returns to where the user was
+/// (see `back_navigation.dart`).
+///
 /// [initialLocation] is a parameter so a test can start on the screen it is
 /// about, and so a future session restore can reopen where the user left off,
 /// rather than every entry point having to navigate from the wardrobe.
@@ -66,8 +72,17 @@ GoRouter buildRouter({String initialLocation = '/'}) => GoRouter(
       builder: (_, state) =>
           CareTagScreen(id: ItemId(state.pathParameters['id']!)),
     ),
-    GoRoute(path: '/laundry', builder: (_, _) => const LaundryScreen()),
-    GoRoute(path: '/laundry/worn', builder: (_, _) => const WornTodayScreen()),
+    GoRoute(
+      path: '/laundry',
+      builder: (_, _) => const LaundryScreen(),
+      routes: [
+        // A child of the laundry screen rather than a sibling, so that
+        // `go('/laundry/worn')` — which is how a tapped reminder arrives —
+        // builds the laundry screen underneath and Back has somewhere to go.
+        // From inside the app it is pushed, and the stack is the same.
+        GoRoute(path: 'worn', builder: (_, _) => const WornTodayScreen()),
+      ],
+    ),
     GoRoute(path: '/outfits', builder: (_, _) => const OutfitsScreen()),
     GoRoute(
       path: '/outfits/stylist',

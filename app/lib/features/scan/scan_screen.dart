@@ -21,6 +21,7 @@ import '../../data/api/scan_dto.dart';
 import '../../widgets/confidence_chip.dart';
 import 'crop_screen.dart';
 import 'scan_controller.dart';
+import '../../widgets/back_navigation.dart';
 
 class ScanScreen extends ConsumerWidget {
   const ScanScreen({super.key});
@@ -30,31 +31,31 @@ class ScanScreen extends ConsumerWidget {
     final state = ref.watch(scanControllerProvider);
     final controller = ref.read(scanControllerProvider.notifier);
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: BackButton(
-          onPressed: () {
-            controller.reset();
-            context.go('/');
-          },
+    return LeaveScope(
+      onLeave: controller.reset,
+      child: Scaffold(
+        appBar: AppBar(
+          leading: backLeading(context, '/', onLeave: controller.reset),
+          title: const Text('Scan a garment'),
         ),
-        title: const Text('Scan a garment'),
+        body: switch (state) {
+          ScanIdle() => _Capture(controller: controller),
+          ScanCollecting(:final shots) => _Collected(
+            shots: shots,
+            controller: controller,
+          ),
+          ScanAnalysing(:final imageCount) => _Analysing(
+            imageCount: imageCount,
+          ),
+          ScanReviewing() => _Review(state: state, controller: controller),
+          ScanSaved(:final item) => _Saved(item: item, controller: controller),
+          ScanError(:final message, :final isRetryable) => _Failed(
+            message: message,
+            isRetryable: isRetryable,
+            controller: controller,
+          ),
+        },
       ),
-      body: switch (state) {
-        ScanIdle() => _Capture(controller: controller),
-        ScanCollecting(:final shots) => _Collected(
-          shots: shots,
-          controller: controller,
-        ),
-        ScanAnalysing(:final imageCount) => _Analysing(imageCount: imageCount),
-        ScanReviewing() => _Review(state: state, controller: controller),
-        ScanSaved(:final item) => _Saved(item: item, controller: controller),
-        ScanError(:final message, :final isRetryable) => _Failed(
-          message: message,
-          isRetryable: isRetryable,
-          controller: controller,
-        ),
-      },
     );
   }
 }
@@ -493,7 +494,7 @@ class _Saved extends StatelessWidget {
           FilledButton(
             onPressed: () {
               controller.reset();
-              context.go('/item/${item.id.value}');
+              context.pushReplacement('/item/${item.id.value}');
             },
             child: const Text('View it'),
           ),

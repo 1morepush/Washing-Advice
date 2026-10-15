@@ -168,7 +168,7 @@ class _Readiness extends StatelessWidget {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () => context.go(
+                  onPressed: () => context.push(
                     '/item/${summary.needingCareTagScan.first.id.value}/care-label',
                   ),
                   child: const Text('Scan the next label'),
@@ -500,7 +500,7 @@ class _ItemRow extends StatelessWidget {
     final theme = Theme.of(context);
 
     return InkWell(
-      onTap: () => context.go('/item/${item.id.value}'),
+      onTap: () => context.push('/item/${item.id.value}'),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
@@ -557,7 +557,7 @@ class _Empty extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: () => context.go('/scan'),
+              onPressed: () => context.push('/scan'),
               icon: const Icon(Icons.add_a_photo_outlined),
               label: const Text('Add a garment'),
             ),

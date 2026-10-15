@@ -123,7 +123,7 @@ class WardrobeScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           FloatingActionButton.extended(
             heroTag: 'sort-pile',
-            onPressed: () => context.go('/pile'),
+            onPressed: () => context.push('/pile'),
             icon: const Icon(Icons.local_laundry_service_outlined),
             label: const Text('Sort laundry'),
           ),
@@ -197,7 +197,7 @@ Future<void> _chooseHowToAdd(BuildContext context) async {
     ),
   );
 
-  if (choice != null && context.mounted) context.go(choice);
+  if (choice != null && context.mounted) context.push(choice);
 }
 
 /// Switches between the grid and the list.
@@ -426,7 +426,7 @@ void _open(BuildContext context, WidgetRef ref, _Entry entry) {
     notifier.state = {...notifier.state, entry.group.signature};
     return;
   }
-  context.go('/item/${entry.item.id.value}');
+  context.push('/item/${entry.item.id.value}');
 }
 
 /// Selects or deselects everything a row stands for.

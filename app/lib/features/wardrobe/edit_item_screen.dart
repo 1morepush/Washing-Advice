@@ -14,13 +14,13 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../../widgets/confidence_chip.dart';
 import '../../widgets/status_message.dart';
 import 'care_text.dart';
+import '../../widgets/back_navigation.dart';
 
 class EditItemScreen extends ConsumerWidget {
   const EditItemScreen({required this.id, super.key});
@@ -33,7 +33,7 @@ class EditItemScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        leading: BackButton(onPressed: () => context.go('/item/${id.value}')),
+        leading: backLeading(context, '/item/${id.value}'),
         title: const Text('Edit item'),
       ),
       body: item.when(
@@ -172,7 +172,7 @@ class _FormState extends ConsumerState<_Form> {
     // this the user returns to the values they just changed.
     ref.invalidate(itemProvider(saved.id));
     ref.invalidate(knownBrandsProvider);
-    if (mounted) context.go('/item/${saved.id.value}');
+    if (mounted) context.backOr('/item/${saved.id.value}');
   }
 
   @override
@@ -282,7 +282,7 @@ class _FormState extends ConsumerState<_Form> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () =>
-                        context.go('/item/${widget.original.id.value}'),
+                        context.backOr('/item/${widget.original.id.value}'),
                     child: const Text('Cancel'),
                   ),
                 ),

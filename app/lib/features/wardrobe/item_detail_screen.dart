@@ -23,6 +23,7 @@ import 'cutout_controller.dart';
 import 'care_text.dart';
 import 'condition_sheet.dart';
 import 'report_wear_sheet.dart';
+import '../../widgets/back_navigation.dart';
 
 /// How tall the bar has to be to hold a three-line name at the current type
 /// size.
@@ -52,7 +53,7 @@ class ItemDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        leading: BackButton(onPressed: () => context.go('/')),
+        leading: backLeading(context, '/'),
         // The name gets the room it needs. A garment's name is the one thing
         // on this screen that says *which* garment it is, and a single line
         // cut "Black koi graphic tee" down to "Black koi graphic t…" — losing
@@ -82,7 +83,7 @@ class ItemDetailScreen extends ConsumerWidget {
         actions: [
           if (item.valueOrNull case final WardrobeItem value) ...[
             IconButton(
-              onPressed: () => context.go('/item/${id.value}/edit'),
+              onPressed: () => context.push('/item/${id.value}/edit'),
               icon: const Icon(Icons.edit_outlined),
               tooltip: 'Edit',
             ),
@@ -316,7 +317,7 @@ class _Details extends StatelessWidget {
               action: item.colors.value.colors.isEmpty
                   ? TextButton(
                       onPressed: () =>
-                          context.go('/item/${item.id.value}/edit'),
+                          context.push('/item/${item.id.value}/edit'),
                       child: const Text('Set it'),
                     )
                   : null,
@@ -505,7 +506,7 @@ class _ScanPrompt extends ConsumerWidget {
               ),
               FilledButton.tonal(
                 onPressed: () =>
-                    context.go('/item/${item.id.value}/care-label'),
+                    context.push('/item/${item.id.value}/care-label'),
                 child: const Text('Scan the label'),
               ),
             ],
@@ -562,7 +563,7 @@ class _Actions extends ConsumerWidget {
             label: Text(item.lifecycle.label),
           ),
         TextButton.icon(
-          onPressed: () => context.go('/item/${item.id.value}/stain'),
+          onPressed: () => context.push('/item/${item.id.value}/stain'),
           icon: const Icon(Icons.cleaning_services_outlined),
           label: const Text('Spilled something?'),
         ),
@@ -639,7 +640,7 @@ class _CutoutPrompt extends ConsumerWidget {
                     ),
                   ),
                 TextButton(
-                  onPressed: () => context.go('/item/${id.value}/mask'),
+                  onPressed: () => context.push('/item/${id.value}/mask'),
                   child: Text(hasCutout ? 'Tidy by hand' : 'Mark out by hand'),
                 ),
                 // The last resort, and sometimes the only one that works: no
@@ -647,7 +648,7 @@ class _CutoutPrompt extends ConsumerWidget {
                 // colour, with a hand and a shadow in shot. A different
                 // photograph is the only thing that changes the answer.
                 TextButton(
-                  onPressed: () => context.go('/item/${id.value}/retake'),
+                  onPressed: () => context.push('/item/${id.value}/retake'),
                   child: const Text('New photo'),
                 ),
               ],

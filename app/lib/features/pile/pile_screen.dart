@@ -10,6 +10,7 @@ import '../../core/settings.dart';
 import '../laundry/laundry_controller.dart';
 import 'pile_controller.dart';
 import 'widgets/load_card.dart';
+import '../../widgets/back_navigation.dart';
 
 class PileScreen extends ConsumerWidget {
   const PileScreen({super.key});
@@ -19,26 +20,24 @@ class PileScreen extends ConsumerWidget {
     final state = ref.watch(pileControllerProvider);
     final controller = ref.read(pileControllerProvider.notifier);
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: BackButton(
-          onPressed: () {
-            controller.reset();
-            context.go('/');
-          },
+    return LeaveScope(
+      onLeave: controller.reset,
+      child: Scaffold(
+        appBar: AppBar(
+          leading: backLeading(context, '/', onLeave: controller.reset),
+          title: const Text('Sort the laundry'),
         ),
-        title: const Text('Sort the laundry'),
+        body: switch (state) {
+          PileIdle() => _Capture(controller: controller),
+          PileAnalysing() => const _Analysing(),
+          PilePlanned() => _Plan(state: state, controller: controller),
+          PileFailed(:final message, :final isRetryable) => _Failed(
+            message: message,
+            isRetryable: isRetryable,
+            controller: controller,
+          ),
+        },
       ),
-      body: switch (state) {
-        PileIdle() => _Capture(controller: controller),
-        PileAnalysing() => const _Analysing(),
-        PilePlanned() => _Plan(state: state, controller: controller),
-        PileFailed(:final message, :final isRetryable) => _Failed(
-          message: message,
-          isRetryable: isRetryable,
-          controller: controller,
-        ),
-      },
     );
   }
 }
@@ -89,7 +88,7 @@ class _Capture extends ConsumerWidget {
               // putting a settings screen between someone and their first
               // answer is how an app gets deleted.
               TextButton(
-                onPressed: () => context.go('/settings'),
+                onPressed: () => context.push('/settings'),
                 child: const Text('Set your machine to get exact programs'),
               ),
             ],
@@ -180,7 +179,7 @@ class _Plan extends ConsumerWidget {
             text:
                 'No machine is set, so these say what each load needs rather '
                 'than which program to select.',
-            onTap: () => context.go('/settings'),
+            onTap: () => context.push('/settings'),
           ),
         ],
 
@@ -380,7 +379,7 @@ class _NothingSortable extends StatelessWidget {
             Align(
               alignment: Alignment.centerLeft,
               child: FilledButton.tonalIcon(
-                onPressed: () => context.go('/scan'),
+                onPressed: () => context.push('/scan'),
                 icon: const Icon(Icons.add_a_photo_outlined),
                 label: const Text('Add a garment'),
               ),

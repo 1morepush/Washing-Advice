@@ -20,6 +20,7 @@ import '../../core/providers.dart';
 import '../../widgets/status_message.dart';
 import '../laundry/laundry_controller.dart';
 import 'stain_controller.dart';
+import '../../widgets/back_navigation.dart';
 
 /// The spills people actually have, as one tap each.
 ///
@@ -49,32 +50,38 @@ class StainScreen extends ConsumerWidget {
     final state = ref.watch(stainControllerProvider(id));
     final controller = ref.read(stainControllerProvider(id).notifier);
 
-    void back() {
-      controller.reset();
-      context.go('/item/${id.value}');
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        leading: BackButton(onPressed: back),
-        title: const Text('Treat a stain'),
-      ),
-      body: switch (state) {
-        StainIdle() => _Ask(id: id, controller: controller),
-        StainThinking() => const _Thinking(),
-        StainAdvised() => _Advice(id: id, state: state, controller: controller),
-        StainFailed(:final message, :final isRetryable) => StatusMessage(
-          icon: Icons.error_outline,
-          title: 'Could not work out a treatment',
-          detail: message,
-          action: isRetryable
-              ? TextButton(
-                  onPressed: controller.reset,
-                  child: const Text('Try again'),
-                )
-              : null,
+    return LeaveScope(
+      onLeave: controller.reset,
+      child: Scaffold(
+        appBar: AppBar(
+          leading: backLeading(
+            context,
+            '/item/${id.value}',
+            onLeave: controller.reset,
+          ),
+          title: const Text('Treat a stain'),
         ),
-      },
+        body: switch (state) {
+          StainIdle() => _Ask(id: id, controller: controller),
+          StainThinking() => const _Thinking(),
+          StainAdvised() => _Advice(
+            id: id,
+            state: state,
+            controller: controller,
+          ),
+          StainFailed(:final message, :final isRetryable) => StatusMessage(
+            icon: Icons.error_outline,
+            title: 'Could not work out a treatment',
+            detail: message,
+            action: isRetryable
+                ? TextButton(
+                    onPressed: controller.reset,
+                    child: const Text('Try again'),
+                  )
+                : null,
+          ),
+        },
+      ),
     );
   }
 }

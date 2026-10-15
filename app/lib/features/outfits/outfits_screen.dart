@@ -19,8 +19,8 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../core/providers.dart';
 import 'outfit_controller.dart';
 import 'outfit_pieces.dart';
-import 'saved_outfits.dart';
 import 'outfit_source.dart';
+import 'saved_outfits.dart';
 import 'stylist_section.dart';
 
 /// The two views of "what to wear", in the order they are shown.

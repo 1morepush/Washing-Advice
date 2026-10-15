@@ -346,16 +346,22 @@ void main() {
           bar.indicatorColor ??
           NavigationBarTheme.of(context).indicatorColor ??
           theme.colorScheme.secondaryContainer;
+      expect(
+        NavigationBarTheme.of(context).indicatorColor,
+        isNotNull,
+        reason:
+            'true black sets its own pill rather than inheriting Material\'s',
+      );
       final ground = NavigationBarTheme.of(context).backgroundColor!;
 
       // The bar is black, and the pill behind the selected icon is a visible
       // shape against it rather than a second black.
       expect(ground, theme.colorScheme.surface);
-      expect(contrastBetween(indicator, ground), greaterThan(2.0));
+      expect(contrastBetween(indicator, ground), greaterThanOrEqualTo(3.0));
       // And the glyph in it reads against the pill.
       expect(
         contrastBetween(theme.colorScheme.onSecondaryContainer, indicator),
-        greaterThan(4.5),
+        greaterThanOrEqualTo(4.5),
       );
     });
   });

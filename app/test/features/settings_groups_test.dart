@@ -185,6 +185,50 @@ void main() {
     expect(find.text('Save and test'), findsOneWidget);
   });
 
+  testWidgets('the server row shows the saved address, not the one typed', (
+    tester,
+  ) async {
+    await open(tester);
+    container.read(backendUrlProvider.notifier).state = 'http://saved.example';
+    await tester.pumpAndSettle();
+    await reveal(tester, find.text('Server address'));
+    await tester.tap(find.text('Server address'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Server address'),
+      'http://half-typed.example',
+    );
+    await tester.pump();
+
+    final row = find.byType(ExpansionTile);
+    expect(
+      find.descendant(of: row, matching: find.text('http://saved.example')),
+      findsOneWidget,
+    );
+    // The typed text is in the field, which is also inside the tile; the row's
+    // own line must not have followed it.
+    expect(
+      find.descendant(
+        of: find.descendant(of: row, matching: find.byType(ListTile)),
+        matching: find.text('http://half-typed.example'),
+      ),
+      findsNothing,
+    );
+  });
+
+  testWidgets('info buttons are at least 48 dp square', (tester) async {
+    await open(tester, size: const Size(400, 6000));
+
+    final buttons = find.widgetWithIcon(IconButton, Icons.info_outline);
+    expect(buttons, findsWidgets);
+    for (var i = 0; i < buttons.evaluate().length; i++) {
+      final size = tester.getSize(buttons.at(i));
+      expect(size.width, greaterThanOrEqualTo(48), reason: 'button $i');
+      expect(size.height, greaterThanOrEqualTo(48), reason: 'button $i');
+    }
+  });
+
   testWidgets('every setting the old screen had is reachable', (tester) async {
     await open(tester);
 

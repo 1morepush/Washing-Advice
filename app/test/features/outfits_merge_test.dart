@@ -178,6 +178,49 @@ void main() {
     expect(stylist.occasions, ['Formal']);
   });
 
+  testWidgets('a note typed for the stylist survives scrolling away', (
+    tester,
+  ) async {
+    // Enough garments for a long list of suggestions above the note, and a
+    // short screen, so the note really does leave the lazily built list.
+    await repository.saveAll([
+      for (var i = 0; i < 6; i++) ...[
+        confidentItem(id: 'top$i', name: 'Top $i', hex: '#F2E8D$i'),
+        confidentItem(id: 'bottom$i', name: 'Bottom $i', type: ItemType.jeans),
+      ],
+    ]);
+    tester.view.physicalSize = const Size(400, 300);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await pump(tester);
+    tester.view.physicalSize = const Size(400, 300);
+
+    final note = find.widgetWithText(TextField, 'Anything to add? (optional)');
+    final list = find
+        .byWidgetPredicate((w) => w is Scrollable && w.axis == Axis.vertical)
+        .first;
+    await tester.scrollUntilVisible(note, 200, scrollable: list);
+    await tester.enterText(note, 'it will be cold');
+    await tester.pump();
+    // Done typing. A focused field keeps itself alive, so it is the field left
+    // behind, not the one being typed in, that has to survive.
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pump();
+
+    // Far away: back to the top, well past the list's cache.
+    final position = tester.state<ScrollableState>(list).position;
+    // Precondition: the note is further from the top than a screen plus the
+    // list's cache, so scrolling to the top really does let it go.
+    expect(position.pixels, greaterThan(900));
+    await tester.fling(list, const Offset(0, 3000), 5000);
+    await tester.pumpAndSettle();
+    expect(position.pixels, 0);
+    expect(tester.getRect(find.text('Outfits').first).top, lessThan(100));
+    await tester.scrollUntilVisible(note, 200, scrollable: list);
+
+    expect(find.text('it will be cold'), findsOneWidget);
+  });
+
   testWidgets('a stylist that fails leaves the built suggestions on screen', (
     tester,
   ) async {

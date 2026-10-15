@@ -142,6 +142,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 controller: _url,
                 checking: _checking,
                 waking: _waking,
+                saved: ref.watch(backendUrlProvider),
                 health: _health,
                 onSave: _save,
               ),
@@ -174,6 +175,7 @@ class _ServerAddress extends StatelessWidget {
     required this.controller,
     required this.checking,
     required this.waking,
+    required this.saved,
     required this.health,
     required this.onSave,
   });
@@ -181,6 +183,10 @@ class _ServerAddress extends StatelessWidget {
   final TextEditingController controller;
   final bool checking;
   final bool waking;
+
+  /// The address in force, as last saved. The row's value is this and not what
+  /// is typed in the field, which may be half an edit nobody has tested.
+  final String saved;
   final ({bool reachable, String status, String? problem})? health;
   final VoidCallback onSave;
 
@@ -205,14 +211,7 @@ class _ServerAddress extends StatelessWidget {
             'rather than built in.',
       ),
       // The current value, as the row's second line.
-      subtitle: ListenableBuilder(
-        listenable: controller,
-        builder: (_, _) => Text(
-          controller.text.trim().isEmpty ? defaultBackendUrl : controller.text,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
+      subtitle: Text(saved, maxLines: 1, overflow: TextOverflow.ellipsis),
       children: [
         const SizedBox(height: 8),
         TextField(

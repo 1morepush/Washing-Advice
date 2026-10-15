@@ -47,7 +47,9 @@ class InfoButton extends StatelessWidget {
   Widget build(BuildContext context) => IconButton(
     icon: const Icon(Icons.info_outline, size: 20),
     tooltip: 'About $title',
-    visualDensity: VisualDensity.compact,
+    // The glyph stays small; the target does not. A compact button is about
+    // 40 dp, under the 48 a thumb can be asked to hit.
+    constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
     onPressed: () => showSettingInfo(context, title: title, text: text),
   );
 }

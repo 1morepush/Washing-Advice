@@ -38,7 +38,14 @@ class StylistSection extends ConsumerStatefulWidget {
   ConsumerState<StylistSection> createState() => _StylistSectionState();
 }
 
-class _StylistSectionState extends ConsumerState<StylistSection> {
+class _StylistSectionState extends ConsumerState<StylistSection>
+    with AutomaticKeepAliveClientMixin {
+  /// Kept alive so a note typed here survives the list being scrolled away from
+  /// it. The list builds lazily and would otherwise drop the field, and its
+  /// text, as soon as it left the screen.
+  @override
+  bool get wantKeepAlive => true;
+
   final _note = TextEditingController();
 
   @override
@@ -56,7 +63,12 @@ class _StylistSectionState extends ConsumerState<StylistSection> {
       );
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) {
+    super.build(context);
+    return _content();
+  }
+
+  Widget _content() => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       const SourceHeader(OutfitSource.stylist),

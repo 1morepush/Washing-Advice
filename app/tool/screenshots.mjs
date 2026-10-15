@@ -75,10 +75,14 @@ async function tapText(page, text) {
  */
 async function expectBar(page) {
   for (const label of ['Wardrobe', 'Laundry', 'Outfits', 'Ask', 'More']) {
-    const byText = page.getByText(label, { exact: true });
-    const byLabel = page.getByLabel(label, { exact: false });
+    // The destination as the bar exposes it: a tab or a button whose name
+    // *starts with* the label as a whole word (Flutter appends "Tab 2 of 5"),
+    // so neither a screen title that happens to say "Ask" nor a longer label
+    // such as "More options" can stand in for a destination that is missing.
+    const name = new RegExp(`^${label}(\\s|$)`);
     const found =
-      (await byText.count()) > 0 || (await byLabel.count()) > 0;
+      (await page.getByRole('tab', { name }).count()) > 0 ||
+      (await page.getByRole('button', { name }).count()) > 0;
     if (!found) throw new Error(`The bottom bar has no "${label}"`);
   }
 }

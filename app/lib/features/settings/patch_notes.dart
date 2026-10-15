@@ -100,7 +100,7 @@ final patchNotes = <Release>[
   Release(
     version: '0.31.0',
     name: 'Quick Cycle',
-    date: DateTime.utc(2026, 10, 16),
+    date: DateTime.utc(2026, 10, 15),
     headline:
         'A bottom bar, Laundry in three stages, one Outfits, tidier Settings',
     changes: [

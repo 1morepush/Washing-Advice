@@ -13,6 +13,8 @@
 /// user restored a backup that carried the database but not the pictures.
 library;
 
+import 'dart:collection';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -21,11 +23,64 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../core/providers.dart';
 import '../core/theme.dart';
+import '../data/images/image_store.dart';
+
+/// How many photographs' bytes are kept after nothing is showing them.
+///
+/// Enough for scrolling a row away and back, or popping to the previous page,
+/// not to read the file again; bounded so that a wardrobe of two hundred
+/// garments is not held in memory for the life of the process, which is what a
+/// provider that never disposes amounts to. A count rather than a time: it
+/// needs no timer, so it behaves the same under test and costs nothing idle.
+final imageRetainCountProvider = Provider<int>((ref) => 24);
+
+/// The most recently loaded photographs, oldest first.
+final _recentImagesProvider = Provider<Queue<KeepAliveLink>>(
+  (ref) => Queue<KeepAliveLink>(),
+);
 
 /// Bytes for one stored image, or null when it cannot be read.
-final imageBytesProvider = FutureProvider.family<Uint8List?, String>(
-  (ref, uri) => ref.watch(imageStoreProvider).read(uri),
-);
+///
+/// Only the stores with no files to point at come this way (the browser and
+/// the demo). On a phone the thumbnail hands the file to Flutter's image
+/// cache instead, which decodes it at the size it is drawn at and evicts it
+/// under pressure, so the full-size bytes never enter Dart at all.
+///
+/// Released once nothing is showing it, unless it is among the last
+/// [imageRetainCountProvider] loaded.
+final imageBytesProvider = FutureProvider.autoDispose
+    .family<Uint8List?, String>((ref, uri) {
+      final recent = ref.read(_recentImagesProvider);
+      final link = ref.keepAlive();
+      recent.add(link);
+      // Closing the link of a photograph still on screen is harmless: its
+      // listener keeps it alive, and it is released when that goes.
+      while (recent.length > ref.read(imageRetainCountProvider)) {
+        recent.removeFirst().close();
+      }
+      ref.onDispose(() => recent.remove(link));
+      return ref.watch(imageStoreProvider).read(uri);
+    });
+
+/// Forgets decoded pixels for images that were rewritten under the same URI.
+///
+/// A re-cut cutout is written to the name it had before, on purpose, so the
+/// URI alone cannot tell a cache that the picture changed. Providers are
+/// invalidated by key; Flutter's image cache is keyed by path, so it is
+/// cleared. Rare enough (a user pressed Save) that precision is not worth it.
+void forgetDecodedImages() {
+  final PaintingBinding binding;
+  try {
+    binding = PaintingBinding.instance;
+  } on Error {
+    // No engine bindings: a controller under a plain unit test, with nothing
+    // drawn and so nothing cached.
+    return;
+  }
+  binding.imageCache
+    ..clear()
+    ..clearLiveImages();
+}
 
 class ItemThumbnail extends ConsumerWidget {
   const ItemThumbnail({
@@ -50,12 +105,25 @@ class ItemThumbnail extends ConsumerWidget {
     final uri = item.photos.displayImageUri;
     if (uri == null) return _Swatch(palette: item.colors.value, size: size);
 
-    final bytes = ref.watch(imageBytesProvider(uri)).valueOrNull;
-    if (bytes == null) {
-      // Covers both "still loading" and "gone". Showing the swatch in the
-      // meantime avoids a row that pops from a grey box to a picture, and
-      // avoids a spinner per row on a wardrobe of two hundred items.
-      return _Swatch(palette: item.colors.value, size: size);
+    final ImageProvider source;
+    final store = ref.watch(imageStoreProvider);
+    final path = switch (store) {
+      FileBackedImageStore() => (store as FileBackedImageStore).pathFor(uri),
+      _ => null,
+    };
+    if (path != null) {
+      // Straight from disk: no bytes held by a provider, and a missing file
+      // surfaces as an error below rather than as a null.
+      source = FileImage(File(path));
+    } else {
+      final bytes = ref.watch(imageBytesProvider(uri)).valueOrNull;
+      if (bytes == null) {
+        // Covers both "still loading" and "gone". Showing the swatch in the
+        // meantime avoids a row that pops from a grey box to a picture, and
+        // avoids a spinner per row on a wardrobe of two hundred items.
+        return _Swatch(palette: item.colors.value, size: size);
+      }
+      source = MemoryImage(bytes);
     }
 
     // `size` may be `double.infinity` in a grid cell, where the parent decides
@@ -71,25 +139,48 @@ class ItemThumbnail extends ConsumerWidget {
         child: Padding(
           padding: EdgeInsets.all(size.isFinite ? size * 0.06 : 6),
           child: LayoutBuilder(
-            builder: (context, constraints) => Image.memory(
-              bytes,
-              // Decoded at the size it is drawn at, not the size it was
-              // stored at. A scan is capped at 1600px, which is right for a
-              // model reading a care label and about thirty times the pixels a
-              // 56dp row needs — and an undecoded hint is the difference
-              // between ~10MB of RGBA per row and a few hundred kilobytes.
-              // Flutter's image cache is 100MB, so a wardrobe of any size
-              // would otherwise evict and re-decode while the user scrolls.
-              cacheWidth: _decodeExtent(context, constraints),
-              cacheHeight: _decodeExtent(context, constraints),
-              // `contain`, never `cover`: a cutout has transparent margins and
-              // the shape *is* the information. Cropping to fill a square would
-              // cut the sleeves off the thing being recognised.
-              fit: BoxFit.contain,
-              filterQuality: FilterQuality.medium,
-              errorBuilder: (_, _, _) =>
-                  _Swatch(palette: item.colors.value, size: size),
-            ),
+            builder: (context, constraints) {
+              final extent = _decodeExtent(context, constraints);
+              return Image(
+                // Decoded at the size it is drawn at, not the size it was
+                // stored at. A scan is capped at 1600px, which is right for a
+                // model reading a care label and about thirty times the
+                // pixels a 56dp row needs — and an undecoded hint is the
+                // difference between ~10MB of RGBA per row and a few hundred
+                // kilobytes. Flutter's image cache is 100MB, so a wardrobe of
+                // any size would otherwise evict and re-decode while the user
+                // scrolls.
+                //
+                // `fit`, not the default `exact`: giving both dimensions to
+                // `exact` decodes to precisely extent x extent whatever the
+                // picture's shape, so a portrait photograph came out squashed
+                // into a square before `BoxFit.contain` ever saw it. `fit`
+                // scales the longer side to the extent and keeps the ratio.
+                image: extent == null
+                    ? source
+                    : ResizeImage(
+                        source,
+                        width: extent,
+                        height: extent,
+                        policy: ResizeImagePolicy.fit,
+                      ),
+                // `contain`, never `cover`: a cutout has transparent margins
+                // and the shape *is* the information. Cropping to fill a
+                // square would cut the sleeves off the thing being recognised.
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.medium,
+                // A file is decoded after the first build, so until a frame
+                // arrives the swatch stands in, as it does while bytes load.
+                frameBuilder: (context, child, frame, sync) =>
+                    sync || frame != null
+                    ? child
+                    : Center(
+                        child: _Swatch(palette: item.colors.value, size: size),
+                      ),
+                errorBuilder: (_, _, _) =>
+                    _Swatch(palette: item.colors.value, size: size),
+              );
+            },
           ),
         ),
       ),

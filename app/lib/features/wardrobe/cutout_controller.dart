@@ -114,6 +114,7 @@ class CutoutController extends StateNotifier<CutoutStatus> {
       // The bytes are cached by URI too, and re-cutting the same photograph
       // writes to the same name on purpose, so the item alone is not enough.
       _ref.invalidate(imageBytesProvider(cutoutUri));
+      forgetDecodedImages();
       state = CutoutStatus.done;
     } on Exception {
       state = CutoutStatus.failed;

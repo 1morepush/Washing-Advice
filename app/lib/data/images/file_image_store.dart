@@ -10,7 +10,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'image_store.dart';
 
-class FileImageStore implements ImageStore {
+class FileImageStore implements ImageStore, FileBackedImageStore {
   FileImageStore._(this._directory);
 
   /// Opens a store over a directory chosen by the caller.
@@ -53,6 +53,9 @@ class FileImageStore implements ImageStore {
     if (file == null || !file.existsSync()) return null;
     return file.readAsBytes();
   }
+
+  @override
+  String? pathFor(String uri) => _fileFor(uri)?.path;
 
   @override
   Future<void> delete(String uri) async {

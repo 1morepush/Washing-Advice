@@ -34,6 +34,19 @@ abstract interface class ImageStore {
   Future<void> delete(String uri);
 }
 
+/// An [ImageStore] whose images are ordinary files.
+///
+/// A separate, optional interface rather than a method on [ImageStore]: the
+/// browser and the demo have no files, and the port should not have to invent
+/// an answer for them. Callers that can use a path (to let Flutter decode
+/// straight from disk) ask `store is FileBackedImageStore`; everything else
+/// keeps reading bytes.
+abstract interface class FileBackedImageStore {
+  /// The file behind [uri], or null if it is not one this store owns.
+  /// Says nothing about whether the file still exists.
+  String? pathFor(String uri);
+}
+
 /// Names a stored image deterministically.
 ///
 /// Derived from the item and role rather than random, so re-running a cutout

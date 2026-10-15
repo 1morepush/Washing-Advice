@@ -219,6 +219,7 @@ class _EditorState extends ConsumerState<_Editor> {
       // picture from the first tidy. The row was saved correctly and the item
       // page showed the old cutout.
       ref.invalidate(imageBytesProvider(uri));
+      forgetDecodedImages();
       if (mounted) context.go('/item/${widget.item.id.value}');
     } on Exception catch (error) {
       if (mounted) {

@@ -61,6 +61,13 @@ class AppShell extends ConsumerWidget {
         index == AppDestination.wardrobe.index &&
         ref.watch(wardrobeSelectionProvider).isNotEmpty;
 
+    // Read here, above the Scaffold, where the keyboard's inset is still whole.
+    // The bar goes while the keyboard is up: with the shell resizing for it, the
+    // body ends at the top of the keys, and a bar left on screen would float on
+    // them. The screens inside then see no inset of their own and lay out
+    // against the real bottom edge, so a composer sits directly on the keyboard.
+    final typing = MediaQuery.viewInsetsOf(context).bottom > 0;
+
     return PopScope(
       // Back from inside a place pops within it first (the navigator under the
       // shell answers before this is asked). Out of ideas there, Back goes to
@@ -70,11 +77,8 @@ class AppShell extends ConsumerWidget {
         if (!didPop) shell.goBranch(0);
       },
       child: Scaffold(
-        // The screens inside lay themselves out around the keyboard. Letting
-        // this one shrink as well would lift the bar on top of it.
-        resizeToAvoidBottomInset: false,
         body: shell,
-        bottomNavigationBar: selecting
+        bottomNavigationBar: selecting || typing
             ? null
             : NavigationBar(
                 selectedIndex: index,

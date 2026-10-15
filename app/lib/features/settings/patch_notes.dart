@@ -96,6 +96,27 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.30.1',
+    name: 'Shrink to Fit',
+    date: DateTime.utc(2026, 10, 15),
+    headline: 'Photos keep their shape, Back goes back, and a quicker start',
+    changes: [
+      'Photographs are no longer stretched. A tall or wide picture was '
+          'squashed into a square in the wardrobe, the baskets and the outfit '
+          'cards; it now keeps its shape.',
+      'Back goes back. Open a garment from the laundry, or a stain from a '
+          'garment, and Back — the arrow, or the Android gesture — returns to '
+          'where you were, not to the wardrobe or out of the app. '
+          '"What did you wear today?" has a back arrow, and the evening '
+          'reminder still opens it, with the laundry behind it.',
+      'The app starts faster. It no longer reads a large time zone table '
+          'before the first screen, for the sake of one reminder.',
+      'Pictures of clothes you are not looking at are let go of instead of '
+          'being kept until you close the app, so a big wardrobe no longer '
+          'grows the app\'s memory as you scroll.',
+    ],
+  ),
+  Release(
     version: '0.30.0',
     name: 'Darks Only',
     date: DateTime.utc(2026, 10, 15),

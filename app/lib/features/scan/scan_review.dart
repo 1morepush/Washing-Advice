@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
+
 import '../../core/theme.dart';
 import '../../data/api/scan_dto.dart';
 import '../../widgets/confidence_chip.dart';

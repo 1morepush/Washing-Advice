@@ -14,13 +14,13 @@ import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../data/api/ai_gateway.dart';
+import '../../widgets/back_navigation.dart';
+import '../../widgets/collected_photos.dart';
+import '../../widgets/state_view.dart';
 import 'crop_screen.dart';
 import 'scan_controller.dart';
-import '../../widgets/back_navigation.dart';
-import '../../widgets/state_view.dart';
-import '../../widgets/collected_photos.dart';
-import 'shot_tile.dart';
 import 'scan_review.dart';
+import 'shot_tile.dart';
 
 class ScanScreen extends ConsumerWidget {
   const ScanScreen({super.key});

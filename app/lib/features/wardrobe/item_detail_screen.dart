@@ -13,11 +13,11 @@ import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
+import '../../widgets/back_navigation.dart';
 import '../../widgets/status_message.dart';
 import 'condition_sheet.dart';
-import 'report_wear_sheet.dart';
-import '../../widgets/back_navigation.dart';
 import 'item_details.dart';
+import 'report_wear_sheet.dart';
 
 /// How tall the bar has to be to hold a three-line name at the current type
 /// size.

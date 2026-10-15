@@ -17,8 +17,8 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../../widgets/app_drawer.dart';
-import '../../widgets/status_message.dart';
 import '../../widgets/state_view.dart';
+import '../../widgets/status_message.dart';
 
 class InsightsScreen extends ConsumerWidget {
   const InsightsScreen({super.key});

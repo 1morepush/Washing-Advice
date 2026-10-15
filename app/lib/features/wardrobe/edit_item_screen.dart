@@ -17,8 +17,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
-import '../../widgets/status_message.dart';
 import '../../widgets/back_navigation.dart';
+import '../../widgets/status_message.dart';
 import 'edit_item_fields.dart';
 
 class EditItemScreen extends ConsumerWidget {

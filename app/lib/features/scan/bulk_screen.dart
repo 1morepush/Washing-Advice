@@ -9,12 +9,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../widgets/back_navigation.dart';
 import '../../widgets/status_message.dart';
 import 'bulk_controller.dart';
-import 'crop_screen.dart';
-import '../../widgets/back_navigation.dart';
-import 'shot_tile.dart';
 import 'bulk_review.dart';
+import 'crop_screen.dart';
+import 'shot_tile.dart';
 
 class BulkScanScreen extends ConsumerWidget {
   const BulkScanScreen({super.key});

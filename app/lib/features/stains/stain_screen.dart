@@ -17,12 +17,12 @@ import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
+import '../../widgets/back_navigation.dart';
+import '../../widgets/notice.dart';
+import '../../widgets/state_view.dart';
 import '../../widgets/status_message.dart';
 import '../laundry/laundry_controller.dart';
 import 'stain_controller.dart';
-import '../../widgets/back_navigation.dart';
-import '../../widgets/state_view.dart';
-import '../../widgets/notice.dart';
 
 /// The spills people actually have, as one tap each.
 ///

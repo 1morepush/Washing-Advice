@@ -18,10 +18,10 @@ import '../data/api/ai_gateway.dart';
 import '../data/capture/image_capture_source.dart';
 import '../data/drift/connection.dart';
 import '../data/drift/database.dart';
-import '../data/images/image_store.dart';
 import '../data/drift/drift_event_log.dart';
 import '../data/drift/drift_outfit_repository.dart';
 import '../data/drift/drift_wardrobe_repository.dart';
+import '../data/images/image_store.dart';
 import 'settings.dart';
 
 /// The open database.

@@ -16,11 +16,11 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../../data/images/image_store.dart';
+import '../../widgets/back_navigation.dart';
 import '../../widgets/item_thumbnail.dart';
 import '../../widgets/status_message.dart';
 import 'cutout_controller.dart';
 import 'mask_edit.dart';
-import '../../widgets/back_navigation.dart';
 import 'mask_editor_parts.dart';
 
 /// The paint surface itself.

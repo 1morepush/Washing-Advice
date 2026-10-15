@@ -5,6 +5,7 @@ library;
 
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+
 import 'mask_edit.dart';
 
 class MaskPainter extends CustomPainter {

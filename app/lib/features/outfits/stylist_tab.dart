@@ -17,12 +17,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
+import '../../widgets/state_view.dart';
 import '../../widgets/status_message.dart';
 import 'outfit_controller.dart';
 import 'outfit_pieces.dart';
 import 'saved_outfits.dart';
 import 'stylist_controller.dart';
-import '../../widgets/state_view.dart';
 
 /// Whether to also ask what the wardrobe is missing.
 ///

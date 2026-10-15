@@ -7,11 +7,11 @@ import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/settings.dart';
+import '../../widgets/back_navigation.dart';
+import '../../widgets/state_view.dart';
 import '../laundry/laundry_controller.dart';
 import 'pile_controller.dart';
 import 'widgets/load_card.dart';
-import '../../widgets/back_navigation.dart';
-import '../../widgets/state_view.dart';
 
 class PileScreen extends ConsumerWidget {
   const PileScreen({super.key});

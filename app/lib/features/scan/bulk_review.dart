@@ -6,8 +6,10 @@
 library;
 
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
+
 import '../../widgets/notice.dart';
 import 'bulk_controller.dart';
 import 'scan_controller.dart' show ScanShot;

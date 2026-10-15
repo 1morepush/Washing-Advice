@@ -12,12 +12,12 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../../widgets/app_drawer.dart';
+import '../../widgets/state_view.dart';
 import '../../widgets/status_message.dart';
 import 'outfit_controller.dart';
 import 'outfit_pieces.dart';
 import 'saved_outfits.dart';
 import 'stylist_tab.dart';
-import '../../widgets/state_view.dart';
 
 /// The three views of "what to wear", in the order they are shown.
 ///

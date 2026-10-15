@@ -14,10 +14,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
-import '../../widgets/status_message.dart';
-import 'spread_controller.dart';
 import '../../widgets/back_navigation.dart';
 import '../../widgets/state_view.dart';
+import '../../widgets/status_message.dart';
+import 'spread_controller.dart';
 
 class SpreadScanScreen extends ConsumerWidget {
   const SpreadScanScreen({super.key});

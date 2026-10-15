@@ -13,10 +13,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
-import 'care_tag_controller.dart';
 import '../../widgets/back_navigation.dart';
-import '../../widgets/state_view.dart';
 import '../../widgets/collected_photos.dart';
+import '../../widgets/state_view.dart';
+import 'care_tag_controller.dart';
 import 'care_tag_review.dart';
 
 class CareTagScreen extends ConsumerWidget {

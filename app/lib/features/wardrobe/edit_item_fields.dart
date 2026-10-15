@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
+
 import '../../widgets/confidence_chip.dart';
 import 'care_text.dart';
 

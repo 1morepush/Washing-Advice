@@ -13,9 +13,9 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../../widgets/item_thumbnail.dart';
+import '../../widgets/state_view.dart';
 import '../../widgets/status_message.dart';
 import 'outfit_controller.dart';
-import '../../widgets/state_view.dart';
 
 class SavedOutfitsTab extends ConsumerWidget {
   const SavedOutfitsTab({super.key});

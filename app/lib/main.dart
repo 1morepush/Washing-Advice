@@ -195,14 +195,16 @@ class _WashingAdviceAppState extends ConsumerState<WashingAdviceApp> {
 
   @override
   Widget build(BuildContext context) {
+    final appearance = ref.watch(appearanceProvider);
+
     return MaterialApp.router(
       title: 'Washing Advice',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      // Follows the system. A laundry app is used in a utility room at night
-      // as often as in daylight.
-      themeMode: ThemeMode.system,
+      darkTheme: appearance.darkTheme,
+      // Follows the system unless the person chose otherwise. A laundry app is
+      // used in a utility room at night as often as in daylight.
+      themeMode: appearance.themeMode,
       routerConfig: _router,
     );
   }

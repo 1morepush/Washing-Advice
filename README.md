@@ -576,6 +576,12 @@ against it, because that is the only place a cross-language wire break shows up
 — both halves pass their own unit tests happily while a renamed field silently
 drops data between them. It found two such bugs the first time it ran.
 
+### Look the way you like
+
+**Settings → Appearance** lets you choose Light, Dark or **AMOLED** — dark on
+true black, which an OLED screen draws by switching those pixels off — or leave
+it on Match phone, the default, which follows your phone as the app always has.
+
 ### Ask it a question
 
 Most laundry questions are not ones a screen anticipates. What the triangle with
@@ -836,7 +842,7 @@ A few decisions worth reading about:
 |---|---|---|
 | 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 657 core tests |
 | 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts, machine identification | **Done** — 404 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 793 app tests |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 841 app tests |
 | 4 | Care-label scanning, item editing, filter sheet, garment cutouts, grid view | **Done** |
 | 5 | Pile scanning, load grouping, machine profiles, wear and wash history | **Done** |
 | 6 | Outfit suggestions, laundry-aware packing, wardrobe insights | **Done** |
@@ -862,8 +868,9 @@ A few decisions worth reading about:
 | 23 | Several garments from one photo, a camera roll imported, one tap per garment | **Done** |
 | 24 | "What did you wear today?" in three taps, and an evening reminder that opens it | **Done** |
 | 25 | Deletion that syncs, a pile scan that asks about near-matches, rate limits handled | **Done** |
+| 26 | Appearance: match the phone, light, dark, or true black for OLED screens | **Done** |
 
-Released as `0.29.1 — Spot Treatment`; the app's own **Settings → What's new**
+Released as `0.30.0 — Darks Only`; the app's own **Settings → What's new**
 carries the full list, and `app/lib/features/settings/patch_notes.dart` records
 which version digit moves for what.
 

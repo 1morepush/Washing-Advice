@@ -4,6 +4,12 @@
 /// explanation is either obeyed blindly or ignored, and both are worse than
 /// one the user can disagree with — so every card carries the reasons the core
 /// gave for it, in the core's own words.
+///
+/// Two tabs: Ideas, and Saved. Ideas holds both of the app's sources of outfit,
+/// the ones it builds from the wardrobe and the ones a model proposes, under a
+/// single occasion and season. They sit in separate, headed sections and every
+/// card is labelled with where it came from (`outfit_source.dart`), because the
+/// label is what stops a model's taste passing as arithmetic.
 library;
 
 import 'package:flutter/material.dart';
@@ -11,22 +17,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
-import '../../widgets/state_view.dart';
-import '../../widgets/status_message.dart';
 import 'outfit_controller.dart';
 import 'outfit_pieces.dart';
 import 'saved_outfits.dart';
-import 'stylist_tab.dart';
+import 'outfit_source.dart';
+import 'stylist_section.dart';
 
-/// The three views of "what to wear", in the order they are shown.
+/// The two views of "what to wear", in the order they are shown.
 ///
 /// Named rather than left as tab indices, which is not fussiness: the router
 /// addressed the saved outfits as `initialTab: 1` and adding a tab in front of
 /// it silently pointed that link somewhere else. A name cannot drift.
-enum OutfitsTab { suggested, stylist, saved }
+enum OutfitsTab { ideas, saved }
 
 class OutfitsScreen extends ConsumerWidget {
-  const OutfitsScreen({this.initialTab = OutfitsTab.suggested, super.key});
+  const OutfitsScreen({this.initialTab = OutfitsTab.ideas, super.key});
 
   /// Which tab to open on.
   ///
@@ -48,19 +53,9 @@ class OutfitsScreen extends ConsumerWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Outfits'),
-          // Tabs rather than destinations in the drawer: these are the same
-          // subject seen three ways, and someone deciding what to wear moves
-          // between them constantly.
-          //
-          // Stylist is its own tab rather than extra cards among the
-          // suggestions because the two are different in kind. Suggested is
-          // arithmetic the app can defend line by line; Stylist is a model's
-          // taste. Mixing them would leave no way to tell which you were
-          // reading.
           bottom: const TabBar(
             tabs: [
-              Tab(text: 'Suggested'),
-              Tab(text: 'Stylist'),
+              Tab(text: 'Ideas'),
               Tab(text: 'Saved'),
             ],
           ),
@@ -69,6 +64,9 @@ class OutfitsScreen extends ConsumerWidget {
           children: [
             Column(
               children: [
+                // One filter for both sources. The stylist reads the same
+                // request, so the occasion chosen here is the one it is asked
+                // about, and changing it changes both sections.
                 _OccasionBar(
                   selected: request.occasion,
                   onChanged: (occasion) => ref
@@ -76,30 +74,50 @@ class OutfitsScreen extends ConsumerWidget {
                       .update((r) => _copy(r, occasion: occasion)),
                 ),
                 Expanded(
-                  child: suggestions.when(
-                    loading: () =>
-                        const Center(child: CircularProgressIndicator()),
-                    error: (error, _) => StatusMessage.failure(
-                      title: 'Could not suggest an outfit',
-                      error: error,
-                    ),
-                    data: (list) => list.isEmpty
-                        ? _Empty(occasion: request.occasion)
-                        : ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                            itemCount: list.length,
-                            itemBuilder: (_, index) => _SuggestionCard(
-                              suggestion: list[index],
-                              occasion: request.occasion,
-                            ),
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                    children: [
+                      const SourceHeader(OutfitSource.wardrobe),
+                      ...suggestions.when(
+                        loading: () => const [
+                          SectionNote(
+                            icon: Icons.style_outlined,
+                            busy: true,
+                            title: 'Putting outfits together…',
                           ),
+                        ],
+                        error: (error, _) => [
+                          SectionNote(
+                            icon: Icons.error_outline,
+                            title: 'Could not suggest an outfit',
+                            detail:
+                                'Something went wrong reading your wardrobe. '
+                                'It is still on this device — try again, and '
+                                'if it keeps happening the detail below is '
+                                'what to report.',
+                            technical: '$error',
+                          ),
+                        ],
+                        data: (list) => list.isEmpty
+                            ? [_Empty(occasion: request.occasion)]
+                            : [
+                                for (final suggestion in list)
+                                  _SuggestionCard(
+                                    suggestion: suggestion,
+                                    occasion: request.occasion,
+                                  ),
+                              ],
+                      ),
+                      const SizedBox(height: 16),
+                      const StylistSection(),
+                    ],
                   ),
                 ),
-                // Inside the Suggested tab rather than in a bottomNavigationBar
-                // shared by both. Season and "with a layer" shape the
-                // suggestions and mean nothing for saved outfits; leaving them
-                // under the Saved tab offered controls that quietly did
-                // nothing, which is worse than not offering them.
+                // Inside the Ideas tab rather than in a bottomNavigationBar
+                // shared by both. Season and "with a layer" shape the ideas
+                // and mean nothing for saved outfits; leaving them under the
+                // Saved tab offered controls that quietly did nothing, which
+                // is worse than not offering them.
                 _Options(
                   request: request,
                   onChanged: (updated) =>
@@ -107,7 +125,6 @@ class OutfitsScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            const StylistTab(),
             const SavedOutfitsTab(),
           ],
         ),
@@ -172,105 +189,102 @@ class _SuggestionCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            OutfitPieces(items: suggestion.items),
-            if (suggestion.reasons.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              const Divider(height: 1),
-              const SizedBox(height: 12),
-              for (final reason in suggestion.reasons.take(3))
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.check_circle_outline,
-                        size: 16,
-                        color: theme.colorScheme.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          reason,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
+    return OutfitCard(
+      source: OutfitSource.wardrobe,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          OutfitPieces(items: suggestion.items),
+          if (suggestion.reasons.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+            for (final reason in suggestion.reasons.take(3))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline,
+                      size: 16,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        reason,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-            ],
-            const SizedBox(height: 4),
-            // A `Wrap`, not a `Row`. Both labels are words rather than bare
-            // icons on purpose — "bookmark" and "checkroom" are not glyphs
-            // anyone reads the same way — but two labelled buttons stop
-            // fitting a narrow phone's card once the system text size is
-            // turned up, which is an ordinary setting rather than an exotic
-            // one. In a `Row` that overflowed; here the second button drops
-            // to its own line instead.
-            Wrap(
-              alignment: WrapAlignment.end,
-              spacing: 8,
-              children: [
-                // Saving and wearing are different acts, and both are offered.
-                // "I like this, keep it" is not "I am wearing it today", and
-                // collapsing them would make the wear count on a saved outfit
-                // mean nothing.
-                TextButton.icon(
-                  onPressed: () async {
-                    final name = await askForOutfitName(
-                      context,
-                      title: 'Save this outfit',
-                    );
-                    if (name == null || !context.mounted) return;
-
-                    final saved = await ref
-                        .read(outfitControllerProvider)
-                        .saveSuggestion(
-                          suggestion,
-                          name: name,
-                          occasion: occasion,
-                        );
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Saved as ${saved.name}.')),
-                    );
-                  },
-                  icon: const Icon(Icons.bookmark_border, size: 18),
-                  label: const Text('Save'),
-                ),
-                // What closes the loop. Recording an outfit as worn is the only
-                // way the app finds out its suggestion was any good, and every
-                // such record teaches the builder a pairing it did not know.
-                TextButton.icon(
-                  onPressed: () async {
-                    await ref
-                        .read(outfitControllerProvider)
-                        .wearItems(suggestion.itemIds, occasion: occasion.name);
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Recorded as worn together, and put in the basket.',
-                        ),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.checkroom_outlined, size: 18),
-                  label: const Text('Wearing this'),
-                ),
-              ],
-            ),
+              ),
           ],
-        ),
+          const SizedBox(height: 4),
+          // A `Wrap`, not a `Row`. Both labels are words rather than bare
+          // icons on purpose — "bookmark" and "checkroom" are not glyphs
+          // anyone reads the same way — but two labelled buttons stop
+          // fitting a narrow phone's card once the system text size is
+          // turned up, which is an ordinary setting rather than an exotic
+          // one. In a `Row` that overflowed; here the second button drops
+          // to its own line instead.
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 8,
+            children: [
+              // Saving and wearing are different acts, and both are offered.
+              // "I like this, keep it" is not "I am wearing it today", and
+              // collapsing them would make the wear count on a saved outfit
+              // mean nothing.
+              TextButton.icon(
+                onPressed: () async {
+                  final name = await askForOutfitName(
+                    context,
+                    title: 'Save this outfit',
+                  );
+                  if (name == null || !context.mounted) return;
+
+                  final saved = await ref
+                      .read(outfitControllerProvider)
+                      .saveSuggestion(
+                        suggestion,
+                        name: name,
+                        occasion: occasion,
+                      );
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Saved as ${saved.name}.')),
+                  );
+                },
+                icon: const Icon(Icons.bookmark_border, size: 18),
+                label: const Text('Save'),
+              ),
+              // What closes the loop. Recording an outfit as worn is the only
+              // way the app finds out its suggestion was any good, and every
+              // such record teaches the builder a pairing it did not know.
+              TextButton.icon(
+                onPressed: () async {
+                  await ref
+                      .read(outfitControllerProvider)
+                      .wearItems(suggestion.itemIds, occasion: occasion.name);
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Recorded as worn together, and put in the basket.',
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.checkroom_outlined, size: 18),
+                label: const Text('Wearing this'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -337,13 +351,13 @@ class _Empty extends StatelessWidget {
   final Occasion occasion;
 
   @override
-  Widget build(BuildContext context) => EmptyView(
+  Widget build(BuildContext context) => SectionNote(
     icon: Icons.style_outlined,
     title: 'Nothing for ${occasion.label.toLowerCase()} yet',
     // Naming the actual requirement, rather than "no results". An
     // outfit needs both halves, and someone with only tops catalogued
     // should be told that instead of left guessing.
-    message:
+    detail:
         'An outfit needs a top and a bottom, or a one-piece. Add more '
         'to your wardrobe, or tag things for this occasion if the '
         'defaults do not match how you dress.',

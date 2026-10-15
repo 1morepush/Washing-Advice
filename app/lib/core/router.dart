@@ -96,8 +96,8 @@ GoRouter _router(String initialLocation) => GoRouter(
               builder: (_, _) =>
                   const OutfitsScreen(initialTab: OutfitsTab.saved),
             ),
-            // The Stylist used to be a destination of its own. It is now
-            // part of Ideas, so an old link lands there.
+            // The Stylist used to be a destination of its own, and then a tab.
+            // It is now a section of Ideas, so an old link lands there.
             GoRoute(path: '/outfits/stylist', redirect: (_, _) => '/outfits'),
           ],
         ),

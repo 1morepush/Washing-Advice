@@ -17,7 +17,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
-import '../../widgets/app_drawer.dart';
 import '../../widgets/item_thumbnail.dart';
 import '../../widgets/status_message.dart';
 import '../pile/widgets/load_card.dart';
@@ -64,7 +63,6 @@ class _LaundryScreenState extends ConsumerState<LaundryScreen>
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    drawer: const AppDrawer(current: AppDestination.laundry),
     appBar: AppBar(
       title: const Text('Laundry'),
       bottom: TabBar(

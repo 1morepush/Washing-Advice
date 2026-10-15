@@ -1,0 +1,98 @@
+/// Navigation between the app's top-level places.
+///
+/// A bottom bar of five, because the places someone moves between all day —
+/// the wardrobe, the washing, what to wear, a question — belong under a thumb,
+/// and a menu behind an icon hid every one of them. Packing, Insights and
+/// Settings are used far less often and live one tap away under More.
+///
+/// Each place keeps its own history: the shell is a `StatefulShellRoute`, so
+/// switching away and back finds the screen, its stack and its scroll where
+/// they were left, and tapping the place you are already in returns it to its
+/// first screen.
+///
+/// Only screens that are *part of* a place sit inside the shell and show the
+/// bar (the laundry's Worn Today, say). Anything that is a task of its own — a
+/// garment, a scan, a stain, a pile photo, Settings — is pushed over the whole
+/// shell and covers the bar, so the bar never offers a way out of the middle
+/// of one.
+library;
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../features/wardrobe/wardrobe_screen.dart'
+    show wardrobeSelectionProvider;
+
+/// One place on the bar, in the order they appear.
+enum AppDestination {
+  wardrobe('Wardrobe', '/', Icons.checkroom_outlined, Icons.checkroom),
+  laundry(
+    'Laundry',
+    '/laundry',
+    Icons.local_laundry_service_outlined,
+    Icons.local_laundry_service,
+  ),
+  outfits('Outfits', '/outfits', Icons.style_outlined, Icons.style),
+  ask('Ask', '/ask', Icons.chat_bubble_outline, Icons.chat_bubble),
+  more('More', '/more', Icons.more_horiz, Icons.more_horiz);
+
+  const AppDestination(this.label, this.route, this.icon, this.selectedIcon);
+
+  final String label;
+  final String route;
+  final IconData icon;
+  final IconData selectedIcon;
+}
+
+class AppShell extends ConsumerWidget {
+  const AppShell({required this.shell, super.key});
+
+  final StatefulNavigationShell shell;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final index = shell.currentIndex;
+
+    // While garments are being picked out the wardrobe takes over the bottom of
+    // the screen with its own action, and a second bar under it would be two
+    // rows of buttons about different things.
+    final selecting =
+        index == AppDestination.wardrobe.index &&
+        ref.watch(wardrobeSelectionProvider).isNotEmpty;
+
+    return PopScope(
+      // Back from inside a place pops within it first (the navigator under the
+      // shell answers before this is asked). Out of ideas there, Back goes to
+      // the first place, and only from the first place does it leave the app.
+      canPop: index == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) shell.goBranch(0);
+      },
+      child: Scaffold(
+        // The screens inside lay themselves out around the keyboard. Letting
+        // this one shrink as well would lift the bar on top of it.
+        resizeToAvoidBottomInset: false,
+        body: shell,
+        bottomNavigationBar: selecting
+            ? null
+            : NavigationBar(
+                selectedIndex: index,
+                onDestinationSelected: (selected) => shell.goBranch(
+                  selected,
+                  // The place you are in: back to its first screen.
+                  initialLocation: selected == index,
+                ),
+                destinations: [
+                  for (final destination in AppDestination.values)
+                    NavigationDestination(
+                      icon: Icon(destination.icon),
+                      selectedIcon: Icon(destination.selectedIcon),
+                      label: destination.label,
+                    ),
+                ],
+              ),
+      ),
+    );
+  }
+}

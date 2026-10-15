@@ -18,6 +18,7 @@ import 'package:washing_advice/core/settings.dart';
 import 'package:washing_advice/data/images/memory_image_store.dart';
 import 'package:washing_advice/data/capture/image_capture_source.dart';
 import 'package:washing_advice/features/laundry/evening_nudge.dart';
+import 'package:washing_advice/features/more/more_screen.dart';
 import 'package:washing_advice/features/pile/pile_screen.dart';
 import 'package:washing_advice/features/scan/crop_screen.dart';
 import 'package:washing_advice/features/scan/scan_controller.dart';
@@ -178,11 +179,14 @@ void main() {
     expect(find.byType(PileScreen), findsOneWidget);
   });
 
-  testWidgets('settings from the drawer keeps the hamburger', (tester) async {
+  testWidgets('settings opened by address has a way out to More', (
+    tester,
+  ) async {
     await open(tester, location: '/settings');
 
-    expect(find.byType(BackButton), findsNothing);
-    expect(find.byTooltip('Open navigation menu'), findsOneWidget);
+    expect(find.byTooltip('Open navigation menu'), findsNothing);
+    await backArrow(tester);
+    expect(find.byType(MoreScreen), findsOneWidget);
   });
 
   group('the scan screen forgets its photos when left', () {

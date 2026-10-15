@@ -17,7 +17,6 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../widgets/app_drawer.dart';
 import 'chat_controller.dart';
 
 /// Openers, shown on an empty screen.
@@ -102,7 +101,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             ),
         ],
       ),
-      drawer: const AppDrawer(current: AppDestination.ask),
       body: Column(
         children: [
           Expanded(

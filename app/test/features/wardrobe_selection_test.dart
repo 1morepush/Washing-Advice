@@ -97,7 +97,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Back to the ordinary wardrobe once nothing is picked.
-      expect(find.text('Wardrobe'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, 'Wardrobe'), findsOneWidget);
     });
 
     testWidgets('the whole selection goes to the basket at once', (
@@ -116,7 +116,7 @@ void main() {
       expect(await basket(), hasLength(3));
       // And the selection ends, rather than leaving three ticks on garments
       // that are no longer where they were.
-      expect(find.text('Wardrobe'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, 'Wardrobe'), findsOneWidget);
     });
 
     testWidgets('a garment already in the machine is not offered', (

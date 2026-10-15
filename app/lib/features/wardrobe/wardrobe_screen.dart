@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
-import '../../widgets/app_drawer.dart';
 import '../laundry/laundry_controller.dart';
 import 'filter_sheet.dart';
 import 'widgets/item_card.dart';
@@ -66,7 +65,6 @@ class WardrobeScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      drawer: const AppDrawer(current: AppDestination.wardrobe),
       appBar: AppBar(
         title: const Text('Wardrobe'),
         actions: [
@@ -453,7 +451,7 @@ void toggleWardrobeSelection(WidgetRef ref, ItemId id) {
 
 /// The wardrobe while garments are being picked out.
 ///
-/// Everything a selection cannot use is gone: the drawer, the search box, the
+/// Everything a selection cannot use is gone: the navigation bar, the search box, the
 /// filter button and both floating buttons. What is left says how many are
 /// picked, how to take them all, how to stop, and the one action worth doing in
 /// bulk.

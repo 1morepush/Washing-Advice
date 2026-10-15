@@ -190,9 +190,11 @@ abstract final class AppTheme {
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
       dividerTheme: DividerThemeData(color: scheme.outlineVariant, space: 1),
-      // The app navigates with a drawer today. A bottom bar would be given the
-      // `surfaceContainer` fill, which here is a grey strip across the bottom
-      // of an otherwise black screen.
+      // The bottom bar would otherwise be given the `surfaceContainer` fill,
+      // which here is a grey strip across the bottom of an otherwise black
+      // screen. Only the ground changes: the pill behind the selected place is
+      // left as Material draws it, and is 2.2:1 against black — see
+      // `bottom_bar_test.dart`.
       navigationBarTheme: trueBlack
           ? NavigationBarThemeData(backgroundColor: scheme.surface)
           : null,

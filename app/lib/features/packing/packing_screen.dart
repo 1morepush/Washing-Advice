@@ -11,7 +11,7 @@ import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
-import '../../widgets/app_drawer.dart';
+import '../../widgets/back_navigation.dart';
 import '../../widgets/item_thumbnail.dart';
 import '../../widgets/status_message.dart';
 
@@ -27,8 +27,10 @@ class PackingScreen extends ConsumerWidget {
         ref.read(tripSpecProvider.notifier).state = updated;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Packing')),
-      drawer: const AppDrawer(current: AppDestination.packing),
+      appBar: AppBar(
+        leading: backLeading(context, '/more'),
+        title: const Text('Packing'),
+      ),
       body: list.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => StatusMessage.failure(

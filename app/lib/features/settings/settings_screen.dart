@@ -9,8 +9,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
 import '../../core/settings.dart';
+import '../../widgets/back_navigation.dart';
 import '../../data/api/ai_gateway.dart';
-import '../../widgets/app_drawer.dart';
 import '../sync/sync_section.dart';
 import 'appearance_section.dart';
 import 'machine_section.dart';
@@ -85,15 +85,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      // Now a top-level destination rather than a detour from the wardrobe, so
-      // it gets the drawer instead of a back button that only ever went home.
-      drawer: const AppDrawer(current: AppDestination.settings),
       appBar: AppBar(
-        // Reached from the drawer it is a place of its own and gets the
-        // hamburger; pushed from a screen that links to it (the pile scan),
-        // there is somewhere to go back to, and a drawer button alone would
-        // hide that on the platforms with no system Back.
-        leading: Navigator.of(context).canPop() ? const BackButton() : null,
+        // Opened from More there is a screen to go back to and the app bar
+        // draws its own arrow; opened by address, with nothing beneath it, a
+        // button to More instead of no way out.
+        leading: backLeading(context, '/more'),
         title: const Text('Settings'),
       ),
       body: ListView(

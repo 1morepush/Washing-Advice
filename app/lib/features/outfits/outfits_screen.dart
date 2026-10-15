@@ -11,7 +11,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
-import '../../widgets/app_drawer.dart';
 import '../../widgets/state_view.dart';
 import '../../widgets/status_message.dart';
 import 'outfit_controller.dart';
@@ -66,7 +65,6 @@ class OutfitsScreen extends ConsumerWidget {
             ],
           ),
         ),
-        drawer: const AppDrawer(current: AppDestination.outfits),
         body: TabBarView(
           children: [
             Column(

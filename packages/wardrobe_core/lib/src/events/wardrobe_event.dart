@@ -17,6 +17,10 @@ import '../wardrobe/model/condition.dart';
 import '../wardrobe/model/lifecycle.dart';
 import '../wardrobe/model/ownership.dart';
 
+/// The [WardrobeEvent.typeName] of an [ItemWorn], for asking a log for wears
+/// alone.
+const String wornEventType = 'worn';
+
 /// Something that happened to one item.
 sealed class WardrobeEvent {
   const WardrobeEvent({
@@ -196,7 +200,7 @@ final class ItemWorn extends WardrobeEvent {
   final String? occasion;
 
   @override
-  String get typeName => 'worn';
+  String get typeName => wornEventType;
 
   @override
   Map<String, Object?> get payload => {

@@ -216,9 +216,13 @@ final wardrobeSummaryProvider = Provider<AsyncValue<WardrobeSummary>>(
 /// Derived from the event log rather than stored, so there is no second source
 /// of truth to keep in step and it applies to history the app already has —
 /// someone who has been logging wears for a month has a graph immediately.
+///
+/// Only wears are read: the graph ignores every other event, and a wardrobe's
+/// washes and condition reports outnumber its wears several times over.
 final coWearGraphProvider = FutureProvider<RelationshipGraph>(
-  (ref) async =>
-      CoWearProjection.graphFrom(await ref.watch(eventLogProvider).all()),
+  (ref) async => CoWearProjection.graphFrom(
+    await ref.watch(eventLogProvider).all(types: {wornEventType}),
+  ),
 );
 
 /// Suggests things to wear.

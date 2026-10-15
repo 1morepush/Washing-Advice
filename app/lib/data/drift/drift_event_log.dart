@@ -50,7 +50,9 @@ class DriftEventLog implements EventLog {
     DateTime? since,
     DateTime? until,
     DateTime? recordedSince,
+    Set<String>? types,
   }) async {
+    if (types != null && types.isEmpty) return const [];
     final select = _db.select(_db.events)
       ..orderBy([(t) => OrderingTerm(expression: t.occurredAt)]);
 
@@ -62,6 +64,18 @@ class DriftEventLog implements EventLog {
     }
     if (recordedSince != null) {
       select.where((t) => t.recordedAt.isBiggerOrEqualValue(recordedSince));
+    }
+
+    if (types != null) {
+      // The type is inside the JSON payload rather than a column of its own,
+      // and `jsonEncode` writes no spaces, so `"type":"worn"` is exactly how
+      // it appears. An occasion containing that text would have its quotes
+      // escaped and so cannot match.
+      select.where(
+        (t) => types
+            .map<Expression<bool>>((type) => t.payload.like('%"type":"$type"%'))
+            .reduce((a, b) => a | b),
+      );
     }
 
     final rows = await select.get();

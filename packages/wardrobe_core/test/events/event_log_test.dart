@@ -113,6 +113,36 @@ void runEventLogContractTests(String name, EventLogFactory create) {
       final until = await log.all(until: tuesday);
       expect([for (final e in until) e.id.value], isNot(contains('c')));
     });
+
+    test('only the named kinds of event, for readers of one kind', () async {
+      final log = await create();
+      await log.appendAll([
+        worn('w1', monday),
+        ItemWashed(
+          id: const EventId('wash'),
+          itemId: const ItemId('a'),
+          occurredAt: tuesday,
+          record: LaundryRecord(washedAt: tuesday),
+        ),
+        // Text that looks like another event's type, inside a wear. A store
+        // that matches on the stored JSON must not be fooled by it.
+        ItemWorn(
+          id: const EventId('w2'),
+          itemId: const ItemId('a'),
+          occurredAt: wednesday,
+          occasion: 'a "type":"washed" joke',
+        ),
+      ]);
+
+      final wears = await log.all(types: {wornEventType});
+      expect([for (final e in wears) e.id.value], ['w1', 'w2']);
+
+      final washes = await log.all(types: {'washed'});
+      expect([for (final e in washes) e.id.value], ['wash']);
+
+      expect(await log.all(types: {}), isEmpty);
+      expect(await log.all(), hasLength(3));
+    });
   });
 
   group('$name: replay', () {

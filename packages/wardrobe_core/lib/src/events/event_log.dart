@@ -24,8 +24,7 @@ abstract interface class EventLog {
   /// Every event for one item, oldest first.
   Future<List<WardrobeEvent>> forItem(ItemId itemId);
 
-  /// Every event in the log, oldest first.
-  /// Events, optionally windowed.
+  /// Events, optionally windowed, oldest first.
   ///
   /// [since] and [until] filter on `occurredAt` — when things happened —
   /// which is what a history view wants. [recordedSince] filters on
@@ -33,10 +32,16 @@ abstract interface class EventLog {
   /// yesterday must be sent even though it happened before the last sync.
   /// Using `occurredAt` for that silently strands retrospective entries on the
   /// device that made them.
+  ///
+  /// [types] keeps only events whose `typeName` is listed, so a reader that
+  /// folds one kind of event (the co-wear graph wants wears and nothing else)
+  /// does not pull every wash and condition report through the store to
+  /// throw them away.
   Future<List<WardrobeEvent>> all({
     DateTime? since,
     DateTime? until,
     DateTime? recordedSince,
+    Set<String>? types,
   });
 }
 
@@ -85,10 +90,12 @@ final class InMemoryEventLog implements EventLog {
     DateTime? since,
     DateTime? until,
     DateTime? recordedSince,
+    Set<String>? types,
   }) async =>
       [
         for (final event in _events)
-          if ((since == null || !event.occurredAt.isBefore(since)) &&
+          if ((types == null || types.contains(event.typeName)) &&
+              (since == null || !event.occurredAt.isBefore(since)) &&
               (until == null || !event.occurredAt.isAfter(until)) &&
               (recordedSince == null ||
                   !event.recordedAt.isBefore(recordedSince)))

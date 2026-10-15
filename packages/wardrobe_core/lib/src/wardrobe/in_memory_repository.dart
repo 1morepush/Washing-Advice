@@ -36,6 +36,12 @@ final class InMemoryWardrobeRepository implements WardrobeRepository {
   Future<WardrobeItem?> byId(ItemId id) async => _items[id];
 
   @override
+  Future<List<WardrobeItem>> byIds(Iterable<ItemId> ids) async => [
+        for (final id in ids.toSet())
+          if (_items[id] case final WardrobeItem item) item,
+      ];
+
+  @override
   Future<List<WardrobeItem>> query(WardrobeQuery query) async =>
       _apply(query, paged: true);
 

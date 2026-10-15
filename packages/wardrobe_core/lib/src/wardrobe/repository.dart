@@ -41,6 +41,15 @@ abstract interface class WardrobeRepository {
   /// One item, or null when nothing has that id.
   Future<WardrobeItem?> byId(ItemId id);
 
+  /// The items with these ids, in the order asked, in one lookup.
+  ///
+  /// Ids that match nothing are skipped rather than reported, and an id given
+  /// twice comes back once. Like [byId] this includes a deleted item's
+  /// tombstone. For a screen that shows many garments at once — a page of
+  /// saved outfits is a few dozen — where asking [byId] for each is one round
+  /// trip to the database per garment.
+  Future<List<WardrobeItem>> byIds(Iterable<ItemId> ids);
+
   /// Every item matching [query], ordered and paged as it asks.
   Future<List<WardrobeItem>> query(WardrobeQuery query);
 

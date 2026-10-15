@@ -28,6 +28,34 @@ class DriftWardrobeRepository implements WardrobeRepository {
   }
 
   @override
+  Future<List<WardrobeItem>> byIds(Iterable<ItemId> ids) async {
+    // `toSet` keeps the first-asked order (a linked set), which is the order
+    // handed back.
+    final wanted = ids.toSet().toList();
+    final found = <ItemId, WardrobeItem>{};
+    // In slices, because SQLite caps the variables in one statement.
+    for (var start = 0; start < wanted.length; start += _idsPerQuery) {
+      final slice = wanted.sublist(
+        start,
+        (start + _idsPerQuery).clamp(0, wanted.length),
+      );
+      final rows = await (_db.select(
+        _db.items,
+      )..where((t) => t.id.isIn([for (final id in slice) id.value]))).get();
+      for (final row in rows) {
+        final item = itemFrom(row);
+        found[item.id] = item;
+      }
+    }
+    return [
+      for (final id in wanted)
+        if (found[id] case final WardrobeItem item) item,
+    ];
+  }
+
+  static const _idsPerQuery = 500;
+
+  @override
   Future<List<WardrobeItem>> query(WardrobeQuery query) async {
     final rows = await _build(query, paged: true).get();
     return [for (final row in rows) itemFrom(row)];

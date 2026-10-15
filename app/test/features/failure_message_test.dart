@@ -97,6 +97,9 @@ class _BrokenRepository implements WardrobeRepository {
   Future<WardrobeItem?> byId(ItemId id) async => _fail();
 
   @override
+  Future<List<WardrobeItem>> byIds(Iterable<ItemId> ids) async => _fail();
+
+  @override
   Future<List<WardrobeItem>> query(WardrobeQuery query) async => _fail();
 
   @override

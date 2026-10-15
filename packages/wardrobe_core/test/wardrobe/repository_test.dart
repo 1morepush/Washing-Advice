@@ -114,6 +114,45 @@ void runRepositoryContractTests(String name, RepositoryFactory create) {
       expect(await repository.count(const WardrobeQuery()), 3);
     });
 
+    test('byIds returns the items asked for, in the order asked', () async {
+      await repository.saveAll([
+        buildItem(id: 'a', name: 'A'),
+        buildItem(id: 'b', name: 'B'),
+        buildItem(id: 'c', name: 'C'),
+      ]);
+
+      final found = await repository.byIds(const [
+        ItemId('c'),
+        ItemId('a'),
+      ]);
+
+      expect([for (final item in found) item.name], ['C', 'A']);
+    });
+
+    test('byIds skips what is missing and returns repeats once', () async {
+      await repository.save(buildItem(id: 'a', name: 'A'));
+
+      final found = await repository.byIds(const [
+        ItemId('nope'),
+        ItemId('a'),
+        ItemId('a'),
+      ]);
+
+      expect([for (final item in found) item.name], ['A']);
+      expect(await repository.byIds(const []), isEmpty);
+    });
+
+    test('byIds copes with more ids than a statement can hold', () async {
+      final items = [for (var i = 0; i < 1200; i++) buildItem(id: 'i$i')];
+      await repository.saveAll(items);
+
+      final found = await repository.byIds([for (final item in items) item.id]);
+
+      expect(found, hasLength(1200));
+      expect(found.first.id, items.first.id);
+      expect(found.last.id, items.last.id);
+    });
+
     test('delete removes an item', () async {
       await repository.save(buildItem(id: 'a'));
       await repository.delete(const ItemId('a'));

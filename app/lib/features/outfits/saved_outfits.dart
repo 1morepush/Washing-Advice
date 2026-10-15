@@ -48,7 +48,9 @@ class _SavedCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final items = ref.watch(outfitItemsProvider(outfit.id));
+    final items = ref
+        .watch(savedOutfitItemsProvider)
+        .whenData((byId) => itemsOfOutfit(outfit, byId));
     final controller = ref.read(outfitControllerProvider);
 
     return Card(

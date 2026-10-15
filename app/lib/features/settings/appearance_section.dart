@@ -24,15 +24,11 @@ class AppearanceSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final chosen = ref.watch(appearanceProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Appearance', style: theme.textTheme.titleSmall),
-        const SizedBox(height: 8),
-
         // A group rather than four tiles each told what is selected: it is one
         // question, and the framework supplies the single selection, the arrow
         // keys and the semantics that go with that.
@@ -52,14 +48,6 @@ class AppearanceSection extends ConsumerWidget {
                   },
                 ),
             ],
-          ),
-        ),
-
-        const SizedBox(height: 8),
-        Text(
-          'Match phone is the default, so nothing changes until you choose.',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
       ],
@@ -97,3 +85,12 @@ String? _subtitle(Appearance choice) => switch (choice) {
   Appearance.amoled => 'True black. Easier on OLED screens and in a dark room',
   Appearance.light || Appearance.dark => null,
 };
+
+/// What the group's header says the current look is.
+String appearanceValue(Appearance choice) => _title(choice);
+
+/// The explanation behind the group's info button.
+const appearanceInfo =
+    'Match phone is the default, so nothing changes until you choose. Light and '
+    'Dark are fixed whatever the phone is set to. AMOLED is true black: easier '
+    'on OLED screens and in a dark room.';

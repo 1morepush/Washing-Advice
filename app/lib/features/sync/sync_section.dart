@@ -61,23 +61,14 @@ class _SyncSectionState extends ConsumerState<SyncSection> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final state = ref.watch(syncControllerProvider);
     final controller = ref.read(syncControllerProvider.notifier);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Sync between devices', style: theme.textTheme.titleSmall),
-        const SizedBox(height: 8),
-        Text(
-          'Optional. Everything works without it — sync copies your wardrobe '
-          'between your own devices through the same server that does the '
-          'scanning.',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
+        // The current state first: it is the value of this whole group.
+        _Status(state: state, waking: _waking),
         const SizedBox(height: 12),
         TextField(
           controller: _token,
@@ -128,8 +119,6 @@ class _SyncSectionState extends ConsumerState<SyncSection> {
               ),
           ],
         ),
-        const SizedBox(height: 12),
-        _Status(state: state, waking: _waking),
         const SizedBox(height: 12),
         _Warning(),
       ],
@@ -260,3 +249,8 @@ class _Warning extends StatelessWidget {
     );
   }
 }
+
+/// The explanation behind the Sync group's info button.
+const syncInfo =
+    'Optional. Everything works without it — sync copies your wardrobe between '
+    'your own devices through the same server that does the scanning.';

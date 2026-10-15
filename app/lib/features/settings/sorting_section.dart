@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/settings.dart';
+import 'setting_info.dart';
 
 class SortingSection extends ConsumerWidget {
   const SortingSection({super.key});
@@ -28,18 +29,6 @@ class SortingSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Washing and drying', style: theme.textTheme.titleSmall),
-        const SizedBox(height: 8),
-        Text(
-          'How far the app goes in putting clothes in the same load. Neither '
-          'of these can put two things together that should be kept apart — '
-          'they only ever separate more.',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 8),
-
         SwitchListTile(
           value: separateWashing,
           onChanged: (on) async {
@@ -47,11 +36,21 @@ class SortingSection extends ConsumerWidget {
             ref.read(separateWashingProvider.notifier).state = on;
           },
           contentPadding: EdgeInsets.zero,
-          title: const Text('Wash each colour separately'),
-          subtitle: const Text(
-            'Off, colours that do not conflict share a drum — lights with '
-            'brights — which is fewer, fuller loads. On, each colour washes on '
-            'its own: more loads and more water, and no argument about it.',
+          title: const TitleWithInfo(
+            'Wash each colour separately',
+            info:
+                'How far the app goes in putting clothes in the same load. '
+                'Neither of these switches can put two things together that '
+                'should be kept apart — they only ever separate more.\n\n'
+                'Off, colours that do not conflict share a drum — lights with '
+                'brights — which is fewer, fuller loads. On, each colour '
+                'washes on its own: more loads and more water, and no '
+                'argument about it.',
+          ),
+          subtitle: Text(
+            separateWashing
+                ? 'On — each colour washes on its own'
+                : 'Off — colours that do not conflict share a drum',
           ),
         ),
 
@@ -62,12 +61,18 @@ class SortingSection extends ConsumerWidget {
             ref.read(splitDryingProvider.notifier).state = on;
           },
           contentPadding: EdgeInsets.zero,
-          title: const Text('Split a load for drying'),
-          subtitle: const Text(
-            'Clothes that wash together do not always dry together. Off, a '
-            'load dries as one and a single hang-dry garment sends the whole '
-            'lot to the airer. On, the rest goes in the dryer and you sort '
-            'them once.',
+          title: const TitleWithInfo(
+            'Split a load for drying',
+            info:
+                'Clothes that wash together do not always dry together. Off, '
+                'a load dries as one and a single hang-dry garment sends the '
+                'whole lot to the airer. On, the rest goes in the dryer and '
+                'you sort them once.',
+          ),
+          subtitle: Text(
+            splitDrying
+                ? 'On — whatever can be tumble dried is'
+                : 'Off — each load dries as one',
           ),
         ),
 

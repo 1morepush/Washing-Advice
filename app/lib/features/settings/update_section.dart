@@ -11,6 +11,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../core/app_updater.dart';
+import 'setting_info.dart';
 
 class UpdateSection extends StatefulWidget {
   const UpdateSection({super.key});
@@ -38,17 +39,15 @@ class _UpdateSectionState extends State<UpdateSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('App updates', style: theme.textTheme.titleSmall),
-        const SizedBox(height: 8),
-        Text(
-          'If the app looks outdated after a change, use this instead of '
-          'deleting and re-adding the home screen icon — it clears what the '
-          'browser cached and reloads.',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+        TitleWithInfo(
+          'App updates',
+          style: theme.textTheme.titleSmall,
+          info:
+              'If the app looks outdated after a change, use this instead of '
+              'deleting and re-adding the home screen icon — it clears what '
+              'the browser cached and reloads.',
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 4),
         Row(
           children: [
             OutlinedButton.icon(

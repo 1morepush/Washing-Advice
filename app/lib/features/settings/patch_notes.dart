@@ -46,6 +46,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'setting_info.dart';
+
 /// One shipped change set.
 final class Release {
   const Release({
@@ -834,17 +836,15 @@ class PatchNotes extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('What\'s new', style: theme.textTheme.titleSmall),
-        const SizedBox(height: 8),
-        Text(
-          'These notes come with the app, so this is the version you are '
-          'running. If the newest date looks old, the update has not arrived '
-          'yet.',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+        TitleWithInfo(
+          'What\'s new',
+          style: theme.textTheme.titleSmall,
+          info:
+              'These notes come with the app, so this is the version you are '
+              'running. If the newest date looks old, the update has not '
+              'arrived yet.',
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 4),
         _Entry(release: latest),
         if (earlier.isNotEmpty)
           Theme(

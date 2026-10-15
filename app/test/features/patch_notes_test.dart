@@ -115,8 +115,12 @@ void main() {
     ) async {
       // The one sentence that makes this useful beside the update button: if
       // the date looks old, the update has not arrived, and the button is the
-      // fix.
+      // fix. Behind the info button now, and still one tap away.
       await pump(tester);
+      expect(find.textContaining('come with the app'), findsNothing);
+
+      await tester.tap(find.byTooltip('About What\'s new'));
+      await tester.pumpAndSettle();
 
       expect(find.textContaining('come with the app'), findsOneWidget);
     });

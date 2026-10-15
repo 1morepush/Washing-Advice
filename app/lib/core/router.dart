@@ -38,7 +38,18 @@ import '../features/wardrobe/wardrobe_screen.dart';
 /// [initialLocation] is a parameter so a test can start on the screen it is
 /// about, and so a future session restore can reopen where the user left off,
 /// rather than every entry point having to navigate from the wardrobe.
-GoRouter buildRouter({String initialLocation = '/'}) => GoRouter(
+GoRouter buildRouter({String initialLocation = '/'}) {
+  // Without this, go_router leaves the browser address at whatever `go` last
+  // set, however many screens have been pushed since — so after Wardrobe,
+  // garment, stain the address still said `/`, and a reload, bookmark or
+  // shared link of a pushed screen opened the wrong one. Set here, where
+  // every router is built, because it is a process-wide flag that has to be
+  // in place before the first one.
+  GoRouter.optionURLReflectsImperativeAPIs = true;
+  return _router(initialLocation);
+}
+
+GoRouter _router(String initialLocation) => GoRouter(
   initialLocation: initialLocation,
   routes: [
     GoRoute(path: '/', builder: (_, _) => const WardrobeScreen()),

@@ -17,6 +17,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../widgets/status_message.dart';
 import 'spread_controller.dart';
 import '../../widgets/back_navigation.dart';
+import '../../widgets/state_view.dart';
 
 class SpreadScanScreen extends ConsumerWidget {
   const SpreadScanScreen({super.key});
@@ -35,7 +36,14 @@ class SpreadScanScreen extends ConsumerWidget {
         ),
         body: switch (state) {
           SpreadIdle() => _Start(controller: controller),
-          SpreadAnalysing() => const _Analysing(),
+          SpreadAnalysing() => const LoadingView(
+            title: 'Finding the garments…',
+            detail:
+                'One read of the photo finds them all, so this takes about as '
+                'long as a single garment would.',
+            heading: true,
+            gap: 24,
+          ),
           final SpreadReviewing reviewing => _Reviewing(
             state: reviewing,
             controller: controller,
@@ -147,38 +155,6 @@ class _Start extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _Analysing extends StatelessWidget {
-  const _Analysing();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 24),
-            Text('Finding the garments…', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(
-              'One read of the photo finds them all, so this takes about as '
-              'long as a single garment would.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

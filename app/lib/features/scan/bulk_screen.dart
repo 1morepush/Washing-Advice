@@ -17,6 +17,8 @@ import 'bulk_controller.dart';
 import 'crop_screen.dart';
 import 'scan_controller.dart' show ScanShot;
 import '../../widgets/back_navigation.dart';
+import '../../widgets/notice.dart';
+import 'shot_tile.dart';
 
 class BulkScanScreen extends ConsumerWidget {
   const BulkScanScreen({super.key});
@@ -181,7 +183,8 @@ class _Collecting extends StatelessWidget {
                   runSpacing: 12,
                   children: [
                     for (final (index, shot) in current.shots.indexed)
-                      _ShotTile(
+                      ShotTile(
+                        compact: true,
                         shot: shot,
                         onRole: (role) => controller.setRole(index, role),
                         onCrop: () async {
@@ -521,16 +524,22 @@ class _OutcomeCard extends StatelessWidget {
                   // Per garment, because in a list of forty this is the only
                   // place the difference is visible.
                   if (read.label != null)
-                    _Note(
+                    NoteRow(
                       icon: Icons.check_circle_outline,
                       text: 'Care label read',
                       color: theme.colorScheme.primary,
+                      iconSize: 14,
+                      gap: 6,
+                      bottomPadding: 0,
                     )
                   else if (read.labelUnread) ...[
-                    _Note(
+                    NoteRow(
                       icon: Icons.error_outline,
                       text: 'Label photo unreadable — washing is a guess',
                       color: theme.colorScheme.error,
+                      iconSize: 14,
+                      gap: 6,
+                      bottomPadding: 0,
                     ),
                     // The tag, not the garment. This garment is going into the
                     // wardrobe either way; what needs finding again is the
@@ -808,29 +817,6 @@ class _Thumb extends StatelessWidget {
   }
 }
 
-class _Note extends StatelessWidget {
-  const _Note({required this.icon, required this.text, required this.color});
-
-  final IconData icon;
-  final String text;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Icon(icon, size: 14, color: color),
-      const SizedBox(width: 6),
-      Expanded(
-        child: Text(
-          text,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color),
-        ),
-      ),
-    ],
-  );
-}
-
 class _Done extends StatelessWidget {
   const _Done({
     required this.saved,
@@ -864,104 +850,4 @@ class _Done extends StatelessWidget {
       ],
     ),
   );
-}
-
-/// One photograph, with what it shows. The same roles the single scan screen
-/// offers, care label included.
-class _ShotTile extends StatelessWidget {
-  const _ShotTile({
-    required this.shot,
-    required this.onRole,
-    required this.onCrop,
-  });
-
-  final ScanShot shot;
-  final ValueChanged<PhotoRole> onRole;
-  final VoidCallback onCrop;
-
-  static const _offered = [
-    PhotoRole.front,
-    PhotoRole.back,
-    PhotoRole.careTag,
-    PhotoRole.detail,
-    PhotoRole.logo,
-    PhotoRole.brandTag,
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return SizedBox(
-      width: 96,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          InkWell(
-            onTap: onCrop,
-            borderRadius: BorderRadius.circular(12),
-            child: Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.memory(
-                    Uint8List.fromList(shot.image.bytes),
-                    width: 96,
-                    height: 96,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => Container(
-                      width: 96,
-                      height: 96,
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      child: const Icon(Icons.image_not_supported_outlined),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  right: 4,
-                  bottom: 4,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface.withValues(alpha: 0.85),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Padding(
-                      padding: EdgeInsets.all(3),
-                      child: Icon(Icons.crop, size: 14),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 4),
-          PopupMenuButton<PhotoRole>(
-            onSelected: onRole,
-            tooltip: 'What this photo shows',
-            itemBuilder: (_) => [
-              for (final role in _offered)
-                PopupMenuItem(value: role, child: Text(role.label)),
-            ],
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(
-                  child: Text(
-                    shot.role.label,
-                    style: theme.textTheme.labelSmall,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                Icon(
-                  Icons.arrow_drop_down,
-                  size: 16,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

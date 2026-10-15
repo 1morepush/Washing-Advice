@@ -17,6 +17,9 @@ import '../../widgets/confidence_chip.dart';
 import '../wardrobe/care_text.dart';
 import 'care_tag_controller.dart';
 import '../../widgets/back_navigation.dart';
+import '../../widgets/state_view.dart';
+import '../../widgets/notice.dart';
+import '../../widgets/collected_photos.dart';
 
 class CareTagScreen extends ConsumerWidget {
   const CareTagScreen({required this.id, super.key});
@@ -52,11 +55,14 @@ class CareTagScreen extends ConsumerWidget {
           ),
           CareTagReading() => const _Reading(),
           CareTagReviewing() => _Review(state: state, controller: controller),
-          CareTagSaved() => _Saved(onDone: back),
-          CareTagFailed(:final message, :final isRetryable) => _Failed(
+          CareTagSaved() => SuccessView(
+            title: 'Care instructions updated',
+            actions: [FilledButton(onPressed: back, child: const Text('Done'))],
+          ),
+          CareTagFailed(:final message, :final isRetryable) => FailureView(
             message: message,
-            isRetryable: isRetryable,
-            controller: controller,
+            actionLabel: isRetryable ? 'Try again' : 'Back',
+            onAction: controller.reset,
           ),
         },
       ),
@@ -70,48 +76,24 @@ class _Capture extends StatelessWidget {
   final CareTagController controller;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.document_scanner_outlined,
-              size: 64,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Photograph the care label',
-              style: theme.textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Flatten it out and fill the frame with the symbols. This is the '
-              "manufacturer's own instruction, so it will override anything "
-              'the app worked out from the fabric.\n\n'
-              'Printed on both sides? You can add the other side before it is '
-              'read. Any language is fine — the symbols are the same '
-              'everywhere.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 32),
-            FilledButton.icon(
-              onPressed: controller.capture,
-              icon: const Icon(Icons.camera_alt_outlined),
-              label: const Text('Take a photo'),
-            ),
-          ],
-        ),
+  Widget build(BuildContext context) => IntroView(
+    icon: Icons.document_scanner_outlined,
+    title: 'Photograph the care label',
+    message:
+        'Flatten it out and fill the frame with the symbols. This is the '
+        "manufacturer's own instruction, so it will override anything "
+        'the app worked out from the fabric.\n\n'
+        'Printed on both sides? You can add the other side before it is '
+        'read. Any language is fine — the symbols are the same '
+        'everywhere.',
+    actions: [
+      FilledButton.icon(
+        onPressed: controller.capture,
+        icon: const Icon(Icons.camera_alt_outlined),
+        label: const Text('Take a photo'),
       ),
-    );
-  }
+    ],
+  );
 }
 
 class _Reading extends StatelessWidget {
@@ -170,7 +152,7 @@ class _Review extends StatelessWidget {
               // English label reads as though the app were unsure.
               if (foreignLanguageName(state.reading.language)
                   case final String language) ...[
-                _ReadNotice(
+                Notice(
                   icon: Icons.translate,
                   text:
                       'This label is in $language. The symbols are the same in '
@@ -181,7 +163,7 @@ class _Review extends StatelessWidget {
               ],
 
               if (state.images.length > 1) ...[
-                _ReadNotice(
+                Notice(
                   icon: Icons.photo_library_outlined,
                   text:
                       'Read from ${state.images.length} photos together, as '
@@ -403,24 +385,17 @@ class _NoChanges extends StatelessWidget {
   final bool hasLabel;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      // Still worth saving. The instructions are unchanged but the *evidence*
-      // is much stronger, which is what stops the app asking to scan this label
-      // again and what lets it act without checking.
-      child: Text(
-        'The label agrees with what the app had worked out. Saving it means '
-        'these instructions are now the manufacturer\'s, not a guess.',
-        style: theme.textTheme.bodyMedium,
-      ),
-    );
-  }
+  Widget build(BuildContext context) => NoticePanel(
+    padding: 16,
+    // Still worth saving. The instructions are unchanged but the *evidence*
+    // is much stronger, which is what stops the app asking to scan this label
+    // again and what lets it act without checking.
+    child: Text(
+      'The label agrees with what the app had worked out. Saving it means '
+      'these instructions are now the manufacturer\'s, not a guess.',
+      style: Theme.of(context).textTheme.bodyMedium,
+    ),
+  );
 }
 
 class _PartialWarning extends StatelessWidget {
@@ -429,31 +404,20 @@ class _PartialWarning extends StatelessWidget {
   final int count;
 
   @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(Icons.info_outline, size: 18, color: scheme.tertiary),
-        const SizedBox(width: 8),
-        Expanded(
-          // Said plainly rather than hidden. An incomplete reading presented as
-          // a complete one is how a garment gets washed on an instruction
-          // nobody actually read.
-          child: Text(
-            count == 1
-                ? 'One symbol could not be read. The fabric rules still cover '
-                      'whatever it said.'
-                : '$count symbols could not be read. The fabric rules still '
-                      'cover whatever they said.',
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: scheme.tertiary),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => NoteRow(
+    icon: Icons.info_outline,
+    iconSize: 18,
+    bottomPadding: 0,
+    color: Theme.of(context).colorScheme.tertiary,
+    // Said plainly rather than hidden. An incomplete reading presented as
+    // a complete one is how a garment gets washed on an instruction
+    // nobody actually read.
+    text: count == 1
+        ? 'One symbol could not be read. The fabric rules still cover '
+              'whatever it said.'
+        : '$count symbols could not be read. The fabric rules still '
+              'cover whatever they said.',
+  );
 }
 
 /// What the garment is made of, after the label was read.
@@ -608,81 +572,6 @@ class _Line extends StatelessWidget {
   }
 }
 
-class _Saved extends StatelessWidget {
-  const _Saved({required this.onDone});
-
-  final VoidCallback onDone;
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.check_circle_outline,
-            size: 64,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Care instructions updated',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 24),
-          FilledButton(onPressed: onDone, child: const Text('Done')),
-        ],
-      ),
-    ),
-  );
-}
-
-class _Failed extends StatelessWidget {
-  const _Failed({
-    required this.message,
-    required this.isRetryable,
-    required this.controller,
-  });
-
-  final String message;
-  final bool isRetryable;
-  final CareTagController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: controller.reset,
-              child: Text(isRetryable ? 'Try again' : 'Back'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// The photographs taken so far, with the choice of adding another or reading.
-///
-/// This screen exists because reading the first shot immediately is wrong for
-/// the commonest awkward label: one printed on both sides, or continued onto a
-/// second tag sewn behind the first. Reading half of one produces an answer
-/// that looks complete, and there is nothing on it to suggest otherwise.
 class _Collected extends StatelessWidget {
   const _Collected({required this.images, required this.controller});
 
@@ -690,86 +579,26 @@ class _Collected extends StatelessWidget {
   final CareTagController controller;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Column(
-      children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Text(
-                images.length == 1
-                    ? 'One photo of the label'
-                    : '${images.length} photos of the label',
-                style: theme.textTheme.titleMedium,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'They are read together as one label, so put each side or tag '
-                'in its own photo. Nothing has been read yet.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  for (final (index, image) in images.indexed)
-                    _Shot(index: index + 1, image: image),
-                ],
-              ),
-            ],
-          ),
-        ),
-        SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: controller.capture,
-                        icon: const Icon(Icons.add_a_photo_outlined),
-                        label: const Text('Add another side'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // For the shot that came out blurred, which is most of
-                    // them. Retaking without this would mean starting over.
-                    IconButton(
-                      onPressed: controller.discardLast,
-                      icon: const Icon(Icons.undo),
-                      tooltip: 'Remove the last photo',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: controller.readCollected,
-                    icon: const Icon(Icons.document_scanner_outlined),
-                    label: Text(
-                      images.length == 1
-                          ? 'Read this label'
-                          : 'Read these ${images.length} together',
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => CollectedPhotos(
+    heading: images.length == 1
+        ? 'One photo of the label'
+        : '${images.length} photos of the label',
+    body:
+        'They are read together as one label, so put each side or tag '
+        'in its own photo. Nothing has been read yet.',
+    tiles: [
+      for (final (index, image) in images.indexed)
+        _Shot(index: index + 1, image: image),
+    ],
+    addLabel: 'Add another side',
+    onAdd: controller.capture,
+    onUndo: controller.discardLast,
+    primaryLabel: images.length == 1
+        ? 'Read this label'
+        : 'Read these ${images.length} together',
+    primaryIcon: Icons.document_scanner_outlined,
+    onPrimary: controller.readCollected,
+  );
 }
 
 /// One collected photograph, numbered in the order it was taken.
@@ -821,42 +650,6 @@ class _Shot extends StatelessWidget {
   }
 }
 
-/// Something worth saying about how the reading was obtained.
-class _ReadNotice extends StatelessWidget {
-  const _ReadNotice({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// Which fields came from the previous scan rather than this one.
 ///
 /// Its own widget rather than another `_ReadNotice` because it needs an action
@@ -875,12 +668,7 @@ class _KeptNotice extends StatelessWidget {
     final theme = Theme.of(context);
     final named = [for (final field in fields) careFieldLabel(field)]..sort();
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-      ),
+    return NoticePanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

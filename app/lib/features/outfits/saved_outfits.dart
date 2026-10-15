@@ -15,6 +15,7 @@ import '../../core/providers.dart';
 import '../../widgets/item_thumbnail.dart';
 import '../../widgets/status_message.dart';
 import 'outfit_controller.dart';
+import '../../widgets/state_view.dart';
 
 class SavedOutfitsTab extends ConsumerWidget {
   const SavedOutfitsTab({super.key});
@@ -238,35 +239,12 @@ class _Empty extends StatelessWidget {
   const _Empty();
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.bookmark_border,
-              size: 56,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(height: 16),
-            Text('Nothing saved yet', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(
-              'Save a suggestion you like and it will be waiting here — with '
-              'a count of how often you actually wear it, which is the one '
-              'thing a per-garment history cannot tell you.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => const EmptyView(
+    icon: Icons.bookmark_border,
+    title: 'Nothing saved yet',
+    message:
+        'Save a suggestion you like and it will be waiting here — with '
+        'a count of how often you actually wear it, which is the one '
+        'thing a per-garment history cannot tell you.',
+  );
 }

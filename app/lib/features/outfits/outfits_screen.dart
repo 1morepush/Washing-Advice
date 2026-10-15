@@ -17,6 +17,7 @@ import 'outfit_controller.dart';
 import 'outfit_pieces.dart';
 import 'saved_outfits.dart';
 import 'stylist_tab.dart';
+import '../../widgets/state_view.dart';
 
 /// The three views of "what to wear", in the order they are shown.
 ///
@@ -338,41 +339,15 @@ class _Empty extends StatelessWidget {
   final Occasion occasion;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.style_outlined,
-              size: 56,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Nothing for ${occasion.label.toLowerCase()} yet',
-              style: theme.textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              // Naming the actual requirement, rather than "no results". An
-              // outfit needs both halves, and someone with only tops catalogued
-              // should be told that instead of left guessing.
-              'An outfit needs a top and a bottom, or a one-piece. Add more '
-              'to your wardrobe, or tag things for this occasion if the '
-              'defaults do not match how you dress.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => EmptyView(
+    icon: Icons.style_outlined,
+    title: 'Nothing for ${occasion.label.toLowerCase()} yet',
+    // Naming the actual requirement, rather than "no results". An
+    // outfit needs both halves, and someone with only tops catalogued
+    // should be told that instead of left guessing.
+    message:
+        'An outfit needs a top and a bottom, or a one-piece. Add more '
+        'to your wardrobe, or tag things for this occasion if the '
+        'defaults do not match how you dress.',
+  );
 }

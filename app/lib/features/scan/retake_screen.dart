@@ -15,6 +15,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../widgets/status_message.dart';
 import 'retake_controller.dart';
 import '../../widgets/back_navigation.dart';
+import '../../widgets/state_view.dart';
 
 class RetakeScreen extends ConsumerWidget {
   const RetakeScreen({required this.id, super.key});
@@ -44,9 +45,20 @@ class RetakeScreen extends ConsumerWidget {
         ),
         body: switch (state) {
           RetakeIdle() => _Capture(controller: controller),
-          RetakeIdentifying() => const _Identifying(),
+          RetakeIdentifying() => const LoadingView(
+            title: 'Looking at the new photo…',
+          ),
           RetakeReviewing() => _Review(state: state, controller: controller),
-          RetakeSaved() => _Saved(onDone: back),
+          RetakeSaved() => SuccessView(
+            title: 'Updated',
+            headingTitle: false,
+            actions: [
+              FilledButton(
+                onPressed: back,
+                child: const Text('Back to the item'),
+              ),
+            ],
+          ),
           RetakeFailed(:final message, :final isRetryable) => _Failed(
             message: message,
             isRetryable: isRetryable,
@@ -64,65 +76,22 @@ class _Capture extends StatelessWidget {
   final RetakeController controller;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.add_a_photo_outlined,
-              size: 64,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(height: 24),
-            Text('Photograph the garment', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(
-              'Lay it flat on a plain surface that is not its own color. The '
-              'background is what the app removes, so a busy or matching one '
-              'is what makes a cutout go wrong.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Your old photo is kept.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: controller.captureAndIdentify,
-              icon: const Icon(Icons.camera_alt_outlined),
-              label: const Text('Take a photo'),
-            ),
-          ],
-        ),
+  Widget build(BuildContext context) => IntroView(
+    icon: Icons.add_a_photo_outlined,
+    title: 'Photograph the garment',
+    message:
+        'Lay it flat on a plain surface that is not its own color. The '
+        'background is what the app removes, so a busy or matching one '
+        'is what makes a cutout go wrong.',
+    note: 'Your old photo is kept.',
+    actionsGap: 24,
+    actions: [
+      FilledButton.icon(
+        onPressed: controller.captureAndIdentify,
+        icon: const Icon(Icons.camera_alt_outlined),
+        label: const Text('Take a photo'),
       ),
-    );
-  }
-}
-
-class _Identifying extends StatelessWidget {
-  const _Identifying();
-
-  @override
-  Widget build(BuildContext context) => const Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        CircularProgressIndicator(),
-        SizedBox(height: 16),
-        Text('Looking at the new photo…'),
-      ],
-    ),
+    ],
   );
 }
 
@@ -231,36 +200,6 @@ class _Change extends StatelessWidget {
       ),
     );
   }
-}
-
-class _Saved extends StatelessWidget {
-  const _Saved({required this.onDone});
-
-  final VoidCallback onDone;
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.check_circle_outline,
-            size: 64,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(height: 16),
-          const Text('Updated'),
-          const SizedBox(height: 24),
-          FilledButton(
-            onPressed: onDone,
-            child: const Text('Back to the item'),
-          ),
-        ],
-      ),
-    ),
-  );
 }
 
 class _Failed extends StatelessWidget {

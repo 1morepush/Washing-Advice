@@ -218,9 +218,9 @@ void main() {
   group('taking a garment back out', () {
     /// Pumps the laundry screen on the tab for [pile].
     Future<void> openOn(WidgetTester tester, String tab) async {
-      // Wide enough for all four tabs at once. The tab bar scrolls on a real
-      // phone, and a test that had to drag it before every assertion would be
-      // testing the tab bar rather than the thing under it.
+      // Wide enough for the tabs at once: a test that had to fight the tab bar
+      // before every assertion would be testing it rather than the thing
+      // under it.
       tester.view.physicalSize = const Size(1000, 1600);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
@@ -247,7 +247,7 @@ void main() {
       ], LifecycleState.inLaundry);
 
       container.read(splitDryingProvider.notifier).state = true;
-      await openOn(tester, 'To wash (2)');
+      await openOn(tester, 'Basket (2)');
 
       expect(find.text('Washed together, dried apart.'), findsOneWidget);
       expect(find.text('In the dryer'), findsOneWidget);
@@ -265,7 +265,7 @@ void main() {
         hangOnly.id,
       ], LifecycleState.inLaundry);
 
-      await openOn(tester, 'To wash (2)');
+      await openOn(tester, 'Basket (2)');
 
       expect(find.text('Washed together, dried apart.'), findsNothing);
     });
@@ -280,7 +280,7 @@ void main() {
       final item = await save('tee');
       await controller().move([item.id], LifecycleState.inLaundry);
 
-      await openOn(tester, 'To wash (1)');
+      await openOn(tester, 'Basket (1)');
 
       // Two: one in the load card, one in the list of what is in the basket.
       expect(find.byType(ItemThumbnail), findsNWidgets(2));
@@ -295,7 +295,7 @@ void main() {
       final item = await save('tee');
       await controller().move([item.id], LifecycleState.inLaundry);
 
-      await openOn(tester, 'To wash (1)');
+      await openOn(tester, 'Basket (1)');
       await tester.tap(find.byIcon(Icons.more_vert));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Take out of the laundry'));
@@ -341,16 +341,6 @@ void main() {
       );
     });
 
-    testWidgets('the clean pile has nothing extra to offer', (tester) async {
-      // It is the wardrobe. "Take out of the laundry" on a garment that is
-      // not in the laundry would be a control that does nothing.
-      await save('tee');
-
-      await openOn(tester, 'Clean (1)');
-
-      expect(find.byIcon(Icons.more_vert), findsNothing);
-    });
-
     testWidgets('the basket cannot be moved into the drum by hand', (
       tester,
     ) async {
@@ -360,7 +350,7 @@ void main() {
       final item = await save('tee');
       await controller().move([item.id], LifecycleState.inLaundry);
 
-      await openOn(tester, 'To wash (1)');
+      await openOn(tester, 'Basket (1)');
       await tester.tap(find.byIcon(Icons.more_vert));
       await tester.pumpAndSettle();
 
@@ -392,7 +382,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('To wash (2)'));
+      await tester.tap(find.text('Basket (2)'));
       await tester.pumpAndSettle();
 
       expect(find.byType(CheckboxListTile), findsNWidgets(2));

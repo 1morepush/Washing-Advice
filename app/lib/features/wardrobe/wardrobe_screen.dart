@@ -106,26 +106,15 @@ class WardrobeScreen extends ConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          // One button that asks, rather than two unlabelled circles neither
-          // of which said what it did without a long press.
-          FloatingActionButton.small(
-            heroTag: 'add-item',
-            onPressed: () => _chooseHowToAdd(context),
-            tooltip: 'Add garments',
-            child: const Icon(Icons.add_a_photo_outlined),
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton.extended(
-            heroTag: 'sort-pile',
-            onPressed: () => context.push('/pile'),
-            icon: const Icon(Icons.local_laundry_service_outlined),
-            label: const Text('Sort laundry'),
-          ),
-        ],
+      // One button that asks, rather than two unlabelled circles neither of
+      // which said what it did without a long press. Sorting a pile of washing
+      // used to be a second, labelled button here; it is a laundry job and
+      // lives on the Laundry tab now.
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'add-item',
+        onPressed: () => _chooseHowToAdd(context),
+        tooltip: 'Add garments',
+        child: const Icon(Icons.add_a_photo_outlined),
       ),
       body: items.when(
         loading: () => const Center(child: CircularProgressIndicator()),

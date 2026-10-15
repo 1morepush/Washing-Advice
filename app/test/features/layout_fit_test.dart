@@ -279,7 +279,7 @@ void main() {
       );
       await pump(
         tester,
-        const LaundryScreen(initialTab: 2),
+        const LaundryScreen(initialTab: 1),
         overrides: [imageStoreProvider.overrideWithValue(MemoryImageStore())],
         textScaler: enlarged,
       );

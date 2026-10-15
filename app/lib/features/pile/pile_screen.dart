@@ -25,7 +25,7 @@ class PileScreen extends ConsumerWidget {
       onLeave: controller.reset,
       child: Scaffold(
         appBar: AppBar(
-          leading: backLeading(context, '/', onLeave: controller.reset),
+          leading: backLeading(context, '/laundry', onLeave: controller.reset),
           title: const Text('Sort the laundry'),
         ),
         body: switch (state) {

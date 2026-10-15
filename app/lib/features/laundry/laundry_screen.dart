@@ -1,15 +1,16 @@
-/// The four piles: clean, to wash, washing, drying.
+/// The three stages of a wash: basket, washing, drying.
 ///
-/// The point of the screen is the second tab. Everywhere else in the app a
+/// The point of the screen is the first tab. Everywhere else in the app a
 /// garment is a thing you own; here it is a thing waiting to go in a machine,
 /// and the question is not "what is this?" but "what can go in with it, and on
 /// what setting?". That question already had an answer — `LaundrySorter` has
 /// been able to produce it since the pile scan — and no answer of its own is
 /// invented here.
 ///
-/// The Clean tab overlaps the wardrobe, which is a real duplication and a
-/// deliberate one: four piles is the mental model, and a laundry screen missing
-/// the pile that clothes end up in reads as unfinished.
+/// There used to be a fourth tab, Clean, which was the wardrobe again. With the
+/// wardrobe one tap away on the bottom bar it only pushed Drying off the edge
+/// of a phone, so it went; a garment reaches the basket from its own page, or
+/// by selecting several in the wardrobe.
 library;
 
 import 'package:flutter/material.dart';
@@ -24,8 +25,7 @@ import 'laundry_controller.dart';
 
 /// One tab, and the stage it shows.
 enum _Pile {
-  clean('Clean', LifecycleState.active),
-  toWash('To wash', LifecycleState.inLaundry),
+  basket('Basket', LifecycleState.inLaundry),
   washing('Washing', LifecycleState.beingWashed),
   drying('Drying', LifecycleState.beingDried);
 
@@ -36,11 +36,10 @@ enum _Pile {
 }
 
 class LaundryScreen extends ConsumerStatefulWidget {
-  const LaundryScreen({this.initialTab = 1, super.key});
+  const LaundryScreen({this.initialTab = 0, super.key});
 
-  /// Defaults to "To wash" rather than "Clean": someone opening Laundry is
-  /// almost always about to do some, and the clean pile is the wardrobe they
-  /// just came from.
+  /// Defaults to the basket: someone opening Laundry is almost always about to
+  /// do some.
   final int initialTab;
 
   @override
@@ -67,7 +66,6 @@ class _LaundryScreenState extends ConsumerState<LaundryScreen>
       title: const Text('Laundry'),
       bottom: TabBar(
         controller: _tabs,
-        isScrollable: true,
         tabs: [
           for (final pile in _Pile.values)
             Tab(text: '${pile.label} ${_count(pile)}'),
@@ -106,7 +104,7 @@ class _PileView extends ConsumerWidget {
         title: 'Could not read your wardrobe',
         error: error,
       ),
-      data: (data) => data.isEmpty && pile != _Pile.toWash
+      data: (data) => data.isEmpty && pile != _Pile.basket
           ? _Empty(pile: pile)
           : ListView(
               padding: const EdgeInsets.only(bottom: 32),
@@ -114,11 +112,14 @@ class _PileView extends ConsumerWidget {
                 // Above the plan, and above the empty state. This is the one
                 // thing somebody opens the app to do on the way past the
                 // basket, and it is worth nothing if it is below a list.
-                if (pile == _Pile.toWash) const _WoreSomething(),
+                if (pile == _Pile.basket) ...const [
+                  _WoreSomething(),
+                  _PhotographPile(),
+                ],
                 if (data.isEmpty)
                   _Empty(pile: pile)
                 else ...[
-                  if (pile == _Pile.toWash) const _Plan(),
+                  if (pile == _Pile.basket) const _Plan(),
                   _Items(items: data, pile: pile),
                 ],
               ],
@@ -186,6 +187,45 @@ class _WoreSomething extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The way into sorting a heap of washing from one photograph.
+///
+/// Here rather than on the Wardrobe, where it was a floating button: it is a
+/// laundry job, done with the washing in front of you, and the wardrobe's
+/// corner is for adding garments. Beside "what did you wear today?" because
+/// those are the two ways a basket gets filled, and under it because that one
+/// is the daily one.
+class _PhotographPile extends StatelessWidget {
+  const _PhotographPile();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Material(
+        type: MaterialType.transparency,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: theme.colorScheme.outlineVariant),
+        ),
+        child: ListTile(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          leading: const Icon(Icons.photo_camera_outlined),
+          title: const Text('Photograph a pile'),
+          subtitle: const Text(
+            'Lay the washing out, take one photo, and get the loads to run.',
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push('/pile'),
         ),
       ),
     );
@@ -316,12 +356,7 @@ class _Items extends ConsumerWidget {
 
   /// Where this pile's button sends a garment, and what it says.
   (String, IconData, LifecycleState)? get _next => switch (pile) {
-    _Pile.clean => (
-      'Put in the wash',
-      Icons.local_laundry_service_outlined,
-      LifecycleState.inLaundry,
-    ),
-    _Pile.toWash => null,
+    _Pile.basket => null,
     _Pile.washing => (
       'Move to drying',
       Icons.dry_outlined,
@@ -345,9 +380,7 @@ class _Items extends ConsumerWidget {
   /// garment into the drum by hand would put it there with no record, and
   /// "times washed" and every later fading judgement rest on that record.
   List<(String, LifecycleState)> get _alsoGoesTo => switch (pile) {
-    // Already in the wardrobe; its only move is the one above.
-    _Pile.clean => const [],
-    _Pile.toWash => const [('Take out of the laundry', LifecycleState.active)],
+    _Pile.basket => const [('Take out of the laundry', LifecycleState.active)],
     _Pile.washing => const [
       ('Take out of the laundry', LifecycleState.active),
       ('Back to the basket', LifecycleState.inLaundry),
@@ -357,14 +390,6 @@ class _Items extends ConsumerWidget {
     _Pile.drying => const [('Back to the basket', LifecycleState.inLaundry)],
   };
 
-  /// Whether moving the whole pile at once is offered.
-  ///
-  /// Emphatically not on the clean pile, where "all 143" would send an entire
-  /// wardrobe to the basket in one tap with nothing to undo it. Everywhere else
-  /// the pile *is* a load — you take the washing out all at once — so moving it
-  /// wholesale is the normal action rather than the dangerous one.
-  bool get _movesWholesale => pile != _Pile.clean;
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
@@ -373,7 +398,7 @@ class _Items extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (next != null && _movesWholesale)
+        if (next != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Align(
@@ -444,18 +469,15 @@ class _Empty extends StatelessWidget {
   Widget build(BuildContext context) => StatusMessage(
     icon: Icons.local_laundry_service_outlined,
     title: switch (pile) {
-      _Pile.clean => 'Nothing clean',
-      _Pile.toWash => 'Nothing to wash',
+      _Pile.basket => 'Nothing to wash',
       _Pile.washing => 'Nothing in the washer',
       _Pile.drying => 'Nothing drying',
     },
     detail: switch (pile) {
-      _Pile.clean =>
-        'Everything you own is either in the wash or put away somewhere else.',
-      _Pile.toWash =>
-        'Put something in the wash from its own page, or from the Clean tab, '
-            'and the loads to run will appear here.',
-      _Pile.washing => 'Start a load from the To wash tab.',
+      _Pile.basket =>
+        'Put something in the wash from its own page, or select several in '
+            'the Wardrobe, and the loads to run will appear here.',
+      _Pile.washing => 'Start a load from the Basket tab.',
       _Pile.drying => 'Move a load out of the washer and it will show up here.',
     },
   );

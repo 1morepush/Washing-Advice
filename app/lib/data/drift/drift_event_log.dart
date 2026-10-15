@@ -50,7 +50,9 @@ class DriftEventLog implements EventLog {
     DateTime? since,
     DateTime? until,
     DateTime? recordedSince,
+    Set<String>? types,
   }) async {
+    if (types != null && types.isEmpty) return const [];
     final select = _db.select(_db.events)
       ..orderBy([(t) => OrderingTerm(expression: t.occurredAt)]);
 
@@ -64,9 +66,38 @@ class DriftEventLog implements EventLog {
       select.where((t) => t.recordedAt.isBiggerOrEqualValue(recordedSince));
     }
 
+    if (types != null) {
+      // The type is inside the JSON payload rather than a column of its own.
+      // `toJson` writes it first and `jsonEncode` adds no spaces, so a payload
+      // *starts* `{"type":"worn"`. Anchoring to the start matters: a condition
+      // report carries its own nested `"type":"stain"`. LIKE is only a
+      // prefilter, though — it is case-insensitive for ASCII — so the decoded
+      // type is checked exactly below.
+      select.where(
+        (t) => types
+            .map<Expression<bool>>(
+              (type) => t.payload.like(
+                '{"type":${_escapeLike(jsonEncode(type))}%',
+                escapeChar: '\\',
+              ),
+            )
+            .reduce((a, b) => a | b),
+      );
+    }
+
     final rows = await select.get();
-    return [for (final row in rows) _eventFrom(row)];
+    return [
+      for (final row in rows)
+        if (types == null || types.contains(_eventFrom(row).typeName))
+          _eventFrom(row),
+    ];
   }
+
+  /// Makes [text] literal inside a LIKE pattern: `%` and `_` are wildcards.
+  static String _escapeLike(String text) => text
+      .replaceAll('\\', '\\\\')
+      .replaceAll('%', '\\%')
+      .replaceAll('_', '\\_');
 
   EventsCompanion _rowFor(WardrobeEvent event) => EventsCompanion.insert(
     id: event.id.value,

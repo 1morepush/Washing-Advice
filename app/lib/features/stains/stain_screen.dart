@@ -17,6 +17,9 @@ import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
+import '../../widgets/back_navigation.dart';
+import '../../widgets/notice.dart';
+import '../../widgets/state_view.dart';
 import '../../widgets/status_message.dart';
 import '../laundry/laundry_controller.dart';
 import 'stain_controller.dart';
@@ -49,32 +52,40 @@ class StainScreen extends ConsumerWidget {
     final state = ref.watch(stainControllerProvider(id));
     final controller = ref.read(stainControllerProvider(id).notifier);
 
-    void back() {
-      controller.reset();
-      context.go('/item/${id.value}');
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        leading: BackButton(onPressed: back),
-        title: const Text('Treat a stain'),
-      ),
-      body: switch (state) {
-        StainIdle() => _Ask(id: id, controller: controller),
-        StainThinking() => const _Thinking(),
-        StainAdvised() => _Advice(id: id, state: state, controller: controller),
-        StainFailed(:final message, :final isRetryable) => StatusMessage(
-          icon: Icons.error_outline,
-          title: 'Could not work out a treatment',
-          detail: message,
-          action: isRetryable
-              ? TextButton(
-                  onPressed: controller.reset,
-                  child: const Text('Try again'),
-                )
-              : null,
+    return LeaveScope(
+      onLeave: controller.reset,
+      child: Scaffold(
+        appBar: AppBar(
+          leading: backLeading(
+            context,
+            '/item/${id.value}',
+            onLeave: controller.reset,
+          ),
+          title: const Text('Treat a stain'),
         ),
-      },
+        body: switch (state) {
+          StainIdle() => _Ask(id: id, controller: controller),
+          StainThinking() => const LoadingView(
+            title: 'Working out what is safe for this garment…',
+          ),
+          StainAdvised() => _Advice(
+            id: id,
+            state: state,
+            controller: controller,
+          ),
+          StainFailed(:final message, :final isRetryable) => StatusMessage(
+            icon: Icons.error_outline,
+            title: 'Could not work out a treatment',
+            detail: message,
+            action: isRetryable
+                ? TextButton(
+                    onPressed: controller.reset,
+                    child: const Text('Try again'),
+                  )
+                : null,
+          ),
+        },
+      ),
     );
   }
 }
@@ -189,22 +200,6 @@ class _AskState extends ConsumerState<_Ask> {
       widget.controller.advise(substance: _substance.text, photo: _photo);
 }
 
-class _Thinking extends StatelessWidget {
-  const _Thinking();
-
-  @override
-  Widget build(BuildContext context) => const Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        CircularProgressIndicator(),
-        SizedBox(height: 16),
-        Text('Working out what is safe for this garment…'),
-      ],
-    ),
-  );
-}
-
 class _Advice extends ConsumerWidget {
   const _Advice({
     required this.id,
@@ -263,7 +258,7 @@ class _Advice extends ConsumerWidget {
               if (plan.cautions.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 for (final caution in plan.cautions)
-                  _Note(
+                  NoteRow(
                     icon: Icons.info_outline,
                     text: caution,
                     color: theme.colorScheme.tertiary,
@@ -283,7 +278,7 @@ class _Advice extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 for (final refused in plan.refused)
-                  _Note(
+                  NoteRow(
                     icon: Icons.block,
                     text: '${refused.step.instruction} — ${refused.reason}',
                     color: theme.colorScheme.onSurfaceVariant,
@@ -363,34 +358,6 @@ class _Step extends StatelessWidget {
       ),
     );
   }
-}
-
-class _Note extends StatelessWidget {
-  const _Note({required this.icon, required this.text, required this.color});
-
-  final IconData icon;
-  final String text;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 16, color: color),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: color),
-          ),
-        ),
-      ],
-    ),
-  );
 }
 
 /// What happens once the steps have been followed.

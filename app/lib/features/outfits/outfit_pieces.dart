@@ -42,7 +42,7 @@ class _Piece extends StatelessWidget {
     final theme = Theme.of(context);
 
     return InkWell(
-      onTap: () => context.go('/item/${item.id.value}'),
+      onTap: () => context.push('/item/${item.id.value}'),
       borderRadius: BorderRadius.circular(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

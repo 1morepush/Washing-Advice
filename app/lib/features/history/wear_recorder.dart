@@ -31,6 +31,11 @@ class WearRecorder {
   /// that impossible and, worse, made every batch of taps look like one
   /// occasion to anything reading the log.
   Future<void> recordWear(ItemId id, {String? occasion, DateTime? at}) async {
+    await _recordWear(id, occasion: occasion, at: at);
+    _ref.invalidate(coWearGraphProvider);
+  }
+
+  Future<void> _recordWear(ItemId id, {String? occasion, DateTime? at}) async {
     await _record(
       ItemWorn(
         id: EventId(_ref.read(idGeneratorProvider).next()),
@@ -60,8 +65,12 @@ class WearRecorder {
   }) async {
     final instant = at ?? DateTime.now();
     for (final id in ids) {
-      await recordWear(id, occasion: occasion, at: instant);
+      await _recordWear(id, occasion: occasion, at: instant);
     }
+    // Once for the outfit, not once per garment: the graph is a fold over the
+    // whole log, and anything watching it rereads the log on every
+    // invalidation. Five garments in an outfit were five rereads.
+    _ref.invalidate(coWearGraphProvider);
   }
 
   /// Records an observed problem with a garment.
@@ -114,6 +123,7 @@ class WearRecorder {
           ),
         );
     _ref.invalidate(itemProvider(id));
+    // A condition report is not a wear, so the co-wear graph is unaffected.
   }
 
   /// Records that every item in [load] was washed, with the settings used.
@@ -173,22 +183,19 @@ class WearRecorder {
     }
   }
 
-  /// Appends an event and refreshes the affected item's cached counters.
+  /// Appends an event.
   ///
   /// Silently does nothing for an item that is not in the wardrobe, which is
   /// the case for a pile-scan draft: the garment was washed, but there is no
   /// row to update and no history worth keeping for something the app has
   /// never been told about.
   ///
-  /// Also drops the co-wear graph, which is a fold over the whole log and so
-  /// is stale the moment anything is appended. Invalidated here rather than in
-  /// each caller: every write goes through this method, and a derived value
-  /// that some writes refresh and others do not is worse than one that is
-  /// never refreshed at all.
-  Future<void> _record(WardrobeEvent event) async {
-    await _ref.read(wardrobeRecorderProvider).record(event);
-    _ref.invalidate(coWearGraphProvider);
-  }
+  /// Does not touch the co-wear graph. That is a fold over wears only, so
+  /// only wears make it stale, and the public methods that record them drop it
+  /// once per action. Doing it here meant a load of twenty garments reread the
+  /// whole log twenty times to learn that nothing had changed.
+  Future<void> _record(WardrobeEvent event) =>
+      _ref.read(wardrobeRecorderProvider).record(event);
 }
 
 final wearRecorderProvider = Provider<WearRecorder>(WearRecorder.new);

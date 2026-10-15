@@ -150,7 +150,7 @@ class _WoreSomething extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
-          onTap: () => context.go('/laundry/worn'),
+          onTap: () => context.push('/laundry/worn'),
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Row(
@@ -430,7 +430,7 @@ class _Items extends ConsumerWidget {
                   ),
               ],
             ),
-            onTap: () => context.go('/item/${item.id.value}'),
+            onTap: () => context.push('/item/${item.id.value}'),
           ),
       ],
     );

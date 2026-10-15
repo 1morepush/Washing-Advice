@@ -113,6 +113,72 @@ void runEventLogContractTests(String name, EventLogFactory create) {
       final until = await log.all(until: tuesday);
       expect([for (final e in until) e.id.value], isNot(contains('c')));
     });
+
+    test('only the named kinds of event, for readers of one kind', () async {
+      final log = await create();
+      await log.appendAll([
+        worn('w1', monday),
+        ItemWashed(
+          id: const EventId('wash'),
+          itemId: const ItemId('a'),
+          occurredAt: tuesday,
+          record: LaundryRecord(washedAt: tuesday),
+        ),
+        // Text that looks like another event's type, inside a wear. A store
+        // that matches on the stored JSON must not be fooled by it.
+        ItemWorn(
+          id: const EventId('w2'),
+          itemId: const ItemId('a'),
+          occurredAt: wednesday,
+          occasion: 'a "type":"washed" joke',
+        ),
+      ]);
+
+      final wears = await log.all(types: {wornEventType});
+      expect([for (final e in wears) e.id.value], ['w1', 'w2']);
+
+      final washes = await log.all(types: {'washed'});
+      expect([for (final e in washes) e.id.value], ['wash']);
+
+      expect(await log.all(types: {}), isEmpty);
+      expect(await log.all(), hasLength(3));
+    });
+
+    test('a type is matched exactly, not as a pattern or a nested field',
+        () async {
+      final log = await create();
+      await log.appendAll([
+        worn('w1', monday),
+        // Its own payload holds a nested `"type":"stain"`, which is the
+        // observation's, not the event's.
+        ConditionObserved(
+          id: const EventId('c1'),
+          itemId: const ItemId('a'),
+          occurredAt: tuesday,
+          observation: WearObservation(
+            type: WearType.stain,
+            severity: WearSeverity.values.first,
+            observedAt: tuesday,
+          ),
+        ),
+      ]);
+
+      expect(await log.all(types: {'stain'}), isEmpty);
+      expect(
+        [
+          for (final e in await log.all(types: {'conditionObserved'}))
+            e.id.value
+        ],
+        ['c1'],
+      );
+      // `_` and `%` are wildcards in a LIKE and must not be here.
+      expect(await log.all(types: {'wor_'}), isEmpty);
+      expect(await log.all(types: {'%'}), isEmpty);
+      expect(await log.all(types: {'wo%'}), isEmpty);
+      // And case matters.
+      expect(await log.all(types: {'WORN'}), isEmpty);
+      expect(await log.all(types: {'Worn'}), isEmpty);
+    });
   });
 
   group('$name: replay', () {

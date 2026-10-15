@@ -17,6 +17,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../../widgets/app_drawer.dart';
+import '../../widgets/state_view.dart';
 import '../../widgets/status_message.dart';
 
 class InsightsScreen extends ConsumerWidget {
@@ -168,7 +169,7 @@ class _Readiness extends StatelessWidget {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () => context.go(
+                  onPressed: () => context.push(
                     '/item/${summary.needingCareTagScan.first.id.value}/care-label',
                   ),
                   child: const Text('Scan the next label'),
@@ -500,7 +501,7 @@ class _ItemRow extends StatelessWidget {
     final theme = Theme.of(context);
 
     return InkWell(
-      onTap: () => context.go('/item/${item.id.value}'),
+      onTap: () => context.push('/item/${item.id.value}'),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
@@ -531,39 +532,14 @@ class _Empty extends StatelessWidget {
   const _Empty();
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.insights_outlined,
-              size: 56,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(height: 16),
-            Text('Nothing to measure yet', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(
-              'Add a few garments and this fills in on its own.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: () => context.go('/scan'),
-              icon: const Icon(Icons.add_a_photo_outlined),
-              label: const Text('Add a garment'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => EmptyView(
+    icon: Icons.insights_outlined,
+    title: 'Nothing to measure yet',
+    message: 'Add a few garments and this fills in on its own.',
+    action: FilledButton.icon(
+      onPressed: () => context.push('/scan'),
+      icon: const Icon(Icons.add_a_photo_outlined),
+      label: const Text('Add a garment'),
+    ),
+  );
 }

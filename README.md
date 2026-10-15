@@ -840,9 +840,9 @@ A few decisions worth reading about:
 
 | # | Scope | Status |
 |---|---|---|
-| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 657 core tests |
+| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 662 core tests |
 | 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts, machine identification | **Done** — 404 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 841 app tests |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 871 app tests |
 | 4 | Care-label scanning, item editing, filter sheet, garment cutouts, grid view | **Done** |
 | 5 | Pile scanning, load grouping, machine profiles, wear and wash history | **Done** |
 | 6 | Outfit suggestions, laundry-aware packing, wardrobe insights | **Done** |
@@ -870,7 +870,7 @@ A few decisions worth reading about:
 | 25 | Deletion that syncs, a pile scan that asks about near-matches, rate limits handled | **Done** |
 | 26 | Appearance: match the phone, light, dark, or true black for OLED screens | **Done** |
 
-Released as `0.30.0 — Darks Only`; the app's own **Settings → What's new**
+Released as `0.30.1 — Shrink to Fit`; the app's own **Settings → What's new**
 carries the full list, and `app/lib/features/settings/patch_notes.dart` records
 which version digit moves for what.
 

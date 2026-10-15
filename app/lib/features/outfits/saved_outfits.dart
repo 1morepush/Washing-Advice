@@ -13,6 +13,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../../widgets/item_thumbnail.dart';
+import '../../widgets/state_view.dart';
 import '../../widgets/status_message.dart';
 import 'outfit_controller.dart';
 
@@ -48,7 +49,9 @@ class _SavedCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final items = ref.watch(outfitItemsProvider(outfit.id));
+    final items = ref
+        .watch(savedOutfitItemsProvider)
+        .whenData((byId) => itemsOfOutfit(outfit, byId));
     final controller = ref.read(outfitControllerProvider);
 
     return Card(
@@ -111,7 +114,7 @@ class _SavedCard extends ConsumerWidget {
                   itemBuilder: (_, index) {
                     final item = list[index];
                     return InkWell(
-                      onTap: () => context.go('/item/${item.id.value}'),
+                      onTap: () => context.push('/item/${item.id.value}'),
                       borderRadius: BorderRadius.circular(12),
                       child: Tooltip(
                         message: item.displayName,
@@ -236,35 +239,12 @@ class _Empty extends StatelessWidget {
   const _Empty();
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.bookmark_border,
-              size: 56,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(height: 16),
-            Text('Nothing saved yet', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(
-              'Save a suggestion you like and it will be waiting here — with '
-              'a count of how often you actually wear it, which is the one '
-              'thing a per-garment history cannot tell you.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => const EmptyView(
+    icon: Icons.bookmark_border,
+    title: 'Nothing saved yet',
+    message:
+        'Save a suggestion you like and it will be waiting here — with '
+        'a count of how often you actually wear it, which is the one '
+        'thing a per-garment history cannot tell you.',
+  );
 }

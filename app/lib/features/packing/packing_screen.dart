@@ -373,7 +373,7 @@ class _Bag extends StatelessWidget {
                   itemBuilder: (_, index) {
                     final item = entry.value[index].item;
                     return InkWell(
-                      onTap: () => context.go('/item/${item.id.value}'),
+                      onTap: () => context.push('/item/${item.id.value}'),
                       borderRadius: BorderRadius.circular(12),
                       child: Tooltip(
                         message: item.displayName,

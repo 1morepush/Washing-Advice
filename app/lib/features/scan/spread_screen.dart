@@ -14,6 +14,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
+import '../../widgets/back_navigation.dart';
+import '../../widgets/state_view.dart';
 import '../../widgets/status_message.dart';
 import 'spread_controller.dart';
 
@@ -25,40 +27,48 @@ class SpreadScanScreen extends ConsumerWidget {
     final state = ref.watch(spreadControllerProvider);
     final controller = ref.read(spreadControllerProvider.notifier);
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: BackButton(
-          onPressed: () {
-            controller.reset();
-            context.go('/');
-          },
+    return LeaveScope(
+      onLeave: controller.reset,
+      child: Scaffold(
+        appBar: AppBar(
+          leading: backLeading(context, '/', onLeave: controller.reset),
+          title: const Text('Lay several out'),
         ),
-        title: const Text('Lay several out'),
+        body: switch (state) {
+          SpreadIdle() => _Start(controller: controller),
+          SpreadAnalysing() => const LoadingView(
+            title: 'Finding the garments…',
+            detail:
+                'One read of the photo finds them all, so this takes about as '
+                'long as a single garment would.',
+            heading: true,
+            gap: 24,
+          ),
+          final SpreadReviewing reviewing => _Reviewing(
+            state: reviewing,
+            controller: controller,
+          ),
+          final SpreadSaved saved => _Done(
+            state: saved,
+            controller: controller,
+          ),
+          final SpreadFailed failed => StatusMessage(
+            icon: Icons.error_outline,
+            title: 'That did not work',
+            detail: failed.message,
+            action: failed.isRetryable
+                ? FilledButton.icon(
+                    onPressed: controller.capture,
+                    icon: const Icon(Icons.camera_alt_outlined),
+                    label: const Text('Take another photo'),
+                  )
+                : FilledButton.tonal(
+                    onPressed: controller.reset,
+                    child: const Text('Start again'),
+                  ),
+          ),
+        },
       ),
-      body: switch (state) {
-        SpreadIdle() => _Start(controller: controller),
-        SpreadAnalysing() => const _Analysing(),
-        final SpreadReviewing reviewing => _Reviewing(
-          state: reviewing,
-          controller: controller,
-        ),
-        final SpreadSaved saved => _Done(state: saved, controller: controller),
-        final SpreadFailed failed => StatusMessage(
-          icon: Icons.error_outline,
-          title: 'That did not work',
-          detail: failed.message,
-          action: failed.isRetryable
-              ? FilledButton.icon(
-                  onPressed: controller.capture,
-                  icon: const Icon(Icons.camera_alt_outlined),
-                  label: const Text('Take another photo'),
-                )
-              : FilledButton.tonal(
-                  onPressed: controller.reset,
-                  child: const Text('Start again'),
-                ),
-        ),
-      },
     );
   }
 }
@@ -145,38 +155,6 @@ class _Start extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _Analysing extends StatelessWidget {
-  const _Analysing();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 24),
-            Text('Finding the garments…', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(
-              'One read of the photo finds them all, so this takes about as '
-              'long as a single garment would.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

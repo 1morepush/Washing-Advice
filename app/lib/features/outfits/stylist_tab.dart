@@ -17,6 +17,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
+import '../../widgets/state_view.dart';
 import '../../widgets/status_message.dart';
 import 'outfit_controller.dart';
 import 'outfit_pieces.dart';
@@ -59,7 +60,9 @@ class _StylistTabState extends ConsumerState<StylistTab> {
     stylistControllerProvider,
   )) {
     StylistIdle() => _Intro(note: _note, onAsk: _ask),
-    StylistThinking() => const _Thinking(),
+    StylistThinking() => const LoadingView(
+      title: 'Looking through your wardrobe…',
+    ),
     StylistFailed(:final message, :final isRetryable) => StatusMessage(
       icon: Icons.error_outline,
       title: 'Could not ask for ideas',
@@ -161,25 +164,6 @@ class _Intro extends ConsumerWidget {
       ],
     );
   }
-}
-
-class _Thinking extends StatelessWidget {
-  const _Thinking();
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const CircularProgressIndicator(),
-        const SizedBox(height: 16),
-        Text(
-          'Looking through your wardrobe…',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-      ],
-    ),
-  );
 }
 
 class _Ideas extends ConsumerWidget {

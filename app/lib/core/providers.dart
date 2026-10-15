@@ -18,10 +18,10 @@ import '../data/api/ai_gateway.dart';
 import '../data/capture/image_capture_source.dart';
 import '../data/drift/connection.dart';
 import '../data/drift/database.dart';
-import '../data/images/image_store.dart';
 import '../data/drift/drift_event_log.dart';
 import '../data/drift/drift_outfit_repository.dart';
 import '../data/drift/drift_wardrobe_repository.dart';
+import '../data/images/image_store.dart';
 import 'settings.dart';
 
 /// The open database.
@@ -216,9 +216,13 @@ final wardrobeSummaryProvider = Provider<AsyncValue<WardrobeSummary>>(
 /// Derived from the event log rather than stored, so there is no second source
 /// of truth to keep in step and it applies to history the app already has —
 /// someone who has been logging wears for a month has a graph immediately.
+///
+/// Only wears are read: the graph ignores every other event, and a wardrobe's
+/// washes and condition reports outnumber its wears several times over.
 final coWearGraphProvider = FutureProvider<RelationshipGraph>(
-  (ref) async =>
-      CoWearProjection.graphFrom(await ref.watch(eventLogProvider).all()),
+  (ref) async => CoWearProjection.graphFrom(
+    await ref.watch(eventLogProvider).all(types: {wornEventType}),
+  ),
 );
 
 /// Suggests things to wear.
@@ -247,26 +251,35 @@ final savedOutfitsProvider = StreamProvider<List<Outfit>>(
   (ref) => ref.watch(outfitRepositoryProvider).watch(),
 );
 
-/// A saved outfit resolved to the items it references.
+/// Every garment any saved outfit references, by id, in one lookup.
 ///
 /// Items are looked up rather than stored on the outfit, so an edited or
-/// deleted garment is reflected immediately. Anything missing is dropped from
-/// the result rather than rendered as a gap: the repository already deletes
-/// outfits that fall below two items, so a missing one here means a race, not
-/// a state worth drawing.
-final outfitItemsProvider = FutureProvider.family<List<WardrobeItem>, OutfitId>(
-  (ref, id) async {
-    final outfit = await ref.watch(outfitRepositoryProvider).byId(id);
-    if (outfit == null) return const [];
+/// deleted garment is reflected on the next load. A card used to ask for its
+/// own outfit and then each garment in turn: thirty saved outfits of four
+/// pieces were a hundred and fifty queries to draw one list. Asking once for
+/// the union is one.
+final savedOutfitItemsProvider = FutureProvider<Map<ItemId, WardrobeItem>>((
+  ref,
+) async {
+  final outfits = await ref.watch(savedOutfitsProvider.future);
+  final items = await ref.watch(wardrobeRepositoryProvider).byIds({
+    for (final outfit in outfits) ...outfit.itemIds,
+  });
+  return {for (final item in items) item.id: item};
+});
 
-    final items = <WardrobeItem>[];
-    for (final itemId in outfit.itemIds) {
-      final item = await ref.watch(wardrobeRepositoryProvider).byId(itemId);
-      if (item != null) items.add(item);
-    }
-    return items;
-  },
-);
+/// A saved outfit resolved to the items it references.
+///
+/// Anything missing is dropped from the result rather than rendered as a gap:
+/// the repository already deletes outfits that fall below two items, so a
+/// missing one here means a race, not a state worth drawing.
+List<WardrobeItem> itemsOfOutfit(
+  Outfit outfit,
+  Map<ItemId, WardrobeItem> byId,
+) => [
+  for (final id in outfit.itemIds)
+    if (byId[id] case final WardrobeItem item) item,
+];
 
 /// What the outfits screen is currently asking for.
 final outfitRequestProvider = StateProvider<OutfitRequest>(

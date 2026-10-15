@@ -88,7 +88,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       // Now a top-level destination rather than a detour from the wardrobe, so
       // it gets the drawer instead of a back button that only ever went home.
       drawer: const AppDrawer(current: AppDestination.settings),
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(
+        // Reached from the drawer it is a place of its own and gets the
+        // hamburger; pushed from a screen that links to it (the pile scan),
+        // there is somewhere to go back to, and a drawer button alone would
+        // hide that on the platforms with no system Back.
+        leading: Navigator.of(context).canPop() ? const BackButton() : null,
+        title: const Text('Settings'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

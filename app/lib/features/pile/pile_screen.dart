@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/settings.dart';
+import '../../widgets/back_navigation.dart';
+import '../../widgets/state_view.dart';
 import '../laundry/laundry_controller.dart';
 import 'pile_controller.dart';
 import 'widgets/load_card.dart';
@@ -19,26 +21,28 @@ class PileScreen extends ConsumerWidget {
     final state = ref.watch(pileControllerProvider);
     final controller = ref.read(pileControllerProvider.notifier);
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: BackButton(
-          onPressed: () {
-            controller.reset();
-            context.go('/');
-          },
+    return LeaveScope(
+      onLeave: controller.reset,
+      child: Scaffold(
+        appBar: AppBar(
+          leading: backLeading(context, '/', onLeave: controller.reset),
+          title: const Text('Sort the laundry'),
         ),
-        title: const Text('Sort the laundry'),
+        body: switch (state) {
+          PileIdle() => _Capture(controller: controller),
+          PileAnalysing() => const LoadingView(
+            title: 'Finding the clothes…',
+            heading: true,
+            gap: 24,
+          ),
+          PilePlanned() => _Plan(state: state, controller: controller),
+          PileFailed(:final message, :final isRetryable) => FailureView(
+            message: message,
+            actionLabel: isRetryable ? 'Try again' : 'Take another photo',
+            onAction: controller.reset,
+          ),
+        },
       ),
-      body: switch (state) {
-        PileIdle() => _Capture(controller: controller),
-        PileAnalysing() => const _Analysing(),
-        PilePlanned() => _Plan(state: state, controller: controller),
-        PileFailed(:final message, :final isRetryable) => _Failed(
-          message: message,
-          isRetryable: isRetryable,
-          controller: controller,
-        ),
-      },
     );
   }
 }
@@ -50,73 +54,35 @@ class _Capture extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final washer = ref.watch(washerProvider);
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.local_laundry_service_outlined,
-              size: 64,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(height: 24),
-            Text('Photograph the pile', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(
-              'Spread it out so each item is visible. Anything the app already '
-              'knows will be recognized, and its care label used instead of a '
-              'guess from a crumpled sleeve.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 32),
-            FilledButton.icon(
-              onPressed: controller.captureAndPlan,
-              icon: const Icon(Icons.camera_alt_outlined),
-              label: const Text('Take a photo'),
-            ),
-            if (washer == null) ...[
-              const SizedBox(height: 24),
-              // Not a blocker. The plan is still useful without a machine — it
-              // just states requirements rather than naming a programme — and
-              // putting a settings screen between someone and their first
-              // answer is how an app gets deleted.
-              TextButton(
-                onPressed: () => context.go('/settings'),
-                child: const Text('Set your machine to get exact programs'),
-              ),
-            ],
-          ],
+    return IntroView(
+      icon: Icons.local_laundry_service_outlined,
+      title: 'Photograph the pile',
+      message:
+          'Spread it out so each item is visible. Anything the app already '
+          'knows will be recognized, and its care label used instead of a '
+          'guess from a crumpled sleeve.',
+      actions: [
+        FilledButton.icon(
+          onPressed: controller.captureAndPlan,
+          icon: const Icon(Icons.camera_alt_outlined),
+          label: const Text('Take a photo'),
         ),
-      ),
+        if (washer == null) ...[
+          const SizedBox(height: 24),
+          // Not a blocker. The plan is still useful without a machine — it
+          // just states requirements rather than naming a programme — and
+          // putting a settings screen between someone and their first
+          // answer is how an app gets deleted.
+          TextButton(
+            onPressed: () => context.push('/settings'),
+            child: const Text('Set your machine to get exact programs'),
+          ),
+        ],
+      ],
     );
   }
-}
-
-class _Analysing extends StatelessWidget {
-  const _Analysing();
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const CircularProgressIndicator(),
-        const SizedBox(height: 24),
-        Text(
-          'Finding the clothes…',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-      ],
-    ),
-  );
 }
 
 class _Plan extends ConsumerWidget {
@@ -180,7 +146,7 @@ class _Plan extends ConsumerWidget {
             text:
                 'No machine is set, so these say what each load needs rather '
                 'than which program to select.',
-            onTap: () => context.go('/settings'),
+            onTap: () => context.push('/settings'),
           ),
         ],
 
@@ -380,7 +346,7 @@ class _NothingSortable extends StatelessWidget {
             Align(
               alignment: Alignment.centerLeft,
               child: FilledButton.tonalIcon(
-                onPressed: () => context.go('/scan'),
+                onPressed: () => context.push('/scan'),
                 icon: const Icon(Icons.add_a_photo_outlined),
                 label: const Text('Add a garment'),
               ),
@@ -423,45 +389,6 @@ class _Notice extends StatelessWidget {
                   color: scheme.onTertiaryContainer,
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Failed extends StatelessWidget {
-  const _Failed({
-    required this.message,
-    required this.isRetryable,
-    required this.controller,
-  });
-
-  final String message;
-  final bool isRetryable;
-  final PileController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: controller.reset,
-              child: Text(isRetryable ? 'Try again' : 'Take another photo'),
             ),
           ],
         ),

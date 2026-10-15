@@ -65,6 +65,22 @@ async function tapText(page, text) {
   await page.waitForTimeout(1200);
 }
 
+/** Taps the wardrobe's grid/list toggle and fails unless the view changed.
+ *
+ * `from` is the label of the button to press, which names what pressing it
+ * does; `to` is the label it must show afterwards. Throws, rather than carrying
+ * on, if either is missing: a screenshot taken after a tap that did nothing is
+ * a wrong picture with a right-looking name.
+ */
+async function toggleView(page, { from, to }) {
+  // By role and name, not by label: Flutter puts a tooltip in the node's text
+  // rather than its `aria-label`, so `getByLabel` never matched and the old
+  // `.catch(() => {})` hid that the tap had never happened.
+  await page.getByRole('button', { name: from }).first().click({ timeout: 10_000 });
+  await page.getByRole('button', { name: to }).first().waitFor({ timeout: 10_000 });
+  await page.waitForTimeout(1200);
+}
+
 for (const theme of ['light', 'dark']) {
   const context = await browser.newContext({
     viewport: VIEWPORT,
@@ -95,11 +111,12 @@ for (const theme of ['light', 'dark']) {
   // The list view, reached through the toggle. Both are worth showing: the
   // grid is for finding a garment, the list for comparing several.
   if (theme === 'light') {
-    await page.getByLabel('Show as a list').first().click().catch(() => {});
-    await page.waitForTimeout(1200);
+    // Each tap is checked by the toggle's own tooltip flipping, which it only
+    // does once the view has changed. A tap that landed nowhere used to be
+    // swallowed here and the "list" screenshot was a second copy of the grid.
+    await toggleView(page, { from: 'Show as a list', to: 'Show as a grid' });
     await shot(page, 'wardrobe-list');
-    await page.getByLabel('Show as a grid').first().click().catch(() => {});
-    await page.waitForTimeout(1000);
+    await toggleView(page, { from: 'Show as a grid', to: 'Show as a list' });
   }
 
   await page.goto(`${BASE}/#/item/demo-jumper`, { waitUntil: 'load' });

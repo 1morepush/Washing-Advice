@@ -143,6 +143,42 @@ void runEventLogContractTests(String name, EventLogFactory create) {
       expect(await log.all(types: {}), isEmpty);
       expect(await log.all(), hasLength(3));
     });
+
+    test('a type is matched exactly, not as a pattern or a nested field',
+        () async {
+      final log = await create();
+      await log.appendAll([
+        worn('w1', monday),
+        // Its own payload holds a nested `"type":"stain"`, which is the
+        // observation's, not the event's.
+        ConditionObserved(
+          id: const EventId('c1'),
+          itemId: const ItemId('a'),
+          occurredAt: tuesday,
+          observation: WearObservation(
+            type: WearType.stain,
+            severity: WearSeverity.values.first,
+            observedAt: tuesday,
+          ),
+        ),
+      ]);
+
+      expect(await log.all(types: {'stain'}), isEmpty);
+      expect(
+        [
+          for (final e in await log.all(types: {'conditionObserved'}))
+            e.id.value
+        ],
+        ['c1'],
+      );
+      // `_` and `%` are wildcards in a LIKE and must not be here.
+      expect(await log.all(types: {'wor_'}), isEmpty);
+      expect(await log.all(types: {'%'}), isEmpty);
+      expect(await log.all(types: {'wo%'}), isEmpty);
+      // And case matters.
+      expect(await log.all(types: {'WORN'}), isEmpty);
+      expect(await log.all(types: {'Worn'}), isEmpty);
+    });
   });
 
   group('$name: replay', () {

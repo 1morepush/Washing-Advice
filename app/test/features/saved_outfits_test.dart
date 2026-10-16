@@ -63,7 +63,7 @@ void main() {
   }
 
   Future<void> saveFirstSuggestion(WidgetTester tester, {String? name}) async {
-    await tester.tap(find.widgetWithText(TextButton, 'Save').first);
+    await tester.tap(find.widgetWithText(FilledButton, 'Save').first);
     await tester.pumpAndSettle();
     if (name != null) {
       // The dialog's field: the stylist's note box shares this screen.
@@ -75,13 +75,18 @@ void main() {
         name,
       );
     }
-    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.widgetWithText(FilledButton, 'Save'),
+      ),
+    );
     await tester.pumpAndSettle();
   }
 
   testWidgets('saving asks for a name', (tester) async {
     await pump(tester);
-    await tester.tap(find.widgetWithText(TextButton, 'Save').first);
+    await tester.tap(find.widgetWithText(FilledButton, 'Save').first);
     await tester.pumpAndSettle();
 
     expect(find.text('Save this outfit'), findsOneWidget);
@@ -112,7 +117,7 @@ void main() {
 
   testWidgets('backing out of the dialog saves nothing', (tester) async {
     await pump(tester);
-    await tester.tap(find.widgetWithText(TextButton, 'Save').first);
+    await tester.tap(find.widgetWithText(FilledButton, 'Save').first);
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
     await tester.pumpAndSettle();
@@ -142,7 +147,7 @@ void main() {
 
     await tester.tap(find.text('Saved'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(TextButton, 'Wearing this'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Wearing this'));
     await tester.pumpAndSettle();
 
     expect((await outfits.all()).single.usage.timesWorn, 1);

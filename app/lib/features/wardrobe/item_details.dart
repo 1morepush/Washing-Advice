@@ -13,6 +13,7 @@ import '../../core/theme.dart';
 import '../../widgets/care_symbol.dart';
 import '../../widgets/confidence_chip.dart';
 import '../../widgets/item_thumbnail.dart';
+import '../../widgets/photo_viewer.dart';
 import '../history/wear_recorder.dart';
 import '../laundry/laundry_controller.dart';
 import 'care_text.dart';
@@ -485,7 +486,12 @@ class _Hero extends StatelessWidget {
     // `backdrop: false` because the hero is itself the tile, tinted only as
     // far as this garment needs to show (see [ItemThumbnail.tileFor]); the tint a
     // cutout gets in a list would make a second, smaller panel inside it.
-    child: ItemThumbnail(item: item, size: 176, backdrop: false),
+    // Already on the garment's page, so the viewer has no "Open garment".
+    child: EnlargeOnTap(
+      item: item,
+      offerOpen: false,
+      child: ItemThumbnail(item: item, size: 176, backdrop: false),
+    ),
   );
 }
 
@@ -658,10 +664,7 @@ class _NameHeading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final subtitle = [
-      if (item.brand case final Confident<String> brand) brand.value,
-      item.type.value.label,
-    ].where((part) => part.trim().isNotEmpty).join(' · ');
+    final subtitle = garmentSubtitle(item);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),

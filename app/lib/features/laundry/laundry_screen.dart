@@ -21,6 +21,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../core/theme.dart';
 import '../../widgets/garment_glyph.dart';
 import '../../widgets/item_thumbnail.dart';
+import '../../widgets/photo_viewer.dart';
 import '../../widgets/rinse_kit.dart';
 import '../../widgets/status_message.dart';
 import '../pile/widgets/load_card.dart';
@@ -576,9 +577,13 @@ class _Items extends ConsumerWidget {
             children: [
               for (final item in items)
                 ListTile(
-                  leading: ClipRRect(
-                    borderRadius: context.rinse.tileBorderRadius,
-                    child: ItemThumbnail(item: item, size: 44),
+                  // The picture enlarges; the rest of the row opens the garment.
+                  leading: EnlargeOnTap(
+                    item: item,
+                    child: ClipRRect(
+                      borderRadius: context.rinse.tileBorderRadius,
+                      child: ItemThumbnail(item: item, size: 44),
+                    ),
                   ),
                   title: Text(
                     item.displayName,

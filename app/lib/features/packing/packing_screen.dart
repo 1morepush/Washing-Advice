@@ -14,6 +14,7 @@ import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../widgets/back_navigation.dart';
 import '../../widgets/item_thumbnail.dart';
+import '../../widgets/photo_viewer.dart';
 import '../../widgets/status_message.dart';
 
 class PackingScreen extends ConsumerWidget {
@@ -399,7 +400,11 @@ class _Bag extends StatelessWidget {
                       borderRadius: context.rinse.tileBorderRadius,
                       child: Tooltip(
                         message: item.displayName,
-                        child: ItemThumbnail(item: item, size: 72),
+                        child: EnlargeOnTap(
+                          item: item,
+                          onLongPress: true,
+                          child: ItemThumbnail(item: item, size: 72),
+                        ),
                       ),
                     );
                   },

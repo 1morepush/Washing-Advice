@@ -159,21 +159,24 @@ class EnlargeOnTap extends StatelessWidget {
             child: Stack(
               children: [
                 child,
-                Positioned.fill(
-                  child: Material(
-                    type: MaterialType.transparency,
-                    child: InkResponse(
-                      containedInkWell: true,
-                      highlightShape: BoxShape.rectangle,
-                      customBorder: RoundedRectangleBorder(
-                        borderRadius: radius,
+                // No ripple for a long-press: an InkResponse always claims
+                // the tap too, and here the tap belongs to whatever the
+                // picture sits inside (it opens the garment, or picks it).
+                if (!onLongPress)
+                  Positioned.fill(
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: InkResponse(
+                        containedInkWell: true,
+                        highlightShape: BoxShape.rectangle,
+                        customBorder: RoundedRectangleBorder(
+                          borderRadius: radius,
+                        ),
+                        onTap: open,
+                        excludeFromSemantics: true,
                       ),
-                      onTap: onLongPress ? null : open,
-                      onLongPress: onLongPress ? open : null,
-                      excludeFromSemantics: true,
                     ),
                   ),
-                ),
               ],
             ),
           ),

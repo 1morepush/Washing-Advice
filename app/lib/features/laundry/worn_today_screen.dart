@@ -12,6 +12,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme.dart';
 import '../../widgets/item_thumbnail.dart';
+import '../../widgets/photo_viewer.dart';
 import '../../widgets/rinse_kit.dart';
 import '../../widgets/status_message.dart';
 import 'worn_today_controller.dart';
@@ -148,7 +149,11 @@ class _Candidate extends StatelessWidget {
                     Positioned.fill(
                       child: ClipRRect(
                         borderRadius: rinse.tileBorderRadius,
-                        child: ItemThumbnail(item: item, size: 120),
+                        child: EnlargeOnTap(
+                          item: item,
+                          onLongPress: true,
+                          child: ItemThumbnail(item: item, size: 120),
+                        ),
                       ),
                     ),
                     if (chosen)

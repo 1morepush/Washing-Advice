@@ -13,6 +13,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/theme.dart';
 import '../../widgets/item_thumbnail.dart';
+import '../../widgets/photo_viewer.dart';
 
 class OutfitPieces extends StatelessWidget {
   const OutfitPieces({required this.items, super.key});
@@ -50,7 +51,11 @@ class _Piece extends StatelessWidget {
         children: [
           AspectRatio(
             aspectRatio: 1,
-            child: ItemThumbnail(item: item, size: double.infinity),
+            child: EnlargeOnTap(
+              item: item,
+              onLongPress: true,
+              child: ItemThumbnail(item: item, size: double.infinity),
+            ),
           ),
           const SizedBox(height: 8),
           Text(

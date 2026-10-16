@@ -20,6 +20,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../../core/theme.dart';
 import '../../../widgets/care_symbol.dart';
 import '../../../widgets/item_thumbnail.dart';
+import '../../../widgets/photo_viewer.dart';
 import '../../history/wear_recorder.dart';
 
 /// The rationale entries that explain the settings, as opposed to instructing.
@@ -140,15 +141,23 @@ class _LoadCardState extends ConsumerState<LoadCard> {
             // again for each one.
             for (final item in load.items)
               Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                // Four, not eight: the picture's tap target is 48 tall, so the
+                // row already has the room.
+                padding: const EdgeInsets.only(bottom: 4),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    ClipRRect(
+                    EnlargeOnTap(
+                      item: item,
                       borderRadius: BorderRadius.circular(
                         rinse.tileRadius * .6,
                       ),
-                      child: ItemThumbnail(item: item, size: 40),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(
+                          rinse.tileRadius * .6,
+                        ),
+                        child: ItemThumbnail(item: item, size: 40),
+                      ),
                     ),
                     const SizedBox(width: 12),
                     // Wrapped rather than clipped: these names run long and
@@ -415,10 +424,13 @@ class _DryingParts extends StatelessWidget {
                 // them: this is read with a basket in front of you.
                 for (final item in group.items)
                   Padding(
-                    padding: const EdgeInsets.only(left: 24, bottom: 6),
+                    padding: const EdgeInsets.only(left: 24),
                     child: Row(
                       children: [
-                        ItemThumbnail(item: item, size: 32),
+                        EnlargeOnTap(
+                          item: item,
+                          child: ItemThumbnail(item: item, size: 32),
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(

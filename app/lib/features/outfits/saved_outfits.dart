@@ -14,6 +14,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../widgets/item_thumbnail.dart';
+import '../../widgets/photo_viewer.dart';
 import '../../widgets/state_view.dart';
 import '../../widgets/status_message.dart';
 import 'outfit_controller.dart';
@@ -124,7 +125,11 @@ class _SavedCard extends ConsumerWidget {
                       borderRadius: context.rinse.tileBorderRadius,
                       child: Tooltip(
                         message: item.displayName,
-                        child: ItemThumbnail(item: item, size: 84),
+                        child: EnlargeOnTap(
+                          item: item,
+                          onLongPress: true,
+                          child: ItemThumbnail(item: item, size: 84),
+                        ),
                       ),
                     );
                   },

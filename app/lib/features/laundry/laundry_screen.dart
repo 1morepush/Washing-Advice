@@ -57,10 +57,58 @@ class _LaundryScreenState extends ConsumerState<LaundryScreen>
     initialIndex: widget.initialTab,
   );
 
+  /// One key per stage pill, so the row can bring the open one into view.
+  final _pillKeys = [for (final _ in _Pile.values) GlobalKey()];
+  final _pillScroll = ScrollController();
+  int? _revealed;
+
+  @override
+  void initState() {
+    super.initState();
+    // Both: the controller says when the index lands after a swipe, the
+    // animation when a tap's slide finishes.
+    _tabs.addListener(_revealOpenPill);
+    _tabs.animation!.addListener(_revealOpenPill);
+    // The stage the screen opens on counts too.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _revealOpenPill());
+  }
+
   @override
   void dispose() {
+    _tabs.removeListener(_revealOpenPill);
+    _tabs.animation!.removeListener(_revealOpenPill);
+    _pillScroll.dispose();
     _tabs.dispose();
     super.dispose();
+  }
+
+  /// When the open stage changes, by a tap or a swipe, scrolls its pill fully
+  /// into view. Only matters at large text, where the row scrolls; with the
+  /// pills sharing the width there is nothing to scroll and nothing happens.
+  void _revealOpenPill() {
+    // Only once the page has come to rest: revealing each pill the page
+    // passes on its way (Basket to Drying goes through Washing) starts a
+    // scroll that the last one then cannot correct.
+    if (_tabs.indexIsChanging ||
+        _tabs.animation!.value != _tabs.index.toDouble()) {
+      return;
+    }
+    final open = _tabs.index;
+    if (open == _revealed) return;
+    _revealed = open;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_pillScroll.hasClients) return;
+      final target = _pillKeys[open].currentContext;
+      if (target == null) return;
+      Scrollable.ensureVisible(
+        target,
+        alignment: 0.5,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   @override
@@ -81,6 +129,7 @@ class _LaundryScreenState extends ConsumerState<LaundryScreen>
               final large = MediaQuery.textScalerOf(context).scale(1) > 1.3;
               Widget pill(int index, _Pile pile, {required bool intrinsic}) =>
                   StagePill(
+                    key: _pillKeys[index],
                     label: pile.label,
                     count: _count(pile),
                     color: stages.colorOf(pile.stage)!,
@@ -95,15 +144,19 @@ class _LaundryScreenState extends ConsumerState<LaundryScreen>
               // is the one thing the pill is for. They scroll instead, each at
               // its full size.
               if (large) {
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      for (final (index, pile) in _Pile.values.indexed) ...[
-                        if (index > 0) const SizedBox(width: 8),
-                        pill(index, pile, intrinsic: true),
+                return _FadedEdges(
+                  controller: _pillScroll,
+                  child: SingleChildScrollView(
+                    controller: _pillScroll,
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (final (index, pile) in _Pile.values.indexed) ...[
+                          if (index > 0) const SizedBox(width: 8),
+                          pill(index, pile, intrinsic: true),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 );
               }
@@ -608,3 +661,47 @@ Color wornTodayStackFill(ColorScheme scheme, GlyphKind kind) => switch (kind) {
   GlyphKind.jeans => scheme.onSurfaceVariant,
   _ => scheme.onSurface,
 };
+
+/// Fades the edge of a horizontally scrolling row that has more beyond it, so
+/// it is plain that it scrolls. Nothing is faded on a side that is at its end.
+class _FadedEdges extends StatelessWidget {
+  const _FadedEdges({required this.controller, required this.child});
+
+  final ScrollController controller;
+  final Widget child;
+
+  static const _fade = 20.0;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => ListenableBuilder(
+      listenable: controller,
+      builder: (context, child) {
+        // Before the first layout there is no position: assume more to the
+        // right, which is the case that needs the hint.
+        final position =
+            controller.hasClients && controller.position.hasContentDimensions
+            ? controller.position
+            : null;
+        final more =
+            position == null || position.pixels < position.maxScrollExtent - 1;
+        final before = position != null && position.pixels > 1;
+        final f = (_fade / constraints.maxWidth).clamp(0.0, 0.2);
+        return ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (rect) => LinearGradient(
+            colors: [
+              if (before) const Color(0x00FFFFFF) else const Color(0xFFFFFFFF),
+              const Color(0xFFFFFFFF),
+              const Color(0xFFFFFFFF),
+              if (more) const Color(0x00FFFFFF) else const Color(0xFFFFFFFF),
+            ],
+            stops: [0, f, 1 - f, 1],
+          ).createShader(rect),
+          child: child,
+        );
+      },
+      child: child,
+    ),
+  );
+}

@@ -13,6 +13,7 @@ import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
+import '../../core/theme.dart';
 import '../../widgets/back_navigation.dart';
 import '../../widgets/status_message.dart';
 import 'condition_sheet.dart';
@@ -47,6 +48,9 @@ class ItemDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        // The well the garment sits on, so the bar and the hero beneath it
+        // read as one header rather than two bands with a seam between.
+        backgroundColor: context.rinse.well,
         leading: backLeading(context, '/'),
         // The name gets the room it needs. A garment's name is the one thing
         // on this screen that says *which* garment it is, and a single line

@@ -6,11 +6,14 @@
 /// cannot — every row shares a busy background and the eye has to hunt for the
 /// clothing in each one.
 ///
-/// Falls back to the colour swatch, which needs no files at all and is drawn
-/// from the CIELAB palette the app actually stored. That fallback is not a
-/// consolation prize: it is what the wardrobe looked like before this feature,
-/// and it still works when the image is missing, the cutout failed, or the
-/// user restored a backup that carried the database but not the pictures.
+/// Falls back to the garment's silhouette ([GarmentGlyph]) filled with the
+/// colour the app stored for it, which needs no files at all. That fallback is
+/// not a consolation prize: it is what the wardrobe looked like before this
+/// feature, and it still works when the image is missing, the cutout failed,
+/// or the user restored a backup that carried the database but not the
+/// pictures. A silhouette rather than a bare colour disc because six grey
+/// shorts and a grey jumper were otherwise the same grey circle; the outline
+/// ([RinseShape.garmentEdge]) keeps a black sock visible on a black screen.
 library;
 
 import 'dart:collection';
@@ -24,6 +27,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../core/providers.dart';
 import '../core/theme.dart';
 import '../data/images/image_store.dart';
+import 'garment_glyph.dart';
 import 'rinse_kit.dart';
 
 /// How many photographs' bytes are kept after nothing is showing them.
@@ -105,7 +109,7 @@ class ItemThumbnail extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final uri = item.photos.displayImageUri;
     if (uri == null) {
-      return _Swatch(palette: item.colors.value, size: size, framed: true);
+      return _Silhouette(item: item, size: size);
     }
 
     final ImageProvider source;
@@ -124,7 +128,7 @@ class ItemThumbnail extends ConsumerWidget {
         // Covers both "still loading" and "gone". Showing the swatch in the
         // meantime avoids a row that pops from a grey box to a picture, and
         // avoids a spinner per row on a wardrobe of two hundred items.
-        return _Swatch(palette: item.colors.value, size: size, framed: true);
+        return _Silhouette(item: item, size: size);
       }
       source = MemoryImage(bytes);
     }
@@ -136,7 +140,7 @@ class ItemThumbnail extends ConsumerWidget {
       height: size,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: backdrop ? _backdropFor(context) : null,
+          color: _wellFor(context),
           borderRadius: context.rinse.tileBorderRadius,
         ),
         child: Padding(
@@ -175,13 +179,8 @@ class ItemThumbnail extends ConsumerWidget {
                 // A file is decoded after the first build, so until a frame
                 // arrives the swatch stands in, as it does while bytes load.
                 frameBuilder: (context, child, frame, sync) =>
-                    sync || frame != null
-                    ? child
-                    : Center(
-                        child: _Swatch(palette: item.colors.value, size: size),
-                      ),
-                errorBuilder: (_, _, _) =>
-                    _Swatch(palette: item.colors.value, size: size),
+                    sync || frame != null ? child : _Silhouette(item: item),
+                errorBuilder: (_, _, _) => _Silhouette(item: item),
               );
             },
           ),
@@ -189,6 +188,10 @@ class ItemThumbnail extends ConsumerWidget {
       ),
     );
   }
+
+  /// The tile colour: the plain well, or the tinted one when [backdrop].
+  Color? _wellFor(BuildContext context) =>
+      backdrop ? _backdropFor(context) : null;
 
   /// The pixel extent to decode to for the box this is being drawn in.
   ///
@@ -249,90 +252,56 @@ class ItemThumbnail extends ConsumerWidget {
   }
 }
 
-/// The item's colours, as the app stored them.
+/// The garment's silhouette in the colour the app stored for it.
 ///
 /// Drawn from the CIELAB palette rather than from a photo: it works before any
 /// image has loaded, and it shows what the app *believes* the colour to be,
-/// which is what decides which pile the garment lands in. A swatch that
+/// which is what decides which pile the garment lands in. A silhouette that
 /// disagrees with the photo beside it is a bug worth seeing.
-class _Swatch extends StatelessWidget {
-  const _Swatch({
-    required this.palette,
-    required this.size,
-    this.framed = false,
-  });
+///
+/// With a [size] it sits on a full tile, like a photograph does; without one
+/// it is the bare glyph, for standing in inside a tile that is already there.
+/// The tile is the plain well, never the tinted backdrop: the glyph carries
+/// its own outline, so it needs no lift to stay visible.
+class _Silhouette extends StatelessWidget {
+  const _Silhouette({required this.item, this.size});
 
-  final ColorPalette palette;
-  final double size;
+  final WardrobeItem item;
 
-  /// Sits the disc on a [RinseShape.well] tile of the full [size], like a
-  /// photograph does, instead of being the bare disc. Off when the swatch is
-  /// standing in inside a tile that is already there.
-  final bool framed;
+  /// The tile's side, or null for the bare glyph that fills what it is given.
+  final double? size;
 
   @override
   Widget build(BuildContext context) {
-    if (framed) {
-      return GarmentWell(
-        size: size.isFinite ? size : null,
-        child: Center(
-          child: FractionallySizedBox(
-            widthFactor: 0.62,
-            heightFactor: 0.62,
-            child: LayoutBuilder(
-              builder: (context, box) =>
-                  _Swatch(palette: palette, size: box.biggest.shortestSide),
-            ),
-          ),
-        ),
-      );
-    }
-    final scheme = Theme.of(context).colorScheme;
-    // A circle needs a real diameter; in a grid cell the size is unbounded, so
-    // the swatch takes what it is given and stays square.
-    final diameter = size.isFinite ? size : null;
-    // At most two, largest coverage first. A five-way gradient on a 44-pixel
-    // circle communicates nothing.
-    final shown = [
-      for (final color in palette.colors.take(2)) Color(0xFF000000 | color.rgb),
-    ];
-
-    // Three cases, and they must stay separate: a gradient needs at least two
-    // colours and asserts on one, which crashed every single-colour garment —
-    // that is, nearly all of them.
-    return Container(
-      width: diameter,
-      height: diameter,
-      constraints: diameter == null
-          ? const BoxConstraints(maxWidth: 96, maxHeight: 96)
-          : null,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: context.rinse.garmentEdge),
-        color: switch (shown.length) {
-          0 => scheme.surfaceContainerHighest,
-          1 => shown.first,
-          _ => null,
-        },
-        gradient: shown.length < 2
-            ? null
-            : LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: shown,
-                // A hard split rather than a blend: the two colours are
-                // separate facts about the garment, and blending them invents
-                // a third that is on none of it.
-                stops: const [0.5, 0.5],
-              ),
-      ),
-      child: shown.isEmpty
-          ? Icon(
-              Icons.checkroom,
-              size: (diameter ?? 96) * 0.45,
-              color: scheme.onSurfaceVariant,
-            )
-          : null,
+    final glyph = GarmentGlyph(
+      kind: glyphKindFor(item.type.value),
+      fill: _fill(context),
+      edge: context.rinse.garmentEdge,
     );
+    if (size == null) return Center(child: glyph);
+    return GarmentWell(
+      size: size!.isFinite ? size : null,
+      // 74% as in the design: the silhouette fills the tile without touching
+      // its rounded corners.
+      child: FractionallySizedBox(
+        widthFactor: 0.74,
+        heightFactor: 0.74,
+        child: glyph,
+      ),
+    );
+  }
+
+  /// The dominant stored colour, or a neutral when none was recorded.
+  ///
+  /// One colour, not two: the glyph is one shape, and a hard split down a
+  /// jumper would show a pattern nobody recorded.
+  Color _fill(BuildContext context) {
+    final colors = item.colors.value.colors;
+    if (colors.isEmpty) {
+      return Theme.of(
+        context,
+      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.35);
+    }
+    return Color(0xFF000000 | colors.first.rgb);
   }
 }

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
+import '../../core/theme.dart';
 import '../laundry/laundry_controller.dart';
 import 'filter_sheet.dart';
 import 'widgets/item_card.dart';
@@ -110,11 +111,14 @@ class WardrobeScreen extends ConsumerWidget {
       // which said what it did without a long press. Sorting a pile of washing
       // used to be a second, labelled button here; it is a laundry job and
       // lives on the Laundry tab now.
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         heroTag: 'add-item',
         onPressed: () => _chooseHowToAdd(context),
         tooltip: 'Add garments',
-        child: const Icon(Icons.add_a_photo_outlined),
+        icon: const Icon(Icons.add_a_photo_outlined),
+        // Said in a word, as in the design: a bare camera glyph does not tell
+        // a first-time user that this is where the wardrobe gets filled.
+        label: const Text('Add'),
       ),
       body: items.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -249,19 +253,25 @@ class _FilterAction extends StatelessWidget {
 }
 
 class _ItemList extends ConsumerWidget {
-  const _ItemList({required this.items});
+  const _ItemList({required this.items, this.showFilters = true});
 
   final List<WardrobeItem> items;
+
+  /// Whether the quick-filter chips are shown. Off while selecting: filtering
+  /// would change what the selection counts.
+  final bool showFilters;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final owned = ref.watch(ownedCountProvider).valueOrNull;
+    final theme = Theme.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (showFilters) const _QuickFilters(),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 6),
           // "12 of 40" rather than "12 items": an unexpectedly short list is
           // otherwise indistinguishable from a small wardrobe, and the user
           // has no way to tell they left a filter on.
@@ -269,8 +279,9 @@ class _ItemList extends ConsumerWidget {
             owned == null || owned == items.length
                 ? '${items.length} ${items.length == 1 ? 'item' : 'items'}'
                 : '${items.length} of $owned items',
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),
@@ -280,6 +291,75 @@ class _ItemList extends ConsumerWidget {
               : _List(items: items),
         ),
       ],
+    );
+  }
+}
+
+/// How far the scrollable ends above the bottom edge, so the last row can be
+/// scrolled clear of the floating "Add" button.
+///
+/// The button is 56 high and sits 16 above the bottom of the body; the rest is
+/// breathing room, so the last row is fully visible rather than merely not
+/// covered.
+const double _floatingButtonClearance = 56 + 16 + 24;
+
+/// One-tap filters over the controls that already exist in the filter sheet.
+///
+/// "All" clears the category and label filters; a category chip narrows to
+/// that category alone; "Needs a label" is the sheet's switch of the same
+/// name. They write the same [wardrobeQueryProvider] the sheet does, so the
+/// filter badge, the count and "Clear filters" all keep agreeing with them.
+class _QuickFilters extends ConsumerWidget {
+  const _QuickFilters();
+
+  static const _categories = [
+    ItemCategory.top,
+    ItemCategory.bottom,
+    ItemCategory.outerwear,
+  ];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final query = ref.watch(wardrobeQueryProvider);
+    final owned = ref.watch(ownedCountProvider).valueOrNull;
+    final notifier = ref.read(wardrobeQueryProvider.notifier);
+
+    final allOn = query.categories.isEmpty && !query.needsCareTagScan;
+
+    return SizedBox(
+      height: 48,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+        children: [
+          ChoiceChip(
+            label: Text(owned == null ? 'All' : 'All $owned'),
+            selected: allOn,
+            onSelected: (_) => notifier.update(
+              (q) => q.copyWith(categories: {}, needsCareTagScan: false),
+            ),
+          ),
+          for (final category in _categories) ...[
+            const SizedBox(width: 8),
+            ChoiceChip(
+              label: Text(category.label),
+              selected:
+                  query.categories.length == 1 &&
+                  query.categories.contains(category),
+              onSelected: (on) => notifier.update(
+                (q) => q.copyWith(categories: on ? {category} : {}),
+              ),
+            ),
+          ],
+          const SizedBox(width: 8),
+          ChoiceChip(
+            label: const Text('Needs a label'),
+            selected: query.needsCareTagScan,
+            onSelected: (on) =>
+                notifier.update((q) => q.copyWith(needsCareTagScan: on)),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -297,8 +377,10 @@ class _List extends ConsumerWidget {
     final selection = ref.watch(wardrobeSelectionProvider);
 
     return ListView.separated(
+      padding: const EdgeInsets.only(bottom: _floatingButtonClearance),
       itemCount: entries.length,
-      separatorBuilder: (_, _) => const Divider(height: 1, indent: 88),
+      separatorBuilder: (_, _) =>
+          Divider(height: 1, indent: 88, color: context.rinse.lineSoft),
       itemBuilder: (context, index) {
         final entry = entries[index];
         return ItemTile(
@@ -326,15 +408,16 @@ class _Grid extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => GridView.builder(
-    padding: const EdgeInsets.fromLTRB(12, 4, 12, 96),
+    padding: const EdgeInsets.fromLTRB(16, 4, 16, _floatingButtonClearance),
     // Sized by extent rather than a fixed column count, so a phone gets three
     // columns, a tablet gets six, and neither has to be special-cased.
     gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
       maxCrossAxisExtent: 180,
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
-      // Taller than wide: garments are, and the two text lines need room.
-      childAspectRatio: 0.78,
+      // Taller than wide: the tile is a square well and the name and type sit
+      // beneath it, which takes about a third of its width again.
+      childAspectRatio: 0.74,
     ),
     itemCount: _shown(ref, items).length,
     itemBuilder: (context, index) {
@@ -481,7 +564,7 @@ class _SelectionScaffold extends ConsumerWidget {
           ),
         ],
       ),
-      body: _ItemList(items: items),
+      body: _ItemList(items: items, showFilters: false),
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -544,30 +627,42 @@ class _SearchFieldState extends State<_SearchField> {
     super.dispose();
   }
 
+  /// The theme's field border with pill corners: the search box is the one
+  /// field in the app that is a control rather than a form input.
+  InputBorder? _pill(InputBorder? border) => border is OutlineInputBorder
+      ? border.copyWith(borderRadius: BorderRadius.circular(999))
+      : border;
+
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-    child: TextField(
-      controller: _controller,
-      onChanged: widget.onChanged,
-      textInputAction: TextInputAction.search,
-      decoration: InputDecoration(
-        hintText: 'Search your wardrobe',
-        prefixIcon: const Icon(Icons.search),
-        isDense: true,
-        suffixIcon: _controller.text.isEmpty
-            ? null
-            : IconButton(
-                icon: const Icon(Icons.clear),
-                onPressed: () {
-                  _controller.clear();
-                  widget.onChanged('');
-                  setState(() {});
-                },
-              ),
+  Widget build(BuildContext context) {
+    final fields = Theme.of(context).inputDecorationTheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: TextField(
+        controller: _controller,
+        onChanged: widget.onChanged,
+        textInputAction: TextInputAction.search,
+        decoration: InputDecoration(
+          hintText: 'Search your wardrobe',
+          prefixIcon: const Icon(Icons.search),
+          isDense: true,
+          border: _pill(fields.border),
+          enabledBorder: _pill(fields.enabledBorder),
+          focusedBorder: _pill(fields.focusedBorder),
+          suffixIcon: _controller.text.isEmpty
+              ? null
+              : IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _controller.clear();
+                    widget.onChanged('');
+                    setState(() {});
+                  },
+                ),
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _EmptyState extends StatelessWidget {

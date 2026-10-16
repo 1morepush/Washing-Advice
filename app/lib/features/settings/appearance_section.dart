@@ -38,15 +38,7 @@ class AppearanceSection extends ConsumerWidget {
           child: Column(
             children: [
               for (final option in Appearance.values)
-                RadioListTile<Appearance>(
-                  value: option,
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(_title(option)),
-                  subtitle: switch (_subtitle(option)) {
-                    final String text => Text(text),
-                    null => null,
-                  },
-                ),
+                _Choice(option: option, selected: option == chosen),
             ],
           ),
         ),
@@ -94,3 +86,48 @@ const appearanceInfo =
     'Match phone is the default, so nothing changes until you choose. Light and '
     'Dark are fixed whatever the phone is set to. AMOLED is true black: easier '
     'on OLED screens and in a dark room.';
+
+/// One look. The chosen one is a tinted pill with a bold name (and, on true
+/// black, where a lighter fill has nothing to lean on, an accent edge), so the
+/// answer is plain at a glance in every mode and not only in the radio's dot.
+class _Choice extends StatelessWidget {
+  const _Choice({required this.option, required this.selected});
+
+  final Appearance option;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final rinse = context.rinse;
+    final accent = theme.colorScheme.primary;
+    final onBlack = rinse.cardEdge != BorderSide.none;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: RadioListTile<Appearance>(
+        value: option,
+        selected: selected,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+        selectedTileColor: onBlack ? null : accent.withValues(alpha: 0.12),
+        shape: RoundedRectangleBorder(
+          borderRadius: rinse.tileBorderRadius,
+          side: selected && onBlack
+              ? BorderSide(color: accent, width: 1.5)
+              : BorderSide.none,
+        ),
+        title: Text(
+          _title(option),
+          style: theme.textTheme.bodyLarge?.copyWith(
+            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
+        subtitle: switch (_subtitle(option)) {
+          final String text => Text(text),
+          null => null,
+        },
+      ),
+    );
+  }
+}

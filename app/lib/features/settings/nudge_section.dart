@@ -57,9 +57,17 @@ class NudgeSection extends ConsumerWidget {
               leading: const Icon(Icons.schedule_outlined),
               title: Text(
                 'Every day at ${_format(context, time)}',
-                style: theme.textTheme.bodyMedium,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-              trailing: const Text('Change'),
+              trailing: Text(
+                'Change',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               onTap: () => _pick(context, ref, time),
             ),
         ],

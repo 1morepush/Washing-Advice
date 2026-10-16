@@ -14,6 +14,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/settings.dart';
 import '../../data/api/ai_gateway.dart' show wakingAfter;
+import '../settings/setting_info.dart' show InsetPanel;
 import 'sync_controller.dart';
 
 class SyncSection extends ConsumerStatefulWidget {
@@ -78,7 +79,6 @@ class _SyncSectionState extends ConsumerState<SyncSection> {
           decoration: InputDecoration(
             labelText: 'Sync token',
             hintText: 'Paste an existing token, or generate one',
-            border: const OutlineInputBorder(),
             suffixIcon: IconButton(
               onPressed: () => setState(() => _revealed = !_revealed),
               icon: Icon(_revealed ? Icons.visibility_off : Icons.visibility),
@@ -177,7 +177,7 @@ class _Status extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: theme.textTheme.bodySmall?.copyWith(color: color),
+            style: theme.textTheme.bodyMedium?.copyWith(color: color),
           ),
         ),
       ],
@@ -214,12 +214,7 @@ class _Warning extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-      ),
+    return InsetPanel(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -239,7 +234,7 @@ class _Warning extends StatelessWidget {
               'wardrobe, and losing it means losing the copy on the server. '
               'Keep it somewhere you keep passwords, and use the same token on '
               'each of your devices.',
-              style: theme.textTheme.bodySmall?.copyWith(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),

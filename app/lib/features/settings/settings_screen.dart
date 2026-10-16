@@ -95,6 +95,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+        // Titled in the app bar; the groups carry their own headings.
         children: [
           // In the order a person reaches for them: how it looks, how the
           // laundry is run, when it nags, then the things set once and left.
@@ -110,18 +111,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             children: [
               TitleWithInfo(
                 'Your machines',
-                style: theme.textTheme.titleSmall,
+                style: theme.textTheme.titleMedium,
                 info:
                     'Used to turn "40°C, gentle, low spin" into the program '
                     'actually printed on your dial. Optional — without them '
                     'the app still says what each load needs, it just cannot '
                     'name the setting.',
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               const MachineSection(kind: MachineKind.washer),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               const MachineSection(kind: MachineKind.dryer),
-              const SizedBox(height: 20),
+              const RowDivider(),
               const SortingSection(),
             ],
           ),
@@ -148,10 +149,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               // Only where there is a service worker to clear — a native
               // build, should one ever exist, has no stale cache to get past.
-              if (kIsWeb) ...[
-                const SizedBox(height: 16),
-                const UpdateSection(),
-              ],
+              if (kIsWeb) ...[const RowDivider(), const UpdateSection()],
             ],
           ),
 
@@ -211,7 +209,15 @@ class _ServerAddress extends StatelessWidget {
             'rather than built in.',
       ),
       // The current value, as the row's second line.
-      subtitle: Text(saved, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Text(
+        saved,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.primary,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
       children: [
         const SizedBox(height: 8),
         TextField(
@@ -244,7 +250,7 @@ class _ServerAddress extends StatelessWidget {
           Text(
             'Still waiting. A server that sleeps when idle can take up to a '
             'minute to wake, and this is the request that wakes it.',
-            style: theme.textTheme.bodySmall?.copyWith(
+            style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
@@ -292,14 +298,9 @@ class _HealthResult extends StatelessWidget {
       ),
     };
 
-    return Container(
+    return InsetPanel(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isOk
-            ? scheme.surfaceContainerHighest
-            : scheme.errorContainer.withValues(alpha: isOk ? 1 : 0.4),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      tint: isOk ? null : scheme.errorContainer.withValues(alpha: 0.4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -309,12 +310,17 @@ class _HealthResult extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: Theme.of(context).textTheme.bodyMedium),
+                Text(
+                  title,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
+                ),
                 if (health.problem case final String problem) ...[
                   const SizedBox(height: 4),
                   Text(
                     problem,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
                   ),

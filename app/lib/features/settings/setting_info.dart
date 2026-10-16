@@ -11,6 +11,9 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../core/theme.dart';
+import '../../widgets/rinse_kit.dart';
+
 /// Opens [text] in a sheet titled [title].
 Future<void> showSettingInfo(
   BuildContext context, {
@@ -27,7 +30,7 @@ Future<void> showSettingInfo(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          Text(title, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 12),
           Text(text, style: Theme.of(context).textTheme.bodyMedium),
         ],
@@ -80,17 +83,28 @@ class TitleWithInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      Flexible(child: Text(title, style: style)),
+      Flexible(
+        child: Text(
+          title,
+          style:
+              style ??
+              Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
+        ),
+      ),
       InfoButton(title: infoTitle ?? title, text: info),
     ],
   );
 }
 
-/// A named group of settings, with a line under its name.
+/// A named group of settings: a heading, then one card holding its rows.
 ///
 /// [value] is what the group as a whole is set to, for the ones that are one
-/// choice (Appearance); groups of several rows show each row's own value
-/// instead.
+/// choice (Appearance), set bold on the right of the heading; groups of
+/// several rows show each row's own value instead. Children are separated by
+/// the card's soft row line where they are separate rows, and sit inside the
+/// card's padding.
 class SettingsGroup extends StatelessWidget {
   const SettingsGroup({
     required this.title,
@@ -112,41 +126,102 @@ class SettingsGroup extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Padding(
-      padding: const EdgeInsets.only(top: 32),
+      padding: const EdgeInsets.only(top: 20),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Flexible(
-                child: Text(
-                  title,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-              ),
-              if (value case final String value) ...[
-                const SizedBox(width: 12),
+          // Tall enough for the info button, so the heading never grows when
+          // one is present.
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Row(
+              children: [
+                const SizedBox(width: 4),
                 Flexible(
                   child: Text(
-                    value,
-                    textAlign: TextAlign.end,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                    title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
+                if (value case final String value) ...[
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Text(
+                      value,
+                      textAlign: TextAlign.end,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+                if (info case final String info)
+                  InfoButton(title: title, text: info)
+                else
+                  const SizedBox(width: 4),
               ],
-              if (info case final String info)
-                InfoButton(title: title, text: info),
-            ],
+            ),
           ),
-          const Divider(),
-          const SizedBox(height: 4),
-          ...children,
+          RinseCard(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children,
+            ),
+          ),
         ],
       ),
+    );
+  }
+}
+
+/// A line between two rows inside a [SettingsGroup]'s card.
+class RowDivider extends StatelessWidget {
+  const RowDivider({super.key});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    child: Divider(height: 1, color: context.rinse.lineSoft),
+  );
+}
+
+/// A quiet panel inside a card: for a summary, a form or a warning that is a
+/// step apart from the rows around it.
+///
+/// A soft well in Light and Dark; in AMOLED the same well with the hairline
+/// edge, because a fill that close to black does not hold a shape alone.
+class InsetPanel extends StatelessWidget {
+  const InsetPanel({
+    required this.child,
+    this.padding = const EdgeInsets.all(14),
+    this.tint,
+    super.key,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  /// Replaces the well fill, for a problem.
+  final Color? tint;
+
+  @override
+  Widget build(BuildContext context) {
+    final rinse = context.rinse;
+    return Container(
+      width: double.infinity,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: tint ?? rinse.well,
+        borderRadius: rinse.tileBorderRadius,
+        border: rinse.cardEdge == BorderSide.none
+            ? null
+            : Border.fromBorderSide(rinse.cardEdge),
+      ),
+      child: child,
     );
   }
 }

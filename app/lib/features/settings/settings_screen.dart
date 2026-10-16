@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
 import '../../core/settings.dart';
+import '../../core/theme.dart';
 import '../../widgets/back_navigation.dart';
 import '../../data/api/ai_gateway.dart';
 import '../sync/sync_section.dart';
@@ -215,7 +216,7 @@ class _ServerAddress extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: theme.textTheme.bodyMedium?.copyWith(
-          color: theme.colorScheme.primary,
+          color: context.rinse.textAccent,
           fontWeight: FontWeight.w800,
         ),
       ),
@@ -289,7 +290,7 @@ class _HealthResult extends StatelessWidget {
       ),
       (reachable: true, status: 'ok', problem: _) => (
         Icons.check_circle_outline,
-        scheme.primary,
+        context.rinse.textAccent,
         'Connected',
       ),
       _ => (

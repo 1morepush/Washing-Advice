@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/settings.dart';
+import '../../core/theme.dart';
 import '../laundry/evening_nudge.dart';
 import 'setting_info.dart';
 
@@ -64,7 +65,7 @@ class NudgeSection extends ConsumerWidget {
               trailing: Text(
                 'Change',
                 style: theme.textTheme.labelLarge?.copyWith(
-                  color: theme.colorScheme.primary,
+                  color: context.rinse.textAccent,
                   fontWeight: FontWeight.w800,
                 ),
               ),

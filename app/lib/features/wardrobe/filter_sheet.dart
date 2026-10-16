@@ -17,6 +17,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
+import '../../core/theme.dart';
 import 'wardrobe_screen.dart';
 
 /// Opens the filter sheet, applying changes as they are made.
@@ -260,9 +261,9 @@ class _Section extends StatelessWidget {
       children: [
         Text(
           title,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            color: Theme.of(context).colorScheme.primary,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(color: context.rinse.textAccent),
         ),
         const SizedBox(height: 8),
         child,

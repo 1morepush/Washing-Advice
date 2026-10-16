@@ -194,7 +194,7 @@ class _Candidate extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary,
+                  color: context.rinse.textAccent,
                   fontWeight: FontWeight.w700,
                 ),
               ),

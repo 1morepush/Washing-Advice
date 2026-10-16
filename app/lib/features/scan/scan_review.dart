@@ -191,7 +191,7 @@ class _LabelOutcome extends StatelessWidget {
 
     return NoteRow(
       icon: read ? Icons.check_circle_outline : Icons.error_outline,
-      color: read ? scheme.primary : scheme.error,
+      color: read ? context.rinse.textAccent : scheme.error,
       text: read
           ? 'The care label was read from your photo, so the washing '
                 'below comes from the manufacturer rather than a guess.'

@@ -7,6 +7,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
+import '../../core/theme.dart';
 import '../../widgets/confidence_chip.dart';
 import 'care_text.dart';
 
@@ -39,7 +40,7 @@ class FieldHeading extends StatelessWidget {
             Text(
               'Your correction',
               style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.primary,
+                color: context.rinse.textAccent,
               ),
             )
           else

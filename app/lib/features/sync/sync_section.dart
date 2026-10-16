@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/settings.dart';
+import '../../core/theme.dart';
 import '../../data/api/ai_gateway.dart' show wakingAfter;
 import '../../widgets/rinse_kit.dart' show InsetPanel;
 import 'sync_controller.dart';
@@ -160,7 +161,7 @@ class _Status extends StatelessWidget {
       SyncDone(:final report) => (
         Icons.cloud_done_outlined,
         _summarise(report),
-        theme.colorScheme.primary,
+        context.rinse.textAccent,
       ),
       SyncFailed(:final message, :final isRetryable) => (
         Icons.cloud_off_outlined,

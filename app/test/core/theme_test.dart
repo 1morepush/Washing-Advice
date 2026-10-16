@@ -271,6 +271,22 @@ void main() {
           },
         );
 
+        test('the text-accent token is 4.5:1 on ground, card, well, tonal', () {
+          for (final ground in grounds) {
+            expect(
+              contrastBetween(rinse.textAccent, ground),
+              greaterThanOrEqualTo(4.5),
+              reason: '$name on $ground',
+            );
+          }
+          // Text buttons and tab labels use the token, not the raw accent.
+          expect(
+            theme.textButtonTheme.style!.foregroundColor!.resolve({}),
+            rinse.textAccent,
+          );
+          expect(theme.tabBarTheme.labelColor, rinse.textAccent);
+        });
+
         test('accent as TEXT (a text button) is 4.5:1 on every ground', () {
           final ink = theme.textButtonTheme.style!.foregroundColor!.resolve(
             {},

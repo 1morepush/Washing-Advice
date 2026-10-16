@@ -142,7 +142,7 @@ class _Readiness extends StatelessWidget {
                   '$percent%',
                   style: theme.textTheme.displaySmall?.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: theme.colorScheme.primary,
+                    color: context.rinse.textAccent,
                   ),
                 ),
                 const SizedBox(width: 12),

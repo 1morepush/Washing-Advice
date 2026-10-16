@@ -218,13 +218,13 @@ class _LoadCardState extends ConsumerState<LoadCard> {
                             Icon(
                               Icons.check_circle_outline,
                               size: 18,
-                              color: theme.colorScheme.primary,
+                              color: context.rinse.textAccent,
                             ),
                             const SizedBox(width: 8),
                             Text(
                               'Recorded',
                               style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.primary,
+                                color: context.rinse.textAccent,
                               ),
                             ),
                           ],

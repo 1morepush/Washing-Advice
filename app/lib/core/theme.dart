@@ -140,7 +140,17 @@ class _Palette {
     garmentEdge: garmentEdge,
     cardShadow: cardShadow,
     cardEdge: cardHairline ? BorderSide(color: line) : BorderSide.none,
+    textAccent: textAccent,
   );
+
+  /// The accent as TEXT. A deliberate deviation from the spec token (see
+  /// [onDry] for the other): the light accent #1E73C8 is 4.36:1 on the page
+  /// ground, under the 4.5:1 text needs, so words and icons-with-words in the
+  /// accent take this deeper blue (5.3:1 on the ground, 5.8:1 on a card, 4.9:1
+  /// on a tonal fill). Fills, rings and indicators keep [accent]; Dark and
+  /// AMOLED are already above 6:1 and use it unchanged.
+  Color get textAccent =>
+      brightness == Brightness.light ? const Color(0xFF1A66B3) : accent;
 
   LaundryStageColors get stages => LaundryStageColors(
     basket: basket,
@@ -344,14 +354,7 @@ abstract final class AppTheme {
       ),
       Brightness.dark => (const Color(0xFF34506A), const Color(0xFFA9BDD0)),
     };
-    // A deliberate deviation from the spec token, like [_Palette.onDry]: the
-    // light accent #1E73C8 is 4.36:1 on the page ground, under the 4.5:1
-    // text needs, so text buttons and links take this slightly deeper blue
-    // (5.3:1 on the ground, 5.8:1 on a card). Fills, rings and the accent
-    // token itself are untouched; Dark and AMOLED are already above 6:1.
-    final linkInk = p.brightness == Brightness.light
-        ? const Color(0xFF1A66B3)
-        : p.accent;
+    final linkInk = p.textAccent;
 
     return ThemeData(
       colorScheme: scheme,
@@ -427,7 +430,7 @@ abstract final class AppTheme {
           shape: pill,
           elevation: 0,
           backgroundColor: p.card,
-          foregroundColor: p.accent,
+          foregroundColor: p.textAccent,
           minimumSize: const Size(64, 48),
           textStyle: _buttonText,
         ),
@@ -556,7 +559,7 @@ abstract final class AppTheme {
         linearTrackColor: p.surface2,
       ),
       tabBarTheme: TabBarThemeData(
-        labelColor: p.accent,
+        labelColor: p.textAccent,
         unselectedLabelColor: p.muted,
         indicatorColor: p.accent,
         dividerColor: p.lineSoft,
@@ -687,6 +690,7 @@ class RinseShape extends ThemeExtension<RinseShape> {
     required this.garmentEdge,
     required this.cardShadow,
     required this.cardEdge,
+    required this.textAccent,
   });
 
   /// Cards, groups, sheets: 22.
@@ -707,6 +711,9 @@ class RinseShape extends ThemeExtension<RinseShape> {
 
   /// The soft two-layer shadow of a card (empty in Dark and AMOLED).
   final List<BoxShadow> cardShadow;
+
+  /// The accent for text and icons that carry words; see [_Palette.textAccent].
+  final Color textAccent;
 
   /// The card's edge: [BorderSide.none] in Light and Dark, a 1px hairline in
   /// AMOLED.
@@ -742,6 +749,7 @@ class RinseShape extends ThemeExtension<RinseShape> {
     Color? garmentEdge,
     List<BoxShadow>? cardShadow,
     BorderSide? cardEdge,
+    Color? textAccent,
   }) => RinseShape(
     cardRadius: cardRadius ?? this.cardRadius,
     tileRadius: tileRadius ?? this.tileRadius,
@@ -750,6 +758,7 @@ class RinseShape extends ThemeExtension<RinseShape> {
     garmentEdge: garmentEdge ?? this.garmentEdge,
     cardShadow: cardShadow ?? this.cardShadow,
     cardEdge: cardEdge ?? this.cardEdge,
+    textAccent: textAccent ?? this.textAccent,
   );
 
   @override
@@ -763,6 +772,7 @@ class RinseShape extends ThemeExtension<RinseShape> {
       garmentEdge: Color.lerp(garmentEdge, other.garmentEdge, t)!,
       cardShadow: BoxShadow.lerpList(cardShadow, other.cardShadow, t)!,
       cardEdge: BorderSide.lerp(cardEdge, other.cardEdge, t),
+      textAccent: Color.lerp(textAccent, other.textAccent, t)!,
     );
   }
 }

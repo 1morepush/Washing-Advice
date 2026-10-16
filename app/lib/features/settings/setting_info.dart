@@ -153,7 +153,7 @@ class SettingsGroup extends StatelessWidget {
                       value,
                       textAlign: TextAlign.end,
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.primary,
+                        color: context.rinse.textAccent,
                         fontWeight: FontWeight.w800,
                       ),
                     ),

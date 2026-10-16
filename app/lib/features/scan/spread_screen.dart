@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
+import '../../core/theme.dart';
 import '../../widgets/back_navigation.dart';
 import '../../widgets/rinse_kit.dart';
 import '../../widgets/state_view.dart';
@@ -269,7 +270,7 @@ class _FindCard extends StatelessWidget {
                         Icon(
                           Icons.inventory_2_outlined,
                           size: 14,
-                          color: theme.colorScheme.primary,
+                          color: context.rinse.textAccent,
                         ),
                         const SizedBox(width: 6),
                         Expanded(
@@ -278,7 +279,7 @@ class _FindCard extends StatelessWidget {
                             'your wardrobe',
                             style: theme.textTheme.bodySmall?.copyWith(
                               fontWeight: FontWeight.w700,
-                              color: theme.colorScheme.primary,
+                              color: context.rinse.textAccent,
                             ),
                           ),
                         ),

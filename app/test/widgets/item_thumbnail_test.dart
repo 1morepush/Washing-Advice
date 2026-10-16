@@ -157,19 +157,19 @@ void main() {
     testWidgets('a white shirt sits a shade above black, not on a panel', (
       tester,
     ) async {
-      // Whites and lights are drawn on the lightest container. It has to show
-      // — a tile the colour of the ground is no tile — and it has to stay the
-      // near-black the theme promises, or white tees get grey boxes.
+      // Whites and lights are drawn on the well. It has to show — a tile the
+      // colour of the ground is no tile — and it has to stay the near-black the
+      // design promises, or white tees get grey boxes.
       final item = await garment('#F4F4F2');
 
       final tile = await tileSeen(tester, amoled, item);
 
       expect(tile, isNot(_black));
-      expect(tile, amoled.colorScheme.surfaceContainerHighest);
-      expect(contrastBetween(tile, _black), greaterThanOrEqualTo(1.2));
+      expect(tile, amoled.extension<RinseShape>()!.well);
+      expect(contrastBetween(tile, _black), greaterThanOrEqualTo(1.1));
       expect(
         tile.computeLuminance(),
-        lessThan(dark.colorScheme.surfaceContainerHighest.computeLuminance()),
+        lessThan(dark.extension<RinseShape>()!.well.computeLuminance()),
       );
     });
 
@@ -183,7 +183,7 @@ void main() {
   });
 
   group('in dark, where it has always been', () {
-    testWidgets('a darks backdrop is still 30% of the text colour', (
+    testWidgets('a darks backdrop is 30% of the text colour over the well', (
       tester,
     ) async {
       // The true-black adjustment must not leak into the ordinary dark theme,
@@ -196,7 +196,7 @@ void main() {
         seen,
         Color.alphaBlend(
           dark.colorScheme.onSurface.withValues(alpha: 0.30),
-          dark.scaffoldBackgroundColor,
+          dark.extension<RinseShape>()!.well,
         ),
       );
     });

@@ -27,6 +27,7 @@ import 'core/router.dart';
 import 'core/settings.dart';
 import 'core/theme.dart';
 import 'data/api/ai_gateway.dart';
+import 'core/licences.dart';
 import 'data/api/scan_dto.dart';
 import 'data/api/stain_dto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -36,6 +37,7 @@ import 'data/images/memory_image_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  registerFontLicences();
 
   final repository = InMemoryWardrobeRepository();
   final ids = SequentialIdGenerator(prefix: 'demo');

@@ -205,44 +205,43 @@ class ItemThumbnail extends ConsumerWidget {
 
   /// A tone that the garment will stand out against.
   ///
-  /// Chosen from the item's [ColorClass] — the same classification the sorter
-  /// uses to decide which pile it goes in. It already answers exactly the
-  /// question being asked here: is this thing pale enough to vanish against a
-  /// light surface, or dark enough to vanish against a dark one?
+  /// The tile is Rinse's "well" (`RinseShape.well`), the same tint as every
+  /// other garment tile. Chosen from the item's [ColorClass] — the same
+  /// classification the sorter uses to decide which pile it goes in — only
+  /// where the well alone would lose the garment: is this thing pale enough to
+  /// vanish against a light well, or dark enough to vanish against a dark one?
   ///
   /// Deliberately subtle. This is a legibility aid, not a design feature, and
   /// a grid of strongly tinted tiles would compete with the garments in them.
   Color _backdropFor(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final well = context.rinse.well;
     final isDarkTheme = Theme.of(context).brightness == Brightness.dark;
 
     // The two lifts are not the same size, and that is not an oversight.
-    // Darkening a near-white surface by 10% moves it a long way perceptually;
+    // Darkening a near-white well by 10% moves it a long way perceptually;
     // lightening a near-black one by 10% barely moves it at all, and lands
     // almost exactly on a charcoal garment — which is how the first version of
     // this made a charcoal jumper disappear in dark mode.
     //
-    // Nor is the dark one the same size on true black. The lift is a fraction
-    // of onSurface laid over whatever is behind the tile, so it climbs only as
-    // far as there is ground to climb from. Over dark's blue-grey, 30% lands on
-    // (80, 81, 87), a step above a charcoal garment's (60, 63, 68); over black
-    // the same 30% is (68, 68, 70), square on top of it, and the jumper is gone
-    // again. Garments do not get darker with the theme, so the lift has to land
-    // in the same place, which over black takes 36%.
-    final darkLift = scheme.hasTrueBlackGround ? 0.36 : 0.30;
-    final lift = scheme.onSurface.withValues(
-      alpha: isDarkTheme ? darkLift : 0.10,
+    // Nor is the dark one the same on true black, where the well is a shade
+    // above black rather than a blue-grey panel: there is less to climb from,
+    // so the same fraction lands closer to a charcoal garment. 44% puts it in
+    // the same place as Dark's 30% does.
+    final darkLift = scheme.hasTrueBlackGround ? 0.44 : 0.30;
+    final lift = Color.alphaBlend(
+      scheme.onSurface.withValues(alpha: isDarkTheme ? darkLift : 0.10),
+      well,
     );
 
     return switch (item.colorClass) {
       // Pale garments need something to sit against in a light theme; in a
       // dark one they already stand out.
-      ColorClass.whites ||
-      ColorClass.lights => isDarkTheme ? scheme.surfaceContainerHighest : lift,
-      // The reverse case: charcoal and black against a dark surface.
-      ColorClass.darks => isDarkTheme ? lift : scheme.surfaceContainerHighest,
+      ColorClass.whites || ColorClass.lights => isDarkTheme ? well : lift,
+      // The reverse case: charcoal and black against a dark well.
+      ColorClass.darks => isDarkTheme ? lift : well,
       // Saturated colours read against anything neutral.
-      ColorClass.brights => scheme.surfaceContainerHighest,
+      ColorClass.brights => well,
     };
   }
 }

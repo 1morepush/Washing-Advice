@@ -138,13 +138,17 @@ class _Review extends StatelessWidget {
           top: false,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Row(
+            // A Wrap, not a Row: at large text sizes the two buttons together
+            // are wider than a phone, and they should stack, not overflow.
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              runSpacing: 8,
               children: [
                 TextButton(
                   onPressed: controller.reset,
                   child: const Text('Try again'),
                 ),
-                const Spacer(),
                 FilledButton(
                   onPressed: controller.save,
                   child: const Text('Use this photo'),

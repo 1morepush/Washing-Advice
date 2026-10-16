@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/settings.dart';
+import '../../core/theme.dart';
 import '../../widgets/back_navigation.dart';
 import '../../widgets/state_view.dart';
 import '../laundry/laundry_controller.dart';
@@ -103,7 +104,7 @@ class _Plan extends ConsumerWidget {
           0 => 'Nothing can be sorted yet',
           1 => 'One load',
           _ => '${plan.loadCount} loads',
-        }, style: theme.textTheme.headlineSmall),
+        }, style: theme.textTheme.headlineMedium),
         const SizedBox(height: 4),
         Text(
           _summary(state),
@@ -370,12 +371,12 @@ class _Notice extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: context.rinse.tileBorderRadius,
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: scheme.tertiaryContainer,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: context.rinse.tileBorderRadius,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,

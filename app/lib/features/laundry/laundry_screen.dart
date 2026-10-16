@@ -18,7 +18,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
+import '../../core/theme.dart';
+import '../../widgets/garment_glyph.dart';
 import '../../widgets/item_thumbnail.dart';
+import '../../widgets/rinse_kit.dart';
 import '../../widgets/status_message.dart';
 import '../pile/widgets/load_card.dart';
 import 'laundry_controller.dart';
@@ -64,12 +67,40 @@ class _LaundryScreenState extends ConsumerState<LaundryScreen>
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       title: const Text('Laundry'),
-      bottom: TabBar(
-        controller: _tabs,
-        tabs: [
-          for (final pile in _Pile.values)
-            Tab(text: '${pile.label} ${_count(pile)}'),
-        ],
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(64),
+        // Three pills, each in its stage's colour, the open one filled. They
+        // drive the same [TabController] the swipeable pages listen to, so a
+        // swipe and a tap stay in step.
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+          child: AnimatedBuilder(
+            animation: _tabs.animation!,
+            builder: (context, _) {
+              final stages = context.stageColors;
+              return Row(
+                children: [
+                  for (final (index, pile) in _Pile.values.indexed) ...[
+                    if (index > 0) const SizedBox(width: 8),
+                    Expanded(
+                      child: _fit(
+                        context,
+                        StagePill(
+                          label: pile.label,
+                          count: _count(pile),
+                          color: stages.colorOf(pile.stage)!,
+                          onColor: stages.onColorOf(pile.stage)!,
+                          selected: _tabs.animation!.value.round() == index,
+                          onTap: () => _tabs.animateTo(index),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
+          ),
+        ),
       ),
     ),
     body: TabBarView(
@@ -78,14 +109,23 @@ class _LaundryScreenState extends ConsumerState<LaundryScreen>
     ),
   );
 
-  /// The number in a pile, in brackets, or nothing while it is still loading.
+  /// On a narrow phone three labelled pills do not fit at their natural size,
+  /// and an ellipsis on "Washing" would hide the one thing the pill is for.
+  /// Scaled down to fit instead, so the whole word and its count stay. Wider
+  /// screens keep the pills at full width, three equal shares.
+  Widget _fit(BuildContext context, Widget pill) =>
+      MediaQuery.sizeOf(context).width >= 400
+      ? pill
+      : FittedBox(fit: BoxFit.scaleDown, child: pill);
+
+  /// The number in a pile, or nothing while it is still loading or empty.
   ///
   /// On the tab itself because the counts are the whole status report: "3 to
   /// wash, 8 washing" is what someone opens this screen to find out, and making
   /// them visit each tab to learn it would be a worse screen than no screen.
-  String _count(_Pile pile) {
+  int? _count(_Pile pile) {
     final items = ref.watch(pileProvider(pile.stage)).valueOrNull;
-    return items == null || items.isEmpty ? '' : '(${items.length})';
+    return items == null || items.isEmpty ? null : items.length;
   }
 }
 
@@ -113,7 +153,9 @@ class _PileView extends ConsumerWidget {
                 // thing somebody opens the app to do on the way past the
                 // basket, and it is worth nothing if it is below a list.
                 if (pile == _Pile.basket) ...const [
+                  SizedBox(height: 4),
                   _WoreSomething(),
+                  SizedBox(height: 12),
                   _PhotographPile(),
                 ],
                 if (data.isEmpty)
@@ -141,52 +183,86 @@ class _WoreSomething extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final rinse = context.rinse;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Material(
-        color: theme.colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () => context.push('/laundry/worn'),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.checkroom_outlined,
-                  color: theme.colorScheme.onPrimaryContainer,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'What did you wear today?',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          color: theme.colorScheme.onPrimaryContainer,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+      child: RinseCard(
+        onTap: () => context.push('/laundry/worn'),
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            // Three garments overlapping, as in the mock-up: a picture of
+            // "what you had on" rather than a generic icon.
+            SizedBox(
+              width: 76,
+              height: 40,
+              child: Stack(
+                children: [
+                  for (final (index, kind) in const [
+                    GlyphKind.hoodie,
+                    GlyphKind.jeans,
+                    GlyphKind.tee,
+                  ].indexed)
+                    Positioned(
+                      left: index * 18.0,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: rinse.well,
+                          border: Border.all(
+                            color: theme.cardTheme.color ?? theme.cardColor,
+                            width: 2,
+                          ),
+                        ),
+                        child: SizedBox(
+                          width: 40,
+                          height: 40,
+                          child: Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: GarmentGlyph(
+                              kind: kind,
+                              fill: switch (kind) {
+                                GlyphKind.hoodie => const Color(0xFF1F2A44),
+                                GlyphKind.jeans => const Color(0xFF2B3A55),
+                                _ => const Color(0xFFF3F2EC),
+                              },
+                              edge: rinse.garmentEdge,
+                            ),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Tap them once. No photo needed — they are already in '
-                        'your wardrobe.',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onPrimaryContainer,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  Icons.chevron_right,
-                  color: theme.colorScheme.onPrimaryContainer,
-                ),
-              ],
+                    ),
+                ],
+              ),
             ),
-          ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'What did you wear today?',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Tap them once. No photo needed — they are already in '
+                    'your wardrobe.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ],
         ),
       ),
     );
@@ -208,24 +284,40 @@ class _PhotographPile extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: Material(
-        type: MaterialType.transparency,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: theme.colorScheme.outlineVariant),
-        ),
-        child: ListTile(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          leading: const Icon(Icons.photo_camera_outlined),
-          title: const Text('Photograph a pile'),
-          subtitle: const Text(
-            'Lay the washing out, take one photo, and get the loads to run.',
-          ),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => context.push('/pile'),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+      child: RinseCard(
+        onTap: () => context.push('/pile'),
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Icon(Icons.photo_camera_outlined, color: theme.colorScheme.primary),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Photograph a pile',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Lay the washing out, take one photo, and get the loads '
+                    'to run.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ],
         ),
       ),
     );
@@ -272,6 +364,10 @@ class _StartLoadState extends ConsumerState<_StartLoad> {
             title: Text('Ran it on $programme'),
           ),
         FilledButton.icon(
+          style: FilledButton.styleFrom(
+            backgroundColor: context.stageColors.wash,
+            foregroundColor: context.stageColors.onWash,
+          ),
           // Records the wash as well as moving the clothes: this is the last
           // moment the settings are known, because once the load is running
           // it is just a set of items in the machine.
@@ -309,7 +405,7 @@ class _Plan extends ConsumerWidget {
             key: ValueKey(
               [for (final item in load.items) item.id.value].join('|'),
             ),
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: LoadCard(
               load: load,
               action: _StartLoad(load: load),
@@ -321,15 +417,14 @@ class _Plan extends ConsumerWidget {
         // app only planned six of them" is how trust in the plan goes.
         if (plan.unassigned.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+            padding: const EdgeInsets.fromLTRB(0, 12, 0, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Not in a load', style: theme.textTheme.titleSmall),
-                const SizedBox(height: 8),
+                const SectionLabel('Not in a load'),
                 for (final left in plan.unassigned)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
                     child: Text(
                       '${left.item.displayName} — ${left.reason}',
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -393,6 +488,7 @@ class _Items extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final stages = context.stageColors;
     final next = _next;
 
     return Column(
@@ -400,10 +496,14 @@ class _Items extends ConsumerWidget {
       children: [
         if (next != null)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: OutlinedButton.icon(
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: stages.colorOf(next.$3),
+                  foregroundColor: stages.onColorOf(next.$3),
+                ),
                 onPressed: () => ref.read(laundryControllerProvider).move([
                   for (final item in items) item.id,
                 ], next.$3),
@@ -413,48 +513,57 @@ class _Items extends ConsumerWidget {
             ),
           ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-          child: Text(
-            '${items.length} ${items.length == 1 ? 'item' : 'items'}',
-            style: theme.textTheme.titleSmall,
-          ),
-        ),
-        for (final item in items)
-          ListTile(
-            leading: ItemThumbnail(item: item, size: 44),
-            title: Text(item.displayName),
-            subtitle: Text(item.colorClass.label),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (next != null)
-                  IconButton(
-                    onPressed: () => ref.read(laundryControllerProvider).move([
-                      item.id,
-                    ], next.$3),
-                    icon: Icon(next.$2),
-                    tooltip: next.$1,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: GroupCard(
+            title: '${items.length} ${items.length == 1 ? 'item' : 'items'}',
+            children: [
+              for (final item in items)
+                ListTile(
+                  leading: ClipRRect(
+                    borderRadius: context.rinse.tileBorderRadius,
+                    child: ItemThumbnail(item: item, size: 44),
                   ),
-                // Spelled out rather than given a second glyph. The one-tap
-                // icon beside it is the common move and earns its shorthand;
-                // everything else here is occasional, and an unlabelled
-                // symbol for "take this back out of the wash" is a symbol
-                // nobody finds.
-                if (_alsoGoesTo.isNotEmpty)
-                  PopupMenuButton<LifecycleState>(
-                    onSelected: (stage) => ref
-                        .read(laundryControllerProvider)
-                        .move([item.id], stage),
-                    tooltip: 'Move this somewhere else',
-                    itemBuilder: (_) => [
-                      for (final (label, stage) in _alsoGoesTo)
-                        PopupMenuItem(value: stage, child: Text(label)),
+                  title: Text(
+                    item.displayName,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  subtitle: Text(item.colorClass.label),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (next != null)
+                        IconButton(
+                          onPressed: () => ref
+                              .read(laundryControllerProvider)
+                              .move([item.id], next.$3),
+                          icon: Icon(next.$2),
+                          tooltip: next.$1,
+                        ),
+                      // Spelled out rather than given a second glyph. The
+                      // one-tap icon beside it is the common move and earns
+                      // its shorthand; everything else here is occasional,
+                      // and an unlabelled symbol for "take this back out of
+                      // the wash" is a symbol nobody finds.
+                      if (_alsoGoesTo.isNotEmpty)
+                        PopupMenuButton<LifecycleState>(
+                          onSelected: (stage) => ref
+                              .read(laundryControllerProvider)
+                              .move([item.id], stage),
+                          tooltip: 'Move this somewhere else',
+                          itemBuilder: (_) => [
+                            for (final (label, stage) in _alsoGoesTo)
+                              PopupMenuItem(value: stage, child: Text(label)),
+                          ],
+                        ),
                     ],
                   ),
-              ],
-            ),
-            onTap: () => context.push('/item/${item.id.value}'),
+                  onTap: () => context.push('/item/${item.id.value}'),
+                ),
+            ],
           ),
+        ),
       ],
     );
   }

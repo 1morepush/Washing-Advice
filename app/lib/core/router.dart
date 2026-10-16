@@ -28,6 +28,7 @@ import '../features/wardrobe/item_detail_screen.dart';
 import '../features/wardrobe/mask_editor_screen.dart';
 import '../features/wardrobe/wardrobe_screen.dart';
 import '../widgets/app_shell.dart';
+import '../widgets/photo_viewer.dart';
 
 /// Builds the app's router.
 ///
@@ -142,6 +143,21 @@ GoRouter _router(String initialLocation) => GoRouter(
       path: '/item/:id/care-label',
       builder: (_, state) =>
           CareTagScreen(id: ItemId(state.pathParameters['id']!)),
+    ),
+    // A route rather than a dialog, so Back, a browser's history and a reload
+    // treat the viewer as the screen it is. Top level, like the garment page,
+    // so it covers the bar and Back returns to the place it was opened from.
+    GoRoute(
+      path: '/photo/:id',
+      pageBuilder: (context, state) => photoViewerPage(
+        context,
+        state,
+        PhotoViewerScreen(
+          id: ItemId(state.pathParameters['id']!),
+          page: int.tryParse(state.uri.queryParameters['page'] ?? '') ?? 0,
+          offerOpen: state.uri.queryParameters['open'] != '0',
+        ),
+      ),
     ),
     GoRoute(path: '/packing', builder: (_, _) => const PackingScreen()),
     GoRoute(path: '/insights', builder: (_, _) => const InsightsScreen()),

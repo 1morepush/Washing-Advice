@@ -99,6 +99,29 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.33.0',
+    name: 'Spot Check',
+    date: DateTime.utc(2026, 10, 16),
+    headline: 'Tap a garment\'s picture to see it large',
+    changes: [
+      'The pictures were too small to tell two greys apart, and tapping them '
+          'did nothing. Now tapping a garment\'s picture in a load, in the '
+          'Basket, Washing and Drying lists, or the big one at the top of its '
+          'page opens it full screen. Pinch or double-tap to zoom in, and '
+          'swipe to its other photos, each labelled Front, Back, Care label '
+          'and so on.',
+      'It shows the photo you actually took rather than the cut-out, so you '
+          'can see what you are holding. A garment with no photo shows its '
+          'silhouette and says so.',
+      'Where a tap already did something, the picture enlarges with a '
+          'long-press instead and the tap is unchanged: the pieces of an '
+          'outfit, saved outfits and packing lists still open the garment, '
+          'and the pictures on "What did you wear today?" still pick it.',
+      'Opened from somewhere else, the picture has an Open garment button '
+          'that takes you to its page.',
+    ],
+  ),
+  Release(
     version: '0.32.1',
     name: 'Tuck In',
     date: DateTime.utc(2026, 10, 16),

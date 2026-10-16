@@ -137,7 +137,12 @@ class SettingsGroup extends StatelessWidget {
             child: Row(
               children: [
                 const SizedBox(width: 4),
+                // With a value the title claims the room, which pushes the
+                // value to the right edge; a long title still wraps rather
+                // than squeezing the value out.
                 Flexible(
+                  flex: 3,
+                  fit: value == null ? FlexFit.loose : FlexFit.tight,
                   child: Text(
                     title,
                     style: theme.textTheme.titleMedium?.copyWith(
@@ -148,6 +153,7 @@ class SettingsGroup extends StatelessWidget {
                 if (value case final String value) ...[
                   const SizedBox(width: 12),
                   Flexible(
+                    flex: 2,
                     child: Text(
                       value,
                       textAlign: TextAlign.end,

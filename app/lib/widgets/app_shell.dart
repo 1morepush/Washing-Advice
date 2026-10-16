@@ -23,6 +23,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/wardrobe/wardrobe_screen.dart'
     show wardrobeSelectionProvider;
+import 'rinse_kit.dart';
 
 /// One place on the bar, in the order they appear.
 enum AppDestination {
@@ -80,21 +81,23 @@ class AppShell extends ConsumerWidget {
         body: shell,
         bottomNavigationBar: selecting || typing
             ? null
-            : NavigationBar(
-                selectedIndex: index,
-                onDestinationSelected: (selected) => shell.goBranch(
-                  selected,
-                  // The place you are in: back to its first screen.
-                  initialLocation: selected == index,
+            : RinseNavBar(
+                bar: NavigationBar(
+                  selectedIndex: index,
+                  onDestinationSelected: (selected) => shell.goBranch(
+                    selected,
+                    // The place you are in: back to its first screen.
+                    initialLocation: selected == index,
+                  ),
+                  destinations: [
+                    for (final destination in AppDestination.values)
+                      NavigationDestination(
+                        icon: Icon(destination.icon),
+                        selectedIcon: Icon(destination.selectedIcon),
+                        label: destination.label,
+                      ),
+                  ],
                 ),
-                destinations: [
-                  for (final destination in AppDestination.values)
-                    NavigationDestination(
-                      icon: Icon(destination.icon),
-                      selectedIcon: Icon(destination.selectedIcon),
-                      label: destination.label,
-                    ),
-                ],
               ),
       ),
     );

@@ -13,6 +13,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'rinse_kit.dart';
+
 /// The layout all of them share: a padded, centred column. It does not
 /// scroll, so content taller than the screen (very large text) would overflow.
 class _Centered extends StatelessWidget {
@@ -66,9 +68,13 @@ class IntroView extends StatelessWidget {
 
     return _Centered(
       children: [
-        Icon(icon, size: 64, color: theme.colorScheme.primary),
+        IconBadge(icon, size: 112),
         const SizedBox(height: 24),
-        Text(title, style: theme.textTheme.titleMedium),
+        Text(
+          title,
+          style: theme.textTheme.titleLarge,
+          textAlign: TextAlign.center,
+        ),
         const SizedBox(height: 8),
         Text(
           message,
@@ -111,9 +117,13 @@ class EmptyView extends StatelessWidget {
 
     return _Centered(
       children: [
-        Icon(icon, size: 56, color: theme.colorScheme.primary),
+        IconBadge(icon),
         const SizedBox(height: 16),
-        Text(title, style: theme.textTheme.titleMedium),
+        Text(
+          title,
+          style: theme.textTheme.titleLarge,
+          textAlign: TextAlign.center,
+        ),
         const SizedBox(height: 8),
         Text(
           message,
@@ -148,7 +158,7 @@ class FailureView extends StatelessWidget {
 
     return _Centered(
       children: [
-        Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+        const IconBadge(Icons.error_outline, size: 80, error: true),
         const SizedBox(height: 16),
         Text(
           message,
@@ -184,16 +194,12 @@ class SuccessView extends StatelessWidget {
 
     return _Centered(
       children: [
-        Icon(
-          Icons.check_circle_outline,
-          size: 64,
-          color: theme.colorScheme.primary,
-        ),
+        const IconBadge(Icons.check_circle_outline, size: 96),
         const SizedBox(height: 16),
         Text(
           title,
           textAlign: headingTitle ? TextAlign.center : null,
-          style: headingTitle ? theme.textTheme.titleMedium : null,
+          style: headingTitle ? theme.textTheme.titleLarge : null,
         ),
         const SizedBox(height: 24),
         ...actions,
@@ -234,7 +240,7 @@ class LoadingView extends StatelessWidget {
       children: [
         const CircularProgressIndicator(),
         SizedBox(height: gap),
-        Text(title, style: heading ? theme.textTheme.titleMedium : null),
+        Text(title, style: heading ? theme.textTheme.titleLarge : null),
         if (detail case final String detail) ...[
           const SizedBox(height: 8),
           Text(

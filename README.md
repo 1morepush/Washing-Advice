@@ -1009,5 +1009,5 @@ Stated plainly, because the code says so too.
 
 ## Licence
 
-Not yet chosen. The bundled Liberation Sans font is
+Not yet chosen. The bundled Nunito font is
 [SIL OFL 1.1](https://scripts.sil.org/OFL); see `app/assets/fonts/README.md`.

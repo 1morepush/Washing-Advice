@@ -24,6 +24,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../core/providers.dart';
 import '../core/theme.dart';
 import '../data/images/image_store.dart';
+import 'rinse_kit.dart';
 
 /// How many photographs' bytes are kept after nothing is showing them.
 ///
@@ -103,7 +104,9 @@ class ItemThumbnail extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final uri = item.photos.displayImageUri;
-    if (uri == null) return _Swatch(palette: item.colors.value, size: size);
+    if (uri == null) {
+      return _Swatch(palette: item.colors.value, size: size, framed: true);
+    }
 
     final ImageProvider source;
     final store = ref.watch(imageStoreProvider);
@@ -121,7 +124,7 @@ class ItemThumbnail extends ConsumerWidget {
         // Covers both "still loading" and "gone". Showing the swatch in the
         // meantime avoids a row that pops from a grey box to a picture, and
         // avoids a spinner per row on a wardrobe of two hundred items.
-        return _Swatch(palette: item.colors.value, size: size);
+        return _Swatch(palette: item.colors.value, size: size, framed: true);
       }
       source = MemoryImage(bytes);
     }
@@ -134,7 +137,7 @@ class ItemThumbnail extends ConsumerWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: backdrop ? _backdropFor(context) : null,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: context.rinse.tileBorderRadius,
         ),
         child: Padding(
           padding: EdgeInsets.all(size.isFinite ? size * 0.06 : 6),
@@ -253,13 +256,37 @@ class ItemThumbnail extends ConsumerWidget {
 /// which is what decides which pile the garment lands in. A swatch that
 /// disagrees with the photo beside it is a bug worth seeing.
 class _Swatch extends StatelessWidget {
-  const _Swatch({required this.palette, required this.size});
+  const _Swatch({
+    required this.palette,
+    required this.size,
+    this.framed = false,
+  });
 
   final ColorPalette palette;
   final double size;
 
+  /// Sits the disc on a [RinseShape.well] tile of the full [size], like a
+  /// photograph does, instead of being the bare disc. Off when the swatch is
+  /// standing in inside a tile that is already there.
+  final bool framed;
+
   @override
   Widget build(BuildContext context) {
+    if (framed) {
+      return GarmentWell(
+        size: size.isFinite ? size : null,
+        child: Center(
+          child: FractionallySizedBox(
+            widthFactor: 0.62,
+            heightFactor: 0.62,
+            child: LayoutBuilder(
+              builder: (context, box) =>
+                  _Swatch(palette: palette, size: box.biggest.shortestSide),
+            ),
+          ),
+        ),
+      );
+    }
     final scheme = Theme.of(context).colorScheme;
     // A circle needs a real diameter; in a grid cell the size is unbounded, so
     // the swatch takes what it is given and stays square.
@@ -281,7 +308,7 @@ class _Swatch extends StatelessWidget {
           : null,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: scheme.outlineVariant),
+        border: Border.all(color: context.rinse.garmentEdge),
         color: switch (shown.length) {
           0 => scheme.surfaceContainerHighest,
           1 => shown.first,

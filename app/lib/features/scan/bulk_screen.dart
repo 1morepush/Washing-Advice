@@ -10,10 +10,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../widgets/back_navigation.dart';
+import '../../widgets/notice.dart';
+import '../../widgets/rinse_kit.dart';
 import '../../widgets/status_message.dart';
 import 'bulk_controller.dart';
 import 'bulk_review.dart';
 import 'crop_screen.dart';
+import 'scan_parts.dart';
 import 'shot_tile.dart';
 
 class BulkScanScreen extends ConsumerWidget {
@@ -81,33 +84,24 @@ class _Collecting extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text(
+              ScanHeading(
                 state.isEmpty
                     ? 'Nothing photographed yet'
                     : '${state.garmentCount} '
                           '${state.garmentCount == 1 ? 'garment' : 'garments'}, '
                           '${state.photoCount} photos',
-                style: theme.textTheme.titleMedium,
+                body:
+                    'Photograph each garment and its care label, then tap Next '
+                    'garment and start the following one. Nothing is sent '
+                    'until you submit the lot, so you can work through a '
+                    'whole pile without waiting.',
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Photograph each garment and its care label, then tap Next '
-                'garment and start the following one. Nothing is sent until '
-                'you submit the lot, so you can work through a whole pile '
-                'without waiting.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               if (state.done.isNotEmpty) ...[
-                Text(
+                const SectionLabel(
                   'Finished',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                  padding: EdgeInsets.fromLTRB(4, 8, 4, 8),
                 ),
-                const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -134,42 +128,48 @@ class _Collecting extends StatelessWidget {
               // against adding a garment — not a preference they hold, and a
               // switch two screens away would be found by nobody standing over
               // a pile.
-              SwitchListTile(
-                value: state.onePerGarment,
-                onChanged: controller.setOnePerGarment,
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                title: const Text('One photo per garment'),
-                subtitle: const Text(
-                  'For getting a whole wardrobe recorded. Each photo becomes '
-                  'its own garment, so it is shoot, shoot, shoot — no back, '
-                  'no label, no tap in between.',
+              Card(
+                child: SwitchListTile(
+                  value: state.onePerGarment,
+                  onChanged: controller.setOnePerGarment,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  title: Text(
+                    'One photo per garment',
+                    style: theme.textTheme.titleSmall,
+                  ),
+                  subtitle: const Text(
+                    'For getting a whole wardrobe recorded. Each photo '
+                    'becomes its own garment, so it is shoot, shoot, shoot — '
+                    'no back, no label, no tap in between.',
+                  ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
 
-              Text(
+              SectionLabel(
                 state.onePerGarment
                     ? 'Next garment'
                     : current.isEmpty
                     ? 'This garment'
                     : 'This garment · ${current.shots.length} '
                           '${current.shots.length == 1 ? 'photo' : 'photos'}',
-                style: theme.textTheme.labelLarge,
+                padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
               ),
-              const SizedBox(height: 8),
               if (state.onePerGarment)
                 Text(
                   'Every photo is a garment. Add the backs and the care '
                   'labels later, whenever you get to them.',
-                  style: theme.textTheme.bodySmall?.copyWith(
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 )
               else if (current.isEmpty)
                 Text(
                   'Take the front, the back if it differs, and the care label.',
-                  style: theme.textTheme.bodySmall?.copyWith(
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 )
@@ -196,77 +196,72 @@ class _Collecting extends StatelessWidget {
                   ],
                 ),
               if (current.hasCareTag) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'The care label is in here, so it will be read with this '
-                  'garment.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.primary,
-                  ),
+                const SizedBox(height: 12),
+                NoteRow(
+                  icon: Icons.check_circle_outline,
+                  color: theme.colorScheme.primary,
+                  bottomPadding: 0,
+                  text:
+                      'The care label is in here, so it will be read with '
+                      'this garment.',
                 ),
               ],
             ],
           ),
         ),
-        SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Column(
+        ScanActionBar(
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: controller.capture,
-                        icon: const Icon(Icons.camera_alt_outlined),
-                        label: const Text('Take a photo'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    IconButton(
-                      onPressed: controller.importAsGarments,
-                      icon: const Icon(Icons.photo_library_outlined),
-                      tooltip: 'Import photos — one garment each',
-                    ),
-                    const SizedBox(width: 4),
-                    IconButton(
-                      onPressed: controller.discardLast,
-                      icon: const Icon(Icons.undo),
-                      tooltip: 'Remove the last photo',
-                    ),
-                  ],
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: controller.capture,
+                    icon: const Icon(Icons.camera_alt_outlined),
+                    label: const Text('Take a photo'),
+                  ),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        // Disabled with nothing in hand: an empty garment is
-                        // one more thing to explain in the review list. Gone
-                        // entirely in one-tap mode, where a photograph has
-                        // already finished its garment and this would only
-                        // ever say what just happened.
-                        onPressed: current.isEmpty || state.onePerGarment
-                            ? null
-                            : controller.nextGarment,
-                        icon: const Icon(Icons.playlist_add),
-                        label: const Text('Next garment'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton.tonalIcon(
-                        onPressed: state.isEmpty ? null : controller.submit,
-                        icon: const Icon(Icons.auto_awesome_outlined),
-                        label: Text('Submit ${state.garmentCount}'),
-                      ),
-                    ),
-                  ],
+                const SizedBox(width: 12),
+                IconButton(
+                  onPressed: controller.importAsGarments,
+                  icon: const Icon(Icons.photo_library_outlined),
+                  tooltip: 'Import photos — one garment each',
+                ),
+                const SizedBox(width: 4),
+                IconButton(
+                  onPressed: controller.discardLast,
+                  icon: const Icon(Icons.undo),
+                  tooltip: 'Remove the last photo',
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.tonalIcon(
+                    // Disabled with nothing in hand: an empty garment is
+                    // one more thing to explain in the review list. Gone
+                    // entirely in one-tap mode, where a photograph has
+                    // already finished its garment and this would only
+                    // ever say what just happened.
+                    onPressed: current.isEmpty || state.onePerGarment
+                        ? null
+                        : controller.nextGarment,
+                    icon: const Icon(Icons.playlist_add),
+                    label: const Text('Next garment'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: state.isEmpty ? null : controller.submit,
+                    icon: const Icon(Icons.auto_awesome_outlined),
+                    label: Text('Submit ${state.garmentCount}'),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ],
     );
@@ -292,14 +287,20 @@ class _Processing extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            const IconBadge(Icons.auto_awesome_outlined),
+            const SizedBox(height: 24),
             SizedBox(
               width: 220,
-              child: LinearProgressIndicator(
-                value: total == 0 ? null : finished / total,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  minHeight: 8,
+                  value: total == 0 ? null : finished / total,
+                ),
               ),
             ),
-            const SizedBox(height: 20),
-            Text('$finished of $total', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 16),
+            Text('$finished of $total', style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),
             Text(
               'Reading each garment and its label. You can put the phone down '

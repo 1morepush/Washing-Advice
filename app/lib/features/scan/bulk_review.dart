@@ -5,14 +5,15 @@
 /// collecting, processing and finished views are short.
 library;
 
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
+import '../../core/theme.dart';
 import '../../widgets/notice.dart';
+import '../../widgets/rinse_kit.dart';
 import 'bulk_controller.dart';
 import 'scan_controller.dart' show ScanShot;
+import 'scan_parts.dart';
 
 class BulkReviewList extends StatelessWidget {
   const BulkReviewList({
@@ -39,16 +40,11 @@ class BulkReviewList extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Text(
+                const ScanHeading(
                   'None of them could be read',
-                  style: theme.textTheme.titleMedium,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Here is what you photographed, so you can find them again.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                  body:
+                      'Here is what you photographed, so you can find them '
+                      'again.',
                 ),
                 const SizedBox(height: 16),
                 for (final outcome in state.failed)
@@ -59,7 +55,7 @@ class BulkReviewList extends StatelessWidget {
           SafeArea(
             top: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
               child: SizedBox(
                 width: double.infinity,
                 child: FilledButton.tonal(
@@ -79,17 +75,11 @@ class BulkReviewList extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text(
+              ScanHeading(
                 '${state.readable.length} read',
-                style: theme.textTheme.titleMedium,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Everything is ticked. Untick anything you do not want, fix a '
-                'name if it is wrong, then save the lot.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+                body:
+                    'Everything is ticked. Untick anything you do not want, '
+                    'fix a name if it is wrong, then save the lot.',
               ),
 
               // Said at the top and shown before the successes. Anything that
@@ -106,20 +96,19 @@ class BulkReviewList extends StatelessWidget {
 
               if (state.failed.isNotEmpty) ...[
                 const SizedBox(height: 16),
-                Text(
+                SectionLabel(
                   state.failed.length == 1
                       ? '1 could not be read'
                       : '${state.failed.length} could not be read',
-                  style: theme.textTheme.labelLarge,
+                  padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
                 ),
-                const SizedBox(height: 8),
                 for (final outcome in state.failed)
                   _FailureCard(outcome: outcome),
                 Text(
                   'These are not saved. Photograph them again — the pictures '
                   'above are here to help you find them, and go when you '
                   'leave this screen.',
-                  style: theme.textTheme.bodySmall?.copyWith(
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
@@ -142,7 +131,7 @@ class BulkReviewList extends StatelessWidget {
         SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
@@ -180,45 +169,32 @@ class _OutcomeCard extends StatelessWidget {
     final draft = read.draft;
     final front = read.shots.isEmpty ? null : read.shots.first;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: RinseCard(
         padding: const EdgeInsets.all(12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Checkbox(value: accepted, onChanged: (_) => onToggle()),
             if (front != null) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.memory(
-                  Uint8List.fromList(front.image.bytes),
-                  width: 56,
-                  height: 56,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => Container(
-                    width: 56,
-                    height: 56,
-                    color: theme.colorScheme.surfaceContainerHighest,
-                  ),
-                ),
-              ),
+              ScanThumb(image: front.image, size: 60),
               const SizedBox(width: 12),
             ],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(draft.displayName, style: theme.textTheme.titleSmall),
+                  Text(draft.displayName, style: theme.textTheme.titleMedium),
                   const SizedBox(height: 2),
                   Text(
                     '${draft.type.value.label}'
                     '${draft.composition.value.isEmpty ? '' : ' · ${draft.composition.value.label}'}',
-                    style: theme.textTheme.bodySmall?.copyWith(
+                    style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   // Per garment, because in a list of forty this is the only
                   // place the difference is visible.
                   if (read.label != null)
@@ -336,10 +312,10 @@ class _NeedsAnotherLook extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: theme.colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: context.rinse.tileBorderRadius,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -398,10 +374,9 @@ class _FailureCard extends StatelessWidget {
         if (!identical(shot, identifying)) shot,
     ];
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: theme.colorScheme.surfaceContainerHighest,
-      child: Padding(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: RinseCard(
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -419,12 +394,12 @@ class _FailureCard extends StatelessWidget {
                     children: [
                       Text(
                         'Garment ${outcome.index + 1}',
-                        style: theme.textTheme.titleSmall,
+                        style: theme.textTheme.titleMedium,
                       ),
                       const SizedBox(height: 4),
                       Text(
                         outcome.failure ?? 'Nothing came back for this one.',
-                        style: theme.textTheme.bodySmall?.copyWith(
+                        style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.error,
                         ),
                       ),
@@ -468,49 +443,16 @@ class _Thumb extends StatelessWidget {
   final bool labelled;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final placeholder = Container(
-      width: size,
-      height: size,
-      color: theme.colorScheme.surfaceContainerHighest,
-      child: Icon(
-        Icons.image_not_supported_outlined,
-        size: size / 3,
-        color: theme.colorScheme.onSurfaceVariant,
-      ),
-    );
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: Stack(
-        children: [
-          Image.memory(
-            Uint8List.fromList(shot.image.bytes),
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => placeholder,
-          ),
-          if (labelled && shot.role == PhotoRole.careTag)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: theme.colorScheme.scrim.withValues(alpha: 0.6),
-                padding: const EdgeInsets.symmetric(vertical: 1),
-                child: Text(
-                  'Label',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onInverseSurface,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Stack(
+    children: [
+      ScanThumb(image: shot.image, size: size),
+      if (labelled && shot.role == PhotoRole.careTag)
+        const Positioned(
+          left: 3,
+          right: 3,
+          bottom: 3,
+          child: Center(child: PhotoBadge(text: 'Label')),
+        ),
+    ],
+  );
 }

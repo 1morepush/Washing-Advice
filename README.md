@@ -39,9 +39,9 @@ offline, exhaustively tested code, because ruining a wool sweater has no undo.
 
 It runs with no API key and no account. [Jump to running it](#running-it).
 
-| Wardrobe | Four laundry piles | Loads to run | Treat a spill |
+| Wardrobe | Laundry stages | Loads to run | Treat a spill |
 |---|---|---|---|
-| ![Wardrobe](app/docs/screenshots/wardrobe-light.png) | ![Laundry piles](app/docs/screenshots/laundry-piles.png) | ![Laundry plan](app/docs/screenshots/laundry-plan.png) | ![Stain advice](app/docs/screenshots/stain-advice.png) |
+| ![Wardrobe](app/docs/screenshots/wardrobe-light.png) | ![Laundry stages](app/docs/screenshots/laundry-piles.png) | ![Laundry plan](app/docs/screenshots/laundry-plan.png) | ![Stain advice](app/docs/screenshots/stain-advice.png) |
 
 | Photograph every side | What the scan found | Collect the label | What the label changed |
 |---|---|---|---|
@@ -543,15 +543,15 @@ handing over a short list that looks complete.
 
 ### Know your exact machine, not just its brand
 
-Settings lets you pick from nine seeded brand archetypes — a plausible
-programme line-up for that manufacturer's machines in general, labelled
-`isVerifiedModel: false` from the start. Or type your machine's exact brand
-and model and AI builds its real programme list from its own knowledge of
-that specific appliance, once, when you set it up — not on every scan. If it
-has no reliable knowledge of that exact machine it says so rather than
-inventing programmes, the same honesty rule as everywhere else in this app.
-Either way, the result runs through the identical matcher that turns "40°C,
-gentle, low spin" into whatever your dial actually calls it.
+**Settings → Washing and drying** lets you pick from nine seeded brand
+archetypes — a plausible programme line-up for that manufacturer's machines in
+general, labelled `isVerifiedModel: false` from the start. Or type your
+machine's exact brand and model and AI builds its real programme list from its
+own knowledge of that specific appliance, once, when you set it up — not on
+every scan. If it has no reliable knowledge of that exact machine it says so
+rather than inventing programmes, the same honesty rule as everywhere else in
+this app. Either way, the result runs through the identical matcher that turns
+"40°C, gentle, low spin" into whatever your dial actually calls it.
 
 ### Sync between your own devices
 
@@ -588,6 +588,21 @@ against it, because that is the only place a cross-language wire break shows up
 — both halves pass their own unit tests happily while a renamed field silently
 drops data between them. It found two such bugs the first time it ran.
 
+### Getting around
+
+A bar along the bottom holds the five places you move between all day:
+**Wardrobe**, **Laundry**, **Outfits**, **Ask** and **More**, which holds
+**Packing**, **Insights** and **Settings**. Each place keeps its own history. Go
+three screens deep in the wardrobe, switch to Laundry and back, and you are
+where you left it; tap the place you are already in to return to its first
+screen. Back goes back: a garment opened from the Laundry returns to the
+Laundry, not the wardrobe, and the app is only left from the first place.
+Anything that is a task of its own (a scan, a garment, a stain, an enlarged
+picture) covers the bar, so it never offers a way out of the middle of one.
+
+Added to an iPhone's home screen, the app leaves room for the rounded corners
+and the home indicator instead of drawing its last labels under them.
+
 ### Look the way you like
 
 **Settings → Appearance** lets you choose Light, Dark or **AMOLED** — dark on
@@ -595,6 +610,18 @@ true black, which an OLED screen draws by switching those pixels off — or leav
 it on Match phone, the default, which follows your phone as the app always has.
 All three share one look — soft cards, rounded Nunito type, no outlines (AMOLED
 uses a thin hairline instead, since a fill that close to black holds no shape).
+
+**Garments without a photograph** are drawn as a silhouette of what they are (a
+jumper, trousers, a sock) in their own colour, so six pairs of grey shorts are
+no longer the same grey disc. **Care instructions come with washing symbols**
+beside the words, on a garment's page, on each load and when you review a scan.
+A symbol is only drawn when it says no more than the label allows: tumble drying
+shows one, two or three dots for low, medium and high heat, and a label that
+allows 35° shows the 30° tub. An instruction with no symbol is left to the
+words, which are always there. The Laundry stages have colours of their own
+(amber, blue and green), and the Wardrobe has a row of quick filters (All, Tops,
+Bottoms, Outerwear, Needs a label) above the grid, built on the filters it
+already had.
 
 ### Ask it a question
 
@@ -870,7 +897,7 @@ A few decisions worth reading about:
 | 11 | Care labels from several photographs, in any language, merged across scans | **Done** |
 | 12 | Garments photographed from every side, with what each shot shows | **Done** |
 | 13 | Identical garments collapsed into one row, derived rather than stored | **Done** |
-| 14 | The Stylist tab: a model's outfit ideas, vetted against the real wardrobe | **Done** |
+| 14 | The Stylist: a model's outfit ideas, vetted against the real wardrobe (now a section of Outfits → Ideas) | **Done** |
 | 15 | Wear detected from photographs, proposed as questions rather than recorded | **Done** |
 | 16 | Naming the pieces a wardrobe does not have, without becoming shopping | **Done** |
 | 17 | The care label read from the same photographs as the garment | **Done** |
@@ -927,6 +954,18 @@ Stated plainly, because the code says so too.
   for it, and the refusal paths are tested — but a container has no camera, so
   the happy path is unverified until someone runs it on a handset. That is the
   one thing here that needs hardware rather than code.
+- **The bottom bar, the Rinse look and the picture viewer have only been seen in
+  a web build.** Every screen was driven in a browser in Light, Dark and AMOLED
+  and is covered by widget tests, but none of it has run on a handset. That
+  includes the keyboard, the Back gesture, and the iPhone home-screen safe area:
+  Flutter's web engine does not report it, so the app infers 34 points for an
+  installed iPhone app held upright and believes the browser's own figure when
+  it gives one. Swiping between several photos in the viewer is covered by tests
+  only, because the demo has no garment with several.
+- **Washing symbols cover only some instructions.** Hand wash, 60 °C and above,
+  medium or high iron, do-not-iron and most dry-cleaning solvents have no
+  artwork, so a row of symbols can be shorter than the label. The words beside
+  it are always complete.
 - **Background removal assumes a plain background.** It measures distance from
   the colours at the frame's border, which handles a garment on a bed or a table
   and will not handle one on a patterned rug. A learned matting model is the

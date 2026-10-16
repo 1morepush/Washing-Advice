@@ -65,7 +65,16 @@ void main() {
   Future<void> saveFirstSuggestion(WidgetTester tester, {String? name}) async {
     await tester.tap(find.widgetWithText(TextButton, 'Save').first);
     await tester.pumpAndSettle();
-    if (name != null) await tester.enterText(find.byType(TextField), name);
+    if (name != null) {
+      // The dialog's field: the stylist's note box shares this screen.
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextField),
+        ),
+        name,
+      );
+    }
     await tester.tap(find.widgetWithText(FilledButton, 'Save'));
     await tester.pumpAndSettle();
   }

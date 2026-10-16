@@ -18,6 +18,7 @@ import 'package:washing_advice/data/api/ai_gateway.dart';
 import 'package:washing_advice/data/api/style_dto.dart';
 import 'package:washing_advice/data/images/memory_image_store.dart';
 import 'package:washing_advice/features/outfits/outfits_screen.dart';
+import 'package:washing_advice/features/outfits/stylist_section.dart';
 
 import '../support/fixtures.dart';
 
@@ -69,6 +70,12 @@ class _Stylist extends AiGateway {
     );
   }
 }
+
+/// A finder scoped to the stylist's section of the Ideas list. The wardrobe's own
+/// suggestions share this screen, built from the same garments, so an unscoped
+/// `find.text('Oxford shirt')` is two things and says nothing about which.
+Finder inStylist(Finder finder) =>
+    find.descendant(of: find.byType(StylistSection), matching: finder);
 
 void main() {
   late InMemoryWardrobeRepository repository;
@@ -132,16 +139,16 @@ void main() {
           ),
           aiGatewayProvider.overrideWithValue(stylist),
         ],
-        child: const MaterialApp(
-          home: OutfitsScreen(initialTab: OutfitsTab.stylist),
-        ),
+        child: const MaterialApp(home: OutfitsScreen()),
       ),
     );
     await tester.pumpAndSettle();
   }
 
   Future<void> ask(WidgetTester tester) async {
-    await tester.tap(find.widgetWithText(FilledButton, 'Ask for ideas'));
+    await tester.tap(
+      inStylist(find.widgetWithText(FilledButton, 'Ask for ideas')),
+    );
     await tester.pumpAndSettle();
   }
 
@@ -152,7 +159,7 @@ void main() {
     await pump(tester);
 
     expect(stylist.offered, isEmpty);
-    expect(find.text('Ask for ideas'), findsWidgets);
+    expect(inStylist(find.text('Ask for ideas')), findsWidgets);
   });
 
   testWidgets('an idea arrives with the reason the model gave', (tester) async {
@@ -162,9 +169,11 @@ void main() {
     await pump(tester);
     await ask(tester);
 
-    expect(find.text('Oxford shirt'), findsOneWidget);
+    expect(inStylist(find.text('Oxford shirt')), findsOneWidget);
     expect(
-      find.text('The stone chinos soften the oxford into something weekday.'),
+      inStylist(
+        find.text('The stone chinos soften the oxford into something weekday.'),
+      ),
       findsOneWidget,
     );
   });
@@ -186,8 +195,11 @@ void main() {
     await pump(tester);
     await ask(tester);
 
-    expect(find.text('A belt I made up.'), findsNothing);
-    expect(find.textContaining('not in your wardrobe'), findsOneWidget);
+    expect(inStylist(find.text('A belt I made up.')), findsNothing);
+    expect(
+      inStylist(find.textContaining('not in your wardrobe')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('and neither does the shirt that is in the machine', (
@@ -207,8 +219,11 @@ void main() {
     await pump(tester);
     await ask(tester);
 
-    expect(find.text('The one in the wash.'), findsNothing);
-    expect(find.textContaining('not available to wear'), findsOneWidget);
+    expect(inStylist(find.text('The one in the wash.')), findsNothing);
+    expect(
+      inStylist(find.textContaining('not available to wear')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('what is in the wash is not offered in the first place', (
@@ -232,18 +247,22 @@ void main() {
     await ask(tester);
 
     expect(stylist.offered, isEmpty);
-    expect(find.textContaining('not enough in your wardrobe'), findsOneWidget);
+    expect(
+      inStylist(find.textContaining('not enough in your wardrobe')),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('the occasion from the other tab is what gets asked about', (
-    tester,
-  ) async {
-    await seed();
-    await pump(tester);
-    await ask(tester);
+  testWidgets(
+    'the occasion chosen for the suggestions is what gets asked about',
+    (tester) async {
+      await seed();
+      await pump(tester);
+      await ask(tester);
 
-    expect(stylist.sentOccasion, Occasion.everyday.label);
-  });
+      expect(stylist.sentOccasion, Occasion.everyday.label);
+    },
+  );
 
   testWidgets('a note is passed on in the words it was typed in', (
     tester,
@@ -265,21 +284,21 @@ void main() {
     await pump(tester);
     await ask(tester);
 
-    expect(find.text('Could not ask for ideas'), findsOneWidget);
-    expect(find.text('Try again'), findsOneWidget);
+    expect(inStylist(find.text('Could not ask for ideas')), findsOneWidget);
+    expect(inStylist(find.text('Try again')), findsOneWidget);
   });
 
-  testWidgets('an idea can be worn, and that teaches the other tab', (
+  testWidgets('an idea can be worn, and that teaches the suggestions', (
     tester,
   ) async {
     // The loop that makes taking the model's advice improve the arithmetic on
-    // the Suggested tab: a pairing that gets worn is a pairing the co-wear
+    // the wardrobe's suggestions: a pairing that gets worn is a pairing the co-wear
     // graph then knows about.
     await seed();
     await pump(tester);
     await ask(tester);
 
-    await tester.tap(find.text('Wearing this'));
+    await tester.tap(inStylist(find.text('Wearing this')));
     await tester.pumpAndSettle();
 
     final logged = await events.all();
@@ -293,7 +312,7 @@ void main() {
     await pump(tester);
     await ask(tester);
 
-    await tester.tap(find.text('Save'));
+    await tester.tap(inStylist(find.text('Save')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Save').last);
     await tester.pumpAndSettle();
@@ -314,7 +333,7 @@ void main() {
     );
 
     Future<void> askWithGaps(WidgetTester tester) async {
-      await tester.tap(find.text('Also say what I am missing'));
+      await tester.tap(inStylist(find.text('Also say what I am missing')));
       await tester.pumpAndSettle();
       await ask(tester);
     }
@@ -329,7 +348,7 @@ void main() {
       await ask(tester);
 
       expect(stylist.askedForGaps, isFalse);
-      expect(find.text('What you are missing'), findsNothing);
+      expect(inStylist(find.text('What you are missing')), findsNothing);
     });
 
     testWidgets('ticking the box asks, and the answer names the garment', (
@@ -341,8 +360,11 @@ void main() {
       await askWithGaps(tester);
 
       expect(stylist.askedForGaps, isTrue);
-      expect(find.text('dark blue Jeans'), findsOneWidget);
-      expect(find.textContaining('mid-weight indigo'), findsOneWidget);
+      expect(inStylist(find.text('dark blue Jeans')), findsOneWidget);
+      expect(
+        inStylist(find.textContaining('mid-weight indigo')),
+        findsOneWidget,
+      );
     });
 
     testWidgets('it says which of your clothes it goes with, by name', (
@@ -355,7 +377,7 @@ void main() {
       await askWithGaps(tester);
 
       expect(
-        find.textContaining('Goes with your Oxford shirt'),
+        inStylist(find.textContaining('Goes with your Oxford shirt')),
         findsOneWidget,
       );
     });
@@ -370,9 +392,9 @@ void main() {
         await pump(tester);
         await askWithGaps(tester);
 
-        expect(find.text('dark blue Jeans'), findsOneWidget);
-        expect(find.text('Save'), findsNothing);
-        expect(find.text('Wearing this'), findsNothing);
+        expect(inStylist(find.text('dark blue Jeans')), findsOneWidget);
+        expect(inStylist(find.text('Save')), findsNothing);
+        expect(inStylist(find.text('Wearing this')), findsNothing);
       },
     );
 
@@ -405,7 +427,10 @@ void main() {
       await pump(tester);
       await askWithGaps(tester);
 
-      expect(find.textContaining('already wearing in the idea'), findsNothing);
+      expect(
+        inStylist(find.textContaining('already wearing in the idea')),
+        findsNothing,
+      );
     });
 
     testWidgets('a suggestion anchored to nothing is dropped', (tester) async {
@@ -424,7 +449,7 @@ void main() {
       await pump(tester);
       await askWithGaps(tester);
 
-      expect(find.textContaining('Floating free'), findsNothing);
+      expect(inStylist(find.textContaining('Floating free')), findsNothing);
     });
 
     testWidgets('the choice can be changed without starting over', (
@@ -439,25 +464,25 @@ void main() {
       await ask(tester);
 
       expect(stylist.askedForGaps, isFalse);
-      expect(find.text('dark blue Jeans'), findsNothing);
+      expect(inStylist(find.text('dark blue Jeans')), findsNothing);
 
       // Turn it on from the results, and ask again.
-      await tester.tap(find.text('Also say what I am missing'));
+      await tester.tap(inStylist(find.text('Also say what I am missing')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Ask again'));
+      await tester.tap(inStylist(find.text('Ask again')));
       await tester.pumpAndSettle();
 
       expect(stylist.askedForGaps, isTrue);
-      expect(find.text('dark blue Jeans'), findsOneWidget);
+      expect(inStylist(find.text('dark blue Jeans')), findsOneWidget);
 
       // And back off again, sticking to the wardrobe.
-      await tester.tap(find.text('Also say what I am missing'));
+      await tester.tap(inStylist(find.text('Also say what I am missing')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Ask again'));
+      await tester.tap(inStylist(find.text('Ask again')));
       await tester.pumpAndSettle();
 
       expect(stylist.askedForGaps, isFalse);
-      expect(find.text('dark blue Jeans'), findsNothing);
+      expect(inStylist(find.text('dark blue Jeans')), findsNothing);
     });
 
     testWidgets('a wardrobe that needs nothing simply says nothing', (
@@ -470,8 +495,11 @@ void main() {
       await pump(tester);
       await askWithGaps(tester);
 
-      expect(find.text('What you are missing'), findsNothing);
-      expect(find.textContaining('soften the oxford'), findsOneWidget);
+      expect(inStylist(find.text('What you are missing')), findsNothing);
+      expect(
+        inStylist(find.textContaining('soften the oxford')),
+        findsOneWidget,
+      );
     });
   });
 }

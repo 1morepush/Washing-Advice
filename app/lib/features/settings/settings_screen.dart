@@ -9,14 +9,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
 import '../../core/settings.dart';
+import '../../widgets/back_navigation.dart';
 import '../../data/api/ai_gateway.dart';
-import '../../widgets/app_drawer.dart';
 import '../sync/sync_section.dart';
 import 'appearance_section.dart';
 import 'machine_section.dart';
 import 'nudge_section.dart';
 import 'patch_notes.dart';
 import 'sorting_section.dart';
+import 'setting_info.dart';
 import 'update_section.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -85,110 +86,175 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      // Now a top-level destination rather than a detour from the wardrobe, so
-      // it gets the drawer instead of a back button that only ever went home.
-      drawer: const AppDrawer(current: AppDestination.settings),
       appBar: AppBar(
-        // Reached from the drawer it is a place of its own and gets the
-        // hamburger; pushed from a screen that links to it (the pile scan),
-        // there is somewhere to go back to, and a drawer button alone would
-        // hide that on the platforms with no system Back.
-        leading: Navigator.of(context).canPop() ? const BackButton() : null,
+        // Opened from More there is a screen to go back to and the app bar
+        // draws its own arrow; opened by address, with nothing beneath it, a
+        // button to More instead of no way out.
+        leading: backLeading(context, '/more'),
         title: const Text('Settings'),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
         children: [
-          Text('Scan backend', style: theme.textTheme.titleSmall),
-          const SizedBox(height: 8),
-          Text(
-            'Where photographs are sent to be identified. A phone cannot reach '
-            "a development machine's localhost, so this is set here rather "
-            'than built in.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+          // In the order a person reaches for them: how it looks, how the
+          // laundry is run, when it nags, then the things set once and left.
+          SettingsGroup(
+            title: 'Appearance',
+            value: appearanceValue(ref.watch(appearanceProvider)),
+            info: appearanceInfo,
+            children: const [AppearanceSection()],
           ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _url,
-            keyboardType: TextInputType.url,
-            autocorrect: false,
-            decoration: const InputDecoration(
-              labelText: 'Server address',
-              hintText: defaultBackendUrl,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
+
+          SettingsGroup(
+            title: 'Washing and drying',
             children: [
-              FilledButton(
-                onPressed: _checking ? null : _save,
-                child: const Text('Save and test'),
+              TitleWithInfo(
+                'Your machines',
+                style: theme.textTheme.titleSmall,
+                info:
+                    'Used to turn "40°C, gentle, low spin" into the program '
+                    'actually printed on your dial. Optional — without them '
+                    'the app still says what each load needs, it just cannot '
+                    'name the setting.',
               ),
-              const SizedBox(width: 12),
-              if (_checking)
-                const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
+              const SizedBox(height: 8),
+              const MachineSection(kind: MachineKind.washer),
+              const SizedBox(height: 20),
+              const MachineSection(kind: MachineKind.dryer),
+              const SizedBox(height: 20),
+              const SortingSection(),
             ],
           ),
-          if (_waking) ...[
-            const SizedBox(height: 12),
-            Text(
-              'Still waiting. A server that sleeps when idle can take up to a '
-              'minute to wake, and this is the request that wakes it.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+
+          const SettingsGroup(title: 'Reminders', children: [NudgeSection()]),
+
+          const SettingsGroup(
+            title: 'Sync',
+            info: syncInfo,
+            children: [SyncSection()],
+          ),
+
+          // The things that are set once, or only when something is wrong.
+          SettingsGroup(
+            title: 'Advanced',
+            children: [
+              _ServerAddress(
+                controller: _url,
+                checking: _checking,
+                waking: _waking,
+                saved: ref.watch(backendUrlProvider),
+                health: _health,
+                onSave: _save,
               ),
+              // Only where there is a service worker to clear — a native
+              // build, should one ever exist, has no stale cache to get past.
+              if (kIsWeb) ...[
+                const SizedBox(height: 16),
+                const UpdateSection(),
+              ],
+            ],
+          ),
+
+          // Under the update button's group, and not behind the same
+          // `kIsWeb`: the notes are how anyone tells which version they have,
+          // which is worth having whether or not there is a cache to clear.
+          const SettingsGroup(title: 'About', children: [PatchNotes()]),
+        ],
+      ),
+    );
+  }
+}
+
+/// Where photographs are sent to be identified, and whether it answers.
+///
+/// Folded away under Advanced with the address it currently holds shown on the
+/// row, because it is set once and the only thing most people need from it is to
+/// see that it is right.
+class _ServerAddress extends StatelessWidget {
+  const _ServerAddress({
+    required this.controller,
+    required this.checking,
+    required this.waking,
+    required this.saved,
+    required this.health,
+    required this.onSave,
+  });
+
+  final TextEditingController controller;
+  final bool checking;
+  final bool waking;
+
+  /// The address in force, as last saved. The row's value is this and not what
+  /// is typed in the field, which may be half an edit nobody has tested.
+  final String saved;
+  final ({bool reachable, String status, String? problem})? health;
+  final VoidCallback onSave;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return ExpansionTile(
+      // The default draws a line above and below, which reads as a section
+      // break in the middle of a group.
+      shape: const Border(),
+      collapsedShape: const Border(),
+      tilePadding: EdgeInsets.zero,
+      childrenPadding: EdgeInsets.zero,
+      expandedCrossAxisAlignment: CrossAxisAlignment.start,
+      title: const TitleWithInfo(
+        'Server address',
+        infoTitle: 'Scan backend',
+        info:
+            'Where photographs are sent to be identified. A phone cannot '
+            "reach a development machine's localhost, so this is set here "
+            'rather than built in.',
+      ),
+      // The current value, as the row's second line.
+      subtitle: Text(saved, maxLines: 1, overflow: TextOverflow.ellipsis),
+      children: [
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          keyboardType: TextInputType.url,
+          autocorrect: false,
+          decoration: const InputDecoration(
+            labelText: 'Server address',
+            hintText: defaultBackendUrl,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            FilledButton(
+              onPressed: checking ? null : onSave,
+              child: const Text('Save and test'),
             ),
+            const SizedBox(width: 12),
+            if (checking)
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
           ],
-          if (_health case final health?) ...[
-            const SizedBox(height: 16),
-            _HealthResult(health: health),
-          ],
-
-          const SizedBox(height: 32),
-          const SyncSection(),
-
-          const SizedBox(height: 32),
-          Text('Your machines', style: theme.textTheme.titleSmall),
-          const SizedBox(height: 8),
+        ),
+        if (waking) ...[
+          const SizedBox(height: 12),
           Text(
-            'Used to turn "40°C, gentle, low spin" into the program actually '
-            'printed on your dial. Optional — without them the app still says '
-            'what each load needs, it just cannot name the setting.',
+            'Still waiting. A server that sleeps when idle can take up to a '
+            'minute to wake, and this is the request that wakes it.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 12),
-          const MachineSection(kind: MachineKind.washer),
-          const SizedBox(height: 20),
-          const MachineSection(kind: MachineKind.dryer),
-
-          const SizedBox(height: 32),
-          const SortingSection(),
-
-          const SizedBox(height: 32),
-          const AppearanceSection(),
-
-          const SizedBox(height: 32),
-          const NudgeSection(),
-
-          // Only where there is a service worker to clear — a native build,
-          // should one ever exist, has no stale cache to get past.
-          if (kIsWeb) ...[const SizedBox(height: 32), const UpdateSection()],
-
-          // Directly under the update button, and not behind the same
-          // `kIsWeb`: the notes are how anyone tells which version they have,
-          // which is worth having whether or not there is a cache to clear.
-          const SizedBox(height: 32),
-          const PatchNotes(),
         ],
-      ),
+        if (health case final health?) ...[
+          const SizedBox(height: 16),
+          _HealthResult(health: health),
+        ],
+        const SizedBox(height: 8),
+      ],
     );
   }
 }

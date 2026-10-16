@@ -1,11 +1,12 @@
 /// What a model thinks would look good.
 ///
-/// Its own tab rather than extra cards among the built suggestions, because
-/// the two are different in kind and pretending otherwise would be dishonest.
-/// The Suggested tab is arithmetic: colour distance, wear counts, what has been
-/// worn together, each with a reason the app can defend. This tab is somebody
-/// else's taste, and the user is entitled to know which they are looking at
-/// before they take the advice.
+/// A section of the Ideas list, under the outfits the app builds itself, and
+/// marked as the model's: the two are different in kind and pretending
+/// otherwise would be dishonest. The built suggestions are arithmetic — colour
+/// distance, wear counts, what has been worn together, each with a reason the
+/// app can defend. This is somebody else's taste, and the user is entitled to
+/// know which they are looking at before they take the advice. Every card says
+/// so, in `outfit_source.dart`.
 ///
 /// So the reason a model gave is shown in full, in its own words, rather than
 /// summarised into a tick-list like the built suggestions. A suggestion that
@@ -17,10 +18,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
-import '../../widgets/state_view.dart';
-import '../../widgets/status_message.dart';
 import 'outfit_controller.dart';
 import 'outfit_pieces.dart';
+import 'outfit_source.dart';
 import 'saved_outfits.dart';
 import 'stylist_controller.dart';
 
@@ -31,14 +31,21 @@ import 'stylist_controller.dart';
 /// precisely to buy less.
 final suggestGapsProvider = StateProvider<bool>((ref) => false);
 
-class StylistTab extends ConsumerStatefulWidget {
-  const StylistTab({super.key});
+class StylistSection extends ConsumerStatefulWidget {
+  const StylistSection({super.key});
 
   @override
-  ConsumerState<StylistTab> createState() => _StylistTabState();
+  ConsumerState<StylistSection> createState() => _StylistSectionState();
 }
 
-class _StylistTabState extends ConsumerState<StylistTab> {
+class _StylistSectionState extends ConsumerState<StylistSection>
+    with AutomaticKeepAliveClientMixin {
+  /// Kept alive so a note typed here survives the list being scrolled away from
+  /// it. The list builds lazily and would otherwise drop the field, and its
+  /// text, as soon as it left the screen.
+  @override
+  bool get wantKeepAlive => true;
+
   final _note = TextEditingController();
 
   @override
@@ -56,29 +63,43 @@ class _StylistTabState extends ConsumerState<StylistTab> {
       );
 
   @override
-  Widget build(BuildContext context) => switch (ref.watch(
-    stylistControllerProvider,
-  )) {
-    StylistIdle() => _Intro(note: _note, onAsk: _ask),
-    StylistThinking() => const LoadingView(
-      title: 'Looking through your wardrobe…',
-    ),
-    StylistFailed(:final message, :final isRetryable) => StatusMessage(
-      icon: Icons.error_outline,
-      title: 'Could not ask for ideas',
-      detail: message,
-      action: isRetryable
-          ? FilledButton.tonal(onPressed: _ask, child: const Text('Try again'))
-          : TextButton(
-              onPressed: ref.read(stylistControllerProvider.notifier).reset,
-              child: const Text('Back'),
-            ),
-    ),
-    final StylistSuggested suggested => _Ideas(
-      state: suggested,
-      onAskAgain: _ask,
-    ),
-  };
+  Widget build(BuildContext context) {
+    super.build(context);
+    return _content();
+  }
+
+  Widget _content() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const SourceHeader(OutfitSource.stylist),
+      switch (ref.watch(stylistControllerProvider)) {
+        StylistIdle() => _Intro(note: _note, onAsk: _ask),
+        StylistThinking() => const SectionNote(
+          icon: Icons.auto_awesome_outlined,
+          busy: true,
+          title: 'Looking through your wardrobe…',
+        ),
+        StylistFailed(:final message, :final isRetryable) => SectionNote(
+          icon: Icons.error_outline,
+          title: 'Could not ask for ideas',
+          detail: message,
+          action: isRetryable
+              ? FilledButton.tonal(
+                  onPressed: _ask,
+                  child: const Text('Try again'),
+                )
+              : TextButton(
+                  onPressed: ref.read(stylistControllerProvider.notifier).reset,
+                  child: const Text('Back'),
+                ),
+        ),
+        final StylistSuggested suggested => _Ideas(
+          state: suggested,
+          onAskAgain: _ask,
+        ),
+      },
+    ],
+  );
 }
 
 class _Intro extends ConsumerWidget {
@@ -91,36 +112,23 @@ class _Intro extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Icon(
-          Icons.auto_awesome_outlined,
-          size: 56,
-          color: theme.colorScheme.primary,
-        ),
-        const SizedBox(height: 16),
         Text(
-          'Ask for ideas',
-          textAlign: TextAlign.center,
-          style: theme.textTheme.titleMedium,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          // Saying plainly what happens and what it is worth. The Suggested tab
-          // can defend every one of its reasons; this one is taste, and someone
+          // Saying plainly what happens and what it is worth. The outfits above
+          // can defend every one of their reasons; this is taste, and someone
           // deciding whether to take the advice needs to know that up front
-          // rather than infer it from a tab name.
+          // rather than infer it from a heading.
           'Sends what your wardrobe is made of — not your photographs — and '
           'asks for outfits. It notices things the app cannot: pattern against '
           'pattern, proportion, how dressy something reads. Treat it as an '
           'opinion.',
-          textAlign: TextAlign.center,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         TextField(
           controller: note,
           decoration: const InputDecoration(
@@ -155,7 +163,7 @@ class _Intro extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'Uses the occasion and season set on the Suggested tab.',
+          'Uses the occasion and season chosen on this tab.',
           textAlign: TextAlign.center,
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
@@ -177,7 +185,7 @@ class _Ideas extends ConsumerWidget {
     final theme = Theme.of(context);
 
     if (state.outfits.isEmpty && state.pieces.isEmpty) {
-      return StatusMessage(
+      return SectionNote(
         icon: Icons.auto_awesome_outlined,
         title: 'Nothing usable came back',
         // Named rather than shrugged at. "Suggested something that is not
@@ -195,8 +203,8 @@ class _Ideas extends ConsumerWidget {
       );
     }
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         for (final outfit in state.outfits)
           _IdeaCard(outfit: outfit, occasion: state.occasion),
@@ -345,75 +353,72 @@ class _IdeaCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            OutfitPieces(items: outfit.items),
-            const SizedBox(height: 12),
-            const Divider(height: 1),
-            const SizedBox(height: 12),
-            // In the model's own words, unabridged. Summarising it into the
-            // tick-list the built suggestions use would throw away the only
-            // thing this tab has that the other one does not.
-            Text(
-              outfit.rationale,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+    return OutfitCard(
+      source: OutfitSource.stylist,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          OutfitPieces(items: outfit.items),
+          const SizedBox(height: 12),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+          // In the model's own words, unabridged. Summarising it into the
+          // tick-list the built suggestions use would throw away the only
+          // thing this tab has that the other one does not.
+          Text(
+            outfit.rationale,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(height: 4),
-            Wrap(
-              alignment: WrapAlignment.end,
-              spacing: 8,
-              children: [
-                TextButton.icon(
-                  onPressed: () async {
-                    final name = await askForOutfitName(
-                      context,
-                      title: 'Save this outfit',
-                    );
-                    if (name == null || !context.mounted) return;
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 8,
+            children: [
+              TextButton.icon(
+                onPressed: () async {
+                  final name = await askForOutfitName(
+                    context,
+                    title: 'Save this outfit',
+                  );
+                  if (name == null || !context.mounted) return;
 
-                    final saved = await ref
-                        .read(outfitControllerProvider)
-                        .saveStyled(outfit, name: name, occasion: occasion);
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Saved as ${saved.name}.')),
-                    );
-                  },
-                  icon: const Icon(Icons.bookmark_border, size: 18),
-                  label: const Text('Save'),
-                ),
-                // The same loop the built suggestions close. A styled outfit
-                // that gets worn teaches the co-wear graph a pairing the
-                // builder did not know, so taking the model's advice makes the
-                // arithmetic on the other tab better too.
-                TextButton.icon(
-                  onPressed: () async {
-                    await ref
-                        .read(outfitControllerProvider)
-                        .wearItems(outfit.itemIds, occasion: occasion.name);
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Recorded as worn together, and put in the basket.',
-                        ),
+                  final saved = await ref
+                      .read(outfitControllerProvider)
+                      .saveStyled(outfit, name: name, occasion: occasion);
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Saved as ${saved.name}.')),
+                  );
+                },
+                icon: const Icon(Icons.bookmark_border, size: 18),
+                label: const Text('Save'),
+              ),
+              // The same loop the built suggestions close. A styled outfit
+              // that gets worn teaches the co-wear graph a pairing the
+              // builder did not know, so taking the model's advice makes the
+              // arithmetic on the other tab better too.
+              TextButton.icon(
+                onPressed: () async {
+                  await ref
+                      .read(outfitControllerProvider)
+                      .wearItems(outfit.itemIds, occasion: occasion.name);
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Recorded as worn together, and put in the basket.',
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.checkroom_outlined, size: 18),
-                  label: const Text('Wearing this'),
-                ),
-              ],
-            ),
-          ],
-        ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.checkroom_outlined, size: 18),
+                label: const Text('Wearing this'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

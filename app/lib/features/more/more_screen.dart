@@ -1,0 +1,64 @@
+/// The places that are not on the bar: Packing, Insights and Settings.
+///
+/// A list in words rather than three more icons, for the reason the drawer it
+/// replaces gave: a feature with an unlabelled icon is a feature nobody finds.
+/// Each opens over the bar, as its own screen with a Back arrow, and Back
+/// returns here.
+library;
+
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+class MoreScreen extends StatelessWidget {
+  const MoreScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('More')),
+    body: ListView(
+      children: [
+        _Place(
+          icon: Icons.luggage_outlined,
+          title: 'Packing',
+          subtitle: 'What to take, from what you own',
+          route: '/packing',
+        ),
+        _Place(
+          icon: Icons.insights_outlined,
+          title: 'Insights',
+          subtitle: 'What your wardrobe is made of and how it is used',
+          route: '/insights',
+        ),
+        _Place(
+          icon: Icons.settings_outlined,
+          title: 'Settings',
+          subtitle: 'Machines, reminders, sync and appearance',
+          route: '/settings',
+        ),
+      ],
+    ),
+  );
+}
+
+class _Place extends StatelessWidget {
+  const _Place({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.route,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String route;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    leading: Icon(icon),
+    title: Text(title),
+    subtitle: Text(subtitle),
+    trailing: const Icon(Icons.chevron_right),
+    onTap: () => context.push(route),
+  );
+}

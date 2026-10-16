@@ -31,8 +31,9 @@ void main() {
       // nothing about what either did — you had to long press for a tooltip.
       await pump(tester);
 
-      expect(find.byType(FloatingActionButton), findsNWidgets(2));
-      expect(find.text('Sort laundry'), findsOneWidget);
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+      // Sorting a pile is a laundry job and lives on the Laundry tab.
+      expect(find.text('Sort laundry'), findsNothing);
     });
 
     testWidgets('it asks which job this is, in words', (tester) async {

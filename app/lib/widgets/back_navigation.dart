@@ -2,8 +2,9 @@
 ///
 /// Detail screens (a garment, a scan, a stain) sit on top of wherever the user
 /// was, so Back — the app bar's arrow and Android's system gesture alike — is
-/// simply a pop and returns to that place. Top-level places reached from the
-/// drawer replace the stack instead, and back from them leaves the app.
+/// simply a pop and returns to that place. The places on the bottom bar each
+/// keep a stack of their own instead, and Back from one goes to the first
+/// place and then leaves the app (see `app_shell.dart`).
 ///
 /// The one case a pop cannot cover is a screen opened *directly*, with nothing
 /// beneath it: a link to `/item/abc`, or a browser reload. [backLeading] and

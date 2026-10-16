@@ -72,8 +72,8 @@ class ItemDetailScreen extends ConsumerWidget {
         // labelled button, because five unlabelled glyphs squeezed the
         // garment's own name down to "Charco…" and left the most useful
         // actions unguessable — a scrubbing brush does not read as "ask about
-        // a spill". The drawer's own comment already said this about
-        // navigation and it is no less true here.
+        // a spill". The navigation menu this app used to have was
+        // dropped for the same reason: unlabelled glyphs hide things.
         actions: [
           if (item.valueOrNull case final WardrobeItem value) ...[
             IconButton(

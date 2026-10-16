@@ -145,7 +145,7 @@ void main() {
 
     // Back to the ordinary wardrobe: half a group selected is a state nothing
     // on this screen can show.
-    expect(find.text('Wardrobe'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Wardrobe'), findsOneWidget);
   });
 
   testWidgets('the whole group reaches the basket', (tester) async {

@@ -23,6 +23,7 @@ import 'package:washing_advice/core/providers.dart';
 import 'package:washing_advice/core/settings.dart';
 import 'package:washing_advice/core/theme.dart';
 import 'package:washing_advice/data/images/memory_image_store.dart';
+import 'package:washing_advice/features/settings/setting_info.dart';
 import 'package:washing_advice/main.dart';
 
 final _light = AppTheme.light().colorScheme.surface;
@@ -110,9 +111,17 @@ void main() {
   Future<Color> bar(WidgetTester tester) =>
       painted(tester, const Offset(600, 30));
 
+  /// A look's own row. The group's header also names the current look, so a
+  /// bare `find.text('Dark')` can be two things.
+  Finder look(String label) =>
+      find.widgetWithText(RadioListTile<Appearance>, label);
+
   Future<void> choose(WidgetTester tester, String label) async {
-    await tester.ensureVisible(find.text(label));
-    await tester.tap(find.text(label));
+    // Centred, not merely on screen: at the very top the row would sit under
+    // the app bar and the tap would land on that instead.
+    await Scrollable.ensureVisible(tester.element(look(label)), alignment: 0.5);
+    await tester.pumpAndSettle();
+    await tester.tap(look(label));
     await tester.pumpAndSettle();
   }
 
@@ -232,8 +241,7 @@ void main() {
       );
       final before = await ground(tester);
 
-      await tester.ensureVisible(find.text('AMOLED'));
-      await tester.tap(find.text('AMOLED'));
+      await choose(tester, 'AMOLED');
       await tester.pumpAndSettle();
 
       expect(slow.asked, Appearance.amoled);
@@ -253,23 +261,38 @@ void main() {
       tester,
     ) async {
       await pumpApp(tester, initialLocation: '/settings');
-      await tester.ensureVisible(find.text('AMOLED'));
+      await tester.ensureVisible(look('AMOLED'));
 
       expect(find.text('Appearance'), findsOneWidget);
       for (final label in ['Match phone', 'Light', 'Dark', 'AMOLED']) {
-        expect(find.text(label), findsOneWidget, reason: label);
+        expect(look(label), findsOneWidget, reason: label);
       }
+      // The group says what it is currently set to, beside its name.
+      expect(
+        find.descendant(
+          of: find.byType(SettingsGroup).first,
+          matching: find.text('Match phone'),
+        ),
+        findsNWidgets(2),
+      );
       expect(find.text('Light or dark, as your phone is set'), findsOneWidget);
       expect(
         find.text('True black. Easier on OLED screens and in a dark room'),
         findsOneWidget,
       );
+      // The longer explanation is behind the info button, not on the page.
       expect(
-        find.text(
-          'Match phone is the default, so nothing changes until you choose.',
-        ),
+        find.textContaining('nothing changes until you choose'),
+        findsNothing,
+      );
+      await tester.tap(find.byTooltip('About Appearance'));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('Match phone is the default, so nothing changes'),
         findsOneWidget,
       );
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
       expect(
         tester
             .widget<RadioGroup<Appearance>>(find.byType(RadioGroup<Appearance>))
@@ -284,7 +307,7 @@ void main() {
         stored: {'appearance': 'amoled'},
         initialLocation: '/settings',
       );
-      await tester.ensureVisible(find.text('AMOLED'));
+      await tester.ensureVisible(look('AMOLED'));
 
       expect(
         tester
@@ -294,16 +317,16 @@ void main() {
       );
     });
 
-    testWidgets('sits after washing and drying, and before the reminder', (
+    testWidgets('comes first, ahead of the laundry and the reminder', (
       tester,
     ) async {
       await pumpApp(tester, initialLocation: '/settings');
-      await tester.ensureVisible(find.text('Evening reminder'));
+      await tester.ensureVisible(find.text('Reminders'));
 
       double top(String text) => tester.getTopLeft(find.text(text)).dy;
 
-      expect(top('Washing and drying'), lessThan(top('Appearance')));
-      expect(top('Appearance'), lessThan(top('Evening reminder')));
+      expect(top('Appearance'), lessThan(top('Washing and drying')));
+      expect(top('Washing and drying'), lessThan(top('Reminders')));
     });
   });
 }

@@ -16,7 +16,7 @@ import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
-import '../../widgets/app_drawer.dart';
+import '../../widgets/back_navigation.dart';
 import '../../widgets/state_view.dart';
 import '../../widgets/status_message.dart';
 
@@ -28,8 +28,10 @@ class InsightsScreen extends ConsumerWidget {
     final summary = ref.watch(wardrobeSummaryProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Insights')),
-      drawer: const AppDrawer(current: AppDestination.insights),
+      appBar: AppBar(
+        leading: backLeading(context, '/more'),
+        title: const Text('Insights'),
+      ),
       body: summary.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => StatusMessage.failure(

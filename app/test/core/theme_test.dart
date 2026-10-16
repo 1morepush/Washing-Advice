@@ -33,6 +33,15 @@ void main() {
       expect(amoled.navigationBarTheme.backgroundColor, _black);
     });
 
+    test('shows the selected place on the bar: pill 3:1, icon 4.5:1', () {
+      final pill = amoled.navigationBarTheme.indicatorColor!;
+      expect(contrastBetween(pill, _black), greaterThanOrEqualTo(3));
+      expect(
+        contrastBetween(amoled.colorScheme.onSecondaryContainer, pill),
+        greaterThanOrEqualTo(4.5),
+      );
+    });
+
     test('is still a dark theme to everything that asks', () {
       // Material picks light or dark system icons, text selection colours and
       // a good deal else from this.
@@ -228,6 +237,7 @@ void main() {
       for (final theme in [light, dark]) {
         expect(theme.cardTheme.color, isNull);
         expect(theme.navigationBarTheme.backgroundColor, isNull);
+        expect(theme.navigationBarTheme.indicatorColor, isNull);
         expect(
           theme.appBarTheme.surfaceTintColor,
           theme.colorScheme.surfaceTint,

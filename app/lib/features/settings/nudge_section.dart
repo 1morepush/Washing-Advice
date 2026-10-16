@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/settings.dart';
 import '../laundry/evening_nudge.dart';
+import 'setting_info.dart';
 
 class NudgeSection extends ConsumerWidget {
   const NudgeSection({super.key});
@@ -25,17 +26,6 @@ class NudgeSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Evening reminder', style: theme.textTheme.titleSmall),
-        const SizedBox(height: 8),
-        Text(
-          '"What did you wear today?" is quick to answer and easy to forget. '
-          'A reminder in the evening opens the screen that asks it.',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 8),
-
         if (!nudges.isSupported)
           // Said rather than hidden. The person using the browser build on a
           // phone would otherwise never learn the feature exists.
@@ -49,11 +39,17 @@ class NudgeSection extends ConsumerWidget {
             value: time != null,
             onChanged: (on) => _toggle(context, ref, on),
             contentPadding: EdgeInsets.zero,
-            title: const Text('Ask what I wore, every evening'),
-            subtitle: const Text(
-              'A notification at a time you choose. Tap it and the three-tap '
-              'screen is open.',
+            title: const TitleWithInfo(
+              'Ask what I wore, every evening',
+              infoTitle: 'Evening reminder',
+              info:
+                  '"What did you wear today?" is quick to answer and easy to '
+                  'forget. A reminder in the evening opens the screen that '
+                  'asks it.\n\n'
+                  'A notification at a time you choose. Tap it and the '
+                  'three-tap screen is open.',
             ),
+            subtitle: Text(time == null ? 'Off' : 'On'),
           ),
           if (time != null)
             ListTile(

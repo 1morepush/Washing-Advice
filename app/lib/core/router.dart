@@ -12,6 +12,7 @@ import '../features/chat/chat_screen.dart';
 import '../features/insights/insights_screen.dart';
 import '../features/laundry/laundry_screen.dart';
 import '../features/laundry/worn_today_screen.dart';
+import '../features/more/more_screen.dart';
 import '../features/outfits/outfits_screen.dart';
 import '../features/packing/packing_screen.dart';
 import '../features/pile/pile_screen.dart';
@@ -26,14 +27,18 @@ import '../features/wardrobe/edit_item_screen.dart';
 import '../features/wardrobe/item_detail_screen.dart';
 import '../features/wardrobe/mask_editor_screen.dart';
 import '../features/wardrobe/wardrobe_screen.dart';
+import '../widgets/app_shell.dart';
 
 /// Builds the app's router.
 ///
-/// Two kinds of destination. The places in the drawer are reached with `go`,
-/// which replaces the stack, and Back from them leaves the app. Everything
-/// else — a garment, a scan, a stain, the settings from a link inside a
-/// screen — is reached with `push`, so Back returns to where the user was
-/// (see `back_navigation.dart`).
+/// Two kinds of destination. The five places on the bottom bar are the
+/// branches of one `StatefulShellRoute`: each keeps its own stack, and Back
+/// from them goes to the first place and then leaves the app. Everything else
+/// — a garment, a scan, a stain, Packing, Insights, Settings — is a top-level
+/// route reached with `push`, so it covers the bar and Back returns to where
+/// the user was (see `back_navigation.dart`). What is a screen *of* a place,
+/// rather than a task of its own, sits inside that place's branch and keeps
+/// the bar: Worn Today under Laundry.
 ///
 /// [initialLocation] is a parameter so a test can start on the screen it is
 /// about, and so a future session restore can reopen where the user left off,
@@ -52,7 +57,62 @@ GoRouter buildRouter({String initialLocation = '/'}) {
 GoRouter _router(String initialLocation) => GoRouter(
   initialLocation: initialLocation,
   routes: [
-    GoRoute(path: '/', builder: (_, _) => const WardrobeScreen()),
+    StatefulShellRoute.indexedStack(
+      builder: (_, _, shell) => AppShell(shell: shell),
+      // In the order of the bar: `AppDestination` indexes these.
+      branches: [
+        StatefulShellBranch(
+          routes: [
+            GoRoute(path: '/', builder: (_, _) => const WardrobeScreen()),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/laundry',
+              builder: (_, _) => const LaundryScreen(),
+              routes: [
+                // A child of the laundry screen rather than a sibling, so that
+                // `go('/laundry/worn')` — which is how a tapped reminder
+                // arrives — builds the laundry screen underneath and Back has
+                // somewhere to go. From inside the app it is pushed, and the
+                // stack is the same.
+                GoRoute(
+                  path: 'worn',
+                  builder: (_, _) => const WornTodayScreen(),
+                ),
+              ],
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(path: '/outfits', builder: (_, _) => const OutfitsScreen()),
+            // The same screen opened on its Saved tab, so that tab has an
+            // address a browser can be sent to. A sibling and not a child: a
+            // child would be pushed over the Ideas screen it is a tab of.
+            GoRoute(
+              path: '/outfits/saved',
+              builder: (_, _) =>
+                  const OutfitsScreen(initialTab: OutfitsTab.saved),
+            ),
+            // The Stylist used to be a destination of its own, and then a tab.
+            // It is now a section of Ideas, so an old link lands there.
+            GoRoute(path: '/outfits/stylist', redirect: (_, _) => '/outfits'),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(path: '/ask', builder: (_, _) => const ChatScreen()),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(path: '/more', builder: (_, _) => const MoreScreen()),
+          ],
+        ),
+      ],
+    ),
     GoRoute(
       path: '/item/:id',
       builder: (_, state) =>
@@ -83,29 +143,8 @@ GoRouter _router(String initialLocation) => GoRouter(
       builder: (_, state) =>
           CareTagScreen(id: ItemId(state.pathParameters['id']!)),
     ),
-    GoRoute(
-      path: '/laundry',
-      builder: (_, _) => const LaundryScreen(),
-      routes: [
-        // A child of the laundry screen rather than a sibling, so that
-        // `go('/laundry/worn')` — which is how a tapped reminder arrives —
-        // builds the laundry screen underneath and Back has somewhere to go.
-        // From inside the app it is pushed, and the stack is the same.
-        GoRoute(path: 'worn', builder: (_, _) => const WornTodayScreen()),
-      ],
-    ),
-    GoRoute(path: '/outfits', builder: (_, _) => const OutfitsScreen()),
-    GoRoute(
-      path: '/outfits/stylist',
-      builder: (_, _) => const OutfitsScreen(initialTab: OutfitsTab.stylist),
-    ),
-    GoRoute(
-      path: '/outfits/saved',
-      builder: (_, _) => const OutfitsScreen(initialTab: OutfitsTab.saved),
-    ),
     GoRoute(path: '/packing', builder: (_, _) => const PackingScreen()),
     GoRoute(path: '/insights', builder: (_, _) => const InsightsScreen()),
-    GoRoute(path: '/ask', builder: (_, _) => const ChatScreen()),
     GoRoute(path: '/scan', builder: (_, _) => const ScanScreen()),
     GoRoute(path: '/scan/bulk', builder: (_, _) => const BulkScanScreen()),
     GoRoute(path: '/scan/spread', builder: (_, _) => const SpreadScanScreen()),

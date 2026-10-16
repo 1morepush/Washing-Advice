@@ -190,11 +190,21 @@ abstract final class AppTheme {
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
       dividerTheme: DividerThemeData(color: scheme.outlineVariant, space: 1),
-      // The app navigates with a drawer today. A bottom bar would be given the
-      // `surfaceContainer` fill, which here is a grey strip across the bottom
-      // of an otherwise black screen.
+      // The bottom bar would otherwise be given the `surfaceContainer` fill,
+      // which here is a grey strip across the bottom of an otherwise black
+      // screen. The pill behind the selected place is Material's, which on black
+      // is 2.2:1 and easy to lose, so on true black it is pulled a little toward
+      // the glyph colour: 3.2:1 against the ground, and the selected icon still
+      // 5:1 against it. Light and Dark are Material's own.
       navigationBarTheme: trueBlack
-          ? NavigationBarThemeData(backgroundColor: scheme.surface)
+          ? NavigationBarThemeData(
+              backgroundColor: scheme.surface,
+              indicatorColor: Color.lerp(
+                scheme.secondaryContainer,
+                scheme.onSecondaryContainer,
+                0.15,
+              ),
+            )
           : null,
     );
   }

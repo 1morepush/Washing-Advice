@@ -191,8 +191,9 @@ class ScanController extends StateNotifier<ScanState> {
 
   /// Says what part of the garment one of the collected shots shows.
   void setRole(int index, PhotoRole role) {
-    if (state case ScanCollecting(:final shots)
-        when index >= 0 && index < shots.length) {
+    if (state case ScanCollecting(
+      :final shots,
+    ) when index >= 0 && index < shots.length) {
       final next = [...shots];
       next[index] = next[index].withRole(role);
       state = ScanCollecting(next);
@@ -204,8 +205,9 @@ class ScanController extends StateNotifier<ScanState> {
   /// Used by the cropper. The role survives because framing a photograph does
   /// not change whether it is the front, the back or the label.
   void replaceShot(int index, ScanImage image) {
-    if (state case ScanCollecting(:final shots)
-        when index >= 0 && index < shots.length) {
+    if (state case ScanCollecting(
+      :final shots,
+    ) when index >= 0 && index < shots.length) {
       final next = [...shots];
       next[index] = ScanShot(image: image, role: next[index].role);
       state = ScanCollecting(next);

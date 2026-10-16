@@ -260,8 +260,9 @@ class _Section extends StatelessWidget {
       children: [
         Text(
           title,
-          style: Theme.of(context).textTheme.titleSmall
-              ?.copyWith(color: Theme.of(context).colorScheme.primary),
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            color: Theme.of(context).colorScheme.primary,
+          ),
         ),
         const SizedBox(height: 8),
         child,

@@ -31,7 +31,6 @@ import 'package:washing_advice/core/settings.dart';
 import 'package:washing_advice/core/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:washing_advice/data/images/memory_image_store.dart';
-
 import 'dart:typed_data';
 
 import 'package:washing_advice/data/api/ai_gateway.dart';

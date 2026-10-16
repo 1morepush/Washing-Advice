@@ -369,52 +369,55 @@ class _IdeaCard extends ConsumerWidget {
           // thing this tab has that the other one does not.
           Text(outfit.rationale, style: theme.textTheme.bodyMedium),
           const SizedBox(height: 12),
-          Wrap(
-            alignment: WrapAlignment.end,
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              FilledButton.tonalIcon(
-                onPressed: () async {
-                  final name = await askForOutfitName(
-                    context,
-                    title: 'Save this outfit',
-                  );
-                  if (name == null || !context.mounted) return;
+          SizedBox(
+            width: double.infinity,
+            child: Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.tonalIcon(
+                  onPressed: () async {
+                    final name = await askForOutfitName(
+                      context,
+                      title: 'Save this outfit',
+                    );
+                    if (name == null || !context.mounted) return;
 
-                  final saved = await ref
-                      .read(outfitControllerProvider)
-                      .saveStyled(outfit, name: name, occasion: occasion);
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Saved as ${saved.name}.')),
-                  );
-                },
-                icon: const Icon(Icons.bookmark_border, size: 18),
-                label: const Text('Save'),
-              ),
-              // The same loop the built suggestions close. A styled outfit
-              // that gets worn teaches the co-wear graph a pairing the
-              // builder did not know, so taking the model's advice makes the
-              // arithmetic on the other tab better too.
-              FilledButton.icon(
-                onPressed: () async {
-                  await ref
-                      .read(outfitControllerProvider)
-                      .wearItems(outfit.itemIds, occasion: occasion.name);
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Recorded as worn together, and put in the basket.',
+                    final saved = await ref
+                        .read(outfitControllerProvider)
+                        .saveStyled(outfit, name: name, occasion: occasion);
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Saved as ${saved.name}.')),
+                    );
+                  },
+                  icon: const Icon(Icons.bookmark_border, size: 18),
+                  label: const Text('Save'),
+                ),
+                // The same loop the built suggestions close. A styled outfit
+                // that gets worn teaches the co-wear graph a pairing the
+                // builder did not know, so taking the model's advice makes the
+                // arithmetic on the other tab better too.
+                FilledButton.icon(
+                  onPressed: () async {
+                    await ref
+                        .read(outfitControllerProvider)
+                        .wearItems(outfit.itemIds, occasion: occasion.name);
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Recorded as worn together, and put in the basket.',
+                        ),
                       ),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.checkroom_outlined, size: 18),
-                label: const Text('Wearing this'),
-              ),
-            ],
+                    );
+                  },
+                  icon: const Icon(Icons.checkroom_outlined, size: 18),
+                  label: const Text('Wearing this'),
+                ),
+              ],
+            ),
           ),
         ],
       ),

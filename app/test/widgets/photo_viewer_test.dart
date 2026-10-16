@@ -28,8 +28,18 @@ import 'package:washing_advice/widgets/photo_viewer.dart';
 import '../support/fixtures.dart';
 import '../support/photos.dart';
 
+/// What the address bar would say: the top route, imperative or not.
+String _addressOf(GoRouter router) {
+  final matches = router.routerDelegate.currentConfiguration;
+  final last = matches.last;
+  return (last is ImperativeRouteMatch ? last.matches.uri : matches.uri)
+      .toString();
+}
+
 void main() {
   late MemoryImageStore store;
+
+  late GoRouter router;
 
   setUp(() => store = MemoryImageStore());
 
@@ -42,12 +52,33 @@ void main() {
     double textScale = 1,
     bool longPress = false,
     bool offerOpen = true,
+    String location = '/',
+    bool saveItems = true,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    final router = GoRouter(
+    final repository = InMemoryWardrobeRepository();
+    if (saveItems) {
+      for (final item in items) {
+        await repository.save(item);
+      }
+    }
+    router = GoRouter(
+      initialLocation: location,
       routes: [
+        GoRoute(
+          path: '/photo/:id',
+          pageBuilder: (context, state) => photoViewerPage(
+            context,
+            state,
+            PhotoViewerScreen(
+              id: ItemId(state.pathParameters['id']!),
+              page: int.tryParse(state.uri.queryParameters['page'] ?? '') ?? 0,
+              offerOpen: state.uri.queryParameters['open'] != '0',
+            ),
+          ),
+        ),
         GoRoute(
           path: '/',
           builder: (_, _) => Scaffold(
@@ -81,7 +112,10 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [imageStoreProvider.overrideWithValue(store)],
+        overrides: [
+          imageStoreProvider.overrideWithValue(store),
+          wardrobeRepositoryProvider.overrideWithValue(repository),
+        ],
         child: MaterialApp.router(
           theme: theme,
           routerConfig: router,
@@ -209,11 +243,32 @@ void main() {
       await open(tester, item);
 
       await tester.tap(find.text('Open garment'));
-      await tester.pump(const Duration(milliseconds: 400));
-      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
 
       expect(find.byTooltip('Close'), findsNothing);
       expect(find.text('Garment page jumper'), findsOneWidget);
+    });
+
+    testWidgets('replaces the viewer, so Back from the garment skips it', (
+      tester,
+    ) async {
+      final item = await photographed(tester, store, base(id: 'jumper'));
+      await host(tester, [item]);
+      await open(tester, item);
+
+      // A rapid double tap must not push the garment twice.
+      final button = find.text('Open garment');
+      await tester.tap(button);
+      await tester.tap(button, warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(find.text('Garment page jumper'), findsOneWidget);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Garment page jumper'), findsNothing);
+      expect(find.byTooltip('Close'), findsNothing);
+      expect(find.byType(EnlargeOnTap), findsOneWidget);
     });
 
     testWidgets('is not offered when the picture is on the garment page', (
@@ -225,6 +280,103 @@ void main() {
 
       expect(find.byTooltip('Close'), findsOneWidget);
       expect(find.text('Open garment'), findsNothing);
+    });
+  });
+
+  group('as a route', () {
+    testWidgets('the address names the garment and the photograph', (
+      tester,
+    ) async {
+      final item = await photographed(
+        tester,
+        store,
+        base(id: 'jumper'),
+        roles: [PhotoRole.front, PhotoRole.back],
+      );
+      await host(tester, [item]);
+      String here() => _addressOf(router);
+      expect(here(), '/');
+
+      await open(tester, item);
+      expect(here(), '/photo/jumper');
+
+      await tester.drag(find.byType(PageView), const Offset(-300, 0));
+      await settleImages(tester);
+      expect(here(), '/photo/jumper?page=1');
+      expect(find.text('Back'), findsOneWidget);
+
+      // One step back leaves the viewer, however many photographs were paged.
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(here(), '/');
+      expect(find.byTooltip('Close'), findsNothing);
+    });
+
+    testWidgets('a picture met on the garment page keeps that in the address', (
+      tester,
+    ) async {
+      final item = await photographed(tester, store, base(id: 'jumper'));
+      await host(tester, [item], offerOpen: false);
+      await open(tester, item);
+
+      expect(_addressOf(router), '/photo/jumper?open=0');
+    });
+
+    testWidgets('opening the address directly shows the photograph', (
+      tester,
+    ) async {
+      final item = await photographed(
+        tester,
+        store,
+        base(id: 'jumper'),
+        roles: [PhotoRole.front, PhotoRole.back],
+      );
+      await host(tester, [item], location: '/photo/jumper?page=1');
+      await settleImages(tester);
+
+      expect(find.byType(RawImage), findsOneWidget);
+      expect(find.text('Back'), findsOneWidget);
+      expect(find.text('Open garment'), findsOneWidget);
+    });
+
+    testWidgets('with nothing beneath it the X goes to the garment page', (
+      tester,
+    ) async {
+      final item = await photographed(tester, store, base(id: 'jumper'));
+      await host(tester, [item], location: '/photo/jumper');
+      await settleImages(tester);
+
+      await tester.tap(find.byTooltip('Close'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Garment page jumper'), findsOneWidget);
+    });
+
+    testWidgets('a garment that no longer exists says so, with a way out', (
+      tester,
+    ) async {
+      await host(tester, [], location: '/photo/gone');
+      await tester.pumpAndSettle();
+
+      expect(find.text('This item no longer exists.'), findsOneWidget);
+      await tester.tap(find.byTooltip('Close'));
+      await tester.pumpAndSettle();
+      expect(find.text('Garment page gone'), findsOneWidget);
+    });
+
+    testWidgets('closing lets go of the decoded photograph', (tester) async {
+      final item = await photographed(tester, store, base());
+      await host(tester, [item]);
+      await settleImages(tester);
+      final cache = PaintingBinding.instance.imageCache;
+      final before = cache.currentSizeBytes;
+
+      await open(tester, item);
+      expect(cache.currentSizeBytes, greaterThan(before));
+
+      await tester.tap(find.byTooltip('Close'));
+      await tester.pumpAndSettle();
+      expect(cache.currentSizeBytes, before);
     });
   });
 

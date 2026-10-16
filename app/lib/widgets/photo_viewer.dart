@@ -26,6 +26,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../core/providers.dart';
 import '../core/theme.dart';
 import '../data/images/image_store.dart';
+import 'back_navigation.dart';
 import 'garment_glyph.dart';
 
 /// "Uniqlo · Sweater": what the garment is, built only from what is recorded,
@@ -53,15 +54,33 @@ const double _doubleTapScale = 2.5;
 ///
 /// Deliberately not [imageBytesProvider]: that one keeps the last two dozen
 /// photographs alive for scrolling back, which suits thumbnails and is exactly
-/// wrong for pictures this large. This one is released the moment the viewer
-/// closes.
+/// wrong for pictures this large. This provider is released the moment the
+/// viewer closes, and the viewer evicts its decoded copy from the image cache
+/// then too.
 final _viewerBytesProvider = FutureProvider.autoDispose
     .family<Uint8List?, String>(
       (ref, uri) => ref.watch(imageStoreProvider).read(uri),
     );
 
+/// Where the viewer for [id] lives, so that a history step, a reload or a
+/// shared link lands on the same photograph.
+///
+/// [offerOpen] is carried as a flag that is only written when it is false: a
+/// bare `/photo/<id>` is what somebody arriving from outside should see, with
+/// the way on to the garment.
+String photoViewerLocation(ItemId id, {int page = 0, bool offerOpen = true}) {
+  final query = {if (page > 0) 'page': '$page', if (!offerOpen) 'open': '0'};
+  return Uri(
+    path: '/photo/${id.value}',
+    queryParameters: query.isEmpty ? null : query,
+  ).toString();
+}
+
 /// Opens the viewer on [item]'s photographs, starting at the one its
 /// thumbnail shows.
+///
+/// It is a route of the app's router, not a dialog pushed on the side, so the
+/// browser's Back, an edge-swipe and a reload all treat it as the screen it is.
 ///
 /// With [offerOpen] the viewer carries an "Open garment" button, for pictures
 /// met away from the garment's own page; the garment page passes false.
@@ -70,30 +89,89 @@ Future<void> showPhotoViewer(
   WardrobeItem item, {
   bool offerOpen = true,
 }) {
-  // Read now: the route outlives this context's usefulness, and "Open garment"
-  // has to push after the viewer has closed.
-  final router = GoRouter.maybeOf(context);
-  final instant = MediaQuery.disableAnimationsOf(context);
-  return Navigator.of(context, rootNavigator: true).push<void>(
-    PageRouteBuilder<void>(
-      opaque: true,
-      fullscreenDialog: true,
-      settings: const RouteSettings(name: 'photo-viewer'),
-      transitionDuration: instant
-          ? Duration.zero
-          : const Duration(milliseconds: 180),
-      reverseTransitionDuration: instant
-          ? Duration.zero
-          : const Duration(milliseconds: 140),
-      pageBuilder: (_, _, _) => _PhotoViewer(
-        item: item,
-        onOpenGarment: offerOpen && router != null
-            ? () => router.push('/item/${item.id.value}')
-            : null,
+  final shown = item.photos.displayPhoto;
+  final page = shown == null
+      ? 0
+      : math.max(0, item.photos.photos.indexOf(shown));
+  return GoRouter.of(
+    context,
+  ).push<void>(photoViewerLocation(item.id, page: page, offerOpen: offerOpen));
+}
+
+/// The route's page: the viewer for the garment called [id].
+///
+/// Looks the garment up as the garment page does, so one that has gone since
+/// the link was made says so, with a way out, instead of a blank screen.
+class PhotoViewerScreen extends ConsumerWidget {
+  const PhotoViewerScreen({
+    required this.id,
+    this.page = 0,
+    this.offerOpen = true,
+    super.key,
+  });
+
+  final ItemId id;
+  final int page;
+  final bool offerOpen;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final item = ref.watch(itemProvider(id));
+    final found = item.valueOrNull;
+    if (found != null) {
+      return _PhotoViewer(item: found, initialPage: page, offerOpen: offerOpen);
+    }
+    return Scaffold(
+      backgroundColor: _ground,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Center(
+              child: item.isLoading
+                  ? const _Loading()
+                  : Text(
+                      item.hasError
+                          ? 'Could not open this photo.'
+                          : 'This item no longer exists.',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyLarge?.copyWith(color: _inkQuiet),
+                    ),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: _CloseButton(
+                onPressed: () => context.backOr('/item/${id.value}'),
+              ),
+            ),
+          ],
+        ),
       ),
-      transitionsBuilder: (_, animation, _, child) =>
-          FadeTransition(opacity: animation, child: child),
-    ),
+    );
+  }
+}
+
+/// A fade between the viewer and what is under it, none under reduced motion.
+Page<void> photoViewerPage(
+  BuildContext context,
+  GoRouterState state,
+  Widget child,
+) {
+  final instant = MediaQuery.disableAnimationsOf(context);
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    opaque: true,
+    fullscreenDialog: true,
+    transitionDuration: instant
+        ? Duration.zero
+        : const Duration(milliseconds: 180),
+    reverseTransitionDuration: instant
+        ? Duration.zero
+        : const Duration(milliseconds: 140),
+    transitionsBuilder: (_, animation, _, child) =>
+        FadeTransition(opacity: animation, child: child),
   );
 }
 
@@ -255,12 +333,19 @@ const Color _inkQuiet = Color(0xB3FFFFFF);
 const Color _chip = Color(0x33FFFFFF);
 
 class _PhotoViewer extends ConsumerStatefulWidget {
-  const _PhotoViewer({required this.item, required this.onOpenGarment});
+  const _PhotoViewer({
+    required this.item,
+    required this.initialPage,
+    required this.offerOpen,
+  });
 
   final WardrobeItem item;
 
-  /// Null when the viewer should not offer to open the garment.
-  final VoidCallback? onOpenGarment;
+  /// The photograph to open on, from the address.
+  final int initialPage;
+
+  /// Whether to offer "Open garment".
+  final bool offerOpen;
 
   @override
   ConsumerState<_PhotoViewer> createState() => _PhotoViewerState();
@@ -280,8 +365,7 @@ class _PhotoViewerState extends ConsumerState<_PhotoViewer> {
   @override
   void initState() {
     super.initState();
-    final shown = widget.item.photos.displayPhoto;
-    _page = shown == null ? 0 : math.max(0, _photos.indexOf(shown));
+    _page = widget.initialPage.clamp(0, math.max(0, _photos.length - 1));
     _pages = PageController(initialPage: _page);
   }
 
@@ -317,6 +401,15 @@ class _PhotoViewerState extends ConsumerState<_PhotoViewer> {
       _page = index;
       _scale = 1;
     });
+    // The address follows the photograph, replacing rather than adding, so a
+    // reload lands on this one and Back still leaves the viewer in one step.
+    GoRouter.maybeOf(context)?.replace(
+      photoViewerLocation(
+        widget.item.id,
+        page: index,
+        offerOpen: widget.offerOpen,
+      ),
+    );
   }
 
   void _goTo(int index) {
@@ -373,13 +466,17 @@ class _PhotoViewerState extends ConsumerState<_PhotoViewer> {
     }
   }
 
-  void _close() => Navigator.of(context).maybePop();
+  void _close() => context.backOr('/item/${widget.item.id.value}');
 
+  bool _opening = false;
+
+  /// Replaces the viewer with the garment's page, so Back from the page does
+  /// not return to a viewer. Once only: a second tap before the page arrives
+  /// would otherwise replace the same entry twice.
   void _openGarment() {
-    final open = widget.onOpenGarment;
-    if (open == null) return;
-    Navigator.of(context).pop();
-    open();
+    if (_opening) return;
+    _opening = true;
+    context.pushReplacement('/item/${widget.item.id.value}');
   }
 
   /// A double-tap zooms about the finger.
@@ -458,17 +555,7 @@ class _PhotoViewerState extends ConsumerState<_PhotoViewer> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        IconButton(
-                          onPressed: _close,
-                          tooltip: 'Close',
-                          icon: const Icon(Icons.close),
-                          style: IconButton.styleFrom(
-                            backgroundColor: _chip,
-                            foregroundColor: _ink,
-                            minimumSize: const Size.square(48),
-                            fixedSize: const Size.square(48),
-                          ),
-                        ),
+                        _CloseButton(onPressed: _close),
                       ],
                     ),
                   ),
@@ -534,7 +621,7 @@ class _PhotoViewerState extends ConsumerState<_PhotoViewer> {
                           const SizedBox(height: 6),
                           _PageDots(count: _photos.length, current: _page),
                         ],
-                        if (hasPhotos || widget.onOpenGarment != null) ...[
+                        if (hasPhotos || widget.offerOpen) ...[
                           const SizedBox(height: 8),
                           Wrap(
                             alignment: WrapAlignment.center,
@@ -550,7 +637,7 @@ class _PhotoViewerState extends ConsumerState<_PhotoViewer> {
                                       ? () => _zoomBy(0.5)
                                       : null,
                                 ),
-                              if (widget.onOpenGarment != null)
+                              if (widget.offerOpen)
                                 FilledButton(
                                   onPressed: _openGarment,
                                   style: FilledButton.styleFrom(
@@ -582,6 +669,25 @@ class _PhotoViewerState extends ConsumerState<_PhotoViewer> {
       ),
     );
   }
+}
+
+class _CloseButton extends StatelessWidget {
+  const _CloseButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    onPressed: onPressed,
+    tooltip: 'Close',
+    icon: const Icon(Icons.close),
+    style: IconButton.styleFrom(
+      backgroundColor: _chip,
+      foregroundColor: _ink,
+      minimumSize: const Size.square(48),
+      fixedSize: const Size.square(48),
+    ),
+  );
 }
 
 class _ZoomButton extends StatelessWidget {
@@ -828,6 +934,11 @@ class _DecodedImageState extends State<_DecodedImage> {
     final listener = _listener;
     if (listener != null) _stream?.removeListener(listener);
     _info?.dispose();
+    // Flutter's image cache would otherwise keep this picture, decoded, under
+    // a key that holds the stored bytes too, for as long as it stays among the
+    // newest hundred megabytes. Dropped with the viewer: the decoded pixels and
+    // that key. (The thumbnails' own cache entries are separate and stay.)
+    widget.provider.evict();
     super.dispose();
   }
 

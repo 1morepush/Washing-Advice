@@ -130,6 +130,8 @@ void main() {
       expect(viewerClose(), findsOneWidget);
       expect(find.text('Open garment'), findsOneWidget);
       expect(find.byType(RawImage), findsOneWidget);
+      // A screen of its own: it covers the bottom bar like the garment page.
+      expect(find.text('Outfits'), findsNothing);
     });
 
     testWidgets('close button, back and a tap on the black all return', (
@@ -303,6 +305,7 @@ void main() {
         store,
         confidentItem(id: 'a', name: 'Blue jumper'),
       );
+      await repository.save(jumper);
       tester.view.physicalSize = const Size(400, 900);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
@@ -311,6 +314,14 @@ void main() {
           GoRoute(
             path: '/',
             builder: (_, _) => Scaffold(body: OutfitPieces(items: [jumper])),
+          ),
+          GoRoute(
+            path: '/photo/:id',
+            pageBuilder: (context, state) => photoViewerPage(
+              context,
+              state,
+              PhotoViewerScreen(id: ItemId(state.pathParameters['id']!)),
+            ),
           ),
           GoRoute(
             path: '/item/:id',
@@ -323,7 +334,10 @@ void main() {
       addTearDown(router.dispose);
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [imageStoreProvider.overrideWithValue(store)],
+          overrides: [
+            imageStoreProvider.overrideWithValue(store),
+            wardrobeRepositoryProvider.overrideWithValue(repository),
+          ],
           child: MaterialApp.router(routerConfig: router),
         ),
       );

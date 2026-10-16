@@ -155,6 +155,10 @@ const Map<CareSymbolKind, CareArt> careArt = {
 /// drawn wrongly. The label's own words are still the source of truth for
 /// those, so callers should keep showing the text too.
 ///
+/// A symbol is shown only when it states no more than the label allows:
+/// never a hotter tub, more tumble-dryer heat or a milder professional
+/// cycle than was printed. When no symbol is that exact, none is shown.
+///
 /// **A row of symbols may be partial.** A 40° permanent-press wash, a 30° wash
 /// at normal agitation, a medium iron: none has art, so the row can be shorter
 /// than the label, or empty. It is an aid beside the words, never a
@@ -166,7 +170,10 @@ List<CareSymbolKind> careSymbolsFor(CareInstructions care) {
   final wash = care.wash;
   if (wash.method == WashMethod.machine) {
     final temp = wash.maxTempC;
-    if (temp != null && temp <= 30) {
+    // A tub is shown only when its own temperature does not exceed the
+    // label's maximum, and it is the closest such tub: 35° gets the 30° tub,
+    // never the 40° one; 20° gets none.
+    if (temp != null && temp >= 30 && temp < 40) {
       switch (wash.agitation) {
         case Agitation.veryMild:
           out.add(CareSymbolKind.wash30Gentle);
@@ -175,7 +182,7 @@ List<CareSymbolKind> careSymbolsFor(CareInstructions care) {
         case Agitation.normal:
           break; // No art for a plain 30° tub.
       }
-    } else if (temp != null && temp <= 40) {
+    } else if (temp != null && temp >= 40 && temp < 60) {
       if (wash.agitation == Agitation.normal) out.add(CareSymbolKind.wash40);
     }
   }
@@ -220,7 +227,9 @@ List<CareSymbolKind> careSymbolsFor(CareInstructions care) {
   }
 
   final pro = care.professional;
-  if (!pro.doNotDryClean) {
+  // The plain P circle says any normal cycle; a label asking for a gentle one
+  // would be overstated by it, and the art has no underlined variant.
+  if (!pro.doNotDryClean && !pro.gentleCycle) {
     switch (pro.solvent) {
       case CleaningSolvent.perchloroethylene:
         out.add(CareSymbolKind.dryClean);

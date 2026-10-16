@@ -434,6 +434,56 @@ void main() {
       }
     });
 
+    test('a wash tub never allows more than the label does', () {
+      List<CareSymbolKind> tubs(int temp, Agitation agitation) =>
+          careSymbolsFor(
+            care(
+              wash: WashCare(
+                method: WashMethod.machine,
+                maxTempC: temp,
+                agitation: agitation,
+              ),
+            ),
+          ).where((k) => k.name.startsWith('wash')).toList();
+
+      for (final t in [15, 20, 29]) {
+        expect(tubs(t, Agitation.mild), isEmpty, reason: '$t');
+        expect(tubs(t, Agitation.normal), isEmpty, reason: '$t');
+      }
+      for (final t in [30, 35, 39]) {
+        expect(tubs(t, Agitation.mild), [
+          CareSymbolKind.wash30Mild,
+        ], reason: '$t');
+        expect(tubs(t, Agitation.veryMild), [
+          CareSymbolKind.wash30Gentle,
+        ], reason: '$t');
+        expect(tubs(t, Agitation.normal), isEmpty, reason: '$t');
+      }
+      for (final t in [40, 45, 59]) {
+        expect(tubs(t, Agitation.normal), [
+          CareSymbolKind.wash40,
+        ], reason: '$t');
+      }
+      expect(tubs(60, Agitation.normal), isEmpty);
+    });
+
+    test('the plain P is left out when the label asks for a gentle cycle', () {
+      CareInstructions pro({required bool gentle}) => care(
+        professional: ProfessionalCare(
+          solvent: CleaningSolvent.perchloroethylene,
+          gentleCycle: gentle,
+        ),
+      );
+      expect(
+        careSymbolsFor(pro(gentle: false)),
+        contains(CareSymbolKind.dryClean),
+      );
+      expect(
+        careSymbolsFor(pro(gentle: true)),
+        isNot(contains(CareSymbolKind.dryClean)),
+      );
+    });
+
     test('a profile gives the same answer as its instructions', () {
       final profile = CareProfile.fromUser(care());
       expect(careSymbolsForProfile(profile), careSymbolsFor(care()));

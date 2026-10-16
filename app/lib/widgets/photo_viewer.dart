@@ -758,6 +758,9 @@ class _PhotoSource extends ConsumerWidget {
       viewport: viewport,
       imageKey: imageKey,
       fallback: _next,
+      // A cutout has no background of its own, and on the black ground a dark
+      // garment would simply not be there; the original never needs this.
+      onTile: index > 0,
     );
   }
 }
@@ -772,6 +775,7 @@ class _DecodedImage extends StatefulWidget {
     required this.viewport,
     required this.imageKey,
     required this.fallback,
+    this.onTile = false,
     super.key,
   });
 
@@ -779,6 +783,9 @@ class _DecodedImage extends StatefulWidget {
   final Size viewport;
   final GlobalKey imageKey;
   final Widget fallback;
+
+  /// Whether to lay the picture on a lighter tile than the ground.
+  final bool onTile;
 
   @override
   State<_DecodedImage> createState() => _DecodedImageState();
@@ -840,10 +847,13 @@ class _DecodedImageState extends State<_DecodedImage> {
       key: widget.imageKey,
       width: width * scale,
       height: height * scale,
-      child: RawImage(
-        image: info.image,
-        fit: BoxFit.fill,
-        filterQuality: FilterQuality.medium,
+      child: ColoredBox(
+        color: widget.onTile ? const Color(0xFF3C3C3C) : Colors.transparent,
+        child: RawImage(
+          image: info.image,
+          fit: BoxFit.fill,
+          filterQuality: FilterQuality.medium,
+        ),
       ),
     );
   }

@@ -311,6 +311,13 @@ same sorting engine as a pile scan, so it shows the loads to run, the programme
 and temperature for each, and why. **Photograph a pile** is at the top of the
 Basket, where the washing is.
 
+Garments are shown by their pictures, and a picture is something to look at:
+tap one in a load, in a stage list or at the top of its page and it opens full
+screen, as photographed rather than as cut out. Pinch or double-tap to zoom,
+swipe for its other photos, and **Open garment** takes you to its page. Where a
+tap already does something (an outfit's pieces open the garment, *What did you
+wear today?* picks it) a long-press enlarges instead.
+
 Four ways in, because the moment you notice something is dirty varies:
 
 - from the garment's own page, one tap;
@@ -849,7 +856,7 @@ A few decisions worth reading about:
 |---|---|---|
 | 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 662 core tests |
 | 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts, machine identification | **Done** — 404 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 1121 app tests |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 1161 app tests |
 | 4 | Care-label scanning, item editing, filter sheet, garment cutouts, grid view | **Done** |
 | 5 | Pile scanning, load grouping, machine profiles, wear and wash history | **Done** |
 | 6 | Outfit suggestions, laundry-aware packing, wardrobe insights | **Done** |
@@ -878,8 +885,9 @@ A few decisions worth reading about:
 | 26 | Appearance: match the phone, light, dark, or true black for OLED screens | **Done** |
 | 27 | A bottom bar that keeps each place's history; Laundry in three stages; Outfits as Ideas and Saved with labelled sources; Settings in groups | **Done** |
 | 28 | The Rinse look: soft cards without outlines, rounded Nunito type, garment silhouettes and washing symbols, stage colours for Laundry, quick filters on the Wardrobe, in Light, Dark and AMOLED | **Done** |
+| 29 | A garment's picture enlarges on tap, with pinch and double-tap zoom, paging through its other photos, and a way on to the garment | **Done** |
 
-Released as `0.32.1 — Tuck In`; the app's own **Settings → What's new**
+Released as `0.33.0 — Spot Check`; the app's own **Settings → What's new**
 carries the full list, and `app/lib/features/settings/patch_notes.dart` records
 which version digit moves for what.
 

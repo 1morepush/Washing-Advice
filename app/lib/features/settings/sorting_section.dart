@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/settings.dart';
+import '../../widgets/rinse_kit.dart';
 import 'setting_info.dart';
 
 class SortingSection extends ConsumerWidget {

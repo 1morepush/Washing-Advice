@@ -18,7 +18,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../core/providers.dart';
 import '../../core/settings.dart';
 import '../../data/api/ai_gateway.dart';
-import 'setting_info.dart';
+import '../../widgets/rinse_kit.dart';
 
 enum MachineKind {
   washer('Washing machine'),

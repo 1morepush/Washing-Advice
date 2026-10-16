@@ -17,6 +17,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../widgets/status_message.dart';
 import '../wardrobe/mask_edit.dart' show MaskGeometry;
 import 'crop.dart';
+import '../../widgets/rinse_kit.dart';
 
 /// Opens the cropper for [image] and returns the cropped version.
 ///
@@ -114,7 +115,7 @@ class _CropScreenState extends State<CropScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: const CloseButton(),
-        title: const Text('Frame the garment'),
+        title: const AppBarTitle('Frame the garment'),
       ),
       body: switch ((_failure, _decoded)) {
         (final String failure, _) => StatusMessage(

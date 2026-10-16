@@ -31,7 +31,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      tester.widget<OutlinedButton>(find.byType(OutlinedButton)).onPressed,
+      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
       isNotNull,
     );
     expect(find.byType(CircularProgressIndicator), findsNothing);

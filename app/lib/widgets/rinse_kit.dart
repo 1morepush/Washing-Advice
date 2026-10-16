@@ -10,6 +10,8 @@
 ///  * [GarmentWell] — the soft tinted square a garment sits on.
 ///  * [CountBadge] — the little "×3" pill on a tile.
 ///  * [StagePill] — one of the Basket / Washing / Drying selectors.
+///  * [InsetPanel] — a quiet well inside a card, for a summary or a warning.
+///  * [AppBarTitle] — an app bar title that shrinks to fit rather than ellipsise.
 ///  * [IconBadge] — an icon on a soft round tint, for empty and status views.
 ///  * [RinseNavBar] — the bottom bar with its top hairline.
 library;
@@ -47,6 +49,13 @@ class RinseCard extends StatelessWidget {
     ),
   );
 }
+
+/// The heading of a named group of settings — 16 / 800 — shared by the
+/// Settings groups and the notes that sit among them, so every group on that
+/// screen is titled the same way.
+TextStyle? groupHeadingStyle(BuildContext context) => Theme.of(
+  context,
+).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800);
 
 /// The small heading above a group of rows or a list: 13 / 800, muted.
 class SectionLabel extends StatelessWidget {
@@ -197,10 +206,15 @@ class StagePill extends StatelessWidget {
     required this.selected,
     this.count,
     this.onTap,
+    this.compact = false,
     super.key,
   });
 
   final String label;
+
+  /// Tighter padding, and a label that scales down rather than ellipsising,
+  /// for three pills sharing a narrow phone's width.
+  final bool compact;
 
   /// The number in the stage, shown after the label, or null for none.
   final int? count;
@@ -229,7 +243,10 @@ class StagePill extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 44),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? 6 : 10,
+                vertical: 8,
+              ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -242,14 +259,23 @@ class StagePill extends StatelessWidget {
                       color: selected ? onColor : color,
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  SizedBox(width: compact ? 4 : 6),
                   Flexible(
-                    child: Text(
-                      count == null ? label : '$label $count',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: style,
-                    ),
+                    child: compact
+                        ? FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              count == null ? label : '$label $count',
+                              maxLines: 1,
+                              style: style,
+                            ),
+                          )
+                        : Text(
+                            count == null ? label : '$label $count',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: style,
+                          ),
                   ),
                 ],
               ),
@@ -310,4 +336,57 @@ class IconBadge extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A quiet panel inside a card: for a summary, a form or a warning that is a
+/// step apart from the rows around it.
+///
+/// A soft well in Light and Dark; in AMOLED the same well with the hairline
+/// edge, because a fill that close to black does not hold a shape alone.
+class InsetPanel extends StatelessWidget {
+  const InsetPanel({
+    required this.child,
+    this.padding = const EdgeInsets.all(14),
+    this.tint,
+    super.key,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  /// Replaces the well fill, for a problem.
+  final Color? tint;
+
+  @override
+  Widget build(BuildContext context) {
+    final rinse = context.rinse;
+    return Container(
+      width: double.infinity,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: tint ?? rinse.well,
+        borderRadius: rinse.tileBorderRadius,
+        border: rinse.cardEdge == BorderSide.none
+            ? null
+            : Border.fromBorderSide(rinse.cardEdge),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// An app bar title that scales down to fit a narrow phone instead of ending
+/// in an ellipsis. Short titles are untouched; only a long one ("Add several
+/// garments" at 320 px) is shrunk, and only as far as it must be.
+class AppBarTitle extends StatelessWidget {
+  const AppBarTitle(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => FittedBox(
+    fit: BoxFit.scaleDown,
+    alignment: AlignmentDirectional.centerStart,
+    child: Text(text, maxLines: 1),
+  );
 }

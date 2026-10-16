@@ -32,7 +32,7 @@ class SpreadScanScreen extends ConsumerWidget {
       child: Scaffold(
         appBar: AppBar(
           leading: backLeading(context, '/', onLeave: controller.reset),
-          title: const Text('Lay several out'),
+          title: const AppBarTitle('Lay several out'),
         ),
         body: switch (state) {
           SpreadIdle() => _Start(controller: controller),

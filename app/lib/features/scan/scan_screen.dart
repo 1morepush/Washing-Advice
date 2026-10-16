@@ -22,6 +22,7 @@ import 'crop_screen.dart';
 import 'scan_controller.dart';
 import 'scan_review.dart';
 import 'shot_tile.dart';
+import '../../widgets/rinse_kit.dart';
 
 class ScanScreen extends ConsumerWidget {
   const ScanScreen({super.key});
@@ -36,7 +37,7 @@ class ScanScreen extends ConsumerWidget {
       child: Scaffold(
         appBar: AppBar(
           leading: backLeading(context, '/', onLeave: controller.reset),
-          title: const Text('Scan a garment'),
+          title: const AppBarTitle('Scan a garment'),
         ),
         body: switch (state) {
           ScanIdle() => _Capture(controller: controller),

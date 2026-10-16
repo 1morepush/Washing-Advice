@@ -376,7 +376,9 @@ abstract final class AppTheme {
           side: hairlineChips ? BorderSide(color: p.line) : BorderSide.none,
         ),
         side: hairlineChips ? BorderSide(color: p.line) : BorderSide.none,
-        backgroundColor: p.card,
+        // Tonal rather than the card white: a chip sits on the page and on
+        // cards alike, and white on a white card vanishes in Light.
+        backgroundColor: p.surface2,
         selectedColor: p.accent,
         disabledColor: p.surface2,
         checkmarkColor: p.onAccent,
@@ -416,7 +418,10 @@ abstract final class AppTheme {
         style: OutlinedButton.styleFrom(
           shape: pill,
           minimumSize: const Size(64, 48),
-          side: BorderSide(color: p.line, width: 1.5),
+          // Tonal, like the filled-tonal button it stands in for: a ghost
+          // outline would be the only drawn line on an otherwise edgeless page.
+          side: BorderSide.none,
+          backgroundColor: p.surface2,
           foregroundColor: p.ink,
           textStyle: _buttonText,
         ),

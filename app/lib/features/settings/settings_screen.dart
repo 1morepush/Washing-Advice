@@ -17,6 +17,7 @@ import 'machine_section.dart';
 import 'nudge_section.dart';
 import 'patch_notes.dart';
 import 'sorting_section.dart';
+import '../../widgets/rinse_kit.dart';
 import 'setting_info.dart';
 import 'update_section.dart';
 

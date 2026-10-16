@@ -22,6 +22,7 @@ import '../../widgets/status_message.dart';
 import 'cutout_controller.dart';
 import 'mask_edit.dart';
 import 'mask_editor_parts.dart';
+import '../../widgets/rinse_kit.dart';
 
 /// The paint surface itself.
 ///
@@ -42,7 +43,7 @@ class MaskEditorScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         leading: backLeading(context, '/item/${id.value}'),
-        title: const Text('Tidy the cutout'),
+        title: const AppBarTitle('Tidy the cutout'),
       ),
       body: item.when(
         loading: () => const Center(child: CircularProgressIndicator()),

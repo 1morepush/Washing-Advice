@@ -124,37 +124,28 @@ class _TripForm extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            // The chips are white on the theme, which is the card's own colour
-            // here: on this card they take the tonal fill so they can be seen.
-            Theme(
-              data: theme.copyWith(
-                chipTheme: theme.chipTheme.copyWith(
-                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                ),
-              ),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final occasion in Occasion.values)
-                    FilterChip(
-                      label: Text(occasion.label),
-                      selected: trip.occasions.contains(occasion),
-                      onSelected: (on) {
-                        final next = {...trip.occasions};
-                        if (on) {
-                          next.add(occasion);
-                        } else {
-                          next.remove(occasion);
-                        }
-                        // A trip with no kind of day at all packs nothing, which
-                        // reads as a bug rather than as an answer.
-                        if (next.isEmpty) return;
-                        onChanged(_copy(occasions: next));
-                      },
-                    ),
-                ],
-              ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final occasion in Occasion.values)
+                  FilterChip(
+                    label: Text(occasion.label),
+                    selected: trip.occasions.contains(occasion),
+                    onSelected: (on) {
+                      final next = {...trip.occasions};
+                      if (on) {
+                        next.add(occasion);
+                      } else {
+                        next.remove(occasion);
+                      }
+                      // A trip with no kind of day at all packs nothing, which
+                      // reads as a bug rather than as an answer.
+                      if (next.isEmpty) return;
+                      onChanged(_copy(occasions: next));
+                    },
+                  ),
+              ],
             ),
             const SizedBox(height: 16),
             Row(

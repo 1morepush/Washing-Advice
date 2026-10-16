@@ -83,16 +83,14 @@ class _LaundryScreenState extends ConsumerState<LaundryScreen>
                   for (final (index, pile) in _Pile.values.indexed) ...[
                     if (index > 0) const SizedBox(width: 8),
                     Expanded(
-                      child: _fit(
-                        context,
-                        StagePill(
-                          label: pile.label,
-                          count: _count(pile),
-                          color: stages.colorOf(pile.stage)!,
-                          onColor: stages.onColorOf(pile.stage)!,
-                          selected: _tabs.animation!.value.round() == index,
-                          onTap: () => _tabs.animateTo(index),
-                        ),
+                      child: StagePill(
+                        label: pile.label,
+                        count: _count(pile),
+                        color: stages.colorOf(pile.stage)!,
+                        onColor: stages.onColorOf(pile.stage)!,
+                        selected: _tabs.animation!.value.round() == index,
+                        compact: MediaQuery.sizeOf(context).width < 400,
+                        onTap: () => _tabs.animateTo(index),
                       ),
                     ),
                   ],
@@ -108,15 +106,6 @@ class _LaundryScreenState extends ConsumerState<LaundryScreen>
       children: [for (final pile in _Pile.values) _PileView(pile: pile)],
     ),
   );
-
-  /// On a narrow phone three labelled pills do not fit at their natural size,
-  /// and an ellipsis on "Washing" would hide the one thing the pill is for.
-  /// Scaled down to fit instead, so the whole word and its count stay. Wider
-  /// screens keep the pills at full width, three equal shares.
-  Widget _fit(BuildContext context, Widget pill) =>
-      MediaQuery.sizeOf(context).width >= 400
-      ? pill
-      : FittedBox(fit: BoxFit.scaleDown, child: pill);
 
   /// The number in a pile, or nothing while it is still loading or empty.
   ///

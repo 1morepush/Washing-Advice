@@ -14,7 +14,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/settings.dart';
 import '../../data/api/ai_gateway.dart' show wakingAfter;
-import '../settings/setting_info.dart' show InsetPanel;
+import '../../widgets/rinse_kit.dart' show InsetPanel;
 import 'sync_controller.dart';
 
 class SyncSection extends ConsumerStatefulWidget {
@@ -100,7 +100,7 @@ class _SyncSectionState extends ConsumerState<SyncSection> {
               },
               child: const Text('Save'),
             ),
-            OutlinedButton(
+            FilledButton.tonal(
               onPressed: () {
                 // Generated here rather than issued by the server: there is no
                 // registration step to fail, and no list of users to leak.

@@ -32,7 +32,7 @@ class BulkScanScreen extends ConsumerWidget {
       child: Scaffold(
         appBar: AppBar(
           leading: backLeading(context, '/', onLeave: controller.reset),
-          title: const Text('Add several garments'),
+          title: const AppBarTitle('Add several garments'),
         ),
         body: switch (state) {
           final BulkCollecting collecting => _Collecting(

@@ -143,12 +143,7 @@ class SettingsGroup extends StatelessWidget {
                 Flexible(
                   flex: 3,
                   fit: value == null ? FlexFit.loose : FlexFit.tight,
-                  child: Text(
-                    title,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
+                  child: Text(title, style: groupHeadingStyle(context)),
                 ),
                 if (value case final String value) ...[
                   const SizedBox(width: 12),
@@ -193,41 +188,4 @@ class RowDivider extends StatelessWidget {
     padding: const EdgeInsets.symmetric(vertical: 8),
     child: Divider(height: 1, color: context.rinse.lineSoft),
   );
-}
-
-/// A quiet panel inside a card: for a summary, a form or a warning that is a
-/// step apart from the rows around it.
-///
-/// A soft well in Light and Dark; in AMOLED the same well with the hairline
-/// edge, because a fill that close to black does not hold a shape alone.
-class InsetPanel extends StatelessWidget {
-  const InsetPanel({
-    required this.child,
-    this.padding = const EdgeInsets.all(14),
-    this.tint,
-    super.key,
-  });
-
-  final Widget child;
-  final EdgeInsetsGeometry padding;
-
-  /// Replaces the well fill, for a problem.
-  final Color? tint;
-
-  @override
-  Widget build(BuildContext context) {
-    final rinse = context.rinse;
-    return Container(
-      width: double.infinity,
-      padding: padding,
-      decoration: BoxDecoration(
-        color: tint ?? rinse.well,
-        borderRadius: rinse.tileBorderRadius,
-        border: rinse.cardEdge == BorderSide.none
-            ? null
-            : Border.fromBorderSide(rinse.cardEdge),
-      ),
-      child: child,
-    );
-  }
 }

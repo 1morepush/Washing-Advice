@@ -180,7 +180,7 @@ class _AskState extends ConsumerState<_Ask> {
         const SizedBox(height: 8),
         Align(
           alignment: Alignment.centerLeft,
-          child: OutlinedButton.icon(
+          child: FilledButton.tonalIcon(
             onPressed: _addPhoto,
             icon: const Icon(Icons.photo_camera_outlined),
             label: Text(_photo == null ? 'Add a photo' : 'Replace the photo'),

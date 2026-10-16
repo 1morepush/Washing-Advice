@@ -50,7 +50,7 @@ class _UpdateSectionState extends State<UpdateSection> {
         const SizedBox(height: 4),
         Row(
           children: [
-            OutlinedButton.icon(
+            FilledButton.tonalIcon(
               onPressed: _updating ? null : _check,
               icon: const Icon(Icons.refresh),
               label: const Text('Check for updates'),

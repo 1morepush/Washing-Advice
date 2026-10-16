@@ -13,6 +13,7 @@ import '../../widgets/state_view.dart';
 import '../laundry/laundry_controller.dart';
 import 'pile_controller.dart';
 import 'widgets/load_card.dart';
+import '../../widgets/rinse_kit.dart';
 
 class PileScreen extends ConsumerWidget {
   const PileScreen({super.key});
@@ -27,7 +28,7 @@ class PileScreen extends ConsumerWidget {
       child: Scaffold(
         appBar: AppBar(
           leading: backLeading(context, '/laundry', onLeave: controller.reset),
-          title: const Text('Sort the laundry'),
+          title: const AppBarTitle('Sort the laundry'),
         ),
         body: switch (state) {
           PileIdle() => _Capture(controller: controller),
@@ -180,7 +181,7 @@ class _Plan extends ConsumerWidget {
         if (_recognized(state).isNotEmpty) _AddToWash(ids: _recognized(state)),
 
         const SizedBox(height: 12),
-        OutlinedButton(
+        FilledButton.tonal(
           onPressed: controller.reset,
           child: const Text('Scan another pile'),
         ),

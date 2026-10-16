@@ -46,6 +46,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../widgets/rinse_kit.dart';
 import 'setting_info.dart';
 
 /// One shipped change set.
@@ -866,7 +867,7 @@ class PatchNotes extends StatelessWidget {
       children: [
         TitleWithInfo(
           'What\'s new',
-          style: theme.textTheme.titleSmall,
+          style: groupHeadingStyle(context),
           info:
               'These notes come with the app, so this is the version you are '
               'running. If the newest date looks old, the update has not '

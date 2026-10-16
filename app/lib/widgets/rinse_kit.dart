@@ -12,6 +12,7 @@
 ///  * [StagePill] — one of the Basket / Washing / Drying selectors.
 ///  * [InsetPanel] — a quiet well inside a card, for a summary or a warning.
 ///  * [AppBarTitle] — an app bar title that shrinks to fit rather than ellipsise.
+///  * [FitLabel] — a button label that shrinks to one line instead of wrapping.
 ///  * [IconBadge] — an icon on a soft round tint, for empty and status views.
 ///  * [RinseNavBar] — the bottom bar with its top hairline.
 library;
@@ -388,5 +389,20 @@ class AppBarTitle extends StatelessWidget {
     fit: BoxFit.scaleDown,
     alignment: AlignmentDirectional.centerStart,
     child: Text(text, maxLines: 1),
+  );
+}
+
+/// A button label that scales down to stay on one line. For a button that
+/// shares a row with another on a 320 px phone, where wrapping a two-word
+/// label onto two lines makes the button taller than its neighbour.
+class FitLabel extends StatelessWidget {
+  const FitLabel(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => FittedBox(
+    fit: BoxFit.scaleDown,
+    child: Text(text, maxLines: 1, softWrap: false),
   );
 }

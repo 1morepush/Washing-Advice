@@ -332,6 +332,8 @@ abstract final class AppTheme {
       borderRadius: BorderRadius.vertical(
         top: Radius.circular(shape.cardRadius),
       ),
+      // The AMOLED hairline: a black sheet over a black page has no other edge.
+      side: shape.cardEdge,
     );
     final hairlineChips = p.cardHairline;
 
@@ -592,9 +594,11 @@ const _textTheme = TextTheme(
     fontWeight: FontWeight.w800,
     letterSpacing: 0,
   ),
+  // 800 like every other heading: a card title at 700 read as a different
+  // family from "How to wash it" on the garment page, which always set 800.
   titleMedium: TextStyle(
     fontSize: 16,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w800,
     letterSpacing: 0,
   ),
   titleSmall: TextStyle(

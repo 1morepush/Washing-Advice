@@ -421,12 +421,17 @@ class _EditorState extends ConsumerState<_Editor> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: Text(
-            _mode == MaskMode.add
-                ? 'Paint over anything the app removed by mistake.'
-                : 'Paint over anything left behind that is not the garment.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+          // Full width and start-aligned, like the crop screen's note: the
+          // column centres anything narrower than it.
+          child: SizedBox(
+            width: double.infinity,
+            child: Text(
+              _mode == MaskMode.add
+                  ? 'Paint over anything the app removed by mistake.'
+                  : 'Paint over anything left behind that is not the garment.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         ),

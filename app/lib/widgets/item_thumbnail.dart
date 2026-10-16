@@ -232,9 +232,10 @@ class ItemThumbnail extends ConsumerWidget {
     //
     // Nor is the dark one the same on true black, where the well is a shade
     // above black rather than a blue-grey panel: there is less to climb from,
-    // so the same fraction lands closer to a charcoal garment. 44% puts it in
-    // the same place as Dark's 30% does.
-    final darkLift = scheme.hasTrueBlackGround ? 0.44 : 0.30;
+    // so the same fraction lands closer to a charcoal garment. 38% puts it
+    // where Dark's 30% does, a touch above it: it was 44%, which made a dark
+    // cutout a visibly greyer tile than the plain wells around it.
+    final darkLift = scheme.hasTrueBlackGround ? 0.38 : 0.30;
     final lift = Color.alphaBlend(
       scheme.onSurface.withValues(alpha: isDarkTheme ? darkLift : 0.10),
       well,

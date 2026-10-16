@@ -248,7 +248,7 @@ class _Collecting extends StatelessWidget {
                         ? null
                         : controller.nextGarment,
                     icon: const Icon(Icons.playlist_add),
-                    label: const Text('Next garment'),
+                    label: const FitLabel('Next garment'),
                   ),
                 ),
                 const SizedBox(width: 12),

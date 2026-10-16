@@ -7,6 +7,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../core/theme.dart';
+
 /// An icon and a sentence on one line, both in [color].
 class NoteRow extends StatelessWidget {
   const NoteRow({
@@ -53,17 +55,28 @@ class NoteRow extends StatelessWidget {
 /// The tinted panel behind a [Notice], for a notice that needs more than an
 /// icon and a sentence — an action beside it, or none of the icon.
 class NoticePanel extends StatelessWidget {
-  const NoticePanel({required this.child, this.padding = 12, super.key});
+  const NoticePanel({
+    required this.child,
+    this.padding = 12,
+    this.warning = false,
+    super.key,
+  });
 
   final Widget child;
   final double padding;
+
+  /// Warm amber (the theme's tertiary container) rather than the neutral
+  /// tile, for a guess the reader should look at.
+  final bool warning;
 
   @override
   Widget build(BuildContext context) => Container(
     padding: EdgeInsets.all(padding),
     decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(12),
+      color: warning
+          ? Theme.of(context).colorScheme.tertiaryContainer
+          : Theme.of(context).colorScheme.surfaceContainerHighest,
+      borderRadius: context.rinse.tileBorderRadius,
     ),
     child: child,
   );
@@ -71,27 +84,38 @@ class NoticePanel extends StatelessWidget {
 
 /// An icon and a sentence in a tinted panel.
 class Notice extends StatelessWidget {
-  const Notice({required this.icon, required this.text, super.key});
+  const Notice({
+    required this.icon,
+    required this.text,
+    this.warning = false,
+    super.key,
+  });
 
   final IconData icon;
   final String text;
+
+  /// See [NoticePanel.warning].
+  final bool warning;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    final ink = warning
+        ? theme.colorScheme.onTertiaryContainer
+        : theme.colorScheme.onSurfaceVariant;
+
     return NoticePanel(
+      warning: warning,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: theme.colorScheme.onSurfaceVariant),
+          Icon(icon, size: 18, color: ink),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               text,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+              style: theme.textTheme.bodySmall?.copyWith(color: ink),
             ),
           ),
         ],

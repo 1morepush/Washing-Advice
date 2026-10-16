@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/settings.dart';
+import '../../core/theme.dart';
 import '../laundry/evening_nudge.dart';
 import 'setting_info.dart';
 
@@ -57,9 +58,17 @@ class NudgeSection extends ConsumerWidget {
               leading: const Icon(Icons.schedule_outlined),
               title: Text(
                 'Every day at ${_format(context, time)}',
-                style: theme.textTheme.bodyMedium,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-              trailing: const Text('Change'),
+              trailing: Text(
+                'Change',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: context.rinse.textAccent,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               onTap: () => _pick(context, ref, time),
             ),
         ],

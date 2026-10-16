@@ -22,6 +22,7 @@ import '../../widgets/status_message.dart';
 import 'cutout_controller.dart';
 import 'mask_edit.dart';
 import 'mask_editor_parts.dart';
+import '../../widgets/rinse_kit.dart';
 
 /// The paint surface itself.
 ///
@@ -42,7 +43,7 @@ class MaskEditorScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         leading: backLeading(context, '/item/${id.value}'),
-        title: const Text('Tidy the cutout'),
+        title: const AppBarTitle('Tidy the cutout'),
       ),
       body: item.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -420,12 +421,17 @@ class _EditorState extends ConsumerState<_Editor> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: Text(
-            _mode == MaskMode.add
-                ? 'Paint over anything the app removed by mistake.'
-                : 'Paint over anything left behind that is not the garment.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+          // Full width and start-aligned, like the crop screen's note: the
+          // column centres anything narrower than it.
+          child: SizedBox(
+            width: double.infinity,
+            child: Text(
+              _mode == MaskMode.add
+                  ? 'Paint over anything the app removed by mistake.'
+                  : 'Paint over anything left behind that is not the garment.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         ),

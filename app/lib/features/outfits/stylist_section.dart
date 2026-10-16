@@ -18,6 +18,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
+import '../../core/theme.dart';
 import 'outfit_controller.dart';
 import 'outfit_pieces.dart';
 import 'outfit_source.dart';
@@ -134,7 +135,6 @@ class _Intro extends ConsumerWidget {
           decoration: const InputDecoration(
             labelText: 'Anything to add? (optional)',
             hintText: 'e.g. it will be cold, or I am meeting a client',
-            border: OutlineInputBorder(),
           ),
           textInputAction: TextInputAction.done,
           maxLines: 2,
@@ -306,19 +306,21 @@ class _MissingCard extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      // Outlined rather than filled, so it reads as a note rather than as one
-      // more thing to wear.
+      // A quieter surface than the outfits, so it reads as a note rather than
+      // as one more thing to wear.
+      color: theme.colorScheme.surfaceContainer,
       elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: theme.colorScheme.outlineVariant),
-      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(piece.description, style: theme.textTheme.titleSmall),
+            Text(
+              piece.description,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             const SizedBox(height: 8),
             // Named rather than counted: "goes with 2 items" leaves somebody
             // asking which two.
@@ -359,64 +361,63 @@ class _IdeaCard extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           OutfitPieces(items: outfit.items),
-          const SizedBox(height: 12),
-          const Divider(height: 1),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
+          Divider(height: 1, color: context.rinse.lineSoft),
+          const SizedBox(height: 14),
           // In the model's own words, unabridged. Summarising it into the
           // tick-list the built suggestions use would throw away the only
           // thing this tab has that the other one does not.
-          Text(
-            outfit.rationale,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Wrap(
-            alignment: WrapAlignment.end,
-            spacing: 8,
-            children: [
-              TextButton.icon(
-                onPressed: () async {
-                  final name = await askForOutfitName(
-                    context,
-                    title: 'Save this outfit',
-                  );
-                  if (name == null || !context.mounted) return;
+          Text(outfit.rationale, style: theme.textTheme.bodyMedium),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.tonalIcon(
+                  onPressed: () async {
+                    final name = await askForOutfitName(
+                      context,
+                      title: 'Save this outfit',
+                    );
+                    if (name == null || !context.mounted) return;
 
-                  final saved = await ref
-                      .read(outfitControllerProvider)
-                      .saveStyled(outfit, name: name, occasion: occasion);
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Saved as ${saved.name}.')),
-                  );
-                },
-                icon: const Icon(Icons.bookmark_border, size: 18),
-                label: const Text('Save'),
-              ),
-              // The same loop the built suggestions close. A styled outfit
-              // that gets worn teaches the co-wear graph a pairing the
-              // builder did not know, so taking the model's advice makes the
-              // arithmetic on the other tab better too.
-              TextButton.icon(
-                onPressed: () async {
-                  await ref
-                      .read(outfitControllerProvider)
-                      .wearItems(outfit.itemIds, occasion: occasion.name);
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Recorded as worn together, and put in the basket.',
+                    final saved = await ref
+                        .read(outfitControllerProvider)
+                        .saveStyled(outfit, name: name, occasion: occasion);
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Saved as ${saved.name}.')),
+                    );
+                  },
+                  icon: const Icon(Icons.bookmark_border, size: 18),
+                  label: const Text('Save'),
+                ),
+                // The same loop the built suggestions close. A styled outfit
+                // that gets worn teaches the co-wear graph a pairing the
+                // builder did not know, so taking the model's advice makes the
+                // arithmetic on the other tab better too.
+                FilledButton.icon(
+                  onPressed: () async {
+                    await ref
+                        .read(outfitControllerProvider)
+                        .wearItems(outfit.itemIds, occasion: occasion.name);
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Recorded as worn together, and put in the basket.',
+                        ),
                       ),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.checkroom_outlined, size: 18),
-                label: const Text('Wearing this'),
-              ),
-            ],
+                    );
+                  },
+                  icon: const Icon(Icons.checkroom_outlined, size: 18),
+                  label: const Text('Wearing this'),
+                ),
+              ],
+            ),
           ),
         ],
       ),

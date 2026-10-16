@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
+import '../../core/theme.dart';
 import '../../widgets/item_thumbnail.dart';
 
 class OutfitPieces extends StatelessWidget {
@@ -24,7 +25,7 @@ class OutfitPieces extends StatelessWidget {
       for (final item in items)
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: 10),
             child: _Piece(item: item),
           ),
         ),
@@ -43,7 +44,7 @@ class _Piece extends StatelessWidget {
 
     return InkWell(
       onTap: () => context.push('/item/${item.id.value}'),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: context.rinse.tileBorderRadius,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -56,13 +57,15 @@ class _Piece extends StatelessWidget {
             item.displayName,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodyMedium,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           ),
           Text(
             item.type.value.label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall?.copyWith(
+            style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),

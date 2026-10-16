@@ -10,7 +10,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/theme.dart';
 import '../../widgets/item_thumbnail.dart';
+import '../../widgets/rinse_kit.dart';
 import '../../widgets/status_message.dart';
 import 'worn_today_controller.dart';
 
@@ -47,25 +49,25 @@ class WornTodayScreen extends ConsumerWidget {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
             child: Text(
               state.candidates.isEmpty
                   ? 'Nothing in the wardrobe to put in the basket.'
                   : 'Tap what you had on. The list reorders as you go — what '
                         'you usually wear together comes to the top.',
-              style: theme.textTheme.bodySmall?.copyWith(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
           ),
           Expanded(
             child: GridView.builder(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                 maxCrossAxisExtent: 130,
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                childAspectRatio: 0.78,
+                mainAxisSpacing: 14,
+                crossAxisSpacing: 12,
+                childAspectRatio: 0.8,
               ),
               itemCount: state.candidates.length,
               itemBuilder: (context, index) {
@@ -124,57 +126,62 @@ class _Candidate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final rinse = context.rinse;
     final item = candidate.item;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
-          color: chosen
-              ? theme.colorScheme.primaryContainer
-              : theme.colorScheme.surfaceContainerHighest,
-          border: Border.all(
-            color: chosen ? theme.colorScheme.primary : Colors.transparent,
-            width: 2,
-          ),
-        ),
+    return Semantics(
+      button: true,
+      selected: chosen,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: rinse.tileBorderRadius,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // The picked state is the accent ring round the well plus a tick,
+            // not a coloured card: soft and quiet until it matters.
             Expanded(
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: ItemThumbnail(item: item, size: 120),
-                    ),
-                  ),
-                  if (chosen)
-                    Positioned(
-                      top: 2,
-                      right: 2,
-                      child: Icon(
-                        Icons.check_circle,
-                        size: 20,
-                        color: theme.colorScheme.primary,
+              child: GarmentWell(
+                selected: chosen,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: ClipRRect(
+                        borderRadius: rinse.tileBorderRadius,
+                        child: ItemThumbnail(item: item, size: 120),
                       ),
                     ),
-                ],
+                    if (chosen)
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: theme.colorScheme.primary,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(2),
+                            child: Icon(
+                              Icons.check,
+                              size: 14,
+                              color: theme.colorScheme.onPrimary,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 6),
             Text(
               item.displayName,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: chosen
-                    ? theme.colorScheme.onPrimaryContainer
-                    : theme.colorScheme.onSurface,
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurface,
               ),
             ),
             // Only on the garments the co-wear graph lifted. A reason shown on
@@ -187,8 +194,8 @@ class _Candidate extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontSize: 10,
+                  color: context.rinse.textAccent,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
           ],

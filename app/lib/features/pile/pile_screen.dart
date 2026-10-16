@@ -7,11 +7,13 @@ import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/settings.dart';
+import '../../core/theme.dart';
 import '../../widgets/back_navigation.dart';
 import '../../widgets/state_view.dart';
 import '../laundry/laundry_controller.dart';
 import 'pile_controller.dart';
 import 'widgets/load_card.dart';
+import '../../widgets/rinse_kit.dart';
 
 class PileScreen extends ConsumerWidget {
   const PileScreen({super.key});
@@ -26,7 +28,7 @@ class PileScreen extends ConsumerWidget {
       child: Scaffold(
         appBar: AppBar(
           leading: backLeading(context, '/laundry', onLeave: controller.reset),
-          title: const Text('Sort the laundry'),
+          title: const AppBarTitle('Sort the laundry'),
         ),
         body: switch (state) {
           PileIdle() => _Capture(controller: controller),
@@ -103,7 +105,7 @@ class _Plan extends ConsumerWidget {
           0 => 'Nothing can be sorted yet',
           1 => 'One load',
           _ => '${plan.loadCount} loads',
-        }, style: theme.textTheme.headlineSmall),
+        }, style: theme.textTheme.headlineMedium),
         const SizedBox(height: 4),
         Text(
           _summary(state),
@@ -179,7 +181,7 @@ class _Plan extends ConsumerWidget {
         if (_recognized(state).isNotEmpty) _AddToWash(ids: _recognized(state)),
 
         const SizedBox(height: 12),
-        OutlinedButton(
+        FilledButton.tonal(
           onPressed: controller.reset,
           child: const Text('Scan another pile'),
         ),
@@ -370,12 +372,12 @@ class _Notice extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: context.rinse.tileBorderRadius,
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: scheme.tertiaryContainer,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: context.rinse.tileBorderRadius,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,

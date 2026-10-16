@@ -9,6 +9,9 @@ library;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/theme.dart';
+import '../../widgets/rinse_kit.dart';
+
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
 
@@ -16,24 +19,29 @@ class MoreScreen extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('More')),
     body: ListView(
-      children: [
-        _Place(
-          icon: Icons.luggage_outlined,
-          title: 'Packing',
-          subtitle: 'What to take, from what you own',
-          route: '/packing',
-        ),
-        _Place(
-          icon: Icons.insights_outlined,
-          title: 'Insights',
-          subtitle: 'What your wardrobe is made of and how it is used',
-          route: '/insights',
-        ),
-        _Place(
-          icon: Icons.settings_outlined,
-          title: 'Settings',
-          subtitle: 'Machines, reminders, sync and appearance',
-          route: '/settings',
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+      children: const [
+        GroupCard(
+          children: [
+            _Place(
+              icon: Icons.luggage_outlined,
+              title: 'Packing',
+              subtitle: 'What to take, from what you own',
+              route: '/packing',
+            ),
+            _Place(
+              icon: Icons.insights_outlined,
+              title: 'Insights',
+              subtitle: 'What your wardrobe is made of and how it is used',
+              route: '/insights',
+            ),
+            _Place(
+              icon: Icons.settings_outlined,
+              title: 'Settings',
+              subtitle: 'Machines, reminders, sync and appearance',
+              route: '/settings',
+            ),
+          ],
         ),
       ],
     ),
@@ -54,11 +62,36 @@ class _Place extends StatelessWidget {
   final String route;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    leading: Icon(icon),
-    title: Text(title),
-    subtitle: Text(subtitle),
-    trailing: const Icon(Icons.chevron_right),
-    onTap: () => context.push(route),
-  );
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      leading: DecoratedBox(
+        decoration: BoxDecoration(
+          color: scheme.primaryContainer,
+          borderRadius: context.rinse.tileBorderRadius,
+        ),
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Icon(icon, color: scheme.onPrimaryContainer),
+        ),
+      ),
+      title: Text(
+        title,
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: scheme.onSurfaceVariant,
+        ),
+      ),
+      trailing: Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+      onTap: () => context.push(route),
+    );
+  }
 }

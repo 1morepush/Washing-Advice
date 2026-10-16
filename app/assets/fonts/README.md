@@ -1,22 +1,23 @@
 # Bundled fonts
 
-**Liberation Sans**, regular and bold.
-Copyright © 2012 Red Hat, Inc., with Reserved Font Name "Liberation".
-Digitized data copyright © 2010 Google Corporation, with Reserved Font Name
-"Arimo", "Tinos" and "Cousine".
-Licensed under the [SIL Open Font License, version 1.1](https://scripts.sil.org/OFL).
+**Nunito**, weights 400, 600, 700 and 800 (Regular, SemiBold, Bold, ExtraBold).
+Copyright 2014 The Nunito Project Authors (https://github.com/googlefonts/nunito).
+Licensed under the [SIL Open Font License, version 1.1](https://scripts.sil.org/OFL);
+the licence text is `Nunito-OFL.txt` and is registered with Flutter's
+`LicenseRegistry` (`lib/core/licences.dart`), so it appears on the licence page.
 
-## Why it is here
+The static TTFs come from the `@expo-google-fonts/nunito` npm package, which
+repackages the Google Fonts release unmodified.
 
-Flutter's web build has no system fonts to fall back on: CanvasKit renders text
-itself, and with no font asset it fetches Roboto from Google's CDN at runtime.
-That makes the first paint depend on a network the app otherwise does not need,
-and in a sandboxed CI container that request simply fails — which is how this
-was found, as screenshots that rendered every icon and not one word.
+## Why it is bundled, and everywhere
 
-Bundling a font makes the web build self-contained, which is the same goal as
-the `--no-web-resources-cdn` flag used to build it.
+The "Rinse" look is set in Nunito, and the font ships inside the app on every
+platform, so nothing is downloaded at run time. That also settles the web
+build, which has no system fonts: CanvasKit renders text itself and, with no
+font asset, fetches Roboto from Google's CDN on first paint. That made the
+first paint depend on a network the app otherwise does not need, and in a
+sandboxed CI container the request simply fails — screenshots with every icon
+and not one word. (Web used to bundle Liberation Sans for that reason; Nunito
+replaces it.) It is the same goal as the `--no-web-resources-cdn` build flag.
 
-It is applied **on web only** (see `lib/core/theme.dart`). Android and iOS have
-Roboto and SF Pro already, and those are better on their own platforms than
-anything shipped in the bundle.
+Characters Nunito lacks (emoji, some symbols) fall back to the platform font.

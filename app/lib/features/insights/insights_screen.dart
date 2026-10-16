@@ -16,6 +16,7 @@ import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
+import '../../core/theme.dart';
 import '../../widgets/back_navigation.dart';
 import '../../widgets/state_view.dart';
 import '../../widgets/status_message.dart';
@@ -127,7 +128,12 @@ class _Readiness extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Ready to sort', style: theme.textTheme.titleMedium),
+            Text(
+              'Ready to sort',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             const SizedBox(height: 12),
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -135,8 +141,8 @@ class _Readiness extends StatelessWidget {
                 Text(
                   '$percent%',
                   style: theme.textTheme.displaySmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w800,
+                    color: context.rinse.textAccent,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -160,10 +166,12 @@ class _Readiness extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             ClipRRect(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(999),
               child: LinearProgressIndicator(
                 value: summary.readiness,
-                minHeight: 8,
+                minHeight: 10,
+                color: theme.colorScheme.primary,
+                backgroundColor: context.rinse.well,
               ),
             ),
             if (outstanding > 0) ...[
@@ -265,14 +273,14 @@ class _Stat extends StatelessWidget {
                 value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 label,
-                style: theme.textTheme.bodySmall?.copyWith(
+                style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
@@ -308,12 +316,17 @@ class _Breakdown extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: theme.textTheme.titleMedium),
+            Text(
+              title,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             if (subtitle case final String text) ...[
               const SizedBox(height: 4),
               Text(
                 text,
-                style: theme.textTheme.bodySmall?.copyWith(
+                style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
@@ -345,10 +358,17 @@ class _Bar extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
+            Expanded(
+              child: Text(
+                label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
             Text(
               '${tally.count}  ·  ${(tally.share * 100).round()}%',
-              style: theme.textTheme.bodySmall?.copyWith(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
@@ -356,14 +376,15 @@ class _Bar extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         ClipRRect(
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(999),
           child: LinearProgressIndicator(
             // Shares are of the wardrobe, so a fibre in every garment fills the
             // bar and one in a third fills a third — comparable across rows
             // even when the counts add to more than the item count.
             value: tally.share.clamp(0.0, 1.0),
-            minHeight: 6,
-            backgroundColor: theme.colorScheme.surfaceContainerHighest,
+            minHeight: 8,
+            color: theme.colorScheme.primary,
+            backgroundColor: context.rinse.well,
           ),
         ),
       ],
@@ -390,13 +411,18 @@ class _Neglected extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Not being worn', style: theme.textTheme.titleMedium),
+            Text(
+              'Not being worn',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             const SizedBox(height: 4),
             Text(
               // Two different problems, kept apart: one is a purchase to learn
               // from, the other a garment doing its job seasonally.
               'Never worn is a different question from not worn lately.',
-              style: theme.textTheme.bodySmall?.copyWith(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
@@ -444,13 +470,18 @@ class _Value extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Cost per wear', style: theme.textTheme.titleMedium),
+            Text(
+              'Cost per wear',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             const SizedBox(height: 4),
             Text(
               // Stated plainly because the omission is otherwise mistaken for
               // a bug: an unworn item has no cost per wear, not an infinite one.
               'Only items with both a price and a wear appear here.',
-              style: theme.textTheme.bodySmall?.copyWith(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
@@ -482,10 +513,10 @@ class _SubHeading extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 8, bottom: 4),
       child: Text(
-        text.toUpperCase(),
-        style: theme.textTheme.labelSmall?.copyWith(
+        text,
+        style: theme.textTheme.labelLarge?.copyWith(
           color: theme.colorScheme.onSurfaceVariant,
-          letterSpacing: 0.8,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );
@@ -513,13 +544,15 @@ class _ItemRow extends StatelessWidget {
                 item.displayName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
             const SizedBox(width: 12),
             Text(
               trailing,
-              style: theme.textTheme.bodySmall?.copyWith(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),

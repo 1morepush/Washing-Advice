@@ -13,9 +13,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../widgets/back_navigation.dart';
+import '../../widgets/rinse_kit.dart';
 import '../../widgets/state_view.dart';
 import '../../widgets/status_message.dart';
 import 'retake_controller.dart';
+import 'scan_parts.dart';
 
 class RetakeScreen extends ConsumerWidget {
   const RetakeScreen({required this.id, super.key});
@@ -103,7 +105,6 @@ class _Review extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final changes = state.changes;
 
     return Column(
@@ -112,44 +113,50 @@ class _Review extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text(
+              ScanHeading(
                 changes.isEmpty
                     ? 'The new photo agrees with what was already recorded.'
                     : 'The new photo changes this much:',
-                style: theme.textTheme.titleMedium,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                changes.isEmpty
+                body: changes.isEmpty
                     ? 'Saving still replaces the picture and its cutout, which '
                           'is usually the point.'
                     : 'Anything you set by hand is kept as it is.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
               ),
-              const SizedBox(height: 16),
-              for (final (label, was, now) in changes)
-                _Change(label: label, was: was, now: now),
+              if (changes.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                GroupCard(
+                  children: [
+                    for (final (label, was, now) in changes)
+                      _Change(label: label, was: was, now: now),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
         SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Row(
-              children: [
-                TextButton(
-                  onPressed: controller.reset,
-                  child: const Text('Try again'),
-                ),
-                const Spacer(),
-                FilledButton(
-                  onPressed: controller.save,
-                  child: const Text('Use this photo'),
-                ),
-              ],
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            // A Wrap, not a Row: at large text sizes the two buttons together
+            // are wider than a phone, and they should stack, not overflow.
+            child: SizedBox(
+              width: double.infinity,
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                runSpacing: 8,
+                children: [
+                  FilledButton.tonal(
+                    onPressed: controller.reset,
+                    child: const Text('Try again'),
+                  ),
+                  FilledButton(
+                    onPressed: controller.save,
+                    child: const Text('Use this photo'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -169,11 +176,18 @@ class _Change extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: theme.textTheme.labelLarge),
+          Text(
+            label,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
           // Wrapped rather than a Row: "was" and "now" are both free text and
           // at a large text scale two of them side by side will not fit a
           // phone.
@@ -193,7 +207,12 @@ class _Change extends StatelessWidget {
                 size: 14,
                 color: theme.colorScheme.primary,
               ),
-              Text(now, style: theme.textTheme.bodyMedium),
+              Text(
+                now,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ],
           ),
         ],

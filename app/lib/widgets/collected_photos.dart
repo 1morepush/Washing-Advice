@@ -9,6 +9,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../features/scan/scan_parts.dart' show ScanHeading;
+
 class CollectedPhotos extends StatelessWidget {
   const CollectedPhotos({
     required this.heading,
@@ -48,22 +50,13 @@ class CollectedPhotos extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Column(
       children: [
         Expanded(
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text(heading, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 4),
-              Text(
-                body,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
+              ScanHeading(heading, body: body),
               if (extra case final Widget extra) ...[
                 const SizedBox(height: 8),
                 extra,
@@ -82,7 +75,7 @@ class CollectedPhotos extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton.icon(
+                      child: FilledButton.tonalIcon(
                         onPressed: onAdd,
                         icon: const Icon(Icons.add_a_photo_outlined),
                         label: Text(addLabel),

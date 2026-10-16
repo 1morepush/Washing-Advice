@@ -19,6 +19,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../core/providers.dart';
 import '../../widgets/back_navigation.dart';
 import '../../widgets/notice.dart';
+import '../../widgets/rinse_kit.dart';
 import '../../widgets/state_view.dart';
 import '../../widgets/status_message.dart';
 import '../laundry/laundry_controller.dart';
@@ -132,12 +133,12 @@ class _AskState extends ConsumerState<_Ask> {
           Text(
             'On your ${item.displayName.toLowerCase()} — '
             '${item.composition.value.label}',
-            style: theme.textTheme.bodySmall?.copyWith(
+            style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
         const SizedBox(height: 16),
-        Text('What was spilled?', style: theme.textTheme.titleMedium),
+        Text('What was spilled?', style: theme.textTheme.headlineSmall),
         const SizedBox(height: 12),
         TextField(
           controller: _substance,
@@ -172,14 +173,14 @@ class _AskState extends ConsumerState<_Ask> {
               ? 'A photo is optional. It helps when you are not sure what the '
                     'mark is — what you tell it still comes first.'
               : 'Photo attached.',
-          style: theme.textTheme.bodySmall?.copyWith(
+          style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
         const SizedBox(height: 8),
         Align(
           alignment: Alignment.centerLeft,
-          child: OutlinedButton.icon(
+          child: FilledButton.tonalIcon(
             onPressed: _addPhoto,
             icon: const Icon(Icons.photo_camera_outlined),
             label: Text(_photo == null ? 'Add a photo' : 'Replace the photo'),
@@ -222,7 +223,7 @@ class _Advice extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text(state.substance, style: theme.textTheme.titleMedium),
+              Text(state.substance, style: theme.textTheme.headlineSmall),
               if (state.identifiedAs case final String identified)
                 Padding(
                   padding: const EdgeInsets.only(top: 2),
@@ -251,9 +252,16 @@ class _Advice extends ConsumerWidget {
                       'long ago. Everything that was ruled out is listed '
                       'below.',
                 )
-              else
-                for (final (index, step) in plan.steps.indexed)
-                  _Step(number: index + 1, step: step),
+              else if (plan.steps.isNotEmpty)
+                RinseCard(
+                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
+                  child: Column(
+                    children: [
+                      for (final (index, step) in plan.steps.indexed)
+                        _Step(number: index + 1, step: step),
+                    ],
+                  ),
+                ),
 
               if (plan.cautions.isNotEmpty) ...[
                 const SizedBox(height: 12),
@@ -267,7 +275,7 @@ class _Advice extends ConsumerWidget {
 
               if (plan.refused.isNotEmpty) ...[
                 const SizedBox(height: 24),
-                Text('Left out', style: theme.textTheme.titleSmall),
+                const SectionLabel('Left out', padding: EdgeInsets.zero),
                 const SizedBox(height: 4),
                 Text(
                   'The usual treatment includes these. This garment cannot '
@@ -323,12 +331,13 @@ class _Step extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CircleAvatar(
-            radius: 14,
-            backgroundColor: theme.colorScheme.primaryContainer,
+            radius: 15,
+            backgroundColor: theme.colorScheme.primary,
             child: Text(
               '$number',
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.onPrimaryContainer,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.onPrimary,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
@@ -340,13 +349,18 @@ class _Step extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(step.instruction, style: theme.textTheme.bodyLarge),
+                Text(
+                  step.instruction,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 if (step.because case final String because)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
                       because,
-                      style: theme.textTheme.bodySmall?.copyWith(
+                      style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),

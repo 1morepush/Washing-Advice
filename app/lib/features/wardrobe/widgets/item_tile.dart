@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
+import '../../../core/theme.dart';
 import '../../../widgets/confidence_chip.dart';
 import '../../../widgets/item_thumbnail.dart';
 
@@ -40,6 +41,9 @@ class ItemTile extends StatelessWidget {
       onLongPress: onLongPress,
       selected: selected,
       selectedTileColor: theme.colorScheme.primaryContainer,
+      shape: RoundedRectangleBorder(
+        borderRadius: context.rinse.tileBorderRadius,
+      ),
       // The thumbnail is the row's identity, so the tick replaces it rather
       // than crowding in beside it — the same swap a mail app makes, and the
       // reason a selected row reads as selected at a glance.
@@ -53,6 +57,7 @@ class ItemTile extends StatelessWidget {
         item.displayName,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.titleSmall,
       ),
       subtitle: Text(
         [
@@ -62,7 +67,9 @@ class ItemTile extends StatelessWidget {
         ].join(' · '),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.bodySmall,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -79,7 +86,7 @@ class ItemTile extends StatelessWidget {
               ),
             ),
           if (item.isFavorite)
-            Icon(Icons.star, size: 20, color: theme.colorScheme.tertiary),
+            Icon(Icons.star, size: 20, color: theme.colorScheme.primary),
           const SizedBox(width: 4),
           ConfidenceChip.of(item.type, compact: true),
         ],

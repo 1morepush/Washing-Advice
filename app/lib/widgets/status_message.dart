@@ -19,6 +19,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'rinse_kit.dart';
+
 class StatusMessage extends StatelessWidget {
   const StatusMessage({
     required this.icon,
@@ -67,12 +69,12 @@ class StatusMessage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 48, color: theme.colorScheme.onSurfaceVariant),
+            IconBadge(icon, size: 80),
             const SizedBox(height: 16),
             Text(
               title,
               textAlign: TextAlign.center,
-              style: theme.textTheme.titleMedium,
+              style: theme.textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
             Text(
@@ -92,9 +94,7 @@ class StatusMessage extends StatelessWidget {
                 technical,
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant.withValues(
-                    alpha: 0.7,
-                  ),
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             ],

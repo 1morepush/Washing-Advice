@@ -11,7 +11,9 @@ import '../../core/theme.dart';
 import '../../data/api/scan_dto.dart';
 import '../../widgets/confidence_chip.dart';
 import '../../widgets/notice.dart';
+import '../../widgets/rinse_kit.dart';
 import 'scan_controller.dart';
+import 'scan_parts.dart';
 
 class ScanReview extends StatelessWidget {
   const ScanReview({required this.state, required this.controller, super.key});
@@ -43,28 +45,36 @@ class ScanReview extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 16),
-              _Reading(label: 'Type', belief: draft.type, show: (t) => t.label),
-              if (draft.brand case final Confident<String> brand)
-                _Reading(label: 'Brand', belief: brand, show: (b) => b),
-              _Reading(
-                label: 'Fabric',
-                belief: draft.composition,
-                show: (c) => c.isEmpty ? 'Not readable' : c.label,
+              GroupCard(
+                children: [
+                  _Reading(
+                    label: 'Type',
+                    belief: draft.type,
+                    show: (t) => t.label,
+                  ),
+                  if (draft.brand case final Confident<String> brand)
+                    _Reading(label: 'Brand', belief: brand, show: (b) => b),
+                  _Reading(
+                    label: 'Fabric',
+                    belief: draft.composition,
+                    show: (c) => c.isEmpty ? 'Not readable' : c.label,
+                  ),
+                  _Reading(
+                    label: 'Color',
+                    belief: draft.colors,
+                    show: (c) => c.isEmpty
+                        ? 'Not readable'
+                        : c.colors.map((x) => x.name ?? x.hex).join(', '),
+                  ),
+                  if (draft.pattern case final Confident<Pattern> pattern)
+                    _Reading(
+                      label: 'Pattern',
+                      belief: pattern,
+                      show: (p) => p.label,
+                    ),
+                ],
               ),
-              _Reading(
-                label: 'Color',
-                belief: draft.colors,
-                show: (c) => c.isEmpty
-                    ? 'Not readable'
-                    : c.colors.map((x) => x.name ?? x.hex).join(', '),
-              ),
-              if (draft.pattern case final Confident<Pattern> pattern)
-                _Reading(
-                  label: 'Pattern',
-                  belief: pattern,
-                  show: (p) => p.label,
-                ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               // Before the care card, because it changes how that card should
               // be read.
               if (state.label != null || state.labelUnread)
@@ -76,19 +86,19 @@ class ScanReview extends StatelessWidget {
           ),
         ),
         SafeArea(
+          top: false,
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: Row(
               children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: controller.reset,
-                    child: const Text('Retake'),
-                  ),
+                // Its own width, so a short word never wraps on a narrow phone;
+                // the primary action takes the rest.
+                FilledButton.tonal(
+                  onPressed: controller.reset,
+                  child: const Text('Retake'),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  flex: 2,
                   child: FilledButton(
                     onPressed: () async {
                       await controller.save();
@@ -122,45 +132,49 @@ class _Reading<T extends Object> extends StatelessWidget {
     final theme = Theme.of(context);
     final band = ConfidenceThresholds.bandFor(belief.confidence);
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        // Top-aligned, because a long fabric list wraps to two lines and a
-        // centred chip then floats beside the middle of the text it qualifies.
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 72,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 3),
-                child: Text(
-                  label,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      // Top-aligned, because a long fabric list wraps to two lines and a
+      // centred chip then floats beside the middle of the text it qualifies.
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 76,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  show(belief.value),
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    // Uncertain readings are tinted rather than annotated.
+                    // The chip under this already says "Please check", and
+                    // adding a second line saying the same thing made the
+                    // row noisier without making it any clearer.
+                    color: band == ConfidenceBand.high
+                        ? null
+                        : theme.colorScheme.confidenceColor(band),
                   ),
                 ),
-              ),
+                const SizedBox(height: 6),
+                ConfidenceChip.of(belief),
+              ],
             ),
-            Expanded(
-              child: Text(
-                show(belief.value),
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  // Uncertain readings are tinted rather than annotated. The
-                  // chip beside this already says "Please check", and adding a
-                  // second line saying the same thing made the row noisier
-                  // without making it any clearer.
-                  color: band == ConfidenceBand.high
-                      ? null
-                      : theme.colorScheme.confidenceColor(band),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            ConfidenceChip.of(belief),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -177,7 +191,7 @@ class _LabelOutcome extends StatelessWidget {
 
     return NoteRow(
       icon: read ? Icons.check_circle_outline : Icons.error_outline,
-      color: read ? scheme.primary : scheme.error,
+      color: read ? context.rinse.textAccent : scheme.error,
       text: read
           ? 'The care label was read from your photo, so the washing '
                 'below comes from the manufacturer rather than a guess.'
@@ -198,50 +212,50 @@ class _CareSummary extends StatelessWidget {
     final theme = Theme.of(context);
     final wash = item.effectiveCare.wash;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'How it will be washed',
-                    style: theme.textTheme.titleSmall,
-                  ),
-                ),
-                ConfidenceChip(
-                  confidence: item.care.confidence,
-                  source: item.care.source,
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              wash.method == WashMethod.doNotWash
-                  ? 'Do not wash'
-                  : '${wash.method.label}'
-                        '${wash.maxTempC == null ? '' : ', up to ${wash.maxTempC}°C'}'
-                        ', ${wash.agitation.label.toLowerCase()}',
-              style: theme.textTheme.bodyMedium,
-            ),
-            if (item.needsCareTagScan) ...[
-              const SizedBox(height: 12),
-              Text(
-                // The honest statement of what just happened: the fabric was
-                // read from a photograph and the care follows from a rule, not
-                // from the manufacturer.
-                'This is derived from the fabric, not from a care label. '
-                'Scan the label to be certain.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.tertiary,
+    return RinseCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'How it will be washed',
+                  style: theme.textTheme.titleMedium,
                 ),
               ),
+              ConfidenceChip(
+                confidence: item.care.confidence,
+                source: item.care.source,
+              ),
             ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            wash.method == WashMethod.doNotWash
+                ? 'Do not wash'
+                : '${wash.method.label}'
+                      '${wash.maxTempC == null ? '' : ', up to ${wash.maxTempC}°C'}'
+                      ', ${wash.agitation.label.toLowerCase()}',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          CareSymbolRow(care: item.effectiveCare),
+          if (item.needsCareTagScan) ...[
+            const SizedBox(height: 12),
+            Text(
+              // The honest statement of what just happened: the fabric was
+              // read from a photograph and the care follows from a rule, not
+              // from the manufacturer.
+              'This is derived from the fabric, not from a care label. '
+              'Scan the label to be certain.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.tertiary,
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }

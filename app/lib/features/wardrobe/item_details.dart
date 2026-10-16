@@ -9,6 +9,8 @@ import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
+import '../../core/theme.dart';
+import '../../widgets/care_symbol.dart';
 import '../../widgets/confidence_chip.dart';
 import '../../widgets/item_thumbnail.dart';
 import '../history/wear_recorder.dart';
@@ -29,14 +31,13 @@ class ItemDetails extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.only(bottom: 32),
       children: [
-        // Only when there is a real picture. A 160-pixel colour swatch is a
-        // large coloured circle telling the user nothing they cannot already
-        // see in the list, so the space goes to the facts instead.
-        if (item.photos.displayImageUri != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 16),
-            child: Center(child: ItemThumbnail(item: item, size: 160)),
-          ),
+        // The garment on its well, photographed or drawn. It used to be left
+        // out when there was no picture, because a 160-pixel colour disc told
+        // nobody anything the list had not; the silhouette in the garment's
+        // own colour does — it is what the garment is — so it always has a
+        // place here.
+        _Hero(item: item),
+        _NameHeading(item: item),
         _Actions(item: item),
         if (CutoutController.isAvailableFor(item))
           _CutoutPrompt(
@@ -92,6 +93,12 @@ class ItemDetails extends StatelessWidget {
             source: item.care.source,
           ),
           children: [
+            // The symbols as the label prints them, beside the words below
+            // and never instead of them: a symbol the art does not cover (a
+            // 60° wash, three iron dots) is simply absent here and still
+            // spelled out in the rows.
+            if (careSymbolsFor(care) case final kinds when kinds.isNotEmpty)
+              _CareSymbols(kinds: kinds),
             _Fact(label: 'Wash', value: washSummary(care.wash)),
             _Fact(label: 'Dry', value: drySummary(care.dry)),
             _Fact(label: 'Iron', value: ironSummary(care.iron)),
@@ -221,7 +228,7 @@ class _ScanPrompt extends ConsumerWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: scheme.tertiaryContainer,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: context.rinse.tileBorderRadius,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -426,34 +433,130 @@ class _Section extends StatelessWidget {
   final Widget? trailing;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // A `Wrap`, for the same reason `_Fact` uses one: the trailing widget
-        // is a confidence chip whose text runs to "Confident · from the care
-        // label", and unflexed beside a heading it overflowed once the system
-        // text size went up. Here it drops below the heading instead.
-        Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
+  Widget build(BuildContext context) => Card(
+    margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // A `Wrap`, for the same reason `_Fact` uses one: the trailing
+          // widget is a confidence chip whose text runs to "Confident · from
+          // the care label", and unflexed beside a heading it overflowed once
+          // the system text size went up. Here it drops below the heading
+          // instead.
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                title,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
               ),
-            ),
-            if (trailing case final Widget trailing) trailing,
-          ],
-        ),
-        const SizedBox(height: 8),
-        ...children,
-      ],
+              if (trailing case final Widget trailing) trailing,
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...children,
+        ],
+      ),
     ),
   );
+}
+
+/// The contrast a garment needs against its hero tile: higher than a list
+/// tile's 1.6, because at 176 px a dim silhouette reads as a smudge.
+const heroFloor = 2.2;
+
+/// The garment large, on the soft well every garment tile sits on.
+class _Hero extends StatelessWidget {
+  const _Hero({required this.item});
+
+  final WardrobeItem item;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 216,
+    color: ItemThumbnail.tileFor(context, item, floor: heroFloor),
+    alignment: Alignment.center,
+    // `backdrop: false` because the hero is itself the tile, tinted only as
+    // far as this garment needs to show (see [ItemThumbnail.tileFor]); the tint a
+    // cutout gets in a list would make a second, smaller panel inside it.
+    child: ItemThumbnail(item: item, size: 176, backdrop: false),
+  );
+}
+
+/// The care symbols for this garment, three to a row, each captioned.
+///
+/// Captioned because a symbol is only legible to somebody who already knows
+/// the alphabet, and the person holding the phone often does not.
+class _CareSymbols extends StatelessWidget {
+  const _CareSymbols({required this.kinds});
+
+  final List<CareSymbolKind> kinds;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final rinse = context.rinse;
+    final edge = rinse.cardEdge;
+    const gap = 8.0;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: LayoutBuilder(
+        builder: (context, box) {
+          // Three columns, fewer when the text is large enough that a caption
+          // would not fit a third of the width.
+          final scale = MediaQuery.textScalerOf(context).scale(1);
+          final columns = scale > 1.4 ? 2 : 3;
+          final width = (box.maxWidth - gap * (columns - 1)) / columns;
+          return Wrap(
+            spacing: gap,
+            runSpacing: gap,
+            children: [
+              for (final kind in kinds)
+                Container(
+                  width: width,
+                  constraints: const BoxConstraints(minHeight: 88),
+                  padding: const EdgeInsets.fromLTRB(4, 10, 4, 8),
+                  decoration: BoxDecoration(
+                    color: rinse.well,
+                    borderRadius: rinse.tileBorderRadius,
+                    border: edge == BorderSide.none
+                        ? null
+                        : Border.fromBorderSide(edge),
+                  ),
+                  child: Column(
+                    children: [
+                      CareSymbol(
+                        kind: kind,
+                        color: theme.colorScheme.onSurface,
+                        size: 32,
+                        // The caption says the same thing.
+                        semanticLabel: '',
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        careArt[kind]!.label,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          height: 1.15,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 }
 
 /// A single labelled claim, with its provenance when it has one.
@@ -523,6 +626,7 @@ class _Fact extends StatelessWidget {
                 Text(
                   value.trim().isEmpty ? 'Not known' : value,
                   style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: value.trim().isEmpty ? null : FontWeight.w700,
                     // Greyed and italic when there is nothing, so absence does
                     // not read as a garment whose colour is called "Not known".
                     color: value.trim().isEmpty
@@ -537,6 +641,48 @@ class _Fact extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The garment's name as the page's heading, with what it is underneath:
+/// "Uniqlo · Sweater", built only from what is recorded, so a garment with no
+/// brand reads just "Sweater".
+class _NameHeading extends StatelessWidget {
+  const _NameHeading({required this.item});
+
+  final WardrobeItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final subtitle = [
+      if (item.brand case final Confident<String> brand) brand.value,
+      item.type.value.label,
+    ].where((part) => part.trim().isNotEmpty).join(' · ');
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            item.displayName,
+            style: theme.textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          if (subtitle.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ],
       ),
     );

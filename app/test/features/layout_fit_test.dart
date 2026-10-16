@@ -10,9 +10,9 @@
 /// And the real font is loaded. `flutter_test`'s default font draws every
 /// glyph as a square of the font size, so a string measures roughly twice its
 /// true width and screens that fit perfectly well are reported as
-/// overflowing. Liberation Sans is what this app actually renders with in a
-/// browser — which is what the installed PWA is — so loading it is what makes
-/// a failure here mean a failure on the phone.
+/// overflowing. Nunito is what this app renders with on every
+/// platform, so loading it is what makes a failure here mean a failure on the
+/// phone.
 ///
 /// A `RenderFlex` overflow is reported through `FlutterError`, so
 /// `expect(takeException(), isNull)` after a pump is the whole assertion.
@@ -31,6 +31,7 @@ import 'package:washing_advice/core/settings.dart';
 import 'package:washing_advice/core/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:washing_advice/data/images/memory_image_store.dart';
+
 import 'dart:typed_data';
 
 import 'package:washing_advice/data/api/ai_gateway.dart';
@@ -62,14 +63,13 @@ void main() {
 
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
-    await (FontLoader('Liberation Sans')
-          ..addFont(rootBundle.load('assets/fonts/LiberationSans-Regular.ttf')))
-        .load();
+    final loader = FontLoader(rinseFontFamily);
+    for (final file in ['Regular', 'SemiBold', 'Bold', 'ExtraBold']) {
+      loader.addFont(rootBundle.load('assets/fonts/Nunito-$file.ttf'));
+    }
+    await loader.load();
 
-    final base = AppTheme.light();
-    theme = base.copyWith(
-      textTheme: base.textTheme.apply(fontFamily: 'Liberation Sans'),
-    );
+    theme = AppTheme.light();
   });
 
   setUp(() async {

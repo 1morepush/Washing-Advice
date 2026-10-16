@@ -13,7 +13,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/settings.dart';
+import '../../core/theme.dart';
 import '../../data/api/ai_gateway.dart' show wakingAfter;
+import '../../widgets/rinse_kit.dart' show InsetPanel;
 import 'sync_controller.dart';
 
 class SyncSection extends ConsumerStatefulWidget {
@@ -78,7 +80,6 @@ class _SyncSectionState extends ConsumerState<SyncSection> {
           decoration: InputDecoration(
             labelText: 'Sync token',
             hintText: 'Paste an existing token, or generate one',
-            border: const OutlineInputBorder(),
             suffixIcon: IconButton(
               onPressed: () => setState(() => _revealed = !_revealed),
               icon: Icon(_revealed ? Icons.visibility_off : Icons.visibility),
@@ -100,7 +101,7 @@ class _SyncSectionState extends ConsumerState<SyncSection> {
               },
               child: const Text('Save'),
             ),
-            OutlinedButton(
+            FilledButton.tonal(
               onPressed: () {
                 // Generated here rather than issued by the server: there is no
                 // registration step to fail, and no list of users to leak.
@@ -160,7 +161,7 @@ class _Status extends StatelessWidget {
       SyncDone(:final report) => (
         Icons.cloud_done_outlined,
         _summarise(report),
-        theme.colorScheme.primary,
+        context.rinse.textAccent,
       ),
       SyncFailed(:final message, :final isRetryable) => (
         Icons.cloud_off_outlined,
@@ -177,7 +178,7 @@ class _Status extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: theme.textTheme.bodySmall?.copyWith(color: color),
+            style: theme.textTheme.bodyMedium?.copyWith(color: color),
           ),
         ),
       ],
@@ -214,12 +215,7 @@ class _Warning extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-      ),
+    return InsetPanel(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -239,7 +235,7 @@ class _Warning extends StatelessWidget {
               'wardrobe, and losing it means losing the copy on the server. '
               'Keep it somewhere you keep passwords, and use the same token on '
               'each of your devices.',
-              style: theme.textTheme.bodySmall?.copyWith(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),

@@ -14,9 +14,14 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import 'package:washing_advice/core/providers.dart';
 import 'package:washing_advice/core/settings.dart';
 import 'package:washing_advice/data/images/memory_image_store.dart';
+import 'package:washing_advice/core/theme.dart';
 import 'package:washing_advice/features/laundry/laundry_screen.dart';
+import 'package:washing_advice/widgets/garment_glyph.dart';
 import 'package:washing_advice/features/pile/pile_screen.dart';
 import 'package:washing_advice/main.dart';
+import 'package:washing_advice/widgets/rinse_kit.dart';
+
+import '../support/contrast.dart';
 
 import '../support/fixtures.dart';
 
@@ -68,38 +73,59 @@ void main() {
   ) async {
     await open(tester);
 
-    final tabs = tester.widgetList<Tab>(find.byType(Tab)).toList();
-    expect(tabs.map((t) => t.text), [
-      startsWith('Basket'),
-      startsWith('Washing'),
-      startsWith('Drying'),
-    ]);
+    final pills = tester.widgetList<StagePill>(find.byType(StagePill)).toList();
+    expect(pills.map((p) => p.label), ['Basket', 'Washing', 'Drying']);
+    // Only the open stage is filled.
+    expect(pills.map((p) => p.selected), [true, false, false]);
     expect(find.textContaining('Clean'), findsNothing);
     expect(find.textContaining('To wash'), findsNothing);
+  });
+
+  testWidgets('tapping a stage pill opens that stage and fills it', (
+    tester,
+  ) async {
+    await open(tester);
+
+    await tester.tap(find.byType(StagePill).at(1));
+    await tester.pumpAndSettle();
+
+    final pills = tester.widgetList<StagePill>(find.byType(StagePill)).toList();
+    expect(pills.map((p) => p.selected), [false, true, false]);
+    expect(find.text('Photograph a pile'), findsNothing);
   });
 
   testWidgets('opens on the basket, with its count', (tester) async {
     await open(tester);
 
-    expect(find.text('Basket (1)'), findsOneWidget);
+    expect(find.text('Basket 1'), findsOneWidget);
     expect(find.text('Photograph a pile'), findsOneWidget);
     expect(find.text('What did you wear today?'), findsOneWidget);
   });
 
-  for (final scale in [1.0, 2.0]) {
-    testWidgets('all three fit 320 dp wide at ${scale}x text', (tester) async {
-      tester.platformDispatcher.textScaleFactorTestValue = scale;
-      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-      await open(tester, size: const Size(320, 640));
+  testWidgets('all three fit 320 dp wide at normal text', (tester) async {
+    await open(tester, size: const Size(320, 640));
 
-      expect(tester.takeException(), isNull);
-      for (final tab in tester.widgetList<Tab>(find.byType(Tab))) {
-        final box = tester.getRect(find.byWidget(tab));
-        expect(box.left, greaterThanOrEqualTo(0));
-        expect(box.right, lessThanOrEqualTo(320));
-      }
-    });
-  }
+    expect(tester.takeException(), isNull);
+    for (final pill in tester.widgetList<StagePill>(find.byType(StagePill))) {
+      final box = tester.getRect(find.byWidget(pill));
+      expect(box.left, greaterThanOrEqualTo(0));
+      expect(box.right, lessThanOrEqualTo(320));
+    }
+  });
+
+  // At large text the pills scroll rather than lose letters; that they do so
+  // without overflowing is pinned, with the words, in
+  // laundry_large_text_test.dart.
+  testWidgets('and at 2x text the row scrolls without overflowing', (
+    tester,
+  ) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await open(tester, size: const Size(320, 640));
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(StagePill), findsNWidgets(3));
+  });
 
   testWidgets('the pile photo opens from here and Back returns here', (
     tester,
@@ -128,4 +154,32 @@ void main() {
     expect(find.text('Sort laundry'), findsNothing);
     expect(find.text('Photograph a pile'), findsNothing);
   });
+
+  test(
+    'the worn-today glyph stack shows on the card and the well, every mode',
+    () {
+      final themes = {
+        'light': AppTheme.light(),
+        'dark': AppTheme.dark(),
+        'amoled': AppTheme.amoled(),
+      };
+      for (final MapEntry(key: name, value: theme) in themes.entries) {
+        final card = theme.cardTheme.color!;
+        final well = theme.extension<RinseShape>()!.well;
+        for (final kind in [GlyphKind.hoodie, GlyphKind.jeans, GlyphKind.tee]) {
+          final fill = wornTodayStackFill(theme.colorScheme, kind);
+          expect(
+            contrastBetween(fill, card),
+            greaterThanOrEqualTo(1.5),
+            reason: '$name ${kind.name} on the card',
+          );
+          expect(
+            contrastBetween(fill, well),
+            greaterThanOrEqualTo(1.5),
+            reason: '$name ${kind.name} on the well',
+          );
+        }
+      }
+    },
+  );
 }

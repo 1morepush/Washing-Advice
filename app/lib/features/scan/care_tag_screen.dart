@@ -7,8 +7,6 @@
 /// what the app had been telling them.
 library;
 
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
@@ -18,6 +16,7 @@ import '../../widgets/collected_photos.dart';
 import '../../widgets/state_view.dart';
 import 'care_tag_controller.dart';
 import 'care_tag_review.dart';
+import 'scan_parts.dart';
 
 class CareTagScreen extends ConsumerWidget {
   const CareTagScreen({required this.id, super.key});
@@ -109,7 +108,7 @@ class _Reading extends StatelessWidget {
         const SizedBox(height: 24),
         Text(
           'Reading the label…',
-          style: Theme.of(context).textTheme.titleMedium,
+          style: Theme.of(context).textTheme.titleLarge,
         ),
       ],
     ),
@@ -158,33 +157,18 @@ class _Shot extends StatelessWidget {
 
     return Stack(
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.memory(
-            Uint8List.fromList(image.bytes),
-            width: 108,
-            height: 108,
-            fit: BoxFit.cover,
-            // A thumbnail that will not decode must not take the screen with
-            // it — the photograph is still perfectly good to the server.
-            errorBuilder: (_, _, _) => Container(
-              width: 108,
-              height: 108,
-              color: theme.colorScheme.surfaceContainerHighest,
-              child: const Icon(Icons.image_not_supported_outlined),
-            ),
-          ),
-        ),
+        ScanThumb(image: image, size: 108),
         Positioned(
-          top: 4,
-          left: 4,
+          top: 6,
+          left: 6,
           child: CircleAvatar(
-            radius: 11,
+            radius: 12,
             backgroundColor: theme.colorScheme.primary,
             child: Text(
               '$index',
               style: theme.textTheme.labelSmall?.copyWith(
                 color: theme.colorScheme.onPrimary,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),

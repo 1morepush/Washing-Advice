@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'core/licences.dart';
 import 'core/providers.dart';
 import 'core/router.dart';
 import 'core/settings.dart';
@@ -26,6 +27,7 @@ import 'features/laundry/evening_nudge.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  registerFontLicences();
 
   // Settings are read before the first frame rather than awaited inside a
   // provider, so no screen has to render a spinner while waiting to find out

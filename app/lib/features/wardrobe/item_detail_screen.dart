@@ -7,33 +7,38 @@
 /// carries its provenance.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
+import '../../core/theme.dart';
 import '../../widgets/back_navigation.dart';
+import '../../widgets/item_thumbnail.dart';
 import '../../widgets/status_message.dart';
 import 'condition_sheet.dart';
 import 'item_details.dart';
 import 'report_wear_sheet.dart';
 
-/// How tall the bar has to be to hold a three-line name at the current type
-/// size.
-///
-/// Derived rather than fixed. `toolbarHeight` is in logical pixels and does
-/// not follow the text scale, so a height that fits three lines by default
-/// clips the last one as soon as somebody turns their type up — and the larger
-/// the type, the more likely the name needed three lines in the first place.
-double _titleHeight(BuildContext context) {
-  final style = Theme.of(context).textTheme.titleMedium;
-  final scaled = MediaQuery.textScalerOf(
-    context,
-  ).scale(style?.fontSize ?? 16.0);
-  // Three lines at the style's own line spacing, plus the padding the bar
-  // keeps above and below its title.
-  return (scaled * (style?.height ?? 1.4) * 3) + 24;
+/// The bar's colour and the colour of its icons: the hero's tile, and the
+/// page's ink or its ground, whichever has more contrast with that tile.
+(Color, Color) _bar(BuildContext context, WardrobeItem? item) {
+  final scheme = Theme.of(context).colorScheme;
+  final tile = item == null
+      ? context.rinse.well
+      : ItemThumbnail.tileFor(context, item, floor: heroFloor);
+  double ratio(Color a, Color b) {
+    final x = a.computeLuminance(), y = b.computeLuminance();
+    return (math.max(x, y) + 0.05) / (math.min(x, y) + 0.05);
+  }
+
+  final ink = ratio(scheme.onSurface, tile) >= ratio(scheme.surface, tile)
+      ? scheme.onSurface
+      : scheme.surface;
+  return (tile, ink);
 }
 
 class ItemDetailScreen extends ConsumerWidget {
@@ -47,27 +52,19 @@ class ItemDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        // The well the garment sits on, so the bar and the hero beneath it
+        // read as one header rather than two bands with a seam between.
+        backgroundColor: _bar(context, item.valueOrNull).$1,
+        // Icons in whichever of the page's ink and ground reads better on the
+        // tile: a lifted tile under a dark garment is light enough that the
+        // usual pale icons would fade into it.
+        foregroundColor: _bar(context, item.valueOrNull).$2,
         leading: backLeading(context, '/'),
-        // The name gets the room it needs. A garment's name is the one thing
-        // on this screen that says *which* garment it is, and a single line
-        // cut "Black koi graphic tee" down to "Black koi graphic t…" — losing
-        // precisely the word that tells it from every other black tee. The
-        // distinguishing word is as often at the end as the start, so
-        // truncation is not a graceful degradation here.
-        //
-        // Three lines rather than two because two is not enough at a larger
-        // text size, which is exactly when someone needs the name legible.
-        // The bar grows with the type for the same reason: a fixed height
-        // would clip the third line the moment it was used.
-        toolbarHeight: _titleHeight(context),
-        title: Text(
-          item.valueOrNull?.displayName ?? 'Item',
-          maxLines: 3,
-          overflow: TextOverflow.ellipsis,
-          // A step down from the default, so a wrapped name reads as a title
-          // rather than as a paragraph in the chrome.
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        // The name is a heading in the body, under the picture, where it has
+        // the whole width and as many lines as it needs (see [ItemDetails]);
+        // repeating it here would only say it twice. While the item is still
+        // loading the bar says what the page is.
+        title: item.valueOrNull == null ? const Text('Item') : null,
         // Two icons, not five. Everything else moved into the body as a
         // labelled button, because five unlabelled glyphs squeezed the
         // garment's own name down to "Charco…" and left the most useful

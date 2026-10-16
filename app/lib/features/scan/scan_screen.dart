@@ -16,11 +16,13 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../data/api/ai_gateway.dart';
 import '../../widgets/back_navigation.dart';
 import '../../widgets/collected_photos.dart';
+import '../../widgets/notice.dart';
 import '../../widgets/state_view.dart';
 import 'crop_screen.dart';
 import 'scan_controller.dart';
 import 'scan_review.dart';
 import 'shot_tile.dart';
+import '../../widgets/rinse_kit.dart';
 
 class ScanScreen extends ConsumerWidget {
   const ScanScreen({super.key});
@@ -35,7 +37,7 @@ class ScanScreen extends ConsumerWidget {
       child: Scaffold(
         appBar: AppBar(
           leading: backLeading(context, '/', onLeave: controller.reset),
-          title: const Text('Scan a garment'),
+          title: const AppBarTitle('Scan a garment'),
         ),
         body: switch (state) {
           ScanIdle() => _Capture(controller: controller),
@@ -82,8 +84,8 @@ class _Capture extends StatelessWidget {
         icon: const Icon(Icons.camera_alt_outlined),
         label: const Text('Take a photo'),
       ),
-      const SizedBox(height: 8),
-      TextButton.icon(
+      const SizedBox(height: 12),
+      FilledButton.tonalIcon(
         onPressed: () => controller.capture(fromGallery: true),
         icon: const Icon(Icons.photo_library_outlined),
         label: const Text('Choose from library'),
@@ -140,7 +142,7 @@ class _AnalysingState extends State<_Analysing> {
             widget.imageCount == 1
                 ? 'Reading the photo…'
                 : 'Reading ${widget.imageCount} photos…',
-            style: Theme.of(context).textTheme.titleMedium,
+            style: Theme.of(context).textTheme.titleLarge,
             textAlign: TextAlign.center,
           ),
           if (_slow) ...[
@@ -204,17 +206,17 @@ class _Collected extends StatelessWidget {
           'shows. Nothing has been sent yet.',
       // Said here rather than discovered afterwards: somebody who does
       // not know they can include the tag keeps making a second trip.
-      extra: Text(
-        hasCareTag
+      extra: NoteRow(
+        icon: hasCareTag ? Icons.check_circle_outline : Icons.label_outline,
+        color: hasCareTag
+            ? theme.colorScheme.primary
+            : theme.colorScheme.onSurfaceVariant,
+        bottomPadding: 0,
+        text: hasCareTag
             ? 'The care label is in here too, so it will be read in '
                   'the same pass — no need to scan it separately after.'
             : 'Photograph the care label too and mark it "Care label", '
                   'and it is read in the same pass.',
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: hasCareTag
-              ? theme.colorScheme.primary
-              : theme.colorScheme.onSurfaceVariant,
-        ),
       ),
       tiles: [
         for (final (index, shot) in shots.indexed)

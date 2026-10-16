@@ -3,7 +3,7 @@ description: >-
   AI wardrobe and laundry assistant. Presentation only — every judgement about
   how to treat a garment lives in the wardrobe_core package.
 publish_to: 'none'
-version: 0.31.0+1
+version: 0.32.0+1
 
 environment:
   sdk: ^3.12.2
@@ -80,12 +80,19 @@ flutter:
     # Demo garment cutouts, produced by running the real background remover
     # over drawn shapes. See server/tools/make_demo_cutouts.py.
     - assets/demo/cutouts.json
+    # The font's licence, registered for the licence page. See lib/core/licences.dart.
+    - assets/fonts/Nunito-OFL.txt
 
-  # Only used on web, where CanvasKit has no system font and would otherwise
-  # fetch Roboto from a CDN at runtime. See assets/fonts/README.md.
+  # Nunito, on every platform. Nothing is fetched at run time; see
+  # assets/fonts/README.md. The 600 weight is what Flutter's FontWeight.w600
+  # asks for, and 500 falls to the nearest.
   fonts:
-    - family: Liberation Sans
+    - family: Nunito
       fonts:
-        - asset: assets/fonts/LiberationSans-Regular.ttf
-        - asset: assets/fonts/LiberationSans-Bold.ttf
+        - asset: assets/fonts/Nunito-Regular.ttf
+        - asset: assets/fonts/Nunito-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Nunito-Bold.ttf
           weight: 700
+        - asset: assets/fonts/Nunito-ExtraBold.ttf
+          weight: 800

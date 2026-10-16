@@ -41,7 +41,7 @@ class _UpdateSectionState extends State<UpdateSection> {
       children: [
         TitleWithInfo(
           'App updates',
-          style: theme.textTheme.titleSmall,
+          style: theme.textTheme.titleMedium,
           info:
               'If the app looks outdated after a change, use this instead of '
               'deleting and re-adding the home screen icon — it clears what '
@@ -50,7 +50,7 @@ class _UpdateSectionState extends State<UpdateSection> {
         const SizedBox(height: 4),
         Row(
           children: [
-            OutlinedButton.icon(
+            FilledButton.tonalIcon(
               onPressed: _updating ? null : _check,
               icon: const Icon(Icons.refresh),
               label: const Text('Check for updates'),

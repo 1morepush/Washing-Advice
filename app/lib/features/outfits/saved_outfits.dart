@@ -12,6 +12,7 @@ import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
+import '../../core/theme.dart';
 import '../../widgets/item_thumbnail.dart';
 import '../../widgets/state_view.dart';
 import '../../widgets/status_message.dart';
@@ -57,7 +58,7 @@ class _SavedCard extends ConsumerWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -67,10 +68,15 @@ class _SavedCard extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(outfit.name, style: theme.textTheme.titleMedium),
+                      Text(
+                        outfit.name,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                       Text(
                         _subtitleFor(outfit),
-                        style: theme.textTheme.bodySmall?.copyWith(
+                        style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
@@ -100,7 +106,7 @@ class _SavedCard extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             SizedBox(
-              height: 84,
+              height: 88,
               child: items.when(
                 loading: () => const SizedBox.shrink(),
                 error: (error, _) => Text(
@@ -115,19 +121,20 @@ class _SavedCard extends ConsumerWidget {
                     final item = list[index];
                     return InkWell(
                       onTap: () => context.push('/item/${item.id.value}'),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: context.rinse.tileBorderRadius,
                       child: Tooltip(
                         message: item.displayName,
-                        child: ItemThumbnail(item: item, size: 80),
+                        child: ItemThumbnail(item: item, size: 84),
                       ),
                     );
                   },
                 ),
               ),
             ),
+            const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
-              child: TextButton.icon(
+              child: FilledButton.icon(
                 onPressed: () async {
                   await controller.wear(outfit);
                   if (!context.mounted) return;

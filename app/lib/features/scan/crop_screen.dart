@@ -17,6 +17,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../widgets/status_message.dart';
 import '../wardrobe/mask_edit.dart' show MaskGeometry;
 import 'crop.dart';
+import '../../widgets/rinse_kit.dart';
 
 /// Opens the cropper for [image] and returns the cropped version.
 ///
@@ -114,7 +115,7 @@ class _CropScreenState extends State<CropScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: const CloseButton(),
-        title: const Text('Frame the garment'),
+        title: const AppBarTitle('Frame the garment'),
       ),
       body: switch ((_failure, _decoded)) {
         (final String failure, _) => StatusMessage(
@@ -131,7 +132,7 @@ class _CropScreenState extends State<CropScreen> {
                 'Drag the corners in so the garment fills the frame. The '
                 'background is worked out from the edges of the photo, so the '
                 'less of the room is in shot the better the cutout.',
-                style: theme.textTheme.bodySmall?.copyWith(
+                style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
@@ -183,7 +184,7 @@ class _CropScreenState extends State<CropScreen> {
                           crop: _crop!,
                           geometry: geometry,
                           scrim: theme.colorScheme.scrim,
-                          line: theme.colorScheme.onSurface,
+                          line: Colors.white,
                         ),
                         size: Size.infinite,
                       ),
@@ -195,10 +196,10 @@ class _CropScreenState extends State<CropScreen> {
             SafeArea(
               top: false,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                 child: Row(
                   children: [
-                    TextButton(
+                    FilledButton.tonal(
                       onPressed: _saving
                           ? null
                           : () =>
@@ -279,22 +280,34 @@ class _CropPainter extends CustomPainter {
       Paint()..color = scrim.withValues(alpha: 0.6),
     );
 
+    // White on the photo with a dark halo under it, so the frame and its
+    // handles read on a pale garment and a dark one in every appearance.
+    final halo = Colors.black.withValues(alpha: 0.35);
     canvas.drawRect(
       kept,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
+        ..strokeWidth = 5
+        ..color = halo,
+    );
+    canvas.drawRect(
+      kept,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5
         ..color = line,
     );
 
     final handle = Paint()..color = line;
+    final handleHalo = Paint()..color = halo;
     for (final corner in [
       kept.topLeft,
       kept.topRight,
       kept.bottomLeft,
       kept.bottomRight,
     ]) {
-      canvas.drawCircle(corner, 8, handle);
+      canvas.drawCircle(corner, 12, handleHalo);
+      canvas.drawCircle(corner, 9, handle);
     }
   }
 

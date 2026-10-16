@@ -121,7 +121,7 @@ void main() {
     ]);
 
     await pump(tester);
-    await tester.tap(find.widgetWithText(TextButton, 'Wearing this').first);
+    await tester.tap(find.widgetWithText(FilledButton, 'Wearing this').first);
     await tester.pumpAndSettle();
 
     // The wears specifically: moving to the basket writes its own events.
@@ -144,7 +144,7 @@ void main() {
     ]);
 
     await pump(tester);
-    await tester.tap(find.widgetWithText(TextButton, 'Wearing this').first);
+    await tester.tap(find.widgetWithText(FilledButton, 'Wearing this').first);
     await tester.pumpAndSettle();
 
     for (final id in ['tee', 'jeans']) {

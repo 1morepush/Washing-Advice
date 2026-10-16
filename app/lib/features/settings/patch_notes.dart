@@ -46,6 +46,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../widgets/rinse_kit.dart';
 import 'setting_info.dart';
 
 /// One shipped change set.
@@ -97,6 +98,43 @@ const _months = [
 /// Newest first. A test enforces the ordering, because an entry appended to
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
+  Release(
+    version: '0.32.0',
+    name: 'Rinse and Repeat',
+    date: DateTime.utc(2026, 10, 16),
+    headline: 'A fresh, lighter look across the whole app',
+    changes: [
+      'The app looks new, in Light, Dark and AMOLED: soft rounded cards '
+          'instead of outlines (AMOLED keeps a thin line, since there is '
+          'nothing else to show an edge on black), rounded type, and pill '
+          'buttons and chips. A few small things moved with it: Laundry '
+          'stages read "Basket 4" rather than "Basket (4)", Insights '
+          'headings are no longer in capitals, and a garment\'s name is now '
+          'a big heading under its picture instead of in the top bar.',
+      'A garment with no photo shows a little silhouette of what it is — a '
+          'jumper, trousers, a sock — in its own colour, instead of a plain '
+          'disc. Pictures sit on the same quiet tile as everything else; '
+          'only a garment that would be hard to see on it, a black sock or '
+          'a white tee, gets a slightly tinted one.',
+      'Care instructions now come with the washing symbols beside the words: '
+          'on the garment page, on each load, and when you review a scan. '
+          'Tumble drying shows one, two or three dots for low, medium and '
+          'high heat. A symbol is left out when there is none for that '
+          'instruction, so the words are always the whole answer.',
+      'Laundry has colours of its own. Basket is amber, Washing is blue and '
+          'Drying is green, so you can tell which stage you are in at a '
+          'glance. With larger text the three stages scroll sideways rather '
+          'than cutting their names short (the open one scrolls into view), a '
+          'load\'s settings put each label above its value instead of breaking '
+          'it in half, and the bottom bar\'s names no longer split in two.',
+      'The last row of the Wardrobe no longer hides behind the Add button, and '
+          'a row of quick filters sits above it: All, Tops, Bottoms, '
+          'Outerwear and Needs a label.',
+      'Settings and the scan screens were tidied, so buttons, headings, '
+          'chips and switches look the same wherever you meet them, and '
+          'links are a little darker in Light so they are easier to read.',
+    ],
+  ),
   Release(
     version: '0.31.0',
     name: 'Quick Cycle',
@@ -866,7 +904,7 @@ class PatchNotes extends StatelessWidget {
       children: [
         TitleWithInfo(
           'What\'s new',
-          style: theme.textTheme.titleSmall,
+          style: groupHeadingStyle(context),
           info:
               'These notes come with the app, so this is the version you are '
               'running. If the newest date looks old, the update has not '

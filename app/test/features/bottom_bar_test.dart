@@ -354,14 +354,19 @@ void main() {
       );
       final ground = NavigationBarTheme.of(context).backgroundColor!;
 
-      // The bar is black, and the pill behind the selected icon is a visible
-      // shape against it rather than a second black.
+      // The bar is black. The pill is the design's soft wash, a shade above
+      // it, so the selected place is carried by the glyph and label instead:
+      // the icon reads on the pill and on the bar at 4.5:1, and the label is
+      // full ink where the others are muted.
       expect(ground, theme.colorScheme.surface);
-      expect(contrastBetween(indicator, ground), greaterThanOrEqualTo(3.0));
-      // And the glyph in it reads against the pill.
+      expect(indicator, isNot(ground));
+      final nav = NavigationBarTheme.of(context);
+      final icon = nav.iconTheme!.resolve({WidgetState.selected})!.color!;
+      expect(contrastBetween(icon, indicator), greaterThanOrEqualTo(4.5));
+      expect(contrastBetween(icon, ground), greaterThanOrEqualTo(4.5));
       expect(
-        contrastBetween(theme.colorScheme.onSecondaryContainer, indicator),
-        greaterThanOrEqualTo(4.5),
+        nav.labelTextStyle!.resolve({WidgetState.selected})!.color,
+        isNot(nav.labelTextStyle!.resolve({})!.color),
       );
     });
   });

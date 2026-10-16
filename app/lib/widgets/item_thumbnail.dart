@@ -6,15 +6,19 @@
 /// cannot — every row shares a busy background and the eye has to hunt for the
 /// clothing in each one.
 ///
-/// Falls back to the colour swatch, which needs no files at all and is drawn
-/// from the CIELAB palette the app actually stored. That fallback is not a
-/// consolation prize: it is what the wardrobe looked like before this feature,
-/// and it still works when the image is missing, the cutout failed, or the
-/// user restored a backup that carried the database but not the pictures.
+/// Falls back to the garment's silhouette ([GarmentGlyph]) filled with the
+/// colour the app stored for it, which needs no files at all. That fallback is
+/// not a consolation prize: it is what the wardrobe looked like before this
+/// feature, and it still works when the image is missing, the cutout failed,
+/// or the user restored a backup that carried the database but not the
+/// pictures. A silhouette rather than a bare colour disc because six grey
+/// shorts and a grey jumper were otherwise the same grey circle; the outline
+/// ([RinseShape.garmentEdge]) keeps a black sock visible on a black screen.
 library;
 
 import 'dart:collection';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -24,6 +28,8 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../core/providers.dart';
 import '../core/theme.dart';
 import '../data/images/image_store.dart';
+import 'garment_glyph.dart';
+import 'rinse_kit.dart';
 
 /// How many photographs' bytes are kept after nothing is showing them.
 ///
@@ -103,7 +109,23 @@ class ItemThumbnail extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final uri = item.photos.displayImageUri;
-    if (uri == null) return _Swatch(palette: item.colors.value, size: size);
+    if (uri == null) {
+      // Without a backdrop the silhouette stands bare on whatever tile the
+      // caller drew (the garment page's hero), not on a second well.
+      if (!backdrop) {
+        return SizedBox.square(
+          dimension: size,
+          child: Center(
+            child: FractionallySizedBox(
+              widthFactor: 0.74,
+              heightFactor: 0.74,
+              child: _Silhouette(item: item),
+            ),
+          ),
+        );
+      }
+      return _Silhouette(item: item, size: size);
+    }
 
     final ImageProvider source;
     final store = ref.watch(imageStoreProvider);
@@ -121,7 +143,7 @@ class ItemThumbnail extends ConsumerWidget {
         // Covers both "still loading" and "gone". Showing the swatch in the
         // meantime avoids a row that pops from a grey box to a picture, and
         // avoids a spinner per row on a wardrobe of two hundred items.
-        return _Swatch(palette: item.colors.value, size: size);
+        return _Silhouette(item: item, size: size);
       }
       source = MemoryImage(bytes);
     }
@@ -133,8 +155,8 @@ class ItemThumbnail extends ConsumerWidget {
       height: size,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: backdrop ? _backdropFor(context) : null,
-          borderRadius: BorderRadius.circular(8),
+          color: _wellFor(context),
+          borderRadius: context.rinse.tileBorderRadius,
         ),
         child: Padding(
           padding: EdgeInsets.all(size.isFinite ? size * 0.06 : 6),
@@ -172,13 +194,8 @@ class ItemThumbnail extends ConsumerWidget {
                 // A file is decoded after the first build, so until a frame
                 // arrives the swatch stands in, as it does while bytes load.
                 frameBuilder: (context, child, frame, sync) =>
-                    sync || frame != null
-                    ? child
-                    : Center(
-                        child: _Swatch(palette: item.colors.value, size: size),
-                      ),
-                errorBuilder: (_, _, _) =>
-                    _Swatch(palette: item.colors.value, size: size),
+                    sync || frame != null ? child : _Silhouette(item: item),
+                errorBuilder: (_, _, _) => _Silhouette(item: item),
               );
             },
           ),
@@ -186,6 +203,10 @@ class ItemThumbnail extends ConsumerWidget {
       ),
     );
   }
+
+  /// The tile colour: the plain well, or the tinted one when [backdrop].
+  Color? _wellFor(BuildContext context) =>
+      backdrop ? _backdropFor(context) : null;
 
   /// The pixel extent to decode to for the box this is being drawn in.
   ///
@@ -203,110 +224,140 @@ class ItemThumbnail extends ConsumerWidget {
     return (extent * ratio).ceil();
   }
 
-  /// A tone that the garment will stand out against.
+  /// The tile colour: the plain well unless the garment would not show on it.
   ///
-  /// Chosen from the item's [ColorClass] — the same classification the sorter
-  /// uses to decide which pile it goes in. It already answers exactly the
-  /// question being asked here: is this thing pale enough to vanish against a
-  /// light surface, or dark enough to vanish against a dark one?
-  ///
-  /// Deliberately subtle. This is a legibility aid, not a design feature, and
-  /// a grid of strongly tinted tiles would compete with the garments in them.
-  Color _backdropFor(BuildContext context) {
+  /// A cutout is transparent, so a white shirt on a pale well or a black sock
+  /// on a near-black one is simply not there. Rather than tinting by colour
+  /// class, which painted every dark garment a grey panel and made the grid
+  /// patchy, this measures. The garment's stored dominant colour is compared
+  /// with the well; if the two already differ by [legibilityFloor] or more the
+  /// well is used untouched, and if not the well is moved away from the garment
+  /// (lighter under a dark one, darker under a pale one) by the smallest step
+  /// that reaches the floor. Mid-tone garments therefore sit on the normal
+  /// well in every theme, and only the ones that need it get a tile that
+  /// differs from it.
+  Color _backdropFor(BuildContext context) => tileFor(context, item);
+
+  /// The tile [item] should sit on, by the rule above. Public so a large
+  /// header (the garment page's hero) can wear the same tile its thumbnail
+  /// would, instead of the plain well a dark garment is lost against.
+  static Color tileFor(
+    BuildContext context,
+    WardrobeItem item, {
+    double floor = legibilityFloor,
+  }) {
+    final colors = item.colors.value.colors;
+    final well = context.rinse.well;
+    if (colors.isEmpty) return well;
+    final garment = Color(0xFF000000 | colors.first.rgb);
     final scheme = Theme.of(context).colorScheme;
-    final isDarkTheme = Theme.of(context).brightness == Brightness.dark;
-
-    // The two lifts are not the same size, and that is not an oversight.
-    // Darkening a near-white surface by 10% moves it a long way perceptually;
-    // lightening a near-black one by 10% barely moves it at all, and lands
-    // almost exactly on a charcoal garment — which is how the first version of
-    // this made a charcoal jumper disappear in dark mode.
-    //
-    // Nor is the dark one the same size on true black. The lift is a fraction
-    // of onSurface laid over whatever is behind the tile, so it climbs only as
-    // far as there is ground to climb from. Over dark's blue-grey, 30% lands on
-    // (80, 81, 87), a step above a charcoal garment's (60, 63, 68); over black
-    // the same 30% is (68, 68, 70), square on top of it, and the jumper is gone
-    // again. Garments do not get darker with the theme, so the lift has to land
-    // in the same place, which over black takes 36%.
-    final darkLift = scheme.hasTrueBlackGround ? 0.36 : 0.30;
-    final lift = scheme.onSurface.withValues(
-      alpha: isDarkTheme ? darkLift : 0.10,
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return backdropFor(
+      garment: garment,
+      well: well,
+      lighter: dark ? scheme.onSurface : const Color(0xFFFFFFFF),
+      darker: dark ? const Color(0xFF000000) : scheme.onSurface,
+      floor: floor,
     );
+  }
 
-    return switch (item.colorClass) {
-      // Pale garments need something to sit against in a light theme; in a
-      // dark one they already stand out.
-      ColorClass.whites ||
-      ColorClass.lights => isDarkTheme ? scheme.surfaceContainerHighest : lift,
-      // The reverse case: charcoal and black against a dark surface.
-      ColorClass.darks => isDarkTheme ? lift : scheme.surfaceContainerHighest,
-      // Saturated colours read against anything neutral.
-      ColorClass.brights => scheme.surfaceContainerHighest,
-    };
+  /// The least contrast, as a WCAG ratio, a garment may have against its tile.
+  static const legibilityFloor = 1.6;
+
+  /// [well], moved toward [lighter] or [darker] (whichever is away from
+  /// [garment]) by the smallest step that gives [garment] [legibilityFloor]
+  /// against it; [well] itself when it already does.
+  @visibleForTesting
+  static Color backdropFor({
+    required Color garment,
+    required Color well,
+    required Color lighter,
+    required Color darker,
+    double floor = legibilityFloor,
+  }) {
+    double ratio(Color tile) {
+      final a = garment.computeLuminance(), b = tile.computeLuminance();
+      return (math.max(a, b) + 0.05) / (math.min(a, b) + 0.05);
+    }
+
+    if (ratio(well) >= floor) return well;
+
+    // The smallest step toward [target] that reaches the floor, or null when
+    // even a full step does not: a garment a hair lighter than the well cannot
+    // be made to show by darkening the well, because black is only so far.
+    ({int step, Color tile})? reach(Color target) {
+      for (var step = 1; step <= 50; step++) {
+        final tile = Color.alphaBlend(
+          target.withValues(alpha: step / 50),
+          well,
+        );
+        if (ratio(tile) >= floor) return (step: step, tile: tile);
+      }
+      return null;
+    }
+
+    // Away from the garment first; the other way only if that cannot do it,
+    // or does it in fewer steps.
+    final awayIsLighter = garment.computeLuminance() < well.computeLuminance();
+    final away = reach(awayIsLighter ? lighter : darker);
+    final back = reach(awayIsLighter ? darker : lighter);
+    if (away != null && (back == null || away.step <= back.step)) {
+      return away.tile;
+    }
+    return back?.tile ?? (awayIsLighter ? lighter : darker);
   }
 }
 
-/// The item's colours, as the app stored them.
+/// The garment's silhouette in the colour the app stored for it.
 ///
 /// Drawn from the CIELAB palette rather than from a photo: it works before any
 /// image has loaded, and it shows what the app *believes* the colour to be,
-/// which is what decides which pile the garment lands in. A swatch that
+/// which is what decides which pile the garment lands in. A silhouette that
 /// disagrees with the photo beside it is a bug worth seeing.
-class _Swatch extends StatelessWidget {
-  const _Swatch({required this.palette, required this.size});
+///
+/// With a [size] it sits on a full tile, like a photograph does; without one
+/// it is the bare glyph, for standing in inside a tile that is already there.
+/// The tile is the plain well, never the tinted backdrop: the glyph carries
+/// its own outline, so it needs no lift to stay visible.
+class _Silhouette extends StatelessWidget {
+  const _Silhouette({required this.item, this.size});
 
-  final ColorPalette palette;
-  final double size;
+  final WardrobeItem item;
+
+  /// The tile's side, or null for the bare glyph that fills what it is given.
+  final double? size;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    // A circle needs a real diameter; in a grid cell the size is unbounded, so
-    // the swatch takes what it is given and stays square.
-    final diameter = size.isFinite ? size : null;
-    // At most two, largest coverage first. A five-way gradient on a 44-pixel
-    // circle communicates nothing.
-    final shown = [
-      for (final color in palette.colors.take(2)) Color(0xFF000000 | color.rgb),
-    ];
-
-    // Three cases, and they must stay separate: a gradient needs at least two
-    // colours and asserts on one, which crashed every single-colour garment —
-    // that is, nearly all of them.
-    return Container(
-      width: diameter,
-      height: diameter,
-      constraints: diameter == null
-          ? const BoxConstraints(maxWidth: 96, maxHeight: 96)
-          : null,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: scheme.outlineVariant),
-        color: switch (shown.length) {
-          0 => scheme.surfaceContainerHighest,
-          1 => shown.first,
-          _ => null,
-        },
-        gradient: shown.length < 2
-            ? null
-            : LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: shown,
-                // A hard split rather than a blend: the two colours are
-                // separate facts about the garment, and blending them invents
-                // a third that is on none of it.
-                stops: const [0.5, 0.5],
-              ),
-      ),
-      child: shown.isEmpty
-          ? Icon(
-              Icons.checkroom,
-              size: (diameter ?? 96) * 0.45,
-              color: scheme.onSurfaceVariant,
-            )
-          : null,
+    final glyph = GarmentGlyph(
+      kind: glyphKindFor(item.type.value),
+      fill: _fill(context),
+      edge: context.rinse.garmentEdge,
     );
+    if (size == null) return Center(child: glyph);
+    return GarmentWell(
+      size: size!.isFinite ? size : null,
+      // 74% as in the design: the silhouette fills the tile without touching
+      // its rounded corners.
+      child: FractionallySizedBox(
+        widthFactor: 0.74,
+        heightFactor: 0.74,
+        child: glyph,
+      ),
+    );
+  }
+
+  /// The dominant stored colour, or a neutral when none was recorded.
+  ///
+  /// One colour, not two: the glyph is one shape, and a hard split down a
+  /// jumper would show a pattern nobody recorded.
+  Color _fill(BuildContext context) {
+    final colors = item.colors.value.colors;
+    if (colors.isEmpty) {
+      return Theme.of(
+        context,
+      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.35);
+    }
+    return Color(0xFF000000 | colors.first.rgb);
   }
 }

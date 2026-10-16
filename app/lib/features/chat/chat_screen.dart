@@ -17,6 +17,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme.dart';
+import '../../widgets/rinse_kit.dart';
 import 'chat_controller.dart';
 
 /// Openers, shown on an empty screen.
@@ -143,20 +145,21 @@ class _Empty extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.chat_bubble_outline,
-              size: 44,
-              color: theme.colorScheme.onSurfaceVariant,
+            const IconBadge(Icons.chat_bubble_outline),
+            const SizedBox(height: 20),
+            Text(
+              'Ask about laundry',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
             ),
-            const SizedBox(height: 16),
-            Text('Ask about laundry', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text(
               'It knows what is in your wardrobe, so you can ask about a '
               'garment by name. It cannot change anything — it only answers. '
               'Tap one to start, and edit it before you send.',
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
@@ -190,22 +193,37 @@ class _Bubble extends StatelessWidget {
     final theme = Theme.of(context);
     final mine = message.fromUser;
 
+    final scheme = theme.colorScheme;
+
+    // Mine: the accent, pill-shaped with a small corner towards the speaker.
+    // The app's: a card, so it reads as the page talking back. A failure keeps
+    // the error colours whoever it was meant for.
     final background = message.failed
-        ? theme.colorScheme.errorContainer
+        ? scheme.errorContainer
         : mine
-        ? theme.colorScheme.primaryContainer
-        : theme.colorScheme.surfaceContainerHighest;
+        ? scheme.primary
+        : scheme.surfaceContainerLowest;
     final foreground = message.failed
-        ? theme.colorScheme.onErrorContainer
+        ? scheme.onErrorContainer
         : mine
-        ? theme.colorScheme.onPrimaryContainer
-        : theme.colorScheme.onSurface;
+        ? scheme.onPrimary
+        : scheme.onSurface;
+
+    final rinse = context.rinse;
+    const big = Radius.circular(20);
+    const small = Radius.circular(6);
+    final radius = BorderRadius.only(
+      topLeft: big,
+      topRight: big,
+      bottomLeft: mine ? big : small,
+      bottomRight: mine ? small : big,
+    );
 
     return Align(
       alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         constraints: BoxConstraints(
           // Never the full width. A bubble that reaches both edges stops
           // reading as one side of a conversation.
@@ -213,11 +231,15 @@ class _Bubble extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: background,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: radius,
+          boxShadow: mine || message.failed ? null : rinse.cardShadow,
+          border: mine || message.failed || rinse.cardEdge == BorderSide.none
+              ? null
+              : Border.fromBorderSide(rinse.cardEdge),
         ),
         child: SelectableText(
           message.text,
-          style: theme.textTheme.bodyMedium?.copyWith(color: foreground),
+          style: theme.textTheme.bodyLarge?.copyWith(color: foreground),
         ),
       ),
     );
@@ -235,12 +257,11 @@ class _Thinking extends StatelessWidget {
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(16),
-        ),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        decoration: context.rinse
+            .cardDecoration(theme.colorScheme.surfaceContainerLowest)
+            .copyWith(borderRadius: BorderRadius.circular(20)),
         child: SizedBox(
           width: 18,
           height: 18,
@@ -295,10 +316,12 @@ class _InputBar extends StatelessWidget {
                 decoration: InputDecoration(
                   hintText: 'Ask a question',
                   filled: true,
-                  fillColor: theme.colorScheme.surfaceContainerHighest,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
+                  fillColor: theme.colorScheme.surfaceContainerLowest,
+                  border: _pill(BorderSide.none),
+                  enabledBorder: _pill(context.rinse.cardEdge),
+                  disabledBorder: _pill(context.rinse.cardEdge),
+                  focusedBorder: _pill(
+                    BorderSide(color: theme.colorScheme.primary, width: 2),
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -319,3 +342,8 @@ class _InputBar extends StatelessWidget {
     );
   }
 }
+
+OutlineInputBorder _pill(BorderSide side) => OutlineInputBorder(
+  borderRadius: BorderRadius.circular(28),
+  borderSide: side,
+);

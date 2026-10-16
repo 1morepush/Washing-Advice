@@ -18,6 +18,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../core/providers.dart';
 import '../../core/settings.dart';
 import '../../data/api/ai_gateway.dart';
+import '../../widgets/rinse_kit.dart';
 
 enum MachineKind {
   washer('Washing machine'),
@@ -222,7 +223,7 @@ class _MachineSectionState extends ConsumerState<MachineSection> {
             // caveat instead.
             'A brand pick is an archetype, not your exact model. Check the '
             'program against your own machine the first time.',
-            style: theme.textTheme.bodySmall?.copyWith(
+            style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
@@ -231,7 +232,7 @@ class _MachineSectionState extends ConsumerState<MachineSection> {
           const SizedBox(height: 8),
           Text(
             message,
-            style: theme.textTheme.bodySmall?.copyWith(
+            style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.error,
             ),
           ),
@@ -261,12 +262,8 @@ class _CustomMachineCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-      ),
+    return InsetPanel(
+      padding: const EdgeInsets.fromLTRB(14, 12, 4, 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -274,8 +271,19 @@ class _CustomMachineCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: theme.textTheme.labelSmall),
-                Text('$brand $model', style: theme.textTheme.bodyMedium),
+                Text(
+                  label,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  '$brand $model',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   // Named, not hidden: an AI guess at a specific model reads
@@ -284,7 +292,7 @@ class _CustomMachineCard extends StatelessWidget {
                   "AI's best guess at this exact model's $programCount "
                   'programs — not checked against a manual. Correct it the '
                   'first time a program does not match your dial.',
-                  style: theme.textTheme.bodySmall?.copyWith(
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
@@ -323,12 +331,7 @@ class _EntryForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(12),
-      ),
+    return InsetPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -375,7 +378,7 @@ class _EntryForm extends StatelessWidget {
             Text(
               'Still waiting. A server that sleeps when idle can take up to a '
               'minute to wake.',
-              style: theme.textTheme.bodySmall?.copyWith(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),

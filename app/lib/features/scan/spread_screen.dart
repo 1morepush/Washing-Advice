@@ -7,16 +7,17 @@
 /// whether to keep it.
 library;
 
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
+import '../../core/theme.dart';
 import '../../widgets/back_navigation.dart';
+import '../../widgets/rinse_kit.dart';
 import '../../widgets/state_view.dart';
 import '../../widgets/status_message.dart';
+import 'scan_parts.dart';
 import 'spread_controller.dart';
 
 class SpreadScanScreen extends ConsumerWidget {
@@ -32,7 +33,7 @@ class SpreadScanScreen extends ConsumerWidget {
       child: Scaffold(
         appBar: AppBar(
           leading: backLeading(context, '/', onLeave: controller.reset),
-          title: const Text('Lay several out'),
+          title: const AppBarTitle('Lay several out'),
         ),
         body: switch (state) {
           SpreadIdle() => _Start(controller: controller),
@@ -91,16 +92,12 @@ class _Start extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.grid_view_outlined,
-                    size: 48,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(height: 20),
+                  const IconBadge(Icons.grid_view_outlined, size: 112),
+                  const SizedBox(height: 24),
                   Text(
                     'Lay them out and take one photo',
                     textAlign: TextAlign.center,
-                    style: theme.textTheme.titleMedium,
+                    style: theme.textTheme.titleLarge,
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -109,7 +106,7 @@ class _Start extends StatelessWidget {
                     'its own garment, with its own picture cut out of the '
                     'photo.',
                     textAlign: TextAlign.center,
-                    style: theme.textTheme.bodySmall?.copyWith(
+                    style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
@@ -123,7 +120,6 @@ class _Start extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
-                      fontStyle: FontStyle.italic,
                     ),
                   ),
                 ],
@@ -134,7 +130,7 @@ class _Start extends StatelessWidget {
         SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: Row(
               children: [
                 Expanded(
@@ -167,7 +163,6 @@ class _Reviewing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final accepted = state.accepted.length;
     final owned = state.alreadyOwnedCount;
 
@@ -177,15 +172,11 @@ class _Reviewing extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text(
+              ScanHeading(
                 state.finds.length == 1
                     ? '1 garment found'
                     : '${state.finds.length} garments found',
-                style: theme.textTheme.titleMedium,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                owned == 0
+                body: owned == 0
                     ? 'Untick anything that is not a garment, fix a name if it '
                           'is wrong, then save.'
                     : owned == 1
@@ -193,9 +184,6 @@ class _Reviewing extends StatelessWidget {
                           'ticked. The rest are new.'
                     : '$owned of these are already in your wardrobe and are '
                           'not ticked. The rest are new.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
               ),
               const SizedBox(height: 16),
               for (final (index, find) in state.finds.indexed)
@@ -211,7 +199,7 @@ class _Reviewing extends StatelessWidget {
         SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
@@ -247,28 +235,15 @@ class _FindCard extends StatelessWidget {
     final theme = Theme.of(context);
     final draft = find.draft;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: RinseCard(
         padding: const EdgeInsets.all(12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Checkbox(value: accepted, onChanged: (_) => onToggle()),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.memory(
-                Uint8List.fromList(find.image.bytes),
-                width: 56,
-                height: 56,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Container(
-                  width: 56,
-                  height: 56,
-                  color: theme.colorScheme.surfaceContainerHighest,
-                ),
-              ),
-            ),
+            ScanThumb(image: find.image, size: 60),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -276,14 +251,14 @@ class _FindCard extends StatelessWidget {
                 children: [
                   Text(
                     draft.displayName,
-                    style: theme.textTheme.titleSmall,
+                    style: theme.textTheme.titleMedium,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Text(
                     draft.type.value.label,
-                    style: theme.textTheme.bodySmall?.copyWith(
+                    style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
@@ -295,7 +270,7 @@ class _FindCard extends StatelessWidget {
                         Icon(
                           Icons.inventory_2_outlined,
                           size: 14,
-                          color: theme.colorScheme.primary,
+                          color: context.rinse.textAccent,
                         ),
                         const SizedBox(width: 6),
                         Expanded(
@@ -303,7 +278,8 @@ class _FindCard extends StatelessWidget {
                             'Looks like "${owned.displayName}", already in '
                             'your wardrobe',
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w700,
+                              color: context.rinse.textAccent,
                             ),
                           ),
                         ),

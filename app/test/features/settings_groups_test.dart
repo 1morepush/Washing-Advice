@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 import 'package:washing_advice/core/providers.dart';
 import 'package:washing_advice/core/settings.dart';
+import 'package:washing_advice/core/theme.dart' show Appearance;
 import 'package:washing_advice/data/images/memory_image_store.dart';
 import 'package:washing_advice/features/laundry/evening_nudge.dart';
 import 'package:washing_advice/features/settings/patch_notes.dart';
@@ -215,6 +216,28 @@ void main() {
       ),
       findsNothing,
     );
+  });
+
+  testWidgets('the chosen look is marked on its row, and only that one', (
+    tester,
+  ) async {
+    await open(tester);
+
+    bool selected(String label) => tester
+        .widget<RadioListTile<Appearance>>(
+          find.widgetWithText(RadioListTile<Appearance>, label),
+        )
+        .selected;
+
+    expect(selected('Match phone'), isTrue);
+    expect(selected('Light'), isFalse);
+    expect(selected('Dark'), isFalse);
+    expect(selected('AMOLED'), isFalse);
+
+    await tester.tap(find.widgetWithText(RadioListTile<Appearance>, 'Dark'));
+    await tester.pumpAndSettle();
+    expect(selected('Dark'), isTrue);
+    expect(selected('Match phone'), isFalse);
   });
 
   testWidgets('info buttons are at least 48 dp square', (tester) async {

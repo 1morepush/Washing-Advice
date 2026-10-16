@@ -586,6 +586,8 @@ drops data between them. It found two such bugs the first time it ran.
 **Settings → Appearance** lets you choose Light, Dark or **AMOLED** — dark on
 true black, which an OLED screen draws by switching those pixels off — or leave
 it on Match phone, the default, which follows your phone as the app always has.
+All three share one look — soft cards, rounded Nunito type, no outlines (AMOLED
+uses a thin hairline instead, since a fill that close to black holds no shape).
 
 ### Ask it a question
 
@@ -847,7 +849,7 @@ A few decisions worth reading about:
 |---|---|---|
 | 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 662 core tests |
 | 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts, machine identification | **Done** — 404 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 913 app tests |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 1107 app tests |
 | 4 | Care-label scanning, item editing, filter sheet, garment cutouts, grid view | **Done** |
 | 5 | Pile scanning, load grouping, machine profiles, wear and wash history | **Done** |
 | 6 | Outfit suggestions, laundry-aware packing, wardrobe insights | **Done** |
@@ -875,8 +877,9 @@ A few decisions worth reading about:
 | 25 | Deletion that syncs, a pile scan that asks about near-matches, rate limits handled | **Done** |
 | 26 | Appearance: match the phone, light, dark, or true black for OLED screens | **Done** |
 | 27 | A bottom bar that keeps each place's history; Laundry in three stages; Outfits as Ideas and Saved with labelled sources; Settings in groups | **Done** |
+| 28 | The Rinse look: soft cards without outlines, rounded Nunito type, garment silhouettes and washing symbols, stage colours for Laundry, quick filters on the Wardrobe, in Light, Dark and AMOLED | **Done** |
 
-Released as `0.31.0 — Quick Cycle`; the app's own **Settings → What's new**
+Released as `0.32.0 — Rinse and Repeat`; the app's own **Settings → What's new**
 carries the full list, and `app/lib/features/settings/patch_notes.dart` records
 which version digit moves for what.
 
@@ -1009,5 +1012,5 @@ Stated plainly, because the code says so too.
 
 ## Licence
 
-Not yet chosen. The bundled Liberation Sans font is
+Not yet chosen. The bundled Nunito font is
 [SIL OFL 1.1](https://scripts.sil.org/OFL); see `app/assets/fonts/README.md`.

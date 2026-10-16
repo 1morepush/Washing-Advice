@@ -8,9 +8,12 @@ import 'package:flutter/material.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../widgets/confidence_chip.dart';
+import '../../core/theme.dart';
 import '../../widgets/notice.dart';
+import '../../widgets/rinse_kit.dart';
 import '../wardrobe/care_text.dart';
 import 'care_tag_controller.dart';
+import 'scan_parts.dart';
 
 class CareTagReview extends StatelessWidget {
   const CareTagReview({
@@ -34,13 +37,14 @@ class CareTagReview extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Row(
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Expanded(
-                    child: Text(
-                      'What the label says',
-                      style: theme.textTheme.titleMedium,
-                    ),
+                  Text(
+                    'What the label says',
+                    style: theme.textTheme.titleLarge,
                   ),
                   ConfidenceChip(
                     confidence: state.reading.confidence,
@@ -48,6 +52,7 @@ class CareTagReview extends StatelessWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
               // Said only when it is news. A label in the language the app is
               // already in needs no announcement, and "read in English" on an
               // English label reads as though the app were unsure.
@@ -100,42 +105,40 @@ class CareTagReview extends StatelessWidget {
                 _NoChanges(hasLabel: true),
 
               const SizedBox(height: 16),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'How it will be washed',
-                        style: theme.textTheme.titleSmall,
+              RinseCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'How it will be washed',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    CareSymbolRow(care: care),
+                    const SizedBox(height: 8),
+                    _Line(label: 'Wash', value: washSummary(care.wash)),
+                    _Line(label: 'Dry', value: drySummary(care.dry)),
+                    _Line(label: 'Iron', value: ironSummary(care.iron)),
+                    _Line(label: 'Bleach', value: care.bleach.label),
+                    // The diff above would announce "Dry cleaning: allowed →
+                    // not allowed" and then this summary never mentioned it
+                    // again, which is how a label whose only news was "do
+                    // not dry clean" appeared to change nothing.
+                    if (dryCleanSummary(care) case final String line)
+                      _Line(
+                        label: careFieldLabel('professional.doNotDryClean'),
+                        value: line,
                       ),
-                      const SizedBox(height: 8),
-                      _Line(label: 'Wash', value: washSummary(care.wash)),
-                      _Line(label: 'Dry', value: drySummary(care.dry)),
-                      _Line(label: 'Iron', value: ironSummary(care.iron)),
-                      _Line(label: 'Bleach', value: care.bleach.label),
-                      // The diff above would announce "Dry cleaning: allowed →
-                      // not allowed" and then this summary never mentioned it
-                      // again, which is how a label whose only news was "do
-                      // not dry clean" appeared to change nothing.
-                      if (dryCleanSummary(care) case final String line)
-                        _Line(
-                          label: careFieldLabel('professional.doNotDryClean'),
-                          value: line,
-                        ),
-                      // Warnings are the label's printed words rather than its
-                      // symbols — "wash inside out", "with like colours". The
-                      // server only started reporting them reliably once the
-                      // prompt asked for them, so before that this row would
-                      // always have been empty.
-                      if (care.warnings.isNotEmpty)
-                        _Line(
-                          label: 'Take care',
-                          value: care.warnings.map((w) => w.label).join(', '),
-                        ),
-                    ],
-                  ),
+                    // Warnings are the label's printed words rather than its
+                    // symbols — "wash inside out", "with like colours". The
+                    // server only started reporting them reliably once the
+                    // prompt asked for them, so before that this row would
+                    // always have been empty.
+                    if (care.warnings.isNotEmpty)
+                      _Line(
+                        label: 'Take care',
+                        value: care.warnings.map((w) => w.label).join(', '),
+                      ),
+                  ],
                 ),
               ),
 
@@ -161,7 +164,7 @@ class CareTagReview extends StatelessWidget {
                 Text(
                   'Read ${state.reading.symbolsFound.length} symbols: '
                   '${state.reading.symbolsFound.join(', ')}',
-                  style: theme.textTheme.bodySmall?.copyWith(
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
@@ -170,19 +173,19 @@ class CareTagReview extends StatelessWidget {
           ),
         ),
         SafeArea(
+          top: false,
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: Row(
               children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: controller.reset,
-                    child: const Text('Rescan'),
-                  ),
+                // Its own width, so a short word never wraps on a narrow phone;
+                // the primary action takes the rest.
+                FilledButton.tonal(
+                  onPressed: controller.reset,
+                  child: const Text('Rescan'),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  flex: 2,
                   child: FilledButton(
                     onPressed: controller.save,
                     child: const Text('Use these instructions'),
@@ -223,7 +226,7 @@ class _Changes extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: scheme.tertiaryContainer,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: context.rinse.cardBorderRadius,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,7 +235,7 @@ class _Changes extends StatelessWidget {
             fields.length == 1
                 ? 'The label changed one thing'
                 : 'The label changed ${fields.length} things',
-            style: theme.textTheme.titleSmall?.copyWith(
+            style: theme.textTheme.titleMedium?.copyWith(
               color: scheme.onTertiaryContainer,
             ),
           ),
@@ -240,7 +243,7 @@ class _Changes extends StatelessWidget {
           Text(
             'The manufacturer knows this garment better than a rule based on '
             'its fabric does, so their instruction wins.',
-            style: theme.textTheme.bodySmall?.copyWith(
+            style: theme.textTheme.bodyMedium?.copyWith(
               color: scheme.onTertiaryContainer,
             ),
           ),
@@ -357,69 +360,68 @@ class _Composition extends StatelessWidget {
     // quietly is not the one about to be saved.
     final kept = fromLabel != null && recorded.value != fromLabel!.value;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'What it is made of',
-                    style: theme.textTheme.titleSmall,
-                  ),
-                ),
-                if (known)
-                  ConfidenceChip(
-                    confidence: shown.confidence,
-                    source: shown.source,
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              known ? shown.value.label : 'Not known yet',
-              style: theme.textTheme.bodyMedium,
-            ),
-            // Named where the comparison actually happens. Somebody holding a
-            // tag that reads ELASTANE and an app that says Spandex has no way
-            // to tell whether it read the tag right — and reasonably assumes
-            // it did not.
-            if (_otherNames(shown.value) case final String others)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
+    return RinseCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
                 child: Text(
-                  'Your label may call it $others.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                  'What it is made of',
+                  style: theme.textTheme.titleMedium,
                 ),
               ),
-            const SizedBox(height: 6),
-            Text(
-              switch ((fromLabel, known, kept)) {
-                (null, true, _) =>
-                  'This label did not state a fabric, so this is still what '
-                      'was worked out earlier.',
-                (null, false, _) =>
-                  'This label did not state a fabric, and none has been '
-                      'recorded. You can set it by editing the item.',
-                (_, _, true) =>
-                  'Read from this label. What is already recorded is at least '
-                      'as well evidenced, so it has been kept: '
-                      '\${recorded.value.label}.',
-                _ =>
-                  'Read from this label, which is why it outranks anything '
-                      'worked out from the photo.',
-              },
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+              if (known)
+                ConfidenceChip(
+                  confidence: shown.confidence,
+                  source: shown.source,
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            known ? shown.value.label : 'Not known yet',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          // Named where the comparison actually happens. Somebody holding a
+          // tag that reads ELASTANE and an app that says Spandex has no way
+          // to tell whether it read the tag right — and reasonably assumes
+          // it did not.
+          if (_otherNames(shown.value) case final String others)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                'Your label may call it $others.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
-          ],
-        ),
+          const SizedBox(height: 6),
+          Text(
+            switch ((fromLabel, known, kept)) {
+              (null, true, _) =>
+                'This label did not state a fabric, so this is still what '
+                    'was worked out earlier.',
+              (null, false, _) =>
+                'This label did not state a fabric, and none has been '
+                    'recorded. You can set it by editing the item.',
+              (_, _, true) =>
+                'Read from this label. What is already recorded is at least '
+                    'as well evidenced, so it has been kept: '
+                    '\${recorded.value.label}.',
+              _ =>
+                'Read from this label, which is why it outranks anything '
+                    'worked out from the photo.',
+            },
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -461,12 +463,20 @@ class _Line extends StatelessWidget {
             width: 92,
             child: Text(
               label,
-              style: theme.textTheme.bodySmall?.copyWith(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          Expanded(child: Text(value, style: theme.textTheme.bodyMedium)),
+          Expanded(
+            child: Text(
+              value,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
         ],
       ),
     );

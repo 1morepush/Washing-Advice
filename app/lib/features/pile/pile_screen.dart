@@ -385,9 +385,8 @@ class _Notice extends StatelessWidget {
             Expanded(
               child: Text(
                 text,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: scheme.onTertiaryContainer,
-                ),
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: scheme.onTertiaryContainer),
               ),
             ),
           ],

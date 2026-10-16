@@ -127,8 +127,8 @@ void main() {
 
     await pump(tester);
 
-    expect(find.text('NEVER WORN (1)'), findsOneWidget);
-    expect(find.text('NOT WORN IN THREE MONTHS'), findsOneWidget);
+    expect(find.text('Never worn (1)'), findsOneWidget);
+    expect(find.text('Not worn in three months'), findsOneWidget);
   });
 
   group('the figures line up as one band', () {

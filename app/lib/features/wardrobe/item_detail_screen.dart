@@ -28,9 +28,8 @@ import 'report_wear_sheet.dart';
 /// the type, the more likely the name needed three lines in the first place.
 double _titleHeight(BuildContext context) {
   final style = Theme.of(context).textTheme.titleMedium;
-  final scaled = MediaQuery.textScalerOf(
-    context,
-  ).scale(style?.fontSize ?? 16.0);
+  final scaled = MediaQuery.textScalerOf(context)
+      .scale(style?.fontSize ?? 16.0);
   // Three lines at the style's own line spacing, plus the padding the bar
   // keeps above and below its title.
   return (scaled * (style?.height ?? 1.4) * 3) + 24;
@@ -184,9 +183,9 @@ Future<void> _confirmAndDelete(
         FilledButton.tonal(
           style: FilledButton.styleFrom(
             backgroundColor: Theme.of(dialogContext).colorScheme.errorContainer,
-            foregroundColor: Theme.of(
-              dialogContext,
-            ).colorScheme.onErrorContainer,
+            foregroundColor: Theme.of(dialogContext)
+                .colorScheme
+                .onErrorContainer,
           ),
           onPressed: () => Navigator.of(dialogContext).pop(true),
           child: const Text('Delete'),

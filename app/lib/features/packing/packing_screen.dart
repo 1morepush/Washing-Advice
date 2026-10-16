@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
+import '../../core/theme.dart';
 import '../../widgets/back_navigation.dart';
 import '../../widgets/item_thumbnail.dart';
 import '../../widgets/status_message.dart';
@@ -89,7 +90,12 @@ class _TripForm extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text('${trip.days}', style: theme.textTheme.headlineMedium),
+                Text(
+                  '${trip.days}',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
@@ -111,10 +117,16 @@ class _TripForm extends StatelessWidget {
               onChanged: (value) => onChanged(_copy(days: value.round())),
             ),
             const SizedBox(height: 8),
-            Text('What kind of days', style: theme.textTheme.labelLarge),
+            Text(
+              'What kind of days',
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
+              runSpacing: 8,
               children: [
                 for (final occasion in Occasion.values)
                   FilterChip(
@@ -177,7 +189,9 @@ class _TripForm extends StatelessWidget {
                           'you anything'
                     : 'Packs ${trip.washEveryDays + 1} of each instead of '
                           '${trip.days}',
-                style: theme.textTheme.bodySmall,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
           ],
@@ -214,6 +228,7 @@ class _Notes extends StatelessWidget {
                 Text(
                   'While you are away',
                   style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
                     color: theme.colorScheme.onSecondaryContainer,
                   ),
                 ),
@@ -256,6 +271,7 @@ class _Gaps extends StatelessWidget {
             Text(
               'Short of a few things',
               style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
                 color: theme.colorScheme.onErrorContainer,
               ),
             ),
@@ -265,7 +281,7 @@ class _Gaps extends StatelessWidget {
               // is how people arrive somewhere without socks.
               'The list below is what your wardrobe could supply, not what the '
               'trip needs.',
-              style: theme.textTheme.bodySmall?.copyWith(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onErrorContainer,
               ),
             ),
@@ -323,14 +339,16 @@ class _Bag extends StatelessWidget {
                 Expanded(
                   child: Text(
                     '${plan.count} items',
-                    style: theme.textTheme.titleMedium,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
                 Text(
                   // Approximate by construction, and labelled as such rather
                   // than presented as a figure to weigh a bag against.
                   'about ${(plan.estimatedWeightGrams / 1000).toStringAsFixed(1)} kg',
-                  style: theme.textTheme.bodySmall?.copyWith(
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
@@ -344,7 +362,9 @@ class _Bag extends StatelessWidget {
                   Expanded(
                     child: Text(
                       '${entry.key.label} · ${entry.value.length}',
-                      style: theme.textTheme.labelLarge,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -358,7 +378,7 @@ class _Bag extends StatelessWidget {
                     child: Text(
                       entry.value.first.reason,
                       textAlign: TextAlign.end,
-                      style: theme.textTheme.bodySmall?.copyWith(
+                      style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
@@ -376,7 +396,7 @@ class _Bag extends StatelessWidget {
                     final item = entry.value[index].item;
                     return InkWell(
                       onTap: () => context.push('/item/${item.id.value}'),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: context.rinse.tileBorderRadius,
                       child: Tooltip(
                         message: item.displayName,
                         child: ItemThumbnail(item: item, size: 72),

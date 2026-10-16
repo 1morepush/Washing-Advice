@@ -12,6 +12,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../core/theme.dart';
+
 enum OutfitSource {
   wardrobe(
     label: 'From your wardrobe',
@@ -78,20 +80,21 @@ class SourceLabel extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: source.container(scheme),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(999),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(source.icon, size: 14, color: source.onContainer(scheme)),
+              Icon(source.icon, size: 16, color: source.onContainer(scheme)),
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
                   source.label,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: source.onContainer(scheme),
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
@@ -118,22 +121,25 @@ class OutfitCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
+    final rinse = context.rinse;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       color: source == OutfitSource.stylist
           ? Color.alphaBlend(
-              source.container(scheme).withValues(alpha: 0.35),
-              scheme.surface,
+              source.container(scheme).withValues(alpha: 0.4),
+              scheme.surfaceContainerLowest,
             )
           : null,
-      shape: source == OutfitSource.stylist
-          ? RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: source.accent(scheme)),
-            )
-          : null,
+      // The theme's own card shape (shadow, fill or hairline), so the stylist's
+      // wash is the only thing that sets its cards apart: no outline of its
+      // own.
+      shape: RoundedRectangleBorder(
+        borderRadius: rinse.cardBorderRadius,
+        side: rinse.cardEdge,
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [SourceLabel(source), const SizedBox(height: 12), child],
@@ -162,19 +168,24 @@ class SourceHeader extends StatelessWidget {
             children: [
               Icon(
                 source.icon,
-                size: 20,
+                size: 22,
                 color: source.accent(theme.colorScheme),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(source.heading, style: theme.textTheme.titleMedium),
+                child: Text(
+                  source.heading,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
             source.caption,
-            style: theme.textTheme.bodySmall?.copyWith(
+            style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
@@ -217,13 +228,9 @@ class SectionNote extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          border: Border.all(color: theme.colorScheme.outlineVariant),
-          borderRadius: BorderRadius.circular(12),
-        ),
+      child: Card(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(18),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -239,12 +246,17 @@ class SectionNote extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: theme.textTheme.titleSmall),
+                    Text(
+                      title,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                     if (detail case final String detail) ...[
                       const SizedBox(height: 4),
                       Text(
                         detail,
-                        style: theme.textTheme.bodySmall?.copyWith(
+                        style: theme.textTheme.bodyMedium?.copyWith(
                           color: quiet,
                         ),
                       ),

@@ -17,6 +17,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
+import '../../core/theme.dart';
 import 'outfit_controller.dart';
 import 'outfit_pieces.dart';
 import 'outfit_source.dart';
@@ -158,7 +159,7 @@ class _OccasionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    height: 56,
+    height: 60,
     child: ListView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -196,34 +197,29 @@ class _SuggestionCard extends ConsumerWidget {
         children: [
           OutfitPieces(items: suggestion.items),
           if (suggestion.reasons.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            const Divider(height: 1),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
+            Divider(height: 1, color: context.rinse.lineSoft),
+            const SizedBox(height: 14),
             for (final reason in suggestion.reasons.take(3))
               Padding(
-                padding: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(
-                      Icons.check_circle_outline,
-                      size: 16,
+                      Icons.check_circle,
+                      size: 18,
                       color: theme.colorScheme.primary,
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 10),
                     Expanded(
-                      child: Text(
-                        reason,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
+                      child: Text(reason, style: theme.textTheme.bodyMedium),
                     ),
                   ],
                 ),
               ),
           ],
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           // A `Wrap`, not a `Row`. Both labels are words rather than bare
           // icons on purpose — "bookmark" and "checkroom" are not glyphs
           // anyone reads the same way — but two labelled buttons stop
@@ -234,12 +230,13 @@ class _SuggestionCard extends ConsumerWidget {
           Wrap(
             alignment: WrapAlignment.end,
             spacing: 8,
+            runSpacing: 8,
             children: [
               // Saving and wearing are different acts, and both are offered.
               // "I like this, keep it" is not "I am wearing it today", and
               // collapsing them would make the wear count on a saved outfit
               // mean nothing.
-              TextButton.icon(
+              FilledButton.tonalIcon(
                 onPressed: () async {
                   final name = await askForOutfitName(
                     context,
@@ -265,7 +262,7 @@ class _SuggestionCard extends ConsumerWidget {
               // What closes the loop. Recording an outfit as worn is the only
               // way the app finds out its suggestion was any good, and every
               // such record teaches the builder a pairing it did not know.
-              TextButton.icon(
+              FilledButton.icon(
                 onPressed: () async {
                   await ref
                       .read(outfitControllerProvider)

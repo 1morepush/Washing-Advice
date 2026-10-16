@@ -314,9 +314,8 @@ class _HealthResult extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     problem,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: scheme.onSurfaceVariant),
                   ),
                 ],
               ],

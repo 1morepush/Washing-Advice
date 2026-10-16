@@ -91,15 +91,14 @@ class ScanReview extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: Row(
               children: [
-                Expanded(
-                  child: FilledButton.tonal(
-                    onPressed: controller.reset,
-                    child: const Text('Retake'),
-                  ),
+                // Its own width, so a short word never wraps on a narrow phone;
+                // the primary action takes the rest.
+                FilledButton.tonal(
+                  onPressed: controller.reset,
+                  child: const Text('Retake'),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  flex: 2,
                   child: FilledButton(
                     onPressed: () async {
                       await controller.save();

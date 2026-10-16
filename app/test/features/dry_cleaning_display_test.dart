@@ -404,7 +404,14 @@ void _missingFacts() {
     // the app *does*: with no palette the garment sorts by a default.
     expect(find.text('Set it'), findsOneWidget);
     // Which the laundry section admits to, rather than presenting a default as
-    // a decision somebody made about this garment.
+    // a decision somebody made about this garment. Scrolled to first: the
+    // page is a lazy list, and the garment's own picture and the care symbols
+    // now take enough height that this section is built only once reached.
+    await tester.scrollUntilVisible(
+      find.textContaining('assumed, no color recorded'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.textContaining('assumed, no color recorded'), findsOneWidget);
   });
 

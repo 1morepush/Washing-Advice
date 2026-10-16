@@ -336,6 +336,22 @@ abstract final class AppTheme {
       side: shape.cardEdge,
     );
     final hairlineChips = p.cardHairline;
+    final (switchOffTrack, switchOffThumb) = switch (p.brightness) {
+      Brightness.light => (const Color(0xFFC2D1DF), p.muted),
+      Brightness.dark when hairlineChips => (
+        const Color(0xFF243645),
+        const Color(0xFFA9BDD0),
+      ),
+      Brightness.dark => (const Color(0xFF34506A), const Color(0xFFA9BDD0)),
+    };
+    // A deliberate deviation from the spec token, like [_Palette.onDry]: the
+    // light accent #1E73C8 is 4.36:1 on the page ground, under the 4.5:1
+    // text needs, so text buttons and links take this slightly deeper blue
+    // (5.3:1 on the ground, 5.8:1 on a card). Fills, rings and the accent
+    // token itself are untouched; Dark and AMOLED are already above 6:1.
+    final linkInk = p.brightness == Brightness.light
+        ? const Color(0xFF1A66B3)
+        : p.accent;
 
     return ThemeData(
       colorScheme: scheme,
@@ -430,9 +446,30 @@ abstract final class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
+          foregroundColor: linkInk,
           shape: pill,
           minimumSize: const Size(48, 44),
           textStyle: _buttonText,
+        ),
+      ),
+      // No outline on the off state, which Material draws by default. The off
+      // track is a tonal fill that shows on the page and on a card alike
+      // (1.3:1 or better on each) with a thumb 3:1 against it; on is the
+      // accent. AMOLED keeps its hairline round the track.
+      switchTheme: SwitchThemeData(
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.selected) ? p.accent : switchOffTrack,
+        ),
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? p.onAccent
+              : switchOffThumb,
+        ),
+        trackOutlineColor: WidgetStateProperty.resolveWith(
+          (states) => hairlineChips && !states.contains(WidgetState.selected)
+              ? p.line
+              : Colors.transparent,
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(

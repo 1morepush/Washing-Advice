@@ -14,10 +14,14 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import 'package:washing_advice/core/providers.dart';
 import 'package:washing_advice/core/settings.dart';
 import 'package:washing_advice/data/images/memory_image_store.dart';
+import 'package:washing_advice/core/theme.dart';
 import 'package:washing_advice/features/laundry/laundry_screen.dart';
+import 'package:washing_advice/widgets/garment_glyph.dart';
 import 'package:washing_advice/features/pile/pile_screen.dart';
 import 'package:washing_advice/main.dart';
 import 'package:washing_advice/widgets/rinse_kit.dart';
+
+import '../support/contrast.dart';
 
 import '../support/fixtures.dart';
 
@@ -150,4 +154,32 @@ void main() {
     expect(find.text('Sort laundry'), findsNothing);
     expect(find.text('Photograph a pile'), findsNothing);
   });
+
+  test(
+    'the worn-today glyph stack shows on the card and the well, every mode',
+    () {
+      final themes = {
+        'light': AppTheme.light(),
+        'dark': AppTheme.dark(),
+        'amoled': AppTheme.amoled(),
+      };
+      for (final MapEntry(key: name, value: theme) in themes.entries) {
+        final card = theme.cardTheme.color!;
+        final well = theme.extension<RinseShape>()!.well;
+        for (final kind in [GlyphKind.hoodie, GlyphKind.jeans, GlyphKind.tee]) {
+          final fill = wornTodayStackFill(theme.colorScheme, kind);
+          expect(
+            contrastBetween(fill, card),
+            greaterThanOrEqualTo(1.5),
+            reason: '$name ${kind.name} on the card',
+          );
+          expect(
+            contrastBetween(fill, well),
+            greaterThanOrEqualTo(1.5),
+            reason: '$name ${kind.name} on the well',
+          );
+        }
+      }
+    },
+  );
 }

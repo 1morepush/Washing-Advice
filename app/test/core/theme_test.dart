@@ -237,6 +237,53 @@ void main() {
           }
         });
 
+        test(
+          'a switch is on a visible track with a visible thumb, off or on',
+          () {
+            final sw = theme.switchTheme;
+            final off = sw.trackColor!.resolve({})!;
+            final thumb = sw.thumbColor!.resolve({})!;
+            // The surfaces a switch sits on: the page and a card.
+            for (final ground in [bg, card]) {
+              expect(
+                contrastBetween(off, ground),
+                greaterThanOrEqualTo(1.3),
+                reason: '$name track on $ground',
+              );
+            }
+            expect(contrastBetween(thumb, off), greaterThanOrEqualTo(3));
+            // No drawn outline when off, except AMOLED's hairline.
+            final outline = sw.trackOutlineColor!.resolve({})!;
+            expect(
+              outline == Colors.transparent ||
+                  rinse.cardEdge != BorderSide.none,
+              isTrue,
+            );
+            // On is the accent, with the on-accent thumb.
+            expect(sw.trackColor!.resolve({WidgetState.selected}), s.primary);
+            expect(
+              contrastBetween(
+                sw.thumbColor!.resolve({WidgetState.selected})!,
+                s.primary,
+              ),
+              greaterThanOrEqualTo(3),
+            );
+          },
+        );
+
+        test('accent as TEXT (a text button) is 4.5:1 on every ground', () {
+          final ink = theme.textButtonTheme.style!.foregroundColor!.resolve(
+            {},
+          )!;
+          for (final ground in grounds) {
+            expect(
+              contrastBetween(ink, ground),
+              greaterThanOrEqualTo(4.5),
+              reason: '$name on $ground',
+            );
+          }
+        });
+
         test('the accent is 3:1 against the ground, and its label 4.5:1', () {
           expect(contrastBetween(s.primary, bg), greaterThanOrEqualTo(3));
           expect(

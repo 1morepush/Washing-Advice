@@ -230,11 +230,7 @@ class _WoreSomething extends StatelessWidget {
                             padding: const EdgeInsets.all(6),
                             child: GarmentGlyph(
                               kind: kind,
-                              fill: switch (kind) {
-                                GlyphKind.hoodie => const Color(0xFF1F2A44),
-                                GlyphKind.jeans => const Color(0xFF2B3A55),
-                                _ => const Color(0xFFF3F2EC),
-                              },
+                              fill: wornTodayStackFill(theme.colorScheme, kind),
                               edge: rinse.garmentEdge,
                             ),
                           ),
@@ -599,3 +595,16 @@ class _Empty extends StatelessWidget {
     },
   );
 }
+
+/// The colour of one garment in the "What did you wear today?" stack.
+///
+/// Taken from the theme rather than fixed: a navy hoodie and navy jeans drawn
+/// in their own colours all but vanish on the Dark and AMOLED wells. These are
+/// the accent, the muted ink and the ink, each well clear of the card and the
+/// well in all three modes.
+@visibleForTesting
+Color wornTodayStackFill(ColorScheme scheme, GlyphKind kind) => switch (kind) {
+  GlyphKind.hoodie => scheme.primary,
+  GlyphKind.jeans => scheme.onSurfaceVariant,
+  _ => scheme.onSurface,
+};

@@ -122,6 +122,42 @@ void main() {
     });
   });
 
+  group('the name heading', () {
+    testWidgets('is the page heading, with the brand and type under it', (
+      tester,
+    ) async {
+      final base = confidentItem(id: itemId.value, name: 'White cotton tee');
+      await repository.save(
+        base.copyWith(
+          brand: Confident(
+            'Uniqlo',
+            confidence: 0.9,
+            source: Provenance.aiInference,
+          ),
+        ),
+      );
+
+      await pump(tester, const ItemDetailScreen(id: itemId));
+
+      // Once: in the page body, not repeated in the bar as well.
+      expect(find.text('White cotton tee'), findsOneWidget);
+      expect(find.textContaining('Uniqlo · '), findsOneWidget);
+    });
+
+    testWidgets('leaves out a brand there is none of, inventing nothing', (
+      tester,
+    ) async {
+      await repository.save(
+        confidentItem(id: itemId.value, name: 'White cotton tee'),
+      );
+
+      await pump(tester, const ItemDetailScreen(id: itemId));
+
+      expect(find.textContaining('null'), findsNothing);
+      expect(find.textContaining('Uniqlo'), findsNothing);
+    });
+  });
+
   group('a label that prints a word instead of a number', () {
     testWidgets('the wording is shown, not just the figure', (tester) async {
       // American labels say "machine wash cold" and never give a number. The

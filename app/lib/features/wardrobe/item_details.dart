@@ -37,6 +37,7 @@ class ItemDetails extends StatelessWidget {
         // own colour does — it is what the garment is — so it always has a
         // place here.
         _Hero(item: item),
+        _NameHeading(item: item),
         _Actions(item: item),
         if (CutoutController.isAvailableFor(item))
           _CutoutPrompt(
@@ -636,6 +637,48 @@ class _Fact extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The garment's name as the page's heading, with what it is underneath:
+/// "Uniqlo · Sweater", built only from what is recorded, so a garment with no
+/// brand reads just "Sweater".
+class _NameHeading extends StatelessWidget {
+  const _NameHeading({required this.item});
+
+  final WardrobeItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final subtitle = [
+      if (item.brand case final Confident<String> brand) brand.value,
+      item.type.value.label,
+    ].where((part) => part.trim().isNotEmpty).join(' · ');
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            item.displayName,
+            style: theme.textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          if (subtitle.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ],
       ),
     );

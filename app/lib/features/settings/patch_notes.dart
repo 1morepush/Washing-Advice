@@ -99,6 +99,31 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.32.0',
+    name: 'Rinse and Repeat',
+    date: DateTime.utc(2026, 10, 16),
+    headline: 'A fresh, lighter look across the whole app',
+    changes: [
+      'The app looks new, in Light, Dark and AMOLED: soft rounded cards '
+          'instead of outlines, rounded type, and bigger, clearer headings. '
+          'Nothing moved and nothing was taken away; it is the same app, '
+          'calmer to look at.',
+      'A garment with no photo shows a little silhouette of what it is — a '
+          'jumper, trousers, a sock — in its own colour, instead of a plain '
+          'disc.',
+      'Care instructions now come with the washing symbols beside the words: '
+          'on the garment page, on each load, and when you review a scan.',
+      'Laundry has colours of its own. Basket is amber, Washing is blue and '
+          'Drying is green, so you can tell which stage you are in at a '
+          'glance.',
+      'The last row of the Wardrobe no longer hides behind the Add button, and '
+          'a row of quick filters sits above it: All, Tops, Bottoms, '
+          'Outerwear and Needs a label.',
+      'Settings and the scan screens were tidied, so buttons, headings and '
+          'chips look the same wherever you meet them.',
+    ],
+  ),
+  Release(
     version: '0.31.0',
     name: 'Quick Cycle',
     date: DateTime.utc(2026, 10, 15),

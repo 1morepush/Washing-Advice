@@ -36,7 +36,11 @@ class ItemDetailScreen extends ConsumerWidget {
         // read as one header rather than two bands with a seam between.
         backgroundColor: item.valueOrNull == null
             ? context.rinse.well
-            : ItemThumbnail.tileFor(context, item.valueOrNull!),
+            : ItemThumbnail.tileFor(
+                context,
+                item.valueOrNull!,
+                floor: heroFloor,
+              ),
         leading: backLeading(context, '/'),
         // The name is a heading in the body, under the picture, where it has
         // the whole width and as many lines as it needs (see [ItemDetails]);

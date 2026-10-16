@@ -467,6 +467,10 @@ class _Section extends StatelessWidget {
   );
 }
 
+/// The contrast a garment needs against its hero tile: higher than a list
+/// tile's 1.6, because at 176 px a dim silhouette reads as a smudge.
+const heroFloor = 2.5;
+
 /// The garment large, on the soft well every garment tile sits on.
 class _Hero extends StatelessWidget {
   const _Hero({required this.item});
@@ -476,7 +480,7 @@ class _Hero extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     height: 216,
-    color: ItemThumbnail.tileFor(context, item),
+    color: ItemThumbnail.tileFor(context, item, floor: heroFloor),
     alignment: Alignment.center,
     // `backdrop: false` because the hero is itself the tile, tinted only as
     // far as this garment needs to show (see [ItemThumbnail.tileFor]); the tint a

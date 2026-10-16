@@ -241,7 +241,11 @@ class ItemThumbnail extends ConsumerWidget {
   /// The tile [item] should sit on, by the rule above. Public so a large
   /// header (the garment page's hero) can wear the same tile its thumbnail
   /// would, instead of the plain well a dark garment is lost against.
-  static Color tileFor(BuildContext context, WardrobeItem item) {
+  static Color tileFor(
+    BuildContext context,
+    WardrobeItem item, {
+    double floor = legibilityFloor,
+  }) {
     final colors = item.colors.value.colors;
     final well = context.rinse.well;
     if (colors.isEmpty) return well;
@@ -253,6 +257,7 @@ class ItemThumbnail extends ConsumerWidget {
       well: well,
       lighter: dark ? scheme.onSurface : const Color(0xFFFFFFFF),
       darker: dark ? const Color(0xFF000000) : scheme.onSurface,
+      floor: floor,
     );
   }
 
@@ -268,13 +273,14 @@ class ItemThumbnail extends ConsumerWidget {
     required Color well,
     required Color lighter,
     required Color darker,
+    double floor = legibilityFloor,
   }) {
     double ratio(Color tile) {
       final a = garment.computeLuminance(), b = tile.computeLuminance();
       return (math.max(a, b) + 0.05) / (math.min(a, b) + 0.05);
     }
 
-    if (ratio(well) >= legibilityFloor) return well;
+    if (ratio(well) >= floor) return well;
 
     // The smallest step toward [target] that reaches the floor, or null when
     // even a full step does not: a garment a hair lighter than the well cannot
@@ -285,7 +291,7 @@ class ItemThumbnail extends ConsumerWidget {
           target.withValues(alpha: step / 50),
           well,
         );
-        if (ratio(tile) >= legibilityFloor) return (step: step, tile: tile);
+        if (ratio(tile) >= floor) return (step: step, tile: tile);
       }
       return null;
     }

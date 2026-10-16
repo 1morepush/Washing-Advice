@@ -141,6 +141,18 @@ void main() {
     });
   }
 
+  test('a hero tile asks for more: charcoal reaches 2.5 on AMOLED', () {
+    final shape = amoled.extension<RinseShape>()!;
+    final tile = ItemThumbnail.backdropFor(
+      garment: rgb('#3C3F44'),
+      well: shape.well,
+      lighter: amoled.colorScheme.onSurface,
+      darker: _black,
+      floor: 2.5,
+    );
+    expect(contrastBetween(rgb('#3C3F44'), tile), greaterThanOrEqualTo(2.4));
+  });
+
   group('how little is added', () {
     testWidgets('a tile moves only as far as the floor needs', (tester) async {
       final well = amoled.extension<RinseShape>()!.well;

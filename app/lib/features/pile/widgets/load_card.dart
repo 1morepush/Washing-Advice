@@ -15,6 +15,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
+import '../../../core/theme.dart';
+import '../../../widgets/care_symbol.dart';
 import '../../../widgets/item_thumbnail.dart';
 import '../../history/wear_recorder.dart';
 
@@ -23,6 +25,22 @@ List<LoadRationale> _explanations(LaundryLoad load) => [
   for (final entry in load.rationale)
     if (entry.kind != RationaleKind.handling) entry,
 ];
+
+/// The care symbols that belong with the wash row, and those that belong with
+/// the dry row. Bleach rides with the wash; ironing and professional care are
+/// not part of a load's settings and are left to the garment's own page.
+const _washKinds = {
+  CareSymbolKind.wash30Gentle,
+  CareSymbolKind.wash30Mild,
+  CareSymbolKind.wash40,
+  CareSymbolKind.doNotBleach,
+};
+const _dryKinds = {
+  CareSymbolKind.tumbleDry,
+  CareSymbolKind.doNotTumbleDry,
+  CareSymbolKind.dryFlat,
+  CareSymbolKind.lineDry,
+};
 
 class LoadCard extends ConsumerStatefulWidget {
   const LoadCard({required this.load, this.action, super.key});
@@ -54,16 +72,36 @@ class _LoadCardState extends ConsumerState<LoadCard> {
     final washer = load.washerSetting;
     final dryer = load.dryerSetting;
 
+    final rinse = context.rinse;
+    // Symbols exist for only some instructions; the words below always say the
+    // whole of it, so a missing symbol loses nothing.
+    final symbols = careSymbolsFor(load.effectiveCare);
+    final washSymbols = [
+      for (final kind in symbols)
+        if (_washKinds.contains(kind)) kind,
+    ];
+    final drySymbols = [
+      for (final kind in symbols)
+        if (_dryKinds.contains(kind)) kind,
+    ];
+
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
               children: [
                 Expanded(
-                  child: Text(load.label, style: theme.textTheme.titleMedium),
+                  child: Text(
+                    load.label,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
                 if (load.isCompromise)
                   // Never present a compromise as a perfect match. The machine
@@ -79,15 +117,16 @@ class _LoadCardState extends ConsumerState<LoadCard> {
                   ),
               ],
             ),
+            const SizedBox(height: 2),
             Text(
               '${load.itemCount} ${load.itemCount == 1 ? 'item' : 'items'} · '
               '${load.totalWeightKg.toStringAsFixed(1)} kg',
-              style: theme.textTheme.bodySmall?.copyWith(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             // Pictures rather than a list of names, because this card is read
             // with a basket in front of you. A name is what the app calls a
             // garment; a photograph is what you are holding, and matching
@@ -100,15 +139,22 @@ class _LoadCardState extends ConsumerState<LoadCard> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    ItemThumbnail(item: item, size: 40),
-                    const SizedBox(width: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(
+                        rinse.tileRadius * .6,
+                      ),
+                      child: ItemThumbnail(item: item, size: 40),
+                    ),
+                    const SizedBox(width: 12),
                     // Wrapped rather than clipped: these names run long and
                     // the tail is often the part that tells two similar
                     // garments apart.
                     Expanded(
                       child: Text(
                         item.displayName,
-                        style: theme.textTheme.bodyMedium,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ],
@@ -117,24 +163,24 @@ class _LoadCardState extends ConsumerState<LoadCard> {
 
             const SizedBox(height: 16),
             if (washer != null)
-              _Settings(setting: washer)
+              _Settings(setting: washer, symbols: washSymbols)
             else
               // Without a machine the load still has requirements; it just has
               // no dial position. Saying so beats saying nothing.
-              _Requirements(spec: load.washSpec),
+              _Requirements(spec: load.washSpec, symbols: washSymbols),
 
             // When the load dries in parts, the parts *are* the answer — a
             // single "do not tumble dry" above them would describe the
             // conservative reading the split exists to get past.
             if (load.driesInParts) ...[
               const SizedBox(height: 12),
-              _DryingParts(load: load),
+              _DryingParts(load: load, symbols: drySymbols),
             ] else if (dryer != null) ...[
               const SizedBox(height: 12),
-              _DrySettings(setting: dryer),
+              _DrySettings(setting: dryer, symbols: drySymbols),
             ] else ...[
               const SizedBox(height: 12),
-              _DryRequirements(spec: load.drySpec),
+              _DryRequirements(spec: load.drySpec, symbols: drySymbols),
             ],
 
             // Split by kind, because the two read differently. Explanations
@@ -198,23 +244,18 @@ class _LoadCardState extends ConsumerState<LoadCard> {
 
 /// What to select on the machine.
 class _Settings extends StatelessWidget {
-  const _Settings({required this.setting});
+  const _Settings({required this.setting, required this.symbols});
 
   final WasherSetting setting;
+  final List<CareSymbolKind> symbols;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return _Block(
+      title: 'Wash',
+      symbols: symbols,
       children: [
-        Text(
-          'Wash',
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.primary,
-          ),
-        ),
-        const SizedBox(height: 4),
         _Row(label: 'Program', value: setting.programName),
         _Row(
           label: 'Temperature',
@@ -254,23 +295,18 @@ class _Settings extends StatelessWidget {
 }
 
 class _DrySettings extends StatelessWidget {
-  const _DrySettings({required this.setting});
+  const _DrySettings({required this.setting, required this.symbols});
 
   final DryerSetting setting;
+  final List<CareSymbolKind> symbols;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return _Block(
+      title: 'Dry',
+      symbols: symbols,
       children: [
-        Text(
-          'Dry',
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.primary,
-          ),
-        ),
-        const SizedBox(height: 4),
         _Row(label: 'Program', value: setting.programName),
         for (final note in setting.notes)
           Padding(
@@ -289,23 +325,17 @@ class _DrySettings extends StatelessWidget {
 
 /// The load's requirements, when no machine is configured.
 class _Requirements extends StatelessWidget {
-  const _Requirements({required this.spec});
+  const _Requirements({required this.spec, required this.symbols});
 
   final WashSpec spec;
+  final List<CareSymbolKind> symbols;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return _Block(
+      title: 'Wash',
+      symbols: symbols,
       children: [
-        Text(
-          'Wash',
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.primary,
-          ),
-        ),
-        const SizedBox(height: 4),
         _Row(label: 'Method', value: spec.method.label),
         _Row(
           label: 'Temperature',
@@ -328,19 +358,19 @@ class _Requirements extends StatelessWidget {
 /// dryer, these two on the airer" is the instruction; the heat setting is
 /// detail underneath it.
 class _DryingParts extends StatelessWidget {
-  const _DryingParts({required this.load});
+  const _DryingParts({required this.load, required this.symbols});
 
   final LaundryLoad load;
+  final List<CareSymbolKind> symbols;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return _Block(
+      title: 'Dry',
+      symbols: symbols,
       children: [
-        Text('Dry', style: theme.textTheme.labelLarge),
-        const SizedBox(height: 2),
         Text(
           'Washed together, dried apart.',
           style: theme.textTheme.bodySmall?.copyWith(
@@ -403,23 +433,17 @@ class _DryingParts extends StatelessWidget {
 }
 
 class _DryRequirements extends StatelessWidget {
-  const _DryRequirements({required this.spec});
+  const _DryRequirements({required this.spec, required this.symbols});
 
   final DrySpec spec;
+  final List<CareSymbolKind> symbols;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return _Block(
+      title: 'Dry',
+      symbols: symbols,
       children: [
-        Text(
-          'Dry',
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.primary,
-          ),
-        ),
-        const SizedBox(height: 4),
         if (spec.tumbleDryAllowed)
           _Row(label: 'Tumble', value: spec.maxHeat.label)
         else
@@ -446,8 +470,8 @@ class _Reasons extends StatelessWidget {
       children: [
         Text(
           title,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.primary,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w800,
           ),
         ),
         const SizedBox(height: 4),
@@ -484,7 +508,7 @@ class _Row extends StatelessWidget {
             width: 104,
             child: Text(
               label,
-              style: theme.textTheme.bodySmall?.copyWith(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
@@ -493,11 +517,76 @@ class _Row extends StatelessWidget {
             child: Text(
               value,
               style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// One instruction block of the card, Wash or Dry: a soft tile with the stage
+/// dot and title on the left, the care symbols there is art for on the right,
+/// and the words underneath. The symbols never stand in for the words.
+class _Block extends StatelessWidget {
+  const _Block({
+    required this.title,
+    required this.symbols,
+    required this.children,
+  });
+
+  final String title;
+  final List<CareSymbolKind> symbols;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final stages = context.stageColors;
+    final dot = title == 'Wash' ? stages.wash : stages.dry;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: context.rinse.well,
+        borderRadius: context.rinse.tileBorderRadius,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 9,
+                  height: 9,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: dot),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                for (final kind in symbols) ...[
+                  const SizedBox(width: 6),
+                  CareSymbol(
+                    kind: kind,
+                    size: 26,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 6),
+            ...children,
+          ],
+        ),
       ),
     );
   }

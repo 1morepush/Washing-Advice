@@ -247,7 +247,7 @@ void main() {
       ], LifecycleState.inLaundry);
 
       container.read(splitDryingProvider.notifier).state = true;
-      await openOn(tester, 'Basket (2)');
+      await openOn(tester, 'Basket 2');
 
       expect(find.text('Washed together, dried apart.'), findsOneWidget);
       expect(find.text('In the dryer'), findsOneWidget);
@@ -265,7 +265,7 @@ void main() {
         hangOnly.id,
       ], LifecycleState.inLaundry);
 
-      await openOn(tester, 'Basket (2)');
+      await openOn(tester, 'Basket 2');
 
       expect(find.text('Washed together, dried apart.'), findsNothing);
     });
@@ -280,7 +280,7 @@ void main() {
       final item = await save('tee');
       await controller().move([item.id], LifecycleState.inLaundry);
 
-      await openOn(tester, 'Basket (1)');
+      await openOn(tester, 'Basket 1');
 
       // Two: one in the load card, one in the list of what is in the basket.
       expect(find.byType(ItemThumbnail), findsNWidgets(2));
@@ -295,7 +295,7 @@ void main() {
       final item = await save('tee');
       await controller().move([item.id], LifecycleState.inLaundry);
 
-      await openOn(tester, 'Basket (1)');
+      await openOn(tester, 'Basket 1');
       await tester.tap(find.byIcon(Icons.more_vert));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Take out of the laundry'));
@@ -311,7 +311,7 @@ void main() {
       final item = await save('tee');
       await controller().move([item.id], LifecycleState.beingWashed);
 
-      await openOn(tester, 'Washing (1)');
+      await openOn(tester, 'Washing 1');
       await tester.tap(find.byIcon(Icons.more_vert));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Take out of the laundry'));
@@ -329,7 +329,7 @@ void main() {
       final item = await save('jumper');
       await controller().move([item.id], LifecycleState.beingDried);
 
-      await openOn(tester, 'Drying (1)');
+      await openOn(tester, 'Drying 1');
       await tester.tap(find.byIcon(Icons.more_vert));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Back to the basket'));
@@ -350,7 +350,7 @@ void main() {
       final item = await save('tee');
       await controller().move([item.id], LifecycleState.inLaundry);
 
-      await openOn(tester, 'Basket (1)');
+      await openOn(tester, 'Basket 1');
       await tester.tap(find.byIcon(Icons.more_vert));
       await tester.pumpAndSettle();
 
@@ -382,7 +382,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Basket (2)'));
+      await tester.tap(find.text('Basket 2'));
       await tester.pumpAndSettle();
 
       expect(find.byType(CheckboxListTile), findsNWidgets(2));

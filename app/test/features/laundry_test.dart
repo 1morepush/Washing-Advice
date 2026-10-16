@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 import 'package:washing_advice/core/providers.dart';
+import 'package:washing_advice/widgets/care_symbol.dart';
 import 'package:washing_advice/widgets/item_thumbnail.dart';
 import 'package:washing_advice/features/laundry/laundry_screen.dart';
 import 'package:washing_advice/core/settings.dart';
@@ -285,6 +286,40 @@ void main() {
       // Two: one in the load card, one in the list of what is in the basket.
       expect(find.byType(ItemThumbnail), findsNWidgets(2));
       expect(find.text('Start this load'), findsOneWidget);
+    });
+
+    testWidgets('the wash and dry blocks keep their words beside any symbols', (
+      tester,
+    ) async {
+      // Symbols exist for only some instructions, so they can sit beside the
+      // words but never replace them.
+      final item = await save('tee');
+      await controller().move([item.id], LifecycleState.inLaundry);
+
+      await openOn(tester, 'Basket 1');
+
+      expect(find.text('Wash'), findsOneWidget);
+      expect(find.text('Dry'), findsOneWidget);
+      expect(find.text('Temperature'), findsOneWidget);
+      final kinds = tester
+          .widgetList<CareSymbol>(find.byType(CareSymbol))
+          .map((symbol) => symbol.kind);
+      // Only wash and dry symbols belong here, not iron or dry-clean ones.
+      expect(
+        kinds,
+        everyElement(
+          isIn(const [
+            CareSymbolKind.wash30Gentle,
+            CareSymbolKind.wash30Mild,
+            CareSymbolKind.wash40,
+            CareSymbolKind.doNotBleach,
+            CareSymbolKind.tumbleDry,
+            CareSymbolKind.doNotTumbleDry,
+            CareSymbolKind.dryFlat,
+            CareSymbolKind.lineDry,
+          ]),
+        ),
+      );
     });
 
     testWidgets('the basket lets go of something put there by mistake', (

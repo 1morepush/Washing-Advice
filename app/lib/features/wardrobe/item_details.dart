@@ -469,7 +469,7 @@ class _Section extends StatelessWidget {
 
 /// The contrast a garment needs against its hero tile: higher than a list
 /// tile's 1.6, because at 176 px a dim silhouette reads as a smudge.
-const heroFloor = 2.5;
+const heroFloor = 2.2;
 
 /// The garment large, on the soft well every garment tile sits on.
 class _Hero extends StatelessWidget {

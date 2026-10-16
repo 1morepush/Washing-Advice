@@ -46,10 +46,10 @@ async function ready(page) {
 }
 
 async function shot(page, name) {
-  // Park the pointer on an empty edge first: a button the last tap landed on
+  // Park the pointer on the empty top edge first: a button the last tap landed on
   // would otherwise be captured in its hover shade, and a toggle's tooltip
   // would still be showing.
-  await page.mouse.move(VIEWPORT.width - 2, VIEWPORT.height / 2);
+  await page.mouse.move(VIEWPORT.width / 2, 2);
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${OUT}/${name}.png` });
   console.log(`captured ${name}.png`);

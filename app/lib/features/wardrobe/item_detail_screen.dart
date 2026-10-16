@@ -7,6 +7,8 @@
 /// carries its provenance.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -21,6 +23,24 @@ import 'condition_sheet.dart';
 import 'item_details.dart';
 import 'report_wear_sheet.dart';
 
+/// The bar's colour and the colour of its icons: the hero's tile, and the
+/// page's ink or its ground, whichever has more contrast with that tile.
+(Color, Color) _bar(BuildContext context, WardrobeItem? item) {
+  final scheme = Theme.of(context).colorScheme;
+  final tile = item == null
+      ? context.rinse.well
+      : ItemThumbnail.tileFor(context, item, floor: heroFloor);
+  double ratio(Color a, Color b) {
+    final x = a.computeLuminance(), y = b.computeLuminance();
+    return (math.max(x, y) + 0.05) / (math.min(x, y) + 0.05);
+  }
+
+  final ink = ratio(scheme.onSurface, tile) >= ratio(scheme.surface, tile)
+      ? scheme.onSurface
+      : scheme.surface;
+  return (tile, ink);
+}
+
 class ItemDetailScreen extends ConsumerWidget {
   const ItemDetailScreen({required this.id, super.key});
 
@@ -34,13 +54,11 @@ class ItemDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         // The well the garment sits on, so the bar and the hero beneath it
         // read as one header rather than two bands with a seam between.
-        backgroundColor: item.valueOrNull == null
-            ? context.rinse.well
-            : ItemThumbnail.tileFor(
-                context,
-                item.valueOrNull!,
-                floor: heroFloor,
-              ),
+        backgroundColor: _bar(context, item.valueOrNull).$1,
+        // Icons in whichever of the page's ink and ground reads better on the
+        // tile: a lifted tile under a dark garment is light enough that the
+        // usual pale icons would fade into it.
+        foregroundColor: _bar(context, item.valueOrNull).$2,
         leading: backLeading(context, '/'),
         // The name is a heading in the body, under the picture, where it has
         // the whole width and as many lines as it needs (see [ItemDetails]);

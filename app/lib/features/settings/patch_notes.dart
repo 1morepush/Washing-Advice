@@ -124,8 +124,9 @@ final patchNotes = <Release>[
       'Laundry has colours of its own. Basket is amber, Washing is blue and '
           'Drying is green, so you can tell which stage you are in at a '
           'glance. With larger text the three stages scroll sideways rather '
-          'than cutting their names short, and a load\'s settings put each '
-          'label above its value instead of breaking it in half.',
+          'than cutting their names short (the open one scrolls into view), a '
+          'load\'s settings put each label above its value instead of breaking '
+          'it in half, and the bottom bar\'s names no longer split in two.',
       'The last row of the Wardrobe no longer hides behind the Add button, and '
           'a row of quick filters sits above it: All, Tops, Bottoms, '
           'Outerwear and Needs a label.',

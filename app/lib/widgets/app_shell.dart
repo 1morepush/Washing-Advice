@@ -46,6 +46,9 @@ enum AppDestination {
   final IconData selectedIcon;
 }
 
+/// How far the bottom bar's labels follow the system text size.
+const _maxBarTextScale = 1.05;
+
 class AppShell extends ConsumerWidget {
   const AppShell({required this.shell, super.key});
 
@@ -82,21 +85,29 @@ class AppShell extends ConsumerWidget {
         bottomNavigationBar: selecting || typing
             ? null
             : RinseNavBar(
-                bar: NavigationBar(
-                  selectedIndex: index,
-                  onDestinationSelected: (selected) => shell.goBranch(
-                    selected,
-                    // The place you are in: back to its first screen.
-                    initialLocation: selected == index,
+                // A fifth of a 320 dp phone is room for "Wardrobe" at
+                // about the normal type size and not beyond: the
+                // label would break inside the word. The bar's labels stop
+                // growing there (the rest of the app keeps going), as
+                // Material's own guidance for a bottom bar has it.
+                bar: MediaQuery.withClampedTextScaling(
+                  maxScaleFactor: _maxBarTextScale,
+                  child: NavigationBar(
+                    selectedIndex: index,
+                    onDestinationSelected: (selected) => shell.goBranch(
+                      selected,
+                      // The place you are in: back to its first screen.
+                      initialLocation: selected == index,
+                    ),
+                    destinations: [
+                      for (final destination in AppDestination.values)
+                        NavigationDestination(
+                          icon: Icon(destination.icon),
+                          selectedIcon: Icon(destination.selectedIcon),
+                          label: destination.label,
+                        ),
+                    ],
                   ),
-                  destinations: [
-                    for (final destination in AppDestination.values)
-                      NavigationDestination(
-                        icon: Icon(destination.icon),
-                        selectedIcon: Icon(destination.selectedIcon),
-                        label: destination.label,
-                      ),
-                  ],
                 ),
               ),
       ),

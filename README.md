@@ -849,7 +849,7 @@ A few decisions worth reading about:
 |---|---|---|
 | 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 662 core tests |
 | 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts, machine identification | **Done** — 404 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 1107 app tests |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 1121 app tests |
 | 4 | Care-label scanning, item editing, filter sheet, garment cutouts, grid view | **Done** |
 | 5 | Pile scanning, load grouping, machine profiles, wear and wash history | **Done** |
 | 6 | Outfit suggestions, laundry-aware packing, wardrobe insights | **Done** |
@@ -879,7 +879,7 @@ A few decisions worth reading about:
 | 27 | A bottom bar that keeps each place's history; Laundry in three stages; Outfits as Ideas and Saved with labelled sources; Settings in groups | **Done** |
 | 28 | The Rinse look: soft cards without outlines, rounded Nunito type, garment silhouettes and washing symbols, stage colours for Laundry, quick filters on the Wardrobe, in Light, Dark and AMOLED | **Done** |
 
-Released as `0.32.0 — Rinse and Repeat`; the app's own **Settings → What's new**
+Released as `0.32.1 — Tuck In`; the app's own **Settings → What's new**
 carries the full list, and `app/lib/features/settings/patch_notes.dart` records
 which version digit moves for what.
 

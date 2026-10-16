@@ -33,6 +33,7 @@ import 'data/api/scan_dto.dart';
 import 'data/api/stain_dto.dart';
 import 'data/capture/image_capture_source.dart';
 import 'data/images/memory_image_store.dart';
+import 'widgets/screen_insets_scope.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -132,6 +133,8 @@ class _DemoAppState extends ConsumerState<_DemoApp> {
       theme: AppTheme.light(),
       darkTheme: appearance.darkTheme,
       themeMode: appearance.themeMode,
+      // As in the real app: the screen's rounded corners are not ours to use.
+      builder: (context, child) => ScreenInsetsScope(child: child!),
       routerConfig: _router,
     );
   }

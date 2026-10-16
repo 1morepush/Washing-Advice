@@ -99,6 +99,19 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.32.1',
+    name: 'Tuck In',
+    date: DateTime.utc(2026, 10, 16),
+    headline: 'The bottom bar no longer sits in the phone\'s corners',
+    changes: [
+      'On an iPhone, with the app added to the home screen, the bottom bar\'s '
+          'first and last labels sat in the screen\'s rounded corners and '
+          'over the home indicator, so they looked slightly cut off. The bar '
+          'now leaves room for them, and so does the Add button above it. '
+          'A browser tab, and an iPhone with a home button, are unchanged.',
+    ],
+  ),
+  Release(
     version: '0.32.0',
     name: 'Rinse and Repeat',
     date: DateTime.utc(2026, 10, 16),

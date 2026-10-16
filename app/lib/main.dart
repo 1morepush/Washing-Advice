@@ -24,6 +24,7 @@ import 'data/images/store_factory.dart';
 import 'data/notifications/local_nudges.dart';
 import 'data/notifications/nudges.dart';
 import 'features/laundry/evening_nudge.dart';
+import 'widgets/screen_insets_scope.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -207,6 +208,9 @@ class _WashingAdviceAppState extends ConsumerState<WashingAdviceApp> {
       // Follows the system unless the person chose otherwise. A laundry app is
       // used in a utility room at night as often as in daylight.
       themeMode: appearance.themeMode,
+      // The phone's rounded corners and home indicator are not the app's to
+      // draw under; on the web Flutter is not told, so this says it.
+      builder: (context, child) => ScreenInsetsScope(child: child!),
       routerConfig: _router,
     );
   }

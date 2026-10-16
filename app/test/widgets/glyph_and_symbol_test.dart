@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 import 'package:washing_advice/widgets/care_symbol.dart';
 import 'package:washing_advice/widgets/garment_glyph.dart';
+import 'package:washing_advice/widgets/svg_path.dart';
 
 const _sizes = [16.0, 24.0, 56.0, 120.0];
 
@@ -216,6 +217,34 @@ void main() {
     });
   });
 
+  group('parsed art', () {
+    testWidgets('is parsed once per kind, not on every paint', (tester) async {
+      Widget glyph(Color fill) => GarmentGlyph(
+        kind: GlyphKind.hoodie,
+        fill: fill,
+        edge: const Color(0xFF000000),
+        size: 40,
+      );
+      Widget symbol(Color c) =>
+          CareSymbol(kind: CareSymbolKind.tumbleDryHigh, color: c, size: 40);
+      Future<void> show(Widget w) => tester.pumpWidget(
+        Directionality(textDirection: TextDirection.ltr, child: w),
+      );
+
+      await show(glyph(const Color(0xFFFF0000)));
+      await show(symbol(const Color(0xFFFF0000)));
+      final after = svgPathParseCount;
+      expect(after, greaterThan(0));
+
+      // New colours force repaints; nothing new may be parsed.
+      for (final c in const [Color(0xFF00FF00), Color(0xFF0000FF)]) {
+        await show(glyph(c));
+        await show(symbol(c));
+      }
+      expect(svgPathParseCount, after);
+    });
+  });
+
   group('CareSymbol', () {
     for (final kind in CareSymbolKind.values) {
       testWidgets('${kind.name} paints at every size without overflow', (
@@ -245,6 +274,27 @@ void main() {
         expect(_countNear(bytes, const Color(0xFF0000FF)), greaterThan(150));
       });
     }
+
+    testWidgets('more heat paints more dots', (tester) async {
+      final counts = <int>[];
+      for (final kind in const [
+        CareSymbolKind.tumbleDryNoHeat,
+        CareSymbolKind.tumbleDryLow,
+        CareSymbolKind.tumbleDryMedium,
+        CareSymbolKind.tumbleDryHigh,
+      ]) {
+        final bytes = await _render(
+          tester,
+          CareSymbol(kind: kind, color: const Color(0xFF0000FF), size: 120),
+          side: 120,
+          background: const Color(0xFFFFFFFF),
+        );
+        counts.add(_countNear(bytes, const Color(0xFF0000FF)));
+      }
+      for (var i = 1; i < counts.length; i++) {
+        expect(counts[i], greaterThan(counts[i - 1]), reason: '$counts');
+      }
+    });
 
     testWidgets('has a default label and honours an override', (tester) async {
       final handle = tester.ensureSemantics();
@@ -312,7 +362,7 @@ void main() {
     test('a plain cotton label', () {
       expect(careSymbolsFor(care()), [
         CareSymbolKind.wash40,
-        CareSymbolKind.tumbleDry,
+        CareSymbolKind.tumbleDryLow,
       ]);
     });
 
@@ -363,7 +413,25 @@ void main() {
         iron: const IronCare(temperature: IronTemperature.high),
         professional: const ProfessionalCare(solvent: CleaningSolvent.wetClean),
       );
-      expect(careSymbolsFor(hot), [CareSymbolKind.tumbleDry]);
+      expect(careSymbolsFor(hot), [CareSymbolKind.tumbleDryLow]);
+    });
+
+    test('every tumble-dry heat maps to its own dot count, never more', () {
+      const expected = {
+        TumbleDryHeat.noHeat: CareSymbolKind.tumbleDryNoHeat,
+        TumbleDryHeat.low: CareSymbolKind.tumbleDryLow,
+        TumbleDryHeat.medium: CareSymbolKind.tumbleDryMedium,
+        TumbleDryHeat.high: CareSymbolKind.tumbleDryHigh,
+      };
+      expect(expected.keys, TumbleDryHeat.values);
+      for (final MapEntry(key: heat, value: kind) in expected.entries) {
+        final out = careSymbolsFor(
+          care(dry: DryCare(tumbleDryAllowed: true, tumbleDryHeat: heat)),
+        );
+        expect(out, contains(kind), reason: heat.name);
+        // The art carries exactly as many dots as the label's heat.
+        expect(careArt[kind]!.fills, hasLength(heat.dots), reason: heat.name);
+      }
     });
 
     test('a profile gives the same answer as its instructions', () {

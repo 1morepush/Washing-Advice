@@ -8,8 +8,9 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-/// Registers the bundled font's licence. Safe to call more than once only if
-/// the caller does; `main` calls it once before `runApp`.
+/// Registers the bundled font's licence. Each call adds another registration,
+/// so the licence page would list the font once per call: `main` calls it
+/// exactly once, before `runApp`.
 void registerFontLicences() {
   LicenseRegistry.addLicense(() async* {
     final text = await rootBundle.loadString('assets/fonts/Nunito-OFL.txt');

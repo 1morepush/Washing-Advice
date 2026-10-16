@@ -20,19 +20,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
+import 'core/licences.dart';
 import 'core/providers.dart';
 import 'core/router.dart';
 import 'core/settings.dart';
 import 'core/theme.dart';
 import 'data/api/ai_gateway.dart';
-import 'core/licences.dart';
 import 'data/api/scan_dto.dart';
 import 'data/api/stain_dto.dart';
-
-import 'package:shared_preferences/shared_preferences.dart';
-
 import 'data/capture/image_capture_source.dart';
 import 'data/images/memory_image_store.dart';
 

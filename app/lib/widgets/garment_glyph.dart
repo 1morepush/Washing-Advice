@@ -238,7 +238,7 @@ class _GlyphPainter extends CustomPainter {
     canvas.translate((size.width - side) / 2, (size.height - side) / 2);
     canvas.scale(side / garmentViewBox);
 
-    final body = parseSvgPath(art.body);
+    final body = cachedSvgPath(art.body);
     canvas.drawPath(
       body,
       Paint()
@@ -263,7 +263,7 @@ class _GlyphPainter extends CustomPainter {
       ..color = edge
       ..isAntiAlias = true;
     for (final d in art.details) {
-      canvas.drawPath(parseSvgPath(d), detail);
+      canvas.drawPath(cachedSvgPath(d), detail);
     }
     canvas.restore();
   }

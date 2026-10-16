@@ -208,10 +208,15 @@ class StagePill extends StatelessWidget {
     this.count,
     this.onTap,
     this.compact = false,
+    this.intrinsic = false,
     super.key,
   });
 
   final String label;
+
+  /// Sized to its own label, never shrunk or ellipsised, for a row that
+  /// scrolls rather than shares a fixed width (large text).
+  final bool intrinsic;
 
   /// Tighter padding, and a label that scales down rather than ellipsising,
   /// for three pills sharing a narrow phone's width.
@@ -223,6 +228,9 @@ class StagePill extends StatelessWidget {
   final Color onColor;
   final bool selected;
   final VoidCallback? onTap;
+
+  Widget _maybeFlexible({required Widget child}) =>
+      intrinsic ? child : Flexible(child: child);
 
   @override
   Widget build(BuildContext context) {
@@ -261,7 +269,7 @@ class StagePill extends StatelessWidget {
                     ),
                   ),
                   SizedBox(width: compact ? 4 : 6),
-                  Flexible(
+                  _maybeFlexible(
                     child: compact
                         ? FittedBox(
                             fit: BoxFit.scaleDown,

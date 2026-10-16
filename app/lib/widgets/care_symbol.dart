@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/widgets.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
@@ -10,7 +11,10 @@ enum CareSymbolKind {
   wash40,
   doNotBleach,
   doNotTumbleDry,
-  tumbleDry,
+  tumbleDryNoHeat,
+  tumbleDryLow,
+  tumbleDryMedium,
+  tumbleDryHigh,
   dryFlat,
   lineDry,
   iron,
@@ -94,12 +98,30 @@ const Map<CareSymbolKind, CareArt> careArt = {
     label: 'Do not tumble dry',
     strokes: [_square, _drum, 'M6 6 L34 34 M34 6 L6 34'],
   ),
-  CareSymbolKind.tumbleDry: CareArt(
-    label: 'Tumble dry',
+  CareSymbolKind.tumbleDryNoHeat: CareArt(
+    label: 'Tumble dry, no heat',
+    strokes: [_square, _drum],
+  ),
+  CareSymbolKind.tumbleDryLow: CareArt(
+    label: 'Tumble dry, low heat',
+    strokes: [_square, _drum],
+    fills: ['M18.5 20 A1.5 1.5 0 1 0 21.5 20 A1.5 1.5 0 1 0 18.5 20 Z'],
+  ),
+  CareSymbolKind.tumbleDryMedium: CareArt(
+    label: 'Tumble dry, medium heat',
     strokes: [_square, _drum],
     fills: [
-      'M14.8 20 A1.7 1.7 0 1 0 18.2 20 A1.7 1.7 0 1 0 14.8 20 Z',
-      'M21.8 20 A1.7 1.7 0 1 0 25.2 20 A1.7 1.7 0 1 0 21.8 20 Z',
+      'M15.0 20 A1.5 1.5 0 1 0 18.0 20 A1.5 1.5 0 1 0 15.0 20 Z',
+      'M22.0 20 A1.5 1.5 0 1 0 25.0 20 A1.5 1.5 0 1 0 22.0 20 Z',
+    ],
+  ),
+  CareSymbolKind.tumbleDryHigh: CareArt(
+    label: 'Tumble dry, high heat',
+    strokes: [_square, _drum],
+    fills: [
+      'M12.5 20 A1.5 1.5 0 1 0 15.5 20 A1.5 1.5 0 1 0 12.5 20 Z',
+      'M18.5 20 A1.5 1.5 0 1 0 21.5 20 A1.5 1.5 0 1 0 18.5 20 Z',
+      'M24.5 20 A1.5 1.5 0 1 0 27.5 20 A1.5 1.5 0 1 0 24.5 20 Z',
     ],
   ),
   CareSymbolKind.dryFlat: CareArt(
@@ -132,6 +154,12 @@ const Map<CareSymbolKind, CareArt> careArt = {
 /// (a 60° wash, three iron dots, a wet-clean circle) is left out rather than
 /// drawn wrongly. The label's own words are still the source of truth for
 /// those, so callers should keep showing the text too.
+///
+/// **A row of symbols may be partial.** A 40° permanent-press wash, a 30° wash
+/// at normal agitation, a medium iron: none has art, so the row can be shorter
+/// than the label, or empty. It is an aid beside the words, never a
+/// replacement for them. Tumble drying carries its heat: one dot for low, two
+/// for medium, three for high, none for no heat.
 List<CareSymbolKind> careSymbolsFor(CareInstructions care) {
   final out = <CareSymbolKind>[];
 
@@ -163,7 +191,14 @@ List<CareSymbolKind> careSymbolsFor(CareInstructions care) {
   if (!care.dry.tumbleDryAllowed) {
     out.add(CareSymbolKind.doNotTumbleDry);
   } else {
-    out.add(CareSymbolKind.tumbleDry);
+    // Never more dots than the label allows: one per heat step, none at all
+    // for "no heat".
+    out.add(switch (care.dry.tumbleDryHeat) {
+      TumbleDryHeat.noHeat => CareSymbolKind.tumbleDryNoHeat,
+      TumbleDryHeat.low => CareSymbolKind.tumbleDryLow,
+      TumbleDryHeat.medium => CareSymbolKind.tumbleDryMedium,
+      TumbleDryHeat.high => CareSymbolKind.tumbleDryHigh,
+    });
   }
   switch (care.dry.naturalDry) {
     case NaturalDryMethod.flatDry:
@@ -270,14 +305,14 @@ class _CarePainter extends CustomPainter {
       ..color = color
       ..isAntiAlias = true;
     for (final d in art.strokes) {
-      canvas.drawPath(parseSvgPath(d), stroke);
+      canvas.drawPath(cachedSvgPath(d), stroke);
     }
     final fill = Paint()
       ..style = PaintingStyle.fill
       ..color = color
       ..isAntiAlias = true;
     for (final d in art.fills) {
-      canvas.drawPath(parseSvgPath(d), fill);
+      canvas.drawPath(cachedSvgPath(d), fill);
     }
 
     final text = art.text;
@@ -314,5 +349,5 @@ class _CarePainter extends CustomPainter {
       old.kind != kind ||
       old.color != color ||
       old.fontFamily != fontFamily ||
-      old.fontFamilyFallback != fontFamilyFallback;
+      !listEquals(old.fontFamilyFallback, fontFamilyFallback);
 }

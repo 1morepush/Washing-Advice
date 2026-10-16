@@ -98,20 +98,30 @@ void main() {
     expect(find.text('What did you wear today?'), findsOneWidget);
   });
 
-  for (final scale in [1.0, 2.0]) {
-    testWidgets('all three fit 320 dp wide at ${scale}x text', (tester) async {
-      tester.platformDispatcher.textScaleFactorTestValue = scale;
-      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-      await open(tester, size: const Size(320, 640));
+  testWidgets('all three fit 320 dp wide at normal text', (tester) async {
+    await open(tester, size: const Size(320, 640));
 
-      expect(tester.takeException(), isNull);
-      for (final pill in tester.widgetList<StagePill>(find.byType(StagePill))) {
-        final box = tester.getRect(find.byWidget(pill));
-        expect(box.left, greaterThanOrEqualTo(0));
-        expect(box.right, lessThanOrEqualTo(320));
-      }
-    });
-  }
+    expect(tester.takeException(), isNull);
+    for (final pill in tester.widgetList<StagePill>(find.byType(StagePill))) {
+      final box = tester.getRect(find.byWidget(pill));
+      expect(box.left, greaterThanOrEqualTo(0));
+      expect(box.right, lessThanOrEqualTo(320));
+    }
+  });
+
+  // At large text the pills scroll rather than lose letters; that they do so
+  // without overflowing is pinned, with the words, in
+  // laundry_large_text_test.dart.
+  testWidgets('and at 2x text the row scrolls without overflowing', (
+    tester,
+  ) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await open(tester, size: const Size(320, 640));
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(StagePill), findsNWidgets(3));
+  });
 
   testWidgets('the pile photo opens from here and Back returns here', (
     tester,

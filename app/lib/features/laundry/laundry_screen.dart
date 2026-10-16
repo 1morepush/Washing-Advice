@@ -78,21 +78,40 @@ class _LaundryScreenState extends ConsumerState<LaundryScreen>
             animation: _tabs.animation!,
             builder: (context, _) {
               final stages = context.stageColors;
+              final large = MediaQuery.textScalerOf(context).scale(1) > 1.3;
+              Widget pill(int index, _Pile pile, {required bool intrinsic}) =>
+                  StagePill(
+                    label: pile.label,
+                    count: _count(pile),
+                    color: stages.colorOf(pile.stage)!,
+                    onColor: stages.onColorOf(pile.stage)!,
+                    selected: _tabs.animation!.value.round() == index,
+                    compact: !large && MediaQuery.sizeOf(context).width < 400,
+                    intrinsic: intrinsic,
+                    onTap: () => _tabs.animateTo(index),
+                  );
+              // At large text three names and counts cannot share a phone's
+              // width without losing letters, and a lost letter on "Washing"
+              // is the one thing the pill is for. They scroll instead, each at
+              // its full size.
+              if (large) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      for (final (index, pile) in _Pile.values.indexed) ...[
+                        if (index > 0) const SizedBox(width: 8),
+                        pill(index, pile, intrinsic: true),
+                      ],
+                    ],
+                  ),
+                );
+              }
               return Row(
                 children: [
                   for (final (index, pile) in _Pile.values.indexed) ...[
                     if (index > 0) const SizedBox(width: 8),
-                    Expanded(
-                      child: StagePill(
-                        label: pile.label,
-                        count: _count(pile),
-                        color: stages.colorOf(pile.stage)!,
-                        onColor: stages.onColorOf(pile.stage)!,
-                        selected: _tabs.animation!.value.round() == index,
-                        compact: MediaQuery.sizeOf(context).width < 400,
-                        onTap: () => _tabs.animateTo(index),
-                      ),
-                    ),
+                    Expanded(child: pill(index, pile, intrinsic: false)),
                   ],
                 ],
               );

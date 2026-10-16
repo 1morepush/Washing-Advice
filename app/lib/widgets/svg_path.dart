@@ -1,5 +1,7 @@
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 /// Parses SVG path data (the `d` attribute) into a Flutter [Path].
 ///
 /// Supports every path command: `M L H V C S Q T A Z`, absolute and relative,
@@ -237,3 +239,14 @@ class _Reader {
 
   static bool _isDigit(int c) => c >= 0x30 && c <= 0x39;
 }
+
+final _parsed = <String, Path>{};
+
+/// How many distinct path strings [cachedSvgPath] has parsed. For tests.
+@visibleForTesting
+int get svgPathParseCount => _parsed.length;
+
+/// [parseSvgPath] remembered by its data, so a glyph or symbol that repaints
+/// on every frame of a scroll parses its art once. The returned [Path] is
+/// shared: draw it, never mutate it (use `shift` or `transform` for a copy).
+Path cachedSvgPath(String d) => _parsed.putIfAbsent(d, () => parseSvgPath(d));

@@ -364,7 +364,6 @@ class _QuickFilters extends ConsumerWidget {
   }
 }
 
-/// The wardrobe as a wall of garments.
 /// The wardrobe as rows.
 class _List extends ConsumerWidget {
   const _List({required this.items});
@@ -401,6 +400,7 @@ class _List extends ConsumerWidget {
   }
 }
 
+/// The wardrobe as a wall of garments.
 class _Grid extends ConsumerWidget {
   const _Grid({required this.items});
 

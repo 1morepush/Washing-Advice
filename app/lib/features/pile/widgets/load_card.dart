@@ -11,6 +11,8 @@
 /// before they will believe it.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
@@ -36,7 +38,10 @@ const _washKinds = {
   CareSymbolKind.doNotBleach,
 };
 const _dryKinds = {
-  CareSymbolKind.tumbleDry,
+  CareSymbolKind.tumbleDryNoHeat,
+  CareSymbolKind.tumbleDryLow,
+  CareSymbolKind.tumbleDryMedium,
+  CareSymbolKind.tumbleDryHigh,
   CareSymbolKind.doNotTumbleDry,
   CareSymbolKind.dryFlat,
   CareSymbolKind.lineDry,
@@ -490,38 +495,64 @@ class _Reasons extends StatelessWidget {
   }
 }
 
+/// The width the label column of one block needs: that of its longest label,
+/// measured at the current text size, so no label is ever broken mid-word and
+/// the values still line up.
+class _LabelWidth extends InheritedWidget {
+  const _LabelWidth({required this.width, required super.child});
+
+  final double width;
+
+  static double of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_LabelWidth>()?.width ?? 104;
+
+  @override
+  bool updateShouldNotify(_LabelWidth old) => old.width != width;
+}
+
 class _Row extends StatelessWidget {
   const _Row({required this.label, required this.value});
 
   final String label;
   final String value;
 
+  static TextStyle? labelStyle(ThemeData theme) => theme.textTheme.bodyMedium
+      ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final valueStyle = theme.textTheme.bodyMedium?.copyWith(
+      fontWeight: FontWeight.w800,
+    );
+    final column = _LabelWidth.of(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 104,
-            child: Text(
-              label,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // When the labels take more than half the card, as they do at large
+          // text, each sits above its value and can have the whole width.
+          if (column > constraints.maxWidth * 0.5) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: labelStyle(theme)),
+                Text(value, style: valueStyle),
+              ],
+            );
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: column,
+                child: Text(label, style: labelStyle(theme)),
               ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
+              Expanded(child: Text(value, style: valueStyle)),
+            ],
+          );
+        },
       ),
     );
   }
@@ -540,6 +571,23 @@ class _Block extends StatelessWidget {
   final String title;
   final List<CareSymbolKind> symbols;
   final List<Widget> children;
+
+  /// The label column: the widest label's width at this text size, a little
+  /// air, and never narrower than the 104 the design draws.
+  double _labelColumn(BuildContext context) {
+    final style = _Row.labelStyle(Theme.of(context));
+    var widest = 0.0;
+    for (final row in children.whereType<_Row>()) {
+      final painter = TextPainter(
+        text: TextSpan(text: row.label, style: style),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+      )..layout();
+      widest = math.max(widest, painter.width);
+      painter.dispose();
+    }
+    return math.max(104, widest.ceilToDouble() + 8);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -584,7 +632,13 @@ class _Block extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 6),
-            ...children,
+            _LabelWidth(
+              width: _labelColumn(context),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: children,
+              ),
+            ),
           ],
         ),
       ),

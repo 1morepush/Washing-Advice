@@ -475,9 +475,10 @@ class _Hero extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     height: 216,
-    color: context.rinse.well,
+    color: ItemThumbnail.tileFor(context, item),
     alignment: Alignment.center,
-    // `backdrop: false` because the hero already is the well; the tint a
+    // `backdrop: false` because the hero is itself the tile, tinted only as
+    // far as this garment needs to show (see [ItemThumbnail.tileFor]); the tint a
     // cutout gets in a list would make a second, smaller panel inside it.
     child: ItemThumbnail(item: item, size: 176, backdrop: false),
   );

@@ -18,6 +18,7 @@ library;
 
 import 'dart:collection';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -109,6 +110,20 @@ class ItemThumbnail extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final uri = item.photos.displayImageUri;
     if (uri == null) {
+      // Without a backdrop the silhouette stands bare on whatever tile the
+      // caller drew (the garment page's hero), not on a second well.
+      if (!backdrop) {
+        return SizedBox.square(
+          dimension: size,
+          child: Center(
+            child: FractionallySizedBox(
+              widthFactor: 0.74,
+              heightFactor: 0.74,
+              child: _Silhouette(item: item),
+            ),
+          ),
+        );
+      }
       return _Silhouette(item: item, size: size);
     }
 
@@ -209,47 +224,81 @@ class ItemThumbnail extends ConsumerWidget {
     return (extent * ratio).ceil();
   }
 
-  /// A tone that the garment will stand out against.
+  /// The tile colour: the plain well unless the garment would not show on it.
   ///
-  /// The tile is Rinse's "well" (`RinseShape.well`), the same tint as every
-  /// other garment tile. Chosen from the item's [ColorClass] — the same
-  /// classification the sorter uses to decide which pile it goes in — only
-  /// where the well alone would lose the garment: is this thing pale enough to
-  /// vanish against a light well, or dark enough to vanish against a dark one?
-  ///
-  /// Deliberately subtle. This is a legibility aid, not a design feature, and
-  /// a grid of strongly tinted tiles would compete with the garments in them.
-  Color _backdropFor(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+  /// A cutout is transparent, so a white shirt on a pale well or a black sock
+  /// on a near-black one is simply not there. Rather than tinting by colour
+  /// class, which painted every dark garment a grey panel and made the grid
+  /// patchy, this measures. The garment's stored dominant colour is compared
+  /// with the well; if the two already differ by [legibilityFloor] or more the
+  /// well is used untouched, and if not the well is moved away from the garment
+  /// (lighter under a dark one, darker under a pale one) by the smallest step
+  /// that reaches the floor. Mid-tone garments therefore sit on the normal
+  /// well in every theme, and only the ones that need it get a tile that
+  /// differs from it.
+  Color _backdropFor(BuildContext context) => tileFor(context, item);
+
+  /// The tile [item] should sit on, by the rule above. Public so a large
+  /// header (the garment page's hero) can wear the same tile its thumbnail
+  /// would, instead of the plain well a dark garment is lost against.
+  static Color tileFor(BuildContext context, WardrobeItem item) {
+    final colors = item.colors.value.colors;
     final well = context.rinse.well;
-    final isDarkTheme = Theme.of(context).brightness == Brightness.dark;
-
-    // The two lifts are not the same size, and that is not an oversight.
-    // Darkening a near-white well by 10% moves it a long way perceptually;
-    // lightening a near-black one by 10% barely moves it at all, and lands
-    // almost exactly on a charcoal garment — which is how the first version of
-    // this made a charcoal jumper disappear in dark mode.
-    //
-    // Nor is the dark one the same on true black, where the well is a shade
-    // above black rather than a blue-grey panel: there is less to climb from,
-    // so the same fraction lands closer to a charcoal garment. 38% puts it
-    // where Dark's 30% does, a touch above it: it was 44%, which made a dark
-    // cutout a visibly greyer tile than the plain wells around it.
-    final darkLift = scheme.hasTrueBlackGround ? 0.38 : 0.30;
-    final lift = Color.alphaBlend(
-      scheme.onSurface.withValues(alpha: isDarkTheme ? darkLift : 0.10),
-      well,
+    if (colors.isEmpty) return well;
+    final garment = Color(0xFF000000 | colors.first.rgb);
+    final scheme = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return backdropFor(
+      garment: garment,
+      well: well,
+      lighter: dark ? scheme.onSurface : const Color(0xFFFFFFFF),
+      darker: dark ? const Color(0xFF000000) : scheme.onSurface,
     );
+  }
 
-    return switch (item.colorClass) {
-      // Pale garments need something to sit against in a light theme; in a
-      // dark one they already stand out.
-      ColorClass.whites || ColorClass.lights => isDarkTheme ? well : lift,
-      // The reverse case: charcoal and black against a dark well.
-      ColorClass.darks => isDarkTheme ? lift : well,
-      // Saturated colours read against anything neutral.
-      ColorClass.brights => well,
-    };
+  /// The least contrast, as a WCAG ratio, a garment may have against its tile.
+  static const legibilityFloor = 1.6;
+
+  /// [well], moved toward [lighter] or [darker] (whichever is away from
+  /// [garment]) by the smallest step that gives [garment] [legibilityFloor]
+  /// against it; [well] itself when it already does.
+  @visibleForTesting
+  static Color backdropFor({
+    required Color garment,
+    required Color well,
+    required Color lighter,
+    required Color darker,
+  }) {
+    double ratio(Color tile) {
+      final a = garment.computeLuminance(), b = tile.computeLuminance();
+      return (math.max(a, b) + 0.05) / (math.min(a, b) + 0.05);
+    }
+
+    if (ratio(well) >= legibilityFloor) return well;
+
+    // The smallest step toward [target] that reaches the floor, or null when
+    // even a full step does not: a garment a hair lighter than the well cannot
+    // be made to show by darkening the well, because black is only so far.
+    ({int step, Color tile})? reach(Color target) {
+      for (var step = 1; step <= 50; step++) {
+        final tile = Color.alphaBlend(
+          target.withValues(alpha: step / 50),
+          well,
+        );
+        if (ratio(tile) >= legibilityFloor) return (step: step, tile: tile);
+      }
+      return null;
+    }
+
+    // Away from the garment first; the other way only if that cannot do it,
+    // or does it in fewer steps.
+    final awayIsLighter = garment.computeLuminance() < well.computeLuminance();
+    final away = reach(awayIsLighter ? lighter : darker);
+    final back = reach(awayIsLighter ? darker : lighter);
+    if (away != null && (back == null || away.step <= back.step)) {
+      return away.tile;
+    }
+    return back?.tile ?? (awayIsLighter ? lighter : darker);
   }
 }
 

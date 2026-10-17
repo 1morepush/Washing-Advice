@@ -1,0 +1,14 @@
+{
+  "result": {
+    "title": "Grey crewneck sweatshirt",
+    "itemType": "sweatshirt",
+    "colors": [],
+    "styleWords": [],
+    "visibleFlaws": [],
+    "searchQueries": {
+      "depop": "grey crewneck sweatshirt",
+      "retail": "grey crewneck sweatshirt"
+    }
+  },
+  "diagnostics": { "stagesRun": ["fake"], "stageAnswered": "fake" }
+}

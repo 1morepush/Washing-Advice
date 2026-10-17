@@ -1,0 +1,256 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://washing-advice.app/contracts/listing.schema.json",
+  "title": "Listing a garment for sale",
+  "description": "What the server returns when the app asks for help selling a garment on Depop. Two calls: describe (photographs in, a draft listing's facts out) and prices (search phrases in, comparable listings and retail prices out). Both are proposals the app shows for the person to check and edit; nothing here decides a price — the arithmetic that turns comparables into an asking price and a net payout lives in the domain core, in Dart, where it is tested. Golden fixtures in contracts/examples/listing/ are parsed on both sides.",
+
+  "oneOf": [
+    { "$ref": "#/$defs/describeResponse" },
+    { "$ref": "#/$defs/priceSearchResponse" }
+  ],
+
+  "$defs": {
+    "money": {
+      "description": "An amount in the currency's major unit (25.0 is twenty-five dollars). Only US dollars are carried: a seller in the US is priced against US listings, and a price in another currency is excluded rather than converted, because a comparable built on an invented exchange rate looks like evidence and is not.",
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 100000
+    },
+
+    "currency": {
+      "const": "USD"
+    },
+
+    "httpsUrl": {
+      "type": "string",
+      "pattern": "^https://",
+      "maxLength": 2048
+    },
+
+    "searchQueries": {
+      "description": "What to search for. Written by the describe call from the photographs and editable by the person before prices are looked up, so a wrong guess about the brand is a typo to fix rather than a wasted search.",
+      "type": "object",
+      "required": ["depop", "retail"],
+      "additionalProperties": false,
+      "properties": {
+        "depop": { "type": "string", "minLength": 3, "maxLength": 120 },
+        "retail": { "type": "string", "minLength": 3, "maxLength": 120 }
+      }
+    },
+
+    "listingFacts": {
+      "description": "A draft of what a buyer needs to know, read from the photographs. Every optional property follows the scan contract's rule: absent means the photographs did not show it, never a guess presented as a reading.",
+      "type": "object",
+      "required": ["title", "itemType", "colors", "styleWords", "visibleFlaws", "searchQueries"],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "description": "Brand, item and the words a buyer searches for, most important first: 'Nike vintage crewneck sweatshirt grey'. Becomes the first line of the description.",
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "itemType": { "$ref": "scan_results.schema.json#/$defs/itemType" },
+        "brand": {
+          "description": "Read from a logo or a brand label. Wrapped with a confidence because a brand guessed from a swoosh-shaped print and one read off the neck label are different claims to put in front of a buyer.",
+          "$ref": "scan_results.schema.json#/$defs/confident"
+        },
+        "colors": {
+          "description": "Plain colour names, dominant first.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "maxLength": 30 },
+          "maxItems": 3
+        },
+        "material": {
+          "description": "As a composition label states it ('80% cotton, 20% polyester'). Absent unless a label was photographed: a fabric guessed from a photograph is not something to sell a garment on.",
+          "type": "string",
+          "maxLength": 120
+        },
+        "sizeOnTag": {
+          "description": "The size printed on the size label, exactly as printed ('M', 'W32 L30', 'UK 10'). Absent unless a size label was photographed.",
+          "$ref": "scan_results.schema.json#/$defs/confident"
+        },
+        "styleWords": {
+          "description": "Search words a buyer would use: cut, era, style, print. No brand (it has its own field) and no filler ('nice', 'cool').",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "maxLength": 30 },
+          "maxItems": 6
+        },
+        "era": {
+          "description": "Only when the photographs show it (a dated label, an unmistakable cut): '90s', 'Y2K'. Absent otherwise.",
+          "type": "string",
+          "maxLength": 20
+        },
+        "visibleFlaws": {
+          "description": "What a buyer would complain about, said plainly: 'small mark on the left cuff'. Empty when none is visible, which is not a promise that none exists.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 3, "maxLength": 120 },
+          "maxItems": 5
+        },
+        "searchQueries": { "$ref": "#/$defs/searchQueries" }
+      }
+    },
+
+    "describeResponse": {
+      "type": "object",
+      "required": ["result", "diagnostics"],
+      "additionalProperties": false,
+      "properties": {
+        "result": { "$ref": "#/$defs/listingFacts" },
+        "diagnostics": { "$ref": "scan_results.schema.json#/$defs/scanDiagnostics" }
+      }
+    },
+
+    "comparable": {
+      "description": "A listing on Depop for the same or a similar item. Every one came back from a web search made for this request, and its price was found in the text of that page — a comparable the server cannot point to is dropped, not shown.",
+      "type": "object",
+      "required": ["title", "url", "price", "currency", "match"],
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "url": { "$ref": "#/$defs/httpsUrl" },
+        "price": { "$ref": "#/$defs/money" },
+        "currency": { "$ref": "#/$defs/currency" },
+        "sold": {
+          "description": "True when the page says the item has sold, false when it is still for sale. Absent when the page does not say. A sold price is what somebody paid; an asking price is what somebody hopes for, and the core weighs them differently.",
+          "type": "boolean"
+        },
+        "condition": {
+          "description": "The condition as that listing states it, verbatim. Absent when it does not say.",
+          "type": "string",
+          "maxLength": 40
+        },
+        "match": {
+          "description": "'same' when it is the same product (same brand and model), 'similar' when it is the same kind of thing from a comparable brand. Anything less alike is not returned at all.",
+          "enum": ["same", "similar"]
+        },
+        "why": {
+          "description": "One line on why it counts: 'Same Nike Club crewneck, also grey'.",
+          "type": "string",
+          "maxLength": 160
+        }
+      }
+    },
+
+    "retailReference": {
+      "description": "What the same or a similar item costs new, from a retailer or the brand's own shop. Never from a resale site.",
+      "type": "object",
+      "required": ["title", "url", "price", "currency", "match"],
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "url": { "$ref": "#/$defs/httpsUrl" },
+        "price": { "$ref": "#/$defs/money" },
+        "currency": { "$ref": "#/$defs/currency" },
+        "seller": {
+          "description": "The shop, as its domain: 'nike.com'.",
+          "type": "string",
+          "maxLength": 80
+        },
+        "match": { "enum": ["same", "similar"] }
+      }
+    },
+
+    "excludedCounts": {
+      "description": "What the search found and the server would not show, by reason. Shown to the person so an empty list reads as 'nothing usable' rather than 'nothing looked'.",
+      "type": "object",
+      "required": ["notUsd", "unverifiedPrice", "notComparable"],
+      "additionalProperties": false,
+      "properties": {
+        "notUsd": { "type": "integer", "minimum": 0 },
+        "unverifiedPrice": { "type": "integer", "minimum": 0 },
+        "notComparable": { "type": "integer", "minimum": 0 }
+      }
+    },
+
+    "priceSearch": {
+      "type": "object",
+      "required": ["status", "queries", "comparables", "retail", "excluded"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "description": "'ok' — searched. 'notConfigured' — this server has no search key; the app falls back to links and prices typed in. 'quotaExceeded' — the search service's free allowance is used up for now. 'unavailable' — the search service failed or timed out. Every status but 'ok' comes with empty lists, and none of them is an HTTP error: a listing can still be written without a price search.",
+          "enum": ["ok", "notConfigured", "quotaExceeded", "unavailable"]
+        },
+        "searchedAt": {
+          "description": "When the search ran, so a price checked three weeks ago says so. Present when status is 'ok'.",
+          "type": "string",
+          "format": "date-time"
+        },
+        "provider": {
+          "description": "Which search service answered, e.g. 'tavily'.",
+          "type": "string",
+          "maxLength": 40
+        },
+        "queries": { "$ref": "#/$defs/searchQueries" },
+        "comparables": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/comparable" },
+          "maxItems": 12
+        },
+        "retail": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/retailReference" },
+          "maxItems": 6
+        },
+        "excluded": { "$ref": "#/$defs/excludedCounts" }
+      }
+    },
+
+    "priceSearchResponse": {
+      "type": "object",
+      "required": ["result", "diagnostics"],
+      "additionalProperties": false,
+      "properties": {
+        "result": { "$ref": "#/$defs/priceSearch" },
+        "diagnostics": { "$ref": "scan_results.schema.json#/$defs/scanDiagnostics" }
+      }
+    },
+
+    "describeContext": {
+      "description": "Sent with the photographs as the multipart form field 'context' (a JSON string), when the garment is already in the wardrobe. What the app already knows outranks a fresh reading: a brand the person typed is not second-guessed from a photograph.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "known": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "itemType": { "$ref": "scan_results.schema.json#/$defs/itemType" },
+            "brand": { "type": "string", "maxLength": 60 },
+            "colors": {
+              "type": "array",
+              "items": { "type": "string", "maxLength": 30 },
+              "maxItems": 3
+            },
+            "material": { "type": "string", "maxLength": 120 },
+            "sizeLabel": { "type": "string", "maxLength": 30 }
+          }
+        },
+        "notes": {
+          "description": "Anything the person typed about it ('bought in 2019, worn twice').",
+          "type": "string",
+          "maxLength": 300
+        }
+      }
+    },
+
+    "priceSearchRequest": {
+      "description": "The body of POST /v1/sell/prices.",
+      "type": "object",
+      "required": ["queries", "itemType", "title"],
+      "additionalProperties": false,
+      "properties": {
+        "queries": { "$ref": "#/$defs/searchQueries" },
+        "itemType": { "$ref": "scan_results.schema.json#/$defs/itemType" },
+        "title": { "type": "string", "minLength": 3, "maxLength": 80 },
+        "brand": { "type": "string", "maxLength": 60 },
+        "colors": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 30 },
+          "maxItems": 3
+        }
+      }
+    }
+  }
+}

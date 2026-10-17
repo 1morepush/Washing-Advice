@@ -6,12 +6,16 @@
 /// is pinned here is what makes it a set of places instead: leaving one and
 /// coming back finds it as it was, tapping the one you are in starts it over,
 /// and Back walks out in the order a person expects.
+///
+/// Sell has the seat Ask used to have. Ask moved into More, and the tests for
+/// the two moves are here with the rest of what the bar promises.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 import 'package:washing_advice/core/providers.dart';
@@ -26,10 +30,16 @@ import 'package:washing_advice/features/laundry/worn_today_screen.dart';
 import 'package:washing_advice/features/more/more_screen.dart';
 import 'package:washing_advice/features/outfits/outfits_screen.dart';
 import 'package:washing_advice/features/packing/packing_screen.dart';
+import 'package:washing_advice/features/sell/listing_editor_screen.dart';
+import 'package:washing_advice/features/sell/new_listing_screen.dart';
+import 'package:washing_advice/features/sell/pick_garment_screen.dart';
+import 'package:washing_advice/features/sell/sell_screen.dart';
+import 'package:washing_advice/features/sell/start_from_garment_screen.dart';
 import 'package:washing_advice/features/settings/settings_screen.dart';
 import 'package:washing_advice/features/wardrobe/item_detail_screen.dart';
 import 'package:washing_advice/features/wardrobe/wardrobe_screen.dart';
 import 'package:washing_advice/main.dart';
+import 'package:washing_advice/widgets/app_shell.dart';
 
 import '../support/contrast.dart';
 import '../support/fixtures.dart';
@@ -100,13 +110,25 @@ void main() {
         .widgetList<NavigationDestination>(find.byType(NavigationDestination))
         .map((d) => d.label)
         .toList();
-    expect(destinations, ['Wardrobe', 'Laundry', 'Outfits', 'Ask', 'More']);
+    expect(destinations, ['Wardrobe', 'Laundry', 'Outfits', 'Sell', 'More']);
     expect(find.byTooltip('Open navigation menu'), findsNothing);
     expect(find.byType(Drawer), findsNothing);
   });
 
+  testWidgets('Sell has the seat Ask had, and Ask is not on the bar', (
+    tester,
+  ) async {
+    await open(tester);
+
+    expect(place('Sell'), findsOneWidget);
+    expect(place('Ask'), findsNothing);
+    // In the order the bar names them: the fourth place, before More.
+    expect(AppDestination.sell.index, 3);
+    expect(AppDestination.values.map((d) => d.label), isNot(contains('Ask')));
+  });
+
   group('every place the drawer had is still reachable', () {
-    testWidgets('Wardrobe, Laundry, Outfits and Ask from the bar', (
+    testWidgets('Wardrobe, Laundry, Outfits and Sell from the bar', (
       tester,
     ) async {
       await open(tester);
@@ -118,19 +140,22 @@ void main() {
       await tapPlace(tester, 'Outfits');
       expect(find.byType(OutfitsScreen), findsOneWidget);
 
-      await tapPlace(tester, 'Ask');
-      expect(find.byType(ChatScreen), findsOneWidget);
+      await tapPlace(tester, 'Sell');
+      expect(find.byType(SellScreen), findsOneWidget);
 
       await tapPlace(tester, 'Wardrobe');
       expect(find.byType(WardrobeScreen), findsOneWidget);
     });
 
-    testWidgets('Packing, Insights and Settings from More', (tester) async {
+    testWidgets('Ask, Packing, Insights and Settings from More', (
+      tester,
+    ) async {
       await open(tester);
       await tapPlace(tester, 'More');
       expect(find.byType(MoreScreen), findsOneWidget);
 
       for (final (title, screen) in [
+        ('Ask', ChatScreen),
         ('Packing', PackingScreen),
         ('Insights', InsightsScreen),
         ('Settings', SettingsScreen),
@@ -166,13 +191,27 @@ void main() {
     testWidgets('and what was typed, which a rebuilt screen would lose', (
       tester,
     ) async {
-      await open(tester);
-      await tapPlace(tester, 'Ask');
-      await tester.enterText(find.byType(TextField), 'Can I tumble wool?');
+      // The stylist's note is held by the screen and not by a provider, so
+      // only a screen that is kept rather than rebuilt still has it.
+      await open(tester, location: '/outfits');
+      final note = find.widgetWithText(
+        TextField,
+        'Anything to add? (optional)',
+      );
+      await tester.scrollUntilVisible(
+        note,
+        200,
+        scrollable: find
+            .byWidgetPredicate(
+              (w) => w is Scrollable && w.axis == Axis.vertical,
+            )
+            .first,
+      );
+      await tester.enterText(note, 'Can I tumble wool?');
       await tester.pump();
 
       await tapPlace(tester, 'Wardrobe');
-      await tapPlace(tester, 'Ask');
+      await tapPlace(tester, 'Outfits');
 
       expect(find.text('Can I tumble wool?'), findsOneWidget);
     });
@@ -250,7 +289,7 @@ void main() {
     testWidgets('the evening reminder opens Worn Today with the bar present', (
       tester,
     ) async {
-      await open(tester, location: '/ask');
+      await open(tester, location: '/sell');
 
       nudges.tapped.add(eveningNudge.route);
       await tester.pumpAndSettle();
@@ -297,6 +336,192 @@ void main() {
     });
   });
 
+  group('Sell is a place', () {
+    testWidgets('/sell shows the Sell screen on the bar, with Sell lit', (
+      tester,
+    ) async {
+      await open(tester, location: '/sell');
+
+      expect(find.byType(SellScreen), findsOneWidget);
+      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(
+        tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+        AppDestination.sell.index,
+      );
+      // A place on the bar has no Back arrow: Back from it goes to the first
+      // place, like the others.
+      expect(find.byType(BackButton), findsNothing);
+    });
+
+    testWidgets('Back from Sell goes to the first place', (tester) async {
+      await open(tester);
+      await tapPlace(tester, 'Sell');
+
+      await systemBack(tester);
+
+      expect(find.byType(WardrobeScreen), findsOneWidget);
+    });
+  });
+
+  group('Ask is opened from More', () {
+    testWidgets('More lists Ask first, and opens it over the bar', (
+      tester,
+    ) async {
+      await open(tester);
+      await tapPlace(tester, 'More');
+
+      final titles = tester
+          .widgetList<ListTile>(
+            find.descendant(
+              of: find.byType(MoreScreen),
+              matching: find.byType(ListTile),
+            ),
+          )
+          .map((tile) => (tile.title! as Text).data);
+      expect(titles, ['Ask', 'Packing', 'Insights', 'Settings']);
+
+      await tester.tap(find.widgetWithText(ListTile, 'Ask'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ChatScreen), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
+    });
+
+    testWidgets('and Back from it returns to More, with the bar', (
+      tester,
+    ) async {
+      await open(tester);
+      await tapPlace(tester, 'More');
+      await tester.tap(find.widgetWithText(ListTile, 'Ask'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(find.byType(MoreScreen), findsOneWidget);
+      expect(find.byType(NavigationBar), findsOneWidget);
+
+      // The system gesture does the same.
+      await tester.tap(find.widgetWithText(ListTile, 'Ask'));
+      await tester.pumpAndSettle();
+      await systemBack(tester);
+      expect(find.byType(MoreScreen), findsOneWidget);
+    });
+
+    testWidgets('an old /ask link still opens the chat, with a way back', (
+      tester,
+    ) async {
+      await open(tester, location: '/ask');
+
+      expect(find.byType(ChatScreen), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
+
+      // Nothing beneath it to pop to, so the arrow goes to More.
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MoreScreen), findsOneWidget);
+      expect(find.byType(NavigationBar), findsOneWidget);
+    });
+  });
+
+  group('the listing screens cover the bar', () {
+    /// Opens [location] directly, as a link or a reload would, then follows
+    /// the arrow out. Both are a screen's own business, and a screen with no
+    /// way out of a direct visit is a dead end.
+    Future<void> opensAndLeaves(
+      WidgetTester tester, {
+      required String location,
+      required Type screen,
+      required Type parent,
+    }) async {
+      await open(tester, location: location);
+
+      expect(find.byType(screen), findsOneWidget, reason: location);
+      expect(find.byType(NavigationBar), findsNothing, reason: location);
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(parent), findsOneWidget, reason: location);
+    }
+
+    testWidgets('/sell/new', (tester) async {
+      await opensAndLeaves(
+        tester,
+        location: '/sell/new',
+        screen: NewListingScreen,
+        parent: SellScreen,
+      );
+    });
+
+    testWidgets('/sell/from-wardrobe', (tester) async {
+      await opensAndLeaves(
+        tester,
+        location: '/sell/from-wardrobe',
+        screen: PickGarmentScreen,
+        parent: SellScreen,
+      );
+    });
+
+    testWidgets('/sell/from-wardrobe/:id', (tester) async {
+      await opensAndLeaves(
+        tester,
+        location: '/sell/from-wardrobe/a',
+        screen: StartFromGarmentScreen,
+        parent: PickGarmentScreen,
+      );
+    });
+
+    testWidgets('/listing/:id', (tester) async {
+      await opensAndLeaves(
+        tester,
+        location: '/listing/draft-1',
+        screen: ListingEditorScreen,
+        parent: SellScreen,
+      );
+    });
+
+    testWidgets('the garment in the address reaches its screen', (
+      tester,
+    ) async {
+      await open(tester, location: '/sell/from-wardrobe/demo-jumper');
+
+      expect(
+        tester
+            .widget<StartFromGarmentScreen>(find.byType(StartFromGarmentScreen))
+            .id,
+        const ItemId('demo-jumper'),
+      );
+    });
+
+    testWidgets('the listing in the address reaches its screen', (
+      tester,
+    ) async {
+      await open(tester, location: '/listing/draft-7');
+
+      expect(
+        tester.widget<ListingEditorScreen>(find.byType(ListingEditorScreen)).id,
+        const ListingId('draft-7'),
+      );
+    });
+
+    testWidgets('and Back from one opened over the bar returns to it', (
+      tester,
+    ) async {
+      await open(tester, location: '/sell');
+      final context = tester.element(find.byType(SellScreen));
+      GoRouter.of(context).push('/listing/draft-1');
+      await tester.pumpAndSettle();
+      expect(find.byType(NavigationBar), findsNothing);
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SellScreen), findsOneWidget);
+      expect(find.byType(NavigationBar), findsOneWidget);
+    });
+  });
+
   group('layout', () {
     for (final (width, scale) in [(320.0, 1.0), (320.0, 2.0), (400.0, 3.0)]) {
       testWidgets('${width.toInt()} dp wide at ${scale}x text', (tester) async {
@@ -307,7 +532,13 @@ void main() {
         // Every label is on screen, and none of them overflowed: a failed
         // layout is an exception in the frame, which the test fails on.
         expect(tester.takeException(), isNull);
-        for (final label in ['Wardrobe', 'Laundry', 'Outfits', 'Ask', 'More']) {
+        for (final label in [
+          'Wardrobe',
+          'Laundry',
+          'Outfits',
+          'Sell',
+          'More',
+        ]) {
           expect(place(label), findsOneWidget);
           final box = tester.getRect(place(label));
           expect(box.left, greaterThanOrEqualTo(0), reason: label);

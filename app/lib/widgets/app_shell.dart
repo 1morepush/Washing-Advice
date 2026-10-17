@@ -1,9 +1,10 @@
 /// Navigation between the app's top-level places.
 ///
 /// A bottom bar of five, because the places someone moves between all day —
-/// the wardrobe, the washing, what to wear, a question — belong under a thumb,
-/// and a menu behind an icon hid every one of them. Packing, Insights and
-/// Settings are used far less often and live one tap away under More.
+/// the wardrobe, the washing, what to wear, what is up for sale — belong under
+/// a thumb, and a menu behind an icon hid every one of them. Ask, Packing,
+/// Insights and Settings are used far less often and live one tap away under
+/// More.
 ///
 /// Each place keeps its own history: the shell is a `StatefulShellRoute`, so
 /// switching away and back finds the screen, its stack and its scroll where
@@ -12,9 +13,9 @@
 ///
 /// Only screens that are *part of* a place sit inside the shell and show the
 /// bar (the laundry's Worn Today, say). Anything that is a task of its own — a
-/// garment, a scan, a stain, a pile photo, Settings — is pushed over the whole
-/// shell and covers the bar, so the bar never offers a way out of the middle
-/// of one.
+/// garment, a listing being written, a scan, a stain, a pile photo, Ask,
+/// Settings — is pushed over the whole shell and covers the bar, so the bar
+/// never offers a way out of the middle of one.
 library;
 
 import 'package:flutter/material.dart';
@@ -35,7 +36,7 @@ enum AppDestination {
     Icons.local_laundry_service,
   ),
   outfits('Outfits', '/outfits', Icons.style_outlined, Icons.style),
-  ask('Ask', '/ask', Icons.chat_bubble_outline, Icons.chat_bubble),
+  sell('Sell', '/sell', Icons.sell_outlined, Icons.sell),
   more('More', '/more', Icons.more_horiz, Icons.more_horiz);
 
   const AppDestination(this.label, this.route, this.icon, this.selectedIcon);

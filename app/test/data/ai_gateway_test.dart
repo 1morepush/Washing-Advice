@@ -19,6 +19,8 @@ import 'package:washing_advice/data/api/ai_gateway.dart';
 import 'package:washing_advice/data/api/scan_dto.dart';
 import 'package:washing_advice/data/api/stain_dto.dart';
 
+import '../support/fixtures.dart';
+
 void main() {
   _streamingStainAdvice();
 
@@ -302,6 +304,8 @@ void main() {
   });
   _askingForOutfits();
   _askingAQuestion();
+  _describingAListing();
+  _pricingAListing();
 }
 
 /// Asking for outfit ideas.
@@ -815,4 +819,637 @@ void _askingAQuestion() {
       );
     });
   });
+}
+
+/// Drafting a listing from photographs.
+///
+/// The server is what reads them, so what is held here is the wire: the path,
+/// the form fields the server looks for, the cap on photographs, and what each
+/// way of going wrong turns into. A field named `image` where the server reads
+/// `images` is a request that succeeds and describes nothing, which no fake
+/// standing in for the gateway would ever notice.
+void _describingAListing() {
+  group('describeListing', () {
+    late http.Request sent;
+    var requests = 0;
+
+    AiGateway gatewayReturning(Object body, {int status = 200}) {
+      requests = 0;
+      final client = MockClient((request) async {
+        requests++;
+        sent = request;
+        return http.Response(jsonEncode(body), status);
+      });
+      return AiGateway(
+        baseUrl: Uri.parse('https://washing-advice.onrender.com/'),
+        client: client,
+      );
+    }
+
+    /// A photograph that is one letter, so its place in the form is readable.
+    ScanImage photo(String mark, {String mimeType = 'image/jpeg'}) =>
+        ScanImage(bytes: utf8.encode(mark), mimeType: mimeType);
+
+    List<_Part> parts() => _partsOf(sent);
+
+    List<_Part> images() => [
+      for (final part in parts())
+        if (part.name == 'images') part,
+    ];
+
+    test('posts to v1/sell/describe', () async {
+      await gatewayReturning(_described).describeListing([photo('A')]);
+
+      expect(sent.url.path, '/v1/sell/describe');
+      expect(sent.method, 'POST');
+      expect(sent.headers['content-type'], startsWith('multipart/form-data'));
+    });
+
+    test('sends every photograph as an images part, in order', () async {
+      await gatewayReturning(_described).describeListing([
+        photo('A'),
+        photo('B', mimeType: 'image/png'),
+        photo('C'),
+      ]);
+
+      expect(images().map((part) => part.text), ['A', 'B', 'C']);
+      expect(images().map((part) => part.contentType), [
+        'image/jpeg',
+        'image/png',
+        'image/jpeg',
+      ]);
+      expect(images().map((part) => part.filename), [
+        'upload.jpeg',
+        'upload.png',
+        'upload.jpeg',
+      ]);
+    });
+
+    test('sends no more than four, and the first four', () async {
+      // The caller picks which photographs are worth the server's reading by
+      // putting them first. A fifth is not an error, it is just not sent.
+      await gatewayReturning(_described).describeListing([
+        for (final mark in ['A', 'B', 'C', 'D', 'E', 'F']) photo(mark),
+      ]);
+
+      expect(AiGateway.describePhotoLimit, 4);
+      expect(images().map((part) => part.text), ['A', 'B', 'C', 'D']);
+    });
+
+    test('sends exactly four when there are exactly four', () async {
+      await gatewayReturning(_described).describeListing([
+        for (final mark in ['A', 'B', 'C', 'D']) photo(mark),
+      ]);
+
+      expect(images(), hasLength(4));
+    });
+
+    test('sends nothing but photographs when there is no context', () async {
+      await gatewayReturning(_described).describeListing([photo('A')]);
+
+      expect(parts().map((part) => part.name), ['images']);
+    });
+
+    test('sends what the wardrobe knows as a context field of JSON', () async {
+      final known = {
+        'known': {
+          'itemType': 'sweatshirt',
+          'brand': 'Nike',
+          'colors': ['Grey'],
+          'sizeLabel': 'M',
+        },
+        // Characters that a careless encoding would break.
+        'notes': 'Bought in "2019", worn twice. Béis bag, 100% — still good.',
+      };
+
+      await gatewayReturning(
+        _described,
+      ).describeListing([photo('A')], context: known);
+
+      final context = parts().singleWhere((part) => part.name == 'context');
+      expect(context.filename, isNull);
+      expect(jsonDecode(context.text), known);
+    });
+
+    test(
+      'the context the core writes for a garment goes up as it is',
+      () async {
+        final item = confidentItem(id: 'sweat', name: 'Grey crewneck').copyWith(
+          brand: Confident.fromUser('Nike'),
+          sizeLabel: 'M',
+          notes: 'Bought in 2019',
+        );
+        final context = describeContextForItem(item);
+
+        await gatewayReturning(
+          _described,
+        ).describeListing([photo('A')], context: context);
+
+        final sentContext = parts().singleWhere((p) => p.name == 'context');
+        expect(jsonDecode(sentContext.text), context);
+        expect((jsonDecode(sentContext.text) as Map)['known'], isNotEmpty);
+      },
+    );
+
+    test('a context with nothing in it is still valid JSON', () async {
+      // The contract allows `{}`: nothing is known, and that is not the same
+      // as not having been asked.
+      await gatewayReturning(
+        _described,
+      ).describeListing([photo('A')], context: const {});
+
+      final context = parts().singleWhere((part) => part.name == 'context');
+      expect(jsonDecode(context.text), <String, Object?>{});
+    });
+
+    test('with no photographs it fails without asking the server', () async {
+      final gateway = gatewayReturning(_described);
+
+      await expectLater(
+        gateway.describeListing(const []),
+        throwsA(
+          isA<ScanFailure>().having((f) => f.isRetryable, 'isRetryable', false),
+        ),
+      );
+      expect(requests, 0);
+    });
+
+    test('reads the draft the server returns', () async {
+      final facts = await gatewayReturning(
+        _described,
+      ).describeListing([photo('A')]);
+
+      expect(facts.title, 'Nike vintage crewneck sweatshirt grey');
+      expect(facts.itemType, ItemType.sweatshirt);
+      expect(facts.brand!.value, 'Nike');
+      expect(facts.sizeOnTag!.value, 'M');
+      expect(facts.colors, ['Grey']);
+      expect(facts.material, '80% cotton, 20% polyester');
+      expect(facts.era, '90s');
+      expect(facts.visibleFlaws, ['small mark on the left cuff']);
+      expect(
+        facts.searchQueries.retail,
+        'Nike Club Fleece crew sweatshirt grey',
+      );
+    });
+
+    test('and remembers how the reading was arrived at', () async {
+      final gateway = gatewayReturning(_described);
+
+      await gateway.describeListing([photo('A')]);
+
+      expect(gateway.lastDiagnostics!.stageAnswered, 'gemini');
+      expect(gateway.lastDiagnostics!.elapsedMs, 2140);
+    });
+
+    test('a draft with only a title is a draft', () async {
+      // Everything else absent means the photographs did not show it.
+      final facts = await gatewayReturning({
+        'result': {
+          'title': 'Grey crewneck sweatshirt',
+          'itemType': 'sweatshirt',
+          'colors': <Object?>[],
+          'styleWords': <Object?>[],
+          'visibleFlaws': <Object?>[],
+          'searchQueries': {
+            'depop': 'grey crewneck sweatshirt',
+            'retail': 'grey crewneck sweatshirt',
+          },
+        },
+      }).describeListing([photo('A')]);
+
+      expect(facts.title, 'Grey crewneck sweatshirt');
+      expect(facts.brand, isNull);
+      expect(facts.sizeOnTag, isNull);
+      expect(facts.material, isNull);
+    });
+
+    test('a response with no title is one the app cannot read', () async {
+      await expectLater(
+        gatewayReturning({
+          'result': {'itemType': 'sweatshirt', 'colors': <Object?>[]},
+        }).describeListing([photo('A')]),
+        throwsA(isA<ScanContractError>()),
+      );
+    });
+
+    test('a response with no result is one the app cannot read', () async {
+      await expectLater(
+        gatewayReturning({
+          'diagnostics': <String, Object?>{},
+        }).describeListing([photo('A')]),
+        throwsA(isA<ScanContractError>()),
+      );
+    });
+
+    test('a 503 is a ScanFailure that is worth retrying', () async {
+      await expectLater(
+        gatewayReturning({
+          'detail': 'Reading photographs is unavailable.',
+        }, status: 503).describeListing([photo('A')]),
+        throwsA(
+          isA<ScanFailure>()
+              .having((f) => f.message, 'message', contains('unavailable'))
+              .having((f) => f.isRetryable, 'isRetryable', true),
+        ),
+      );
+    });
+
+    test('a photograph the server refuses is not worth retrying', () async {
+      await expectLater(
+        gatewayReturning({
+          'detail': 'That is not a photograph.',
+        }, status: 422).describeListing([photo('A')]),
+        throwsA(
+          isA<ScanFailure>()
+              .having((f) => f.message, 'message', 'That is not a photograph.')
+              .having((f) => f.isRetryable, 'isRetryable', false),
+        ),
+      );
+    });
+
+    test('a server that cannot be reached is a ScanFailure', () async {
+      final gateway = AiGateway(
+        baseUrl: Uri.parse('https://washing-advice.onrender.com/'),
+        client: MockClient((_) async => throw http.ClientException('offline')),
+      );
+
+      await expectLater(
+        gateway.describeListing([photo('A')]),
+        throwsA(
+          isA<ScanFailure>().having(
+            (f) => f.message,
+            'message',
+            contains('Could not reach the server'),
+          ),
+        ),
+      );
+    });
+  });
+}
+
+/// Looking up what something sells for.
+///
+/// What is pinned most firmly is the one thing that looks like a bug and is
+/// not: a search that found nothing, or could not search, comes back as data.
+/// Everything else the screen does about prices rests on being able to ask and
+/// be told "no key", "no allowance left" or "not just now" without an
+/// exception.
+void _pricingAListing() {
+  group('searchPrices', () {
+    late http.Request sent;
+    var requests = 0;
+
+    AiGateway gatewayReturning(Object body, {int status = 200}) {
+      requests = 0;
+      final client = MockClient((request) async {
+        requests++;
+        sent = request;
+        return http.Response(jsonEncode(body), status);
+      });
+      return AiGateway(
+        baseUrl: Uri.parse('https://washing-advice.onrender.com/'),
+        client: client,
+      );
+    }
+
+    final request = priceSearchRequestJson(
+      queries: const SearchQueries(
+        depop: 'Nike vintage crewneck sweatshirt grey',
+        retail: 'Nike Club Fleece crew sweatshirt grey',
+      ),
+      itemType: ItemType.sweatshirt,
+      title: 'Nike vintage crewneck sweatshirt grey',
+      brand: 'Nike',
+      colors: const ['Grey'],
+    );
+
+    Map<String, Object?> answer(
+      String status, {
+      List<Object?> comparables = const [],
+      List<Object?> retail = const [],
+    }) => {
+      'result': {
+        'status': status,
+        if (status == 'ok') 'searchedAt': '2026-10-17T14:05:00Z',
+        if (status == 'ok') 'provider': 'tavily',
+        'queries': request['queries'],
+        'comparables': comparables,
+        'retail': retail,
+        'excluded': {'notUsd': 0, 'unverifiedPrice': 0, 'notComparable': 0},
+      },
+      'diagnostics': {'stagesRun': <Object?>[], 'elapsedMs': 0},
+    };
+
+    test('posts the request as JSON to v1/sell/prices', () async {
+      await gatewayReturning(answer('ok')).searchPrices(request);
+
+      expect(sent.url.path, '/v1/sell/prices');
+      expect(sent.method, 'POST');
+      expect(sent.headers['content-type'], startsWith('application/json'));
+      expect(jsonDecode(sent.body), request);
+    });
+
+    test('sends the phrases to search for, and what the garment is', () async {
+      await gatewayReturning(answer('ok')).searchPrices(request);
+
+      final body = jsonDecode(sent.body) as Map<String, Object?>;
+      expect(body['queries'], {
+        'depop': 'Nike vintage crewneck sweatshirt grey',
+        'retail': 'Nike Club Fleece crew sweatshirt grey',
+      });
+      expect(body['itemType'], 'sweatshirt');
+      expect(body['title'], 'Nike vintage crewneck sweatshirt grey');
+      expect(body['brand'], 'Nike');
+      expect(body['colors'], ['Grey']);
+    });
+
+    test(
+      'reads comparables, what it costs new, and what was left out',
+      () async {
+        final search = await gatewayReturning({
+          'result': {
+            'status': 'ok',
+            'searchedAt': '2026-10-17T14:05:00Z',
+            'provider': 'tavily',
+            'queries': request['queries'],
+            'comparables': [
+              {
+                'title': 'Vintage Nike grey crewneck sweatshirt',
+                'url': 'https://www.depop.com/products/example-1/',
+                'price': 32.0,
+                'currency': 'USD',
+                'sold': true,
+                'condition': 'Used - Excellent',
+                'match': 'same',
+                'why': 'Same 90s Nike crewneck, also grey',
+              },
+              {
+                'title': 'Nike crewneck sweatshirt grey size M',
+                'url': 'https://www.depop.com/products/example-2/',
+                'price': 28.0,
+                'currency': 'USD',
+                'sold': false,
+                'match': 'same',
+              },
+              {
+                'title': 'Champion reverse weave crewneck grey',
+                'url': 'https://www.depop.com/products/example-3/',
+                'price': 35.5,
+                'currency': 'USD',
+                'match': 'similar',
+              },
+            ],
+            'retail': [
+              {
+                'title': 'Nike Sportswear Club Fleece Crew',
+                'url': 'https://www.nike.com/t/sportswear-club-fleece-crew',
+                'price': 60.0,
+                'currency': 'USD',
+                'seller': 'nike.com',
+                'match': 'similar',
+              },
+            ],
+            'excluded': {'notUsd': 2, 'unverifiedPrice': 1, 'notComparable': 4},
+          },
+          'diagnostics': {
+            'stagesRun': ['tavily', 'gemini'],
+            'elapsedMs': 3920,
+          },
+        }).searchPrices(request);
+
+        expect(search.status, PriceSearchStatus.ok);
+        expect(search.provider, 'tavily');
+        expect(search.searchedAt, DateTime.utc(2026, 10, 17, 14, 5));
+        // In cents, to the nearest, whatever the dollars looked like.
+        expect(search.comparables.map((c) => c.priceCents), [3200, 2800, 3550]);
+        expect(search.comparables.map((c) => c.sold), [true, false, null]);
+        expect(search.comparables.map((c) => c.match), [
+          ComparableMatch.same,
+          ComparableMatch.same,
+          ComparableMatch.similar,
+        ]);
+        expect(search.comparables.first.url.host, 'www.depop.com');
+        expect(search.retail.single.priceCents, 6000);
+        expect(search.retail.single.seller, 'nike.com');
+        expect(search.excluded.notUsd, 2);
+        expect(search.excluded.total, 7);
+      },
+    );
+
+    group('a search that found nothing is data, not an error', () {
+      for (final (name, status) in [
+        ('notConfigured', PriceSearchStatus.notConfigured),
+        ('quotaExceeded', PriceSearchStatus.quotaExceeded),
+        ('unavailable', PriceSearchStatus.unavailable),
+      ]) {
+        test(name, () async {
+          final search = await gatewayReturning(
+            answer(name),
+          ).searchPrices(request);
+
+          expect(search.status, status);
+          expect(search.comparables, isEmpty);
+          expect(search.retail, isEmpty);
+          expect(search.searchedAt, isNull);
+          // The phrases that were tried survive, so a second look-up starts
+          // from them.
+          expect(search.queries.depop, 'Nike vintage crewneck sweatshirt grey');
+          expect(
+            search.queries.retail,
+            'Nike Club Fleece crew sweatshirt grey',
+          );
+        });
+      }
+
+      test('ok', () async {
+        final search = await gatewayReturning(
+          answer('ok'),
+        ).searchPrices(request);
+
+        // A search can succeed and find nothing usable, which is a result too.
+        expect(search.status, PriceSearchStatus.ok);
+        expect(search.comparables, isEmpty);
+      });
+
+      test(
+        'a status this build has not heard of reads as unavailable',
+        () async {
+          final search = await gatewayReturning(
+            answer('rateLimited'),
+          ).searchPrices(request);
+
+          expect(search.status, PriceSearchStatus.unavailable);
+        },
+      );
+    });
+
+    test(
+      'a comparable the app cannot use is left out, not thrown on',
+      () async {
+        final search = await gatewayReturning(
+          answer(
+            'ok',
+            comparables: [
+              {
+                'title': 'Not a link to open',
+                'url': 'http://www.depop.com/products/plain-http/',
+                'price': 30.0,
+                'currency': 'USD',
+                'match': 'same',
+              },
+              {
+                'title': 'In euros',
+                'url': 'https://www.depop.com/products/in-euros/',
+                'price': 30.0,
+                'currency': 'EUR',
+                'match': 'same',
+              },
+              {
+                'title': 'Usable',
+                'url': 'https://www.depop.com/products/usable/',
+                'price': 30.0,
+                'currency': 'USD',
+                'match': 'same',
+              },
+            ],
+          ),
+        ).searchPrices(request);
+
+        expect(search.comparables.map((c) => c.title), ['Usable']);
+      },
+    );
+
+    test('a 503 is a ScanFailure that is worth retrying', () async {
+      await expectLater(
+        gatewayReturning({
+          'detail': 'Price search is unavailable.',
+        }, status: 503).searchPrices(request),
+        throwsA(
+          isA<ScanFailure>()
+              .having((f) => f.message, 'message', contains('unavailable'))
+              .having((f) => f.isRetryable, 'isRetryable', true),
+        ),
+      );
+    });
+
+    test('a 503 with nothing readable in it still says something', () async {
+      final client = MockClient(
+        (_) async => http.Response('<html>Bad gateway</html>', 503),
+      );
+      final gateway = AiGateway(
+        baseUrl: Uri.parse('https://washing-advice.onrender.com/'),
+        client: client,
+      );
+
+      await expectLater(
+        gateway.searchPrices(request),
+        throwsA(
+          isA<ScanFailure>().having(
+            (f) => f.message,
+            'message',
+            isNot(contains('html')),
+          ),
+        ),
+      );
+    });
+
+    test('a server that cannot be reached is a ScanFailure', () async {
+      final gateway = AiGateway(
+        baseUrl: Uri.parse('https://washing-advice.onrender.com/'),
+        client: MockClient((_) async => throw http.ClientException('offline')),
+      );
+
+      await expectLater(
+        gateway.searchPrices(request),
+        throwsA(isA<ScanFailure>()),
+      );
+    });
+
+    test('asks once', () async {
+      final gateway = gatewayReturning(answer('ok'));
+
+      await gateway.searchPrices(request);
+
+      expect(requests, 1);
+    });
+  });
+}
+
+/// What the server returns for a described photograph, as the contract's
+/// example does.
+const _described = {
+  'result': {
+    'title': 'Nike vintage crewneck sweatshirt grey',
+    'itemType': 'sweatshirt',
+    'brand': {'value': 'Nike', 'confidence': 0.93, 'source': 'aiInference'},
+    'colors': ['Grey'],
+    'material': '80% cotton, 20% polyester',
+    'sizeOnTag': {'value': 'M', 'confidence': 0.9, 'source': 'aiInference'},
+    'styleWords': ['vintage', 'crewneck', 'embroidered logo', '90s'],
+    'era': '90s',
+    'visibleFlaws': ['small mark on the left cuff'],
+    'searchQueries': {
+      'depop': 'Nike vintage crewneck sweatshirt grey',
+      'retail': 'Nike Club Fleece crew sweatshirt grey',
+    },
+  },
+  'diagnostics': {
+    'stagesRun': ['gemini'],
+    'stageAnswered': 'gemini',
+    'elapsedMs': 2140,
+  },
+};
+
+/// One part of a multipart form, as the server reads it.
+class _Part {
+  _Part({
+    required this.name,
+    required this.bytes,
+    this.filename,
+    this.contentType,
+  });
+
+  final String name;
+  final String? filename;
+  final String? contentType;
+  final List<int> bytes;
+
+  String get text => utf8.decode(bytes);
+}
+
+/// The parts of a multipart [request], in the order they were sent.
+///
+/// Read from the bytes on the wire, not from the request the gateway built: a
+/// field the gateway adds to a `MultipartRequest` and one the server receives
+/// are only the same thing if nothing between them changed it.
+List<_Part> _partsOf(http.Request request) {
+  final boundary = RegExp(
+    r'boundary=([^;]+)',
+  ).firstMatch(request.headers['content-type']!)!.group(1)!;
+  // Latin-1, which maps each byte to one character and back, so that splitting
+  // the text splits the bytes.
+  final body = latin1.decode(request.bodyBytes);
+
+  final parts = <_Part>[];
+  for (final raw in body.split('--$boundary')) {
+    final blank = raw.indexOf('\r\n\r\n');
+    // The preamble, and the closing `--`.
+    if (blank < 0) continue;
+    final head = raw.substring(0, blank);
+    // Each part is followed by a line break before the next boundary.
+    final content = raw.substring(blank + 4, raw.length - 2);
+    parts.add(
+      _Part(
+        name: RegExp(r'name="([^"]*)"').firstMatch(head)!.group(1)!,
+        filename: RegExp(r'filename="([^"]*)"').firstMatch(head)?.group(1),
+        contentType: RegExp(
+          r'content-type: ([^\r\n]+)',
+          caseSensitive: false,
+        ).firstMatch(head)?.group(1),
+        bytes: latin1.encode(content),
+      ),
+    );
+  }
+  return parts;
 }

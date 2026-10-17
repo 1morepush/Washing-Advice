@@ -160,7 +160,10 @@ class GeminiStructured:
 
         try:
             response = await self._http().post(url, json=body, headers=headers)
-        except httpx.HTTPError as error:
+        except (httpx.HTTPError, UnicodeError) as error:
+            # UnicodeError because a key pasted with a curly quote in it fails
+            # as the client builds the header, with an error that is not one of
+            # the client's own, and which would otherwise come out as a 400.
             raise ProviderError(self.name, f"request failed: {error}") from error
 
         if response.status_code == 429:

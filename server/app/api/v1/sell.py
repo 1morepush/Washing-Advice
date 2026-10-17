@@ -20,14 +20,20 @@ import time
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from pydantic import ValidationError
 
-from app.api.v1.dependencies import get_listing_describer
+from app.api.v1.dependencies import get_listing_describer, get_price_searcher
 from app.config import Settings, get_settings
 from app.core.errors import InvalidFieldError, from_provider_error
 from app.core.limits import MAX_LISTING_PHOTOS, check_image, check_image_count
 from app.schemas.scan import ScanDiagnostics
-from app.schemas.selling import DescribeContext, DescribeResponse
+from app.schemas.selling import (
+    DescribeContext,
+    DescribeResponse,
+    PriceSearchRequest,
+    PriceSearchResponse,
+)
 from app.services.ai.base import ProviderError, ScanImage
 from app.services.selling.base import DescribeRequest, ListingDescriber
+from app.services.selling.prices import PriceSearcher
 
 router = APIRouter(prefix="/sell", tags=["sell"])
 
@@ -109,6 +115,40 @@ async def describe_listing(
         diagnostics=ScanDiagnostics(
             stages_run=[describer.name],
             stage_answered=describer.name,
+            elapsed_ms=int((time.perf_counter() - started) * 1000),
+        ),
+    )
+
+
+@router.post(
+    "/prices",
+    response_model=PriceSearchResponse,
+    # `searchedAt` and `provider` exist only when a search ran, and a null for
+    # either would read as a search that ran and reported nothing.
+    response_model_exclude_none=True,
+    summary="Look up what a garment sells for",
+)
+async def look_up_prices(
+    request: PriceSearchRequest,
+    searcher: PriceSearcher = Depends(get_price_searcher),
+) -> PriceSearchResponse:
+    """Comparable Depop listings and the price new, each found on a page we can cite.
+
+    **Never an HTTP error for a search problem.** A listing can be written
+    without prices, so a search that is not configured, has used up its free
+    allowance, or failed answers 200 with that in `status` and nothing found.
+    The only errors are a request that is not the contract's shape (422) and a
+    server that is misconfigured as a whole (503, like every other endpoint).
+    """
+    started = time.perf_counter()
+    outcome = await searcher.search(request)
+
+    return PriceSearchResponse(
+        result=outcome.result,
+        diagnostics=ScanDiagnostics(
+            stages_run=outcome.stages_run,
+            stage_answered=outcome.stage_answered,
+            served_from_cache=outcome.from_cache,
             elapsed_ms=int((time.perf_counter() - started) * 1000),
         ),
     )

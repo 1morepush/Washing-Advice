@@ -15,8 +15,6 @@ Everything else here is plumbing around those.
 from __future__ import annotations
 
 import json
-from collections.abc import Callable, Iterator
-from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -25,7 +23,6 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
-from app.api.v1.dependencies import get_listing_describer
 from app.config import Settings
 from app.main import create_app
 from app.schemas.common import Confident, Provenance
@@ -37,13 +34,14 @@ from app.schemas.selling import (
 )
 from app.schemas.wardrobe import ItemType
 from app.services.ai.base import ProviderError
-from app.services.selling.base import DescribeRequest, ListingDescriber
+from app.services.selling.base import DescribeRequest
 from app.services.selling.fake import FakeListingDescriber
 from app.services.selling.gemini_describer import GeminiListingDescriber, _parse
 from app.services.selling.gemini_json import GeminiStructured
 from app.services.selling.known import apply_known
 from app.services.selling.prompts import LISTING_PROMPT, LISTING_SCHEMA, describe
 from tests.conftest import png_bytes, scan_image
+from tests.selling_support import Gemini, reply, serving
 
 LISTING = Path(__file__).resolve().parents[2] / "contracts" / "examples" / "listing"
 
@@ -73,13 +71,6 @@ def reading(**overrides: Any) -> dict[str, Any]:
     return {**GOOD_READING, **overrides}
 
 
-def reply(payload: Any) -> httpx.Response:
-    return httpx.Response(
-        200,
-        json={"candidates": [{"content": {"parts": [{"text": json.dumps(payload)}]}}]},
-    )
-
-
 def request_for(
     *seeds: int, known: KnownFacts | None = None, notes: str | None = None
 ) -> DescribeRequest:
@@ -91,40 +82,6 @@ def known(**fields: Any) -> KnownFacts:
     return KnownFacts(**fields)
 
 
-class Gemini:
-    """A mocked Gemini that records every request and plays back scripted replies."""
-
-    def __init__(self, *replies: httpx.Response | Callable[[httpx.Request], httpx.Response]):
-        self._replies = list(replies)
-        self.requests: list[httpx.Request] = []
-
-    def __call__(self, request: httpx.Request) -> httpx.Response:
-        self.requests.append(request)
-        # The last reply repeats, so a script of one answers every attempt.
-        index = min(len(self.requests), len(self._replies)) - 1
-        scripted = self._replies[index]
-        if callable(scripted):
-            return scripted(request)
-        # A fresh response each time: one that has been read and closed once is
-        # not a fair stand-in for the next attempt's.
-        return httpx.Response(
-            scripted.status_code, headers=scripted.headers, content=scripted.content
-        )
-
-    def bodies(self) -> list[dict[str, Any]]:
-        return [json.loads(request.content) for request in self.requests]
-
-    def prompts(self) -> list[str]:
-        return [body["contents"][0]["parts"][0]["text"] for body in self.bodies()]
-
-    def describer(self, **settings: Any) -> GeminiListingDescriber:
-        return GeminiListingDescriber(
-            api_key=settings.pop("api_key", "test-key"),
-            client=httpx.AsyncClient(transport=httpx.MockTransport(self)),
-            **settings,
-        )
-
-
 def nulls(value: Any, path: str = "$") -> list[str]:
     """Every place an explicit null appears, so none can hide in a nested object."""
     if value is None:
@@ -134,14 +91,6 @@ def nulls(value: Any, path: str = "$") -> list[str]:
     if isinstance(value, list):
         return [found for i, inner in enumerate(value) for found in nulls(inner, f"{path}[{i}]")]
     return []
-
-
-@contextmanager
-def serving(describer: ListingDescriber) -> Iterator[TestClient]:
-    app = create_app()
-    app.dependency_overrides[get_listing_describer] = lambda: describer
-    with TestClient(app) as client:
-        yield client
 
 
 class TestTheFake:
@@ -878,6 +827,17 @@ class TestTheGeminiCall:
         with pytest.raises(ProviderError, match="request failed"):
             await Gemini(refuse).describer().describe(request_for(1))
 
+    async def test_a_key_that_cannot_go_in_a_header_is_a_provider_error(self) -> None:
+        # A paste with a curly quote in it. The HTTP client fails building the
+        # header with an error that is not one of its own.
+        gemini = Gemini(reply(GOOD_READING))
+        describer = gemini.describer(api_key="gem-\N{LEFT DOUBLE QUOTATION MARK}key")
+
+        with pytest.raises(ProviderError, match="request failed"):
+            await describer.describe(request_for(1))
+
+        assert gemini.requests == []
+
     async def test_a_blocked_reply_is_a_provider_error(self) -> None:
         # The shape a safety block comes back as: a candidate with a finishReason
         # and no content at all.
@@ -1119,7 +1079,7 @@ class TestTheRoute:
                 raise AssertionError("must not be reached")
 
         describer = Counting()
-        with serving(describer) as client:
+        with serving(describer=describer) as client:
             response = self.post(client, context="{not json")
 
         assert response.status_code == 422
@@ -1128,7 +1088,7 @@ class TestTheRoute:
     def test_a_gemini_failure_is_a_503_in_the_usual_envelope(self) -> None:
         gemini = Gemini(httpx.Response(500, json={"error": {"message": "backend down"}}))
 
-        with serving(gemini.describer()) as client:
+        with serving(describer=gemini.describer()) as client:
             response = self.post(client)
 
         assert response.status_code == 503
@@ -1140,7 +1100,7 @@ class TestTheRoute:
         limited = httpx.Response(429, headers={"retry-after": "42"}, json={"error": {}})
         gemini = Gemini(limited)
 
-        with serving(gemini.describer()) as client:
+        with serving(describer=gemini.describer()) as client:
             response = self.post(client)
 
         assert response.status_code == 429
@@ -1150,7 +1110,7 @@ class TestTheRoute:
     def test_a_real_reading_goes_end_to_end(self) -> None:
         gemini = Gemini(reply(GOOD_READING))
 
-        with serving(gemini.describer()) as client:
+        with serving(describer=gemini.describer()) as client:
             response = self.post(client, (1, 2), context=json.dumps({"known": {"brand": "Nike"}}))
 
         assert response.status_code == 200

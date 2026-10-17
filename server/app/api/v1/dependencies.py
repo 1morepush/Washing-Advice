@@ -31,9 +31,14 @@ from app.services.images.cutout import BackgroundRemover, BorderSampledRemover
 from app.services.machines.base import MachineIdentifier
 from app.services.machines.fake import FakeMachineIdentifier
 from app.services.machines.gemini_identifier import GeminiMachineIdentifier
-from app.services.selling.base import ListingDescriber
+from app.services.selling.base import ComparableReader, ListingDescriber
+from app.services.selling.cache import PriceCache
 from app.services.selling.fake import FakeListingDescriber
 from app.services.selling.gemini_describer import GeminiListingDescriber
+from app.services.selling.gemini_reader import GeminiComparableReader
+from app.services.selling.prices import PriceSearcher
+from app.services.selling.regex_reader import RegexComparableReader
+from app.services.selling.tavily import TavilySearch
 from app.services.stains.base import StainAdviser
 from app.services.stains.fake import FakeStainAdviser
 from app.services.stains.gemini_adviser import GeminiStainAdviser
@@ -141,6 +146,9 @@ _live_chat_advisers: list[ChatAdviser] = []
 
 _live_describers: list[ListingDescriber] = []
 """And again for listing describers."""
+
+_live_searchers: list[PriceSearcher] = []
+"""And again for price searchers, which hold the search's connection pool."""
 
 
 @lru_cache
@@ -262,6 +270,46 @@ def get_listing_describer() -> ListingDescriber:
 
 
 @lru_cache
+def get_price_searcher() -> PriceSearcher:
+    """The price searcher described by the current settings.
+
+    Built once and kept, because its cache is only worth anything if it outlives
+    a request: a per-request cache would never hit, and reopening a listing
+    would spend two more of the month's free searches every time.
+
+    The search is Tavily whether or not there is a key; without one it reports
+    "not configured" and makes no call, so the endpoint answers rather than
+    failing to start. The reader follows `VISION_PROVIDER` like every other
+    AI-backed dependency: a model when Gemini is selected, a pattern when it is
+    not.
+    """
+    settings = get_settings()
+
+    reader: ComparableReader
+    if settings.vision_provider == "fake":
+        reader = RegexComparableReader()
+    else:
+        try:
+            reader = GeminiComparableReader.from_settings(settings)
+        except ProviderError as error:
+            raise ProviderUnavailableError(
+                str(error),
+                hint="set GEMINI_API_KEY, or set VISION_PROVIDER=fake",
+            ) from error
+
+    searcher = PriceSearcher(
+        TavilySearch.from_settings(settings),
+        reader,
+        PriceCache(
+            ttl_seconds=settings.price_search_cache_seconds,
+            max_entries=settings.price_search_cache_entries,
+        ),
+    )
+    _live_searchers.append(searcher)
+    return searcher
+
+
+@lru_cache
 def get_machine_identifier() -> MachineIdentifier:
     """The machine identifier described by the current settings.
 
@@ -296,6 +344,7 @@ async def close_providers() -> None:
         *_live_readers,
         *_live_chat_advisers,
         *_live_describers,
+        *_live_searchers,
     ):
         closer = getattr(provider, "aclose", None)
         if closer is not None:
@@ -307,6 +356,7 @@ async def close_providers() -> None:
     _live_readers.clear()
     _live_chat_advisers.clear()
     _live_describers.clear()
+    _live_searchers.clear()
 
 
 def reset_wiring() -> None:
@@ -322,6 +372,7 @@ def reset_wiring() -> None:
     get_condition_reader.cache_clear()
     get_chat_adviser.cache_clear()
     get_listing_describer.cache_clear()
+    get_price_searcher.cache_clear()
     get_knowledge_cache.cache_clear()
     get_background_remover.cache_clear()
     # Closed before it is dropped: a SQLite store left to the garbage collector
@@ -337,4 +388,5 @@ def reset_wiring() -> None:
     _live_readers.clear()
     _live_chat_advisers.clear()
     _live_describers.clear()
+    _live_searchers.clear()
     get_settings.cache_clear()

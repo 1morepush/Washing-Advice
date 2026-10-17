@@ -14,15 +14,30 @@ and not the other fails a test here or there rather than at runtime.
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 
 from tests.conftest import png_bytes
+from tests.selling_support import (
+    Gemini,
+    Tavily,
+    answer,
+    hostile_tavily,
+    lying_reader_says,
+    price_request,
+    reply,
+    searcher_for,
+    serving,
+    standard_tavily,
+    status,
+)
 
 CONTRACTS = Path(__file__).resolve().parents[2] / "contracts"
 
@@ -341,3 +356,131 @@ class TestLiveListingResponsesMatchTheContract:
 
         assert not list(describe_branch.iter_errors(body))
         assert list(prices_branch.iter_errors(body))
+
+    # --- prices ---------------------------------------------------------------
+
+    def prices(self, client: TestClient, **overrides: Any) -> dict[str, Any]:
+        response = client.post("/v1/sell/prices", json=price_request(**overrides))
+        assert response.status_code == 200, response.text
+        body: dict[str, Any] = response.json()
+        return body
+
+    def test_a_search_with_no_key(self, client: TestClient) -> None:
+        # The default wiring in a test run: no TAVILY_API_KEY, so no call.
+        body = self.prices(client)
+
+        assert body["result"]["status"] == "notConfigured"
+        assert_valid_listing(body, label="live prices, no key")
+
+    def test_a_search_with_no_key_is_the_contracts_example(self, client: TestClient) -> None:
+        # The same request the fixture answers, so the two can be compared.
+        example = json.loads((LISTING / "prices_not_configured.json").read_text())
+
+        body = self.prices(client)
+
+        assert body["result"] == example["result"]
+
+    def test_a_search_that_found_prices(self) -> None:
+        with serving(searcher=searcher_for(standard_tavily())) as client:
+            body = self.prices(client)
+
+        assert body["result"]["status"] == "ok"
+        assert body["result"]["comparables"]
+        assert body["result"]["retail"]
+        assert_valid_listing(body, label="live prices, mocked search and the pattern reader")
+
+    def test_a_search_read_by_a_model(self) -> None:
+        gemini = Gemini(reply(lying_reader_says()))
+        with serving(searcher=searcher_for(hostile_tavily(), reader=gemini.reader())) as client:
+            body = self.prices(client)
+
+        assert body["result"]["status"] == "ok"
+        assert_valid_listing(body, label="live prices, mocked search and a model reader")
+
+    def test_a_search_that_found_nothing(self) -> None:
+        with serving(searcher=searcher_for(Tavily(answer(), answer()))) as client:
+            body = self.prices(client)
+
+        assert body["result"]["status"] == "ok"
+        assert_valid_listing(body, label="live prices, nothing found")
+
+    def test_an_answer_from_the_cache(self) -> None:
+        with serving(searcher=searcher_for(standard_tavily())) as client:
+            self.prices(client)
+            body = self.prices(client)
+
+        assert body["diagnostics"]["servedFromCache"] is True
+        assert_valid_listing(body, label="live prices, from the cache")
+
+    @pytest.mark.parametrize(
+        ("name", "script", "expected"),
+        [
+            ("allowance used up", lambda: Tavily(status(432), status(432)), "quotaExceeded"),
+            ("service broken", lambda: Tavily(status(500), status(500)), "unavailable"),
+            ("key refused", lambda: Tavily(status(401), status(401)), "unavailable"),
+        ],
+    )
+    def test_every_way_a_search_can_fail_is_still_the_schemas(
+        self, name: str, script: Any, expected: str
+    ) -> None:
+        with serving(searcher=searcher_for(script())) as client:
+            body = self.prices(client)
+
+        assert body["result"]["status"] == expected
+        assert_valid_listing(body, label=f"live prices, {name}")
+
+    def test_a_model_that_is_down(self) -> None:
+        gemini = Gemini(httpx.Response(500, json={"error": {"message": "down"}}))
+        with serving(searcher=searcher_for(standard_tavily(), reader=gemini.reader())) as client:
+            body = self.prices(client)
+
+        assert body["result"]["status"] == "unavailable"
+        assert_valid_listing(body, label="live prices, reader down")
+
+    def test_a_price_search_is_a_price_search_and_not_a_describe_response(self) -> None:
+        schema, registry = _listing_schema()
+        describe_branch = Draft202012Validator(
+            {"$defs": schema["$defs"], **schema["oneOf"][0]}, registry=registry
+        )
+        prices_branch = Draft202012Validator(
+            {"$defs": schema["$defs"], **schema["oneOf"][1]}, registry=registry
+        )
+
+        with serving(searcher=searcher_for(standard_tavily())) as client:
+            body = self.prices(client)
+
+        assert not list(prices_branch.iter_errors(body))
+        assert list(describe_branch.iter_errors(body))
+
+    def test_the_time_a_search_ran_is_a_date_time(self) -> None:
+        # The schema's `format: date-time` is not checked by the validator
+        # without an optional package, so it is checked here.
+        with serving(searcher=searcher_for(standard_tavily())) as client:
+            body = self.prices(client)
+
+        stamp = body["result"]["searchedAt"]
+        assert stamp.endswith("Z")
+        assert datetime.fromisoformat(stamp).utcoffset() == timedelta(0)
+
+    def test_the_contracts_example_shapes_are_what_a_live_search_produces(self) -> None:
+        # The golden fixture and a live answer have the same keys everywhere.
+        example = json.loads((LISTING / "prices_ok.json").read_text())
+
+        with serving(searcher=searcher_for(standard_tavily())) as client:
+            body = self.prices(client)
+
+        live = body["result"]
+        assert set(live) == set(example["result"])
+        assert set(live["comparables"][0]) <= set(example["result"]["comparables"][0]) | {
+            "sold",
+            "condition",
+            "why",
+        }
+        assert set(live["retail"][0]) <= set(example["result"]["retail"][0])
+        assert set(live["excluded"]) == set(example["result"]["excluded"])
+        assert set(body["diagnostics"]) <= {
+            "stagesRun",
+            "stageAnswered",
+            "servedFromCache",
+            "elapsedMs",
+        }

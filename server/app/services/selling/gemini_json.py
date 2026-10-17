@@ -31,6 +31,7 @@ import httpx
 from pydantic import ValidationError
 
 from app.config import Settings, get_settings
+from app.schemas.base import validation_problems
 from app.services.ai.base import ProviderError
 from app.services.ai.gemini_errors import gemini_error_reason, retry_after_seconds
 
@@ -218,11 +219,7 @@ def _summarise(error: Exception) -> str:
     page of web text; the field and the rule are what the model can act on.
     """
     if isinstance(error, ValidationError):
-        problems = [
-            f"{'.'.join(str(step) for step in found['loc']) or 'reply'}: {found['msg']}"
-            for found in error.errors(include_input=False, include_url=False)
-        ]
-        summary = "; ".join(problems)
+        summary = "; ".join(validation_problems(error))
     else:
         summary = str(error) or type(error).__name__
     return summary[:_MAX_PROBLEM_CHARS]

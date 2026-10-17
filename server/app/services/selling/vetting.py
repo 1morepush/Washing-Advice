@@ -22,11 +22,12 @@ So nothing it says is taken as given. For every claim:
 * The price must be *on the page*, in the text the reader was shown.
 
 Then the claims that are not about the price are brought down to what the page
-supports: `sold` stays only if the page uses the word, a condition only if it
-appears verbatim, and "same item" only if the page names the brand. These do not
-drop a result; they refuse to repeat more than the page says. A sale that never
-happened would outweigh every asking price beside it in the arithmetic that
-follows, so that is the claim worth a check of its own.
+supports: `sold` stays only if the page says the item has sold (not merely that
+its seller has sold fifty others), a condition only if it appears verbatim, and
+"same item" only if the page names the brand. These do not drop a result; they
+refuse to repeat more than the page says. A sale that never happened would
+outweigh every asking price beside it in the arithmetic that follows, so that is
+the claim worth a check of its own.
 
 Every result ends up in exactly one place — shown, or counted under the reason it
 was not — so the numbers the app displays ("2 not in US dollars") add up to what
@@ -55,7 +56,7 @@ from app.services.selling.domains import (
     is_resale,
     shop_name,
 )
-from app.services.selling.page_text import PriceCheck, check_price, mentions_sold
+from app.services.selling.page_text import PriceCheck, check_price, says_sold
 
 MAX_COMPARABLES = 12
 MAX_RETAIL = 6
@@ -130,6 +131,9 @@ def vet(
 
         # The same page found twice is one page. Checked after the refusals so
         # a duplicate of something that was refused does not hide a good one.
+        # The searcher also drops repeats before the reader is shown them, which
+        # saves the reader the same page twice; this check does not depend on
+        # whoever calls, because it is what keeps one sale from counting as two.
         link = canonical_url(result.url)
         if link in shown:
             continue
@@ -204,10 +208,11 @@ def _reported_other_currency(currency: str) -> bool:
 def _comparable(claim: Candidate, result: NumberedResult, brand: str | None) -> Comparable:
     host = host_of(result.url) or ""
 
-    # Only a sale the page mentions. A comparable marked sold is weighed above
-    # every asking price beside it, so the word has to be on the page.
+    # Only a sale the page says. A comparable marked sold is weighed above every
+    # asking price beside it, so a page still for sale ("52 sold" is its seller's
+    # tally) cannot be allowed to carry one on a model's say-so.
     sold = claim.sold
-    if sold is True and not mentions_sold(result.searchable):
+    if sold is True and not says_sold(result.searchable):
         sold = None
 
     return Comparable(

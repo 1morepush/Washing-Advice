@@ -75,7 +75,7 @@ _INVISIBLE = {
 _SPACES = re.compile(r"\s+")
 
 # The word "sold", on its own: not "unsold", not "sold-out-style", not part of a
-# longer word. Enough to catch a model claiming a sale the page never mentions.
+# longer word.
 _SOLD_WORD = re.compile(r"(?<![\w-])sold(?![\w-])", re.IGNORECASE)
 
 # "Sold" in the senses that are not about this item: a seller's tally ("52
@@ -172,17 +172,15 @@ def first_dollar_price(text: str) -> float | None:
     return None
 
 
-def mentions_sold(text: str) -> bool:
-    """Whether the page uses the word "sold" at all."""
-    return _SOLD_WORD.search(text) is not None
-
-
 def says_sold(text: str) -> bool:
     """Whether the page says, as far as a pattern can tell, that this item has sold.
 
-    Crude, and meant to be: it is what the fallback reader uses when no model is
-    reading, and it excludes the two commonest ways the word appears without
-    meaning that (a seller's total, a shop's "sold by").
+    Crude, and meant to be. It is what the fallback reader uses when no model is
+    reading, and what a model's claim of a sale is checked against: it excludes
+    the two commonest ways the word appears without meaning that, a seller's
+    total ("52 sold") and a shop's "sold by". Those are on exactly the pages
+    that are still for sale, so a check that let them through would let a
+    hallucinated sale through on the pages it matters for.
     """
     for found in _SOLD_WORD.finditer(text):
         before = text[max(0, found.start() - _TALLY_WINDOW) : found.start()]

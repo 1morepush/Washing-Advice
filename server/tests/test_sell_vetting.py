@@ -418,6 +418,24 @@ class TestAComparableIsADepopListing:
             1,
         )
 
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://evil.example\\@depop.com/products/x",
+            "https://evil.example\\@www.depop.com/products/x/",
+            "https://user:password@www.depop.com/products/x/",
+            "https://www.depop.com\\products\\x",
+        ],
+    )
+    def test_a_link_a_browser_would_open_somewhere_else_is_not_shown(self, url: str) -> None:
+        # To a URL parser these are on depop.com (a user name, then the host);
+        # a browser reads the backslash as a slash and opens the first host. The
+        # link on the screen has to open where the check said it did.
+        vetted = vet([claim()], [result(url=url)])
+
+        assert vetted.comparables == []
+        assert counts(vetted) == (0, 0, 1)
+
     def test_a_link_longer_than_the_contract_allows_is_not_shown(self) -> None:
         assert counts(vet([claim()], [result(url="https://www.depop.com/" + "a" * 2100)])) == (
             0,
@@ -496,6 +514,22 @@ class TestARetailPriceIsNotFromAResaleSite:
 
         assert counts(vet([retail_claim()], [page])) == (0, 0, 1)
 
+    @pytest.mark.parametrize(
+        "url",
+        [
+            # A shop to a URL parser; a resale site (or anything) to a browser.
+            "https://www.ebay.com\\@www.nike.com/t/club-fleece-crew",
+            "https://evil.example\\@www.nike.com/t/club-fleece-crew",
+            "https://www.nike.com@www.ebay.com/itm/1",
+            "https://user@www.nike.com/t/club-fleece-crew",
+        ],
+    )
+    def test_a_shop_link_a_browser_would_open_somewhere_else_is_not_shown(self, url: str) -> None:
+        vetted = vet([retail_claim()], [retail_result(url=url)])
+
+        assert vetted.retail == []
+        assert counts(vetted) == (0, 0, 1)
+
     def test_the_seller_is_the_shops_domain_without_www(self) -> None:
         assert vet([retail_claim()], [retail_result()]).retail[0].seller == "nike.com"
         page = retail_result(url="https://shop.levi.com/product", text="Levi's 501 $60.00")
@@ -503,14 +537,14 @@ class TestARetailPriceIsNotFromAResaleSite:
 
 
 class TestSold:
-    def test_a_sale_the_page_mentions_stands(self) -> None:
+    def test_a_sale_the_page_says_stands(self) -> None:
         page = result(text="Vintage Nike crewneck $32.00 Sold")
 
         assert vet([claim(sold=True)], [page]).comparables[0].sold is True
 
     def test_a_sale_the_page_never_mentions_is_not_repeated(self) -> None:
         # A comparable marked sold outweighs every asking price beside it, so
-        # the word has to be on the page.
+        # the page has to say so.
         page = result(text="Vintage Nike crewneck $32.00 Buy now")
 
         shown = vet([claim(sold=True)], [page]).comparables
@@ -518,6 +552,24 @@ class TestSold:
         assert len(shown) == 1
         assert shown[0].sold is None
         assert "sold" not in shown[0].to_wire()
+
+    def test_a_sellers_tally_on_a_page_still_for_sale_is_not_a_sale(self) -> None:
+        # Depop shows how many a seller has sold on every one of their listings.
+        # A model that read "52 sold" as this item having gone is exactly the
+        # claim that must not survive.
+        page = result(text="Vintage Nike crewneck $32.00 Buy now. Seller: 52 sold, 4.9 stars")
+
+        assert vet([claim(sold=True)], [page]).comparables[0].sold is None
+
+    def test_sold_by_is_not_a_sale(self) -> None:
+        page = result(text="Vintage Nike crewneck $32.00. Sold by maria_vintage")
+
+        assert vet([claim(sold=True)], [page]).comparables[0].sold is None
+
+    def test_a_tally_beside_the_real_thing_does_not_cancel_it(self) -> None:
+        page = result(text="Vintage Nike crewneck $32.00 Sold. Seller: 52 sold, 4.9 stars")
+
+        assert vet([claim(sold=True)], [page]).comparables[0].sold is True
 
     def test_still_for_sale_is_kept_as_it_is_not_a_claim_of_a_sale(self) -> None:
         assert vet([claim(sold=False)], [result()]).comparables[0].sold is False

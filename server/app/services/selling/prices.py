@@ -17,6 +17,13 @@ so a search that was not configured, ran out of allowance or broke is a *status*
 on an otherwise ordinary answer (with the phrases echoed and nothing found), never
 an error. The app's fallback to links and prices typed by hand is built on that:
 it only has to look at one field.
+
+**One lookup at a time per search.** Two requests for the same search that arrive
+while the first is still running join it rather than starting their own. The
+cache cannot help there, because the answer it would hold does not exist yet, and
+the moments it matters are the ordinary ones: a double tap, or a retry after the
+phone gave up waiting on a server that was still waking up. Each would otherwise
+spend two credits of an allowance shared by every listing there is.
 """
 
 from __future__ import annotations
@@ -24,8 +31,9 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
+from functools import partial
 
 from app.schemas.selling import (
     ExcludedCounts,
@@ -46,7 +54,7 @@ from app.services.selling.base import (
     SearchRequest,
     WebSearch,
 )
-from app.services.selling.cache import PriceCache, cache_key
+from app.services.selling.cache import CacheKey, PriceCache, cache_key
 from app.services.selling.domains import COMPARABLE_DOMAIN, RESALE_DOMAINS, canonical_url
 from app.services.selling.page_text import normalise
 from app.services.selling.vetting import vet
@@ -86,8 +94,16 @@ class PriceSearcher:
         self._cache = cache
         # Injected so a test can say when the search ran.
         self._now = now
+        self._running: dict[CacheKey, asyncio.Task[PriceSearchOutcome]] = {}
 
     async def aclose(self) -> None:
+        # What is still running is stopped before what it is using is closed.
+        running = list(self._running.values())
+        for task in running:
+            task.cancel()
+        if running:
+            await asyncio.gather(*running, return_exceptions=True)
+
         for part in (self._search, self._reader):
             closer = getattr(part, "aclose", None)
             if closer is not None:
@@ -102,14 +118,39 @@ class PriceSearcher:
         remembered = self._cache.get(key) if self._cache is not None else None
         if remembered is not None:
             return PriceSearchOutcome(
-                # The phrases as this request wrote them, over the answer as it
-                # was found: the lists and the time are the stored search's.
-                result=remembered.model_copy(update={"queries": request.queries}),
+                result=_as_asked(remembered, request),
                 stages_run=["cache"],
                 stage_answered="cache",
                 from_cache=True,
             )
 
+        outcome = await self._joined(key, request)
+        return replace(outcome, result=_as_asked(outcome.result, request))
+
+    async def _joined(self, key: CacheKey, request: PriceSearchRequest) -> PriceSearchOutcome:
+        """The lookup for this search, started if nothing is running it, joined if it is."""
+        loop = asyncio.get_running_loop()
+        task = self._running.get(key)
+        # Only a lookup on this event loop can be waited for from it.
+        if task is None or task.get_loop() is not loop:
+            task = loop.create_task(self._look_up(request))
+            self._running[key] = task
+            task.add_done_callback(partial(self._finished, key))
+
+        # Shielded, so a caller that gives up (the phone went away) leaves the
+        # lookup to finish. It has already spent the credits, and its answer is
+        # what the retry will be handed from the cache.
+        return await asyncio.shield(task)
+
+    def _finished(self, key: CacheKey, task: asyncio.Task[PriceSearchOutcome]) -> None:
+        if self._running.get(key) is task:
+            del self._running[key]
+        if not task.cancelled():
+            # Looked at, so an error nobody was left waiting for is not also
+            # reported as one nobody ever looked at.
+            task.exception()
+
+    async def _look_up(self, request: PriceSearchRequest) -> PriceSearchOutcome:
         listings, shops = await asyncio.gather(
             self._attempt(_depop_search(request.queries)),
             self._attempt(_retail_search(request.queries)),
@@ -129,13 +170,17 @@ class PriceSearcher:
             return self._unanswered(request, status, stages=stages)
 
         # One search failing and the other answering still prices from what
-        # answered: half the market is more use than none.
+        # answered: half the market is more use than none. But it is half an
+        # answer, and is not kept (see `_answered`).
+        complete = not isinstance(listings, SearchError) and not isinstance(shops, SearchError)
         results = _number(
             [] if isinstance(listings, SearchError) else listings,
             [] if isinstance(shops, SearchError) else shops,
         )
         if not results:
-            return self._answered(request, results, [], stages, stage_answered=stages[0])
+            return self._answered(
+                request, results, [], stages, stage_answered=stages[0], keep=complete
+            )
 
         try:
             claims = await self._reader.read(_item(request), results)
@@ -150,7 +195,12 @@ class PriceSearcher:
             )
 
         return self._answered(
-            request, results, claims, [*stages, self._reader.name], stage_answered=self._reader.name
+            request,
+            results,
+            claims,
+            [*stages, self._reader.name],
+            stage_answered=self._reader.name,
+            keep=complete,
         )
 
     async def _attempt(self, search: SearchRequest) -> list[SearchHit] | SearchError:
@@ -170,7 +220,15 @@ class PriceSearcher:
         stages: list[str],
         *,
         stage_answered: str,
+        keep: bool,
     ) -> PriceSearchOutcome:
+        """An answer, remembered unless [keep] says it is only part of one.
+
+        An answer that found nothing is still an answer worth keeping: it is a
+        fact about the market. Half of one is a fact about the last few seconds
+        and the service's health, and keeping it for six hours would hold a
+        listing without comparables long after the search that failed recovered.
+        """
         vetted = vet(claims, results, brand=request.brand)
         found = PriceSearch(
             status=PriceSearchStatus.OK,
@@ -189,7 +247,7 @@ class PriceSearcher:
             len(vetted.comparables),
             len(vetted.retail),
         )
-        if self._cache is not None:
+        if keep and self._cache is not None:
             self._cache.put(cache_key(request), found)
         return PriceSearchOutcome(result=found, stages_run=stages, stage_answered=stage_answered)
 
@@ -212,6 +270,16 @@ class PriceSearcher:
             stages_run=stages,
             stage_answered=None,
         )
+
+
+def _as_asked(found: PriceSearch, request: PriceSearchRequest) -> PriceSearch:
+    """The answer with the phrases as this request wrote them.
+
+    A remembered or shared answer was found for a request that spelt the same
+    search differently ("NIKE hoodie" and "nike hoodie"). The lists, the counts
+    and the time are the search's own, and the phrases are the asker's.
+    """
+    return found.model_copy(update={"queries": request.queries})
 
 
 def _depop_search(queries: SearchQueries) -> SearchRequest:

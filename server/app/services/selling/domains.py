@@ -55,13 +55,18 @@ def host_of(url: str) -> str | None:
     """The host of an https link, lower-cased, or None for anything else.
 
     None for a link that is not https, has no host, is longer than the contract
-    allows or has whitespace or control characters in it. A link the person is
-    going to tap has to be one that opens where it says.
+    allows, or has in it anything a browser and a URL parser can read
+    differently: whitespace or control characters, a backslash, or a user name
+    in front of the host. A link the person is going to tap has to open where it
+    says, and the parser here is not the one that opens it. `https://evil.example\\@depop.com/`
+    is the host `depop.com` to this parser (a user name, then a host) and
+    `evil.example` to a browser (a host, then a path), because a browser reads a
+    backslash as a slash. A genuine product link has none of these.
     """
     link = url.strip()
     if not link or len(link) > MAX_URL_CHARS:
         return None
-    if any(character.isspace() or ord(character) < 32 for character in link):
+    if "\\" in link or any(character.isspace() or ord(character) < 32 for character in link):
         return None
 
     try:
@@ -70,7 +75,7 @@ def host_of(url: str) -> str | None:
     except ValueError:
         return None
 
-    if parts.scheme.lower() != "https" or not host:
+    if parts.scheme.lower() != "https" or not host or "@" in parts.netloc:
         return None
     return host.rstrip(".") or None
 

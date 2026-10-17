@@ -6,6 +6,12 @@ one the schema states — a length, a count, a pattern — so a value this serve
 cannot construct is a value the schema would have refused, and a response that
 gets as far as being built is one that validates.
 
+The one place this is stricter than the schema is whitespace. The text fields
+are trimmed before their length is checked, so a title of three characters that
+is one letter between two spaces is refused here although the schema counts the
+spaces. Nobody sends that on purpose, and a search for a one-letter phrase is
+not worth running.
+
 Two kinds of model live here, and they are strict for different reasons.
 
 The *request* models (`DescribeContext`, `PriceSearchRequest`) refuse an

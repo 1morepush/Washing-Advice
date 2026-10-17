@@ -29,7 +29,6 @@ from app.services.selling.page_text import (
     PriceCheck,
     check_price,
     first_dollar_price,
-    mentions_sold,
     normalise,
     price_mentions,
     says_sold,
@@ -291,23 +290,14 @@ class TestSold:
             "SOLD",
             "This item has sold.",
             "Sold!",
-            "Vintage crewneck - Sold - $32",
+            "Vintage crewneck $32 Sold",
+            "Vintage crewneck $32.00 Sold",
+            "Vintage crewneck $32.00 - Sold - Size M",
+            "Sold: $32",
             "sold out",
+            "SOLD - Nike crewneck",
+            "Nike crewneck (sold)",
         ],
-    )
-    def test_the_word_is_found(self, page: str) -> None:
-        assert mentions_sold(page)
-
-    @pytest.mark.parametrize(
-        "page",
-        ["Unsold stock", "resold twice", "sold-out style", "soldier", "Buy now", ""],
-    )
-    def test_other_words_are_not_it(self, page: str) -> None:
-        assert not mentions_sold(page)
-
-    @pytest.mark.parametrize(
-        "page",
-        ["Sold", "SOLD", "This item has sold.", "Sold!", "Vintage crewneck $32 Sold", "Sold: $32"],
     )
     def test_a_clear_marker(self, page: str) -> None:
         assert says_sold(normalise(page))
@@ -318,14 +308,35 @@ class TestSold:
             "52 sold",
             "1,200 sold",
             "Seller: 52 sold, 4.9 stars",
+            "Nike crewneck $32.00 Buy now. Seller: 52 sold",
             "Sold by Depop seller maria",
             "Unsold",
+            "resold twice",
+            "sold-out style",
+            "soldier",
             "Buy now",
+            "",
         ],
     )
-    def test_not_a_clear_marker_when_it_is_a_tally_or_boilerplate(self, page: str) -> None:
-        # The word where it is not about this item having gone.
+    def test_not_a_clear_marker_when_it_is_a_tally_or_boilerplate_or_another_word(
+        self, page: str
+    ) -> None:
+        # The word where it is not about this item having gone. These are on
+        # exactly the pages that are still for sale.
         assert not says_sold(normalise(page))
+
+    def test_a_tally_does_not_hide_a_real_marker_on_the_same_page(self) -> None:
+        page = "Nike crewneck $32.00 Sold. Seller: 52 sold, 4.9 stars"
+
+        assert says_sold(normalise(page))
+
+    def test_a_number_that_is_a_price_is_not_a_tally(self) -> None:
+        # "$32 Sold" is the commonest way a page marks a sale; "32 sold" is a
+        # count of sales by somebody else.
+        assert says_sold("$32 Sold")
+        assert says_sold("$1,250.00 Sold")
+        assert not says_sold("32 sold")
+        assert not says_sold("(32 sold)")
 
 
 class TestHosts:
@@ -339,7 +350,7 @@ class TestHosts:
             ("https://www.depop.com:443/products/x", "www.depop.com"),
             ("https://depop.com./products/x", "depop.com"),
             ("  https://www.nike.com/t/x  ", "www.nike.com"),
-            ("https://depop.com@evil.example/products/x", "evil.example"),
+            ("https://www.depop.com/products/a-b_c.d~e%20f/?x=1&y=2#top", "www.depop.com"),
         ],
     )
     def test_the_host_of_a_link(self, url: str, host: str) -> None:
@@ -364,6 +375,29 @@ class TestHosts:
         ],
     )
     def test_a_link_that_is_not_one_to_follow(self, url: str) -> None:
+        assert host_of(url) is None
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            # A user name before the host: the parser reads the host after the @,
+            # and a person looking at the link reads the one before it.
+            "https://depop.com@evil.example/products/x",
+            "https://www.depop.com@evil.example/products/x",
+            "https://user:password@www.depop.com/products/x",
+            "https://@www.depop.com/products/x",
+            # A backslash, which a browser reads as a slash: this is the host
+            # evil.example to the browser and depop.com to a URL parser.
+            "https://evil.example\\@depop.com/products/x",
+            "https://evil.example\\@www.nike.com/t/x",
+            "https://evil.example\\.depop.com/products/x",
+            "https://www.depop.com\\products\\x",
+            "https://www.depop.com/products\\x",
+        ],
+    )
+    def test_a_link_that_a_browser_and_a_parser_could_read_differently(self, url: str) -> None:
+        # What the link is checked as, and what opens when it is tapped, have
+        # to be the same place.
         assert host_of(url) is None
 
     def test_a_link_exactly_at_the_limit_is_fine(self) -> None:

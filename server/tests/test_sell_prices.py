@@ -793,14 +793,265 @@ class TestAFailureIsNotRemembered:
         assert second.result.status is PriceSearchStatus.OK
         assert not second.from_cache
 
+    async def test_half_an_answer_is_shown_but_not_remembered(self) -> None:
+        # The Depop search timed out and the shop search answered. That is
+        # worth showing, as ok, but keeping it for six hours would hold a
+        # listing without comparables long after the search recovered.
+        tavily = Tavily(
+            _in_turn(timing_out, answer(*depop_hits())),
+            answer(*retail_hits()),
+        )
+        searcher = searcher_for(tavily)
 
-def _in_turn(*replies: httpx.Response) -> Any:
-    """A reply that changes from one request to the next, then stays on the last."""
+        first = await searcher.search(request())
+        second = await searcher.search(request())
+        third = await searcher.search(request())
+
+        assert first.result.status is PriceSearchStatus.OK
+        assert first.result.comparables == []
+        assert [r.price for r in first.result.retail] == [60.0]
+        assert not second.from_cache
+        assert [c.price for c in second.result.comparables] == [32.0, 28.0, 35.0]
+        # The whole answer is kept, and is what comes back from then on.
+        assert third.from_cache
+        assert third.result.comparables == second.result.comparables
+        assert len(tavily.requests) == 4
+
+    async def test_and_the_same_when_it_is_the_shops_that_failed(self) -> None:
+        tavily = Tavily(
+            answer(*depop_hits()),
+            _in_turn(status(500), answer(*retail_hits())),
+        )
+        searcher = searcher_for(tavily)
+
+        first = await searcher.search(request())
+        second = await searcher.search(request())
+
+        assert first.result.retail == []
+        assert [r.price for r in second.result.retail] == [60.0]
+        assert not second.from_cache
+
+    async def test_a_search_that_answered_with_nothing_beside_one_that_failed_is_half_too(
+        self,
+    ) -> None:
+        tavily = Tavily(status(500), answer())
+        searcher = searcher_for(tavily)
+
+        await searcher.search(request())
+        again = await searcher.search(request())
+
+        assert not again.from_cache
+        assert len(tavily.requests) == 4
+
+    async def test_a_search_that_answered_with_nothing_beside_one_that_answered_is_whole(
+        self,
+    ) -> None:
+        tavily = Tavily(answer(), answer(*retail_hits()))
+        searcher = searcher_for(tavily)
+
+        await searcher.search(request())
+        again = await searcher.search(request())
+
+        assert again.from_cache
+        assert len(tavily.requests) == 2
+
+
+async def settle(until: Any, *, seconds: float = 2.0) -> None:
+    """Lets the event loop run until [until] is true, or fails the test."""
+    deadline = asyncio.get_running_loop().time() + seconds
+    while not until():
+        assert asyncio.get_running_loop().time() < deadline, "the condition never came true"
+        await asyncio.sleep(0.005)
+
+
+def held(release: asyncio.Event, *hits: dict[str, Any], then: Any = None) -> Any:
+    """A reply that waits for the test to let it go, so two lookups can overlap."""
+
+    async def respond(request: httpx.Request) -> httpx.Response:
+        await release.wait()
+        return then(request) if then is not None else answer(*hits)
+
+    return respond
+
+
+class TestOneLookupAtATime:
+    """Two requests for one search while the first is running spend one search."""
+
+    def two_in_flight(self, **settings: Any) -> tuple[Tavily, PriceSearcher, asyncio.Event]:
+        release = asyncio.Event()
+        tavily = Tavily(held(release, *depop_hits()), held(release, *retail_hits()))
+        return tavily, searcher_for(tavily, **settings), release
+
+    async def test_a_second_request_joins_the_first(self) -> None:
+        tavily, searcher, release = self.two_in_flight()
+
+        first = asyncio.create_task(searcher.search(request()))
+        await settle(lambda: len(tavily.requests) == 2)
+        second = asyncio.create_task(searcher.search(request()))
+        await asyncio.sleep(0.05)
+        release.set()
+        one, two = await asyncio.gather(first, second)
+
+        assert len(tavily.requests) == 2
+        assert one.result.status is PriceSearchStatus.OK
+        assert two.result.comparables == one.result.comparables
+        assert two.result.searched_at == one.result.searched_at
+
+    async def test_neither_is_from_the_cache_because_there_was_none_to_be_from(self) -> None:
+        tavily, searcher, release = self.two_in_flight()
+
+        first = asyncio.create_task(searcher.search(request()))
+        await settle(lambda: len(tavily.requests) == 2)
+        second = asyncio.create_task(searcher.search(request()))
+        await asyncio.sleep(0.05)
+        release.set()
+        one, two = await asyncio.gather(first, second)
+
+        assert not one.from_cache and not two.from_cache
+        assert one.stages_run == two.stages_run == ["tavily", "regex"]
+
+    async def test_each_gets_the_phrases_it_sent(self) -> None:
+        tavily, searcher, release = self.two_in_flight()
+        loud = request(
+            queries={
+                "depop": "NIKE vintage crewneck sweatshirt GREY",
+                "retail": "nike club fleece crew sweatshirt grey",
+            },
+            title="A corrected title",
+        )
+
+        first = asyncio.create_task(searcher.search(request()))
+        await settle(lambda: len(tavily.requests) == 2)
+        second = asyncio.create_task(searcher.search(loud))
+        await asyncio.sleep(0.05)
+        release.set()
+        one, two = await asyncio.gather(first, second)
+
+        assert one.result.queries == request().queries
+        assert two.result.queries == loud.queries
+        assert len(tavily.requests) == 2
+
+    async def test_a_different_search_does_not_wait_for_it(self) -> None:
+        tavily, searcher, release = self.two_in_flight()
+
+        first = asyncio.create_task(searcher.search(request()))
+        await settle(lambda: len(tavily.requests) == 2)
+        other = asyncio.create_task(searcher.search(request(brand="Adidas")))
+        await settle(lambda: len(tavily.requests) == 4)
+        release.set()
+        await asyncio.gather(first, other)
+
+        assert len(tavily.requests) == 4
+
+    async def test_a_failure_is_shared_and_then_forgotten(self) -> None:
+        release = asyncio.Event()
+        tavily = Tavily(
+            held(release, then=lambda r: status(500)),
+            held(release, then=lambda r: status(500)),
+        )
+        searcher = searcher_for(tavily)
+
+        first = asyncio.create_task(searcher.search(request()))
+        await settle(lambda: len(tavily.requests) == 2)
+        second = asyncio.create_task(searcher.search(request()))
+        await asyncio.sleep(0.05)
+        release.set()
+        one, two = await asyncio.gather(first, second)
+
+        assert one.result.status is PriceSearchStatus.UNAVAILABLE
+        assert two.result.status is PriceSearchStatus.UNAVAILABLE
+        assert len(tavily.requests) == 2
+        # And not remembered: the next lookup searches.
+        await searcher.search(request())
+        assert len(tavily.requests) == 4
+
+    async def test_the_lookup_outlives_a_caller_that_gives_up(self) -> None:
+        # The phone stops waiting on a server that is still waking up, and asks
+        # again. The first lookup has spent its credits, and its answer is what
+        # the retry is handed.
+        tavily, searcher, release = self.two_in_flight()
+
+        first = asyncio.create_task(searcher.search(request()))
+        await settle(lambda: len(tavily.requests) == 2)
+        first.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await first
+
+        retry = asyncio.create_task(searcher.search(request()))
+        await asyncio.sleep(0.05)
+        release.set()
+        outcome = await retry
+
+        assert outcome.result.status is PriceSearchStatus.OK
+        assert len(tavily.requests) == 2
+
+    async def test_and_what_it_found_is_remembered_for_the_next_one(self) -> None:
+        tavily, searcher, release = self.two_in_flight()
+
+        first = asyncio.create_task(searcher.search(request()))
+        await settle(lambda: len(tavily.requests) == 2)
+        first.cancel()
+        release.set()
+        await settle(lambda: not searcher._running)
+        again = await searcher.search(request())
+
+        assert again.from_cache
+        assert len(tavily.requests) == 2
+
+    async def test_nothing_is_left_running_afterwards(self) -> None:
+        _, searcher, release = self.two_in_flight()
+        release.set()
+
+        await searcher.search(request())
+        await asyncio.sleep(0)
+
+        assert searcher._running == {}
+
+    async def test_closing_stops_what_is_still_running(self) -> None:
+        tavily, searcher, _ = self.two_in_flight()
+
+        waiting = asyncio.create_task(searcher.search(request()))
+        await settle(lambda: len(tavily.requests) == 2)
+        await searcher.aclose()
+
+        with pytest.raises(asyncio.CancelledError):
+            await waiting
+        assert searcher._running == {}
+
+    async def test_a_lookup_with_no_key_never_starts_one(self) -> None:
+        tavily, searcher, _ = self.two_in_flight(key=None)
+
+        outcome = await searcher.search(request())
+
+        assert outcome.result.status is PriceSearchStatus.NOT_CONFIGURED
+        assert searcher._running == {}
+        assert tavily.requests == []
+
+    async def test_a_remembered_answer_never_starts_one(self) -> None:
+        release = asyncio.Event()
+        release.set()
+        tavily = Tavily(held(release, *depop_hits()), held(release, *retail_hits()))
+        searcher = searcher_for(tavily)
+        await searcher.search(request())
+
+        again = await searcher.search(request())
+
+        assert again.from_cache
+        assert searcher._running == {}
+
+
+def _in_turn(*replies: Any) -> Any:
+    """A reply that changes from one request to the next, then stays on the last.
+
+    Each is a response, or a function that answers (or raises) for the request.
+    """
     seen = {"count": 0}
 
     def respond(request: httpx.Request) -> httpx.Response:
         reply_ = replies[min(seen["count"], len(replies) - 1)]
         seen["count"] += 1
+        if callable(reply_):
+            return reply_(request)  # type: ignore[no-any-return]
         return httpx.Response(reply_.status_code, headers=reply_.headers, content=reply_.content)
 
     return respond
@@ -1059,7 +1310,7 @@ class TestTheGeminiReader:
         # The page text is not echoed back in the problem.
         assert retry.count("Nike crewneck $32.00 Sold") == 1
 
-    async def test_an_unknown_kind_is_a_broken_reply(self) -> None:
+    async def test_a_reply_whose_every_claim_is_unusable_is_a_broken_reply(self) -> None:
         gemini = Gemini(reply({"results": [claim_json(0, "auction", 32)]}))
 
         with pytest.raises(ProviderError):
@@ -1067,11 +1318,72 @@ class TestTheGeminiReader:
 
         assert len(gemini.requests) == 2
 
+    async def test_one_malformed_claim_does_not_cost_the_good_ones(self) -> None:
+        # Eight good and one bad is not a reason to retry, or to lose the eight.
+        says = {
+            "results": [
+                claim_json(0, "listing", 32),
+                claim_json(1, "retail", 60, match="identical"),
+                claim_json(2, "listing", "thirty"),
+                "a claim that is a string",
+                {"resultIndex": 3},
+                claim_json(4, "listing", 28),
+            ]
+        }
+        gemini = Gemini(reply(says))
+
+        claims = await gemini.reader().read(ITEM, self.results())
+
+        assert [(claim.result_index, claim.price) for claim in claims] == [(0, 32.0), (4, 28.0)]
+        assert len(gemini.requests) == 1
+
+    async def test_and_what_it_dropped_is_counted_as_not_comparable_like_any_other(self) -> None:
+        # The result a dropped claim was about is simply one the reader did not
+        # put forward: it ends up in the same count as every other.
+        says = {"results": [claim_json(0, "listing", 32), claim_json(1, "retail", 60, match="x")]}
+        tavily = standard_tavily()
+        gemini = Gemini(reply(says))
+
+        result = (await searcher_for(tavily, reader=gemini.reader()).search(request())).result
+
+        assert [c.price for c in result.comparables] == [32.0]
+        assert result.retail == []
+        assert result.excluded.not_comparable == 5
+
+    async def test_which_claim_was_wrong_is_said_when_none_were_right(self) -> None:
+        gemini = Gemini(
+            reply({"results": [claim_json(0, "listing", 32), {"resultIndex": 1, "kind": "x"}]}),
+            reply({"results": [{"resultIndex": 5, "kind": "listing"}]}),
+        )
+
+        # The first reply has a good claim among the bad: kept, no retry.
+        assert len(await gemini.reader().read(ITEM, self.results())) == 1
+        assert len(gemini.requests) == 1
+
+        # A reply of nothing but bad claims is retried, and says where.
+        worse = Gemini(
+            reply({"results": [{"resultIndex": 1, "kind": "x"}, {"price": "free"}]}),
+            reply({"results": [claim_json(0, "listing", 32)]}),
+        )
+        await worse.reader().read(ITEM, self.results())
+
+        retry = worse.prompts()[1]
+        assert "results.0.kind" in retry
+        assert "results.1.resultIndex" in retry
+
     async def test_a_reply_that_is_not_the_right_shape_is_a_broken_reply(self) -> None:
-        for broken in ([], "text", {"claims": []}, None):
+        for broken in ([], "text", {"claims": []}, {"results": "none"}, {"results": None}, None):
             gemini = Gemini(reply(broken))
             with pytest.raises(ProviderError):
                 await gemini.reader().read(ITEM, self.results())
+            assert len(gemini.requests) == 2
+
+    async def test_the_shape_that_was_wrong_is_said_on_the_retry(self) -> None:
+        gemini = Gemini(reply([]), reply({"results": []}))
+
+        await gemini.reader().read(ITEM, self.results())
+
+        assert "a list called 'results'" in gemini.prompts()[1]
 
     async def test_a_rate_limit_is_a_provider_error_with_the_wait(self) -> None:
         limited = httpx.Response(429, headers={"retry-after": "12"}, json={"error": {}})

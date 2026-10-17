@@ -15,25 +15,18 @@ is a wrong one.
 
 from __future__ import annotations
 
+from typing import Any
+
 import httpx
+from pydantic import ValidationError
 
 from app.config import Settings
-from app.schemas.base import WireModel
+from app.schemas.base import validation_problems
 from app.services.selling.base import Candidate, ListingItem, NumberedResult
 from app.services.selling.gemini_json import GeminiStructured, gemini_arguments
 from app.services.selling.reader_prompts import READER_SCHEMA, read_prompt
 
 _TEMPERATURE = 0.1
-
-
-class ReaderAnswer(WireModel):
-    """The reply: the results the reader put forward, and nothing else.
-
-    Keys the reader adds beyond the schema (a link, a title) are ignored by
-    omission: this model has nowhere to put them.
-    """
-
-    results: list[Candidate]
 
 
 class GeminiComparableReader:
@@ -71,10 +64,40 @@ class GeminiComparableReader:
         if not results:
             return []
 
-        answer = await self._gemini.generate(
+        return await self._gemini.generate(
             [{"text": read_prompt(item, results)}],
             READER_SCHEMA,
-            ReaderAnswer.model_validate,
+            _parse,
             temperature=_TEMPERATURE,
         )
-        return answer.results
+
+
+def _parse(data: Any) -> list[Candidate]:
+    """The claims in a reply, keeping the usable ones if some are not.
+
+    A reply that is not a list of claims at all, or whose every claim is
+    unusable, is the model failing the task, and the caller retries it once with
+    the problem fed back. A reply with eight good claims and one malformed one is
+    not worth a retry or the loss of the eight: the malformed one is dropped, and
+    the result it was about is counted as not comparable like any other the
+    reader did not put forward. The same spirit as the vetting, which counts
+    nonsense and carries on.
+
+    A link or a title in a claim is not an error. `Candidate` has nowhere to put
+    either, so they are ignored.
+    """
+    entries = data.get("results") if isinstance(data, dict) else None
+    if not isinstance(entries, list):
+        raise ValueError("the reply must be a JSON object with a list called 'results'")
+
+    claims: list[Candidate] = []
+    problems: list[str] = []
+    for position, entry in enumerate(entries):
+        try:
+            claims.append(Candidate.model_validate(entry))
+        except ValidationError as error:
+            problems.extend(validation_problems(error, under=f"results.{position}"))
+
+    if problems and not claims:
+        raise ValueError("; ".join(problems))
+    return claims

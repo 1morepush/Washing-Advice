@@ -24,6 +24,7 @@ from app.api.v1.dependencies import get_listing_describer, get_price_searcher
 from app.config import Settings, get_settings
 from app.core.errors import InvalidFieldError, from_provider_error
 from app.core.limits import MAX_LISTING_PHOTOS, check_image, check_image_count
+from app.schemas.base import validation_problems
 from app.schemas.scan import ScanDiagnostics
 from app.schemas.selling import (
     DescribeContext,
@@ -52,12 +53,8 @@ def _read_context(raw: str | None) -> DescribeContext | None:
     try:
         return DescribeContext.model_validate_json(raw)
     except ValidationError as error:
-        problems = "; ".join(
-            f"{'.'.join(str(step) for step in found['loc']) or 'context'}: {found['msg']}"
-            for found in error.errors(include_input=False, include_url=False)
-        )
         raise InvalidFieldError(
-            f"the 'context' field is not valid: {problems}",
+            f"the 'context' field is not valid: {'; '.join(validation_problems(error))}",
             hint=(
                 "Send context as a JSON object such as "
                 '{"known": {"brand": "Nike", "sizeLabel": "M"}, "notes": "worn twice"}.'

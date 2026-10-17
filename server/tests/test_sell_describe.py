@@ -1033,8 +1033,7 @@ class TestTheRoute:
         assert response.status_code == 422
         body = response.json()
         assert body["error"] == "invalid_field"
-        assert "'context'" in body["detail"]
-        assert "valid JSON" in body["detail"] or "Invalid JSON" in body["detail"]
+        assert body["detail"].startswith("the 'context' field is not valid: Invalid JSON")
         assert "known" in body["hint"]
 
     def test_a_context_that_is_not_an_object_is_a_422(self, client: TestClient) -> None:

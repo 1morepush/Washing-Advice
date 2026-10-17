@@ -21,6 +21,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
+from app.schemas.base import validation_problems
 from app.schemas.common import Confident, Provenance
 from app.schemas.scan import ScanDiagnostics
 from app.schemas.selling import (
@@ -393,3 +394,68 @@ class TestTheRequestsRefuseWhatTheSchemaRefuses:
         # Pinned here because the whole point of a known fact is that nothing
         # outranks it, and `userEdited` is the top of the order by declaration.
         assert max(Provenance, key=lambda p: p.resolution_rank) is Provenance.USER_EDITED
+
+
+class TestSayingWhatWasWrong:
+    """Validation failures as one line a problem, for a response or a prompt."""
+
+    def failure(self, model: Any, value: Any) -> ValidationError:
+        with pytest.raises(ValidationError) as raised:
+            model.model_validate(value)
+        return raised.value
+
+    def test_a_problem_is_led_by_the_key_it_is_about(self) -> None:
+        error = self.failure(KnownFacts, {"brand": "x" * 61})
+
+        assert validation_problems(error) == ["brand: String should have at most 60 characters"]
+
+    def test_a_nested_key_is_a_path(self) -> None:
+        error = self.failure(DescribeContext, {"known": {"brand": "x" * 61}})
+
+        assert validation_problems(error) == [
+            "known.brand: String should have at most 60 characters"
+        ]
+
+    def test_an_unknown_key_is_named(self) -> None:
+        error = self.failure(DescribeContext, {"known": {"sizelabel": "M"}})
+
+        assert validation_problems(error) == ["known.sizelabel: Extra inputs are not permitted"]
+
+    def test_every_problem_is_listed(self) -> None:
+        error = self.failure(KnownFacts, {"brand": "x" * 61, "sizeLabel": "y" * 31})
+
+        assert validation_problems(error) == [
+            "brand: String should have at most 60 characters",
+            "sizeLabel: String should have at most 30 characters",
+        ]
+
+    def test_a_problem_with_the_whole_value_has_no_key_to_lead_with(self) -> None:
+        with pytest.raises(ValidationError) as raised:
+            DescribeContext.model_validate_json("[1, 2]")
+
+        (problem,) = validation_problems(raised.value)
+
+        assert problem == raised.value.errors()[0]["msg"]
+        assert ":" not in problem.split(" ")[0]
+
+    def test_a_prefix_goes_in_front_of_every_key(self) -> None:
+        error = self.failure(KnownFacts, {"brand": "x" * 61})
+
+        assert validation_problems(error, under="results.3") == [
+            "results.3.brand: String should have at most 60 characters"
+        ]
+
+    def test_a_prefix_is_the_whole_key_when_the_problem_has_none(self) -> None:
+        with pytest.raises(ValidationError) as raised:
+            KnownFacts.model_validate("not an object")
+
+        (problem,) = validation_problems(raised.value, under="results.3")
+
+        assert problem.startswith("results.3: ")
+
+    def test_what_failed_is_not_quoted_back(self) -> None:
+        # The input may be a page of web text or somebody's typed note, going
+        # into a prompt or a response.
+        error = self.failure(KnownFacts, {"brand": "SENSITIVE-PAGE-TEXT" * 10})
+
+        assert "SENSITIVE" not in " ".join(validation_problems(error))

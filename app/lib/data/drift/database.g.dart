@@ -1970,17 +1970,394 @@ class OutfitsCompanion extends UpdateCompanion<OutfitRow> {
   }
 }
 
+class $ListingsTable extends Listings
+    with TableInfo<$ListingsTable, ListingRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ListingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _itemIdMeta = const VerificationMeta('itemId');
+  @override
+  late final GeneratedColumn<String> itemId = GeneratedColumn<String>(
+    'item_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    payload,
+    status,
+    itemId,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'listings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ListingRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('item_id')) {
+      context.handle(
+        _itemIdMeta,
+        itemId.isAcceptableOrUnknown(data['item_id']!, _itemIdMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ListingRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ListingRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      itemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}item_id'],
+      ),
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ListingsTable createAlias(String alias) {
+    return $ListingsTable(attachedDatabase, alias);
+  }
+}
+
+class ListingRow extends DataClass implements Insertable<ListingRow> {
+  final String id;
+
+  /// The full `Listing`, as the core serialises it.
+  final String payload;
+
+  /// `draft`, `listed` or `sold`: which of the Sell tab's three lists it is on.
+  final String status;
+
+  /// The garment it was made from, when it was made from one.
+  ///
+  /// Null for a listing written from photographs alone, which is a listing
+  /// like any other. What "Sell this" asks is which listing a garment already
+  /// has, and this is how it finds out without decoding every payload.
+  final String? itemId;
+
+  /// What the list is ordered by, most recent first.
+  final DateTime updatedAt;
+  const ListingRow({
+    required this.id,
+    required this.payload,
+    required this.status,
+    this.itemId,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['payload'] = Variable<String>(payload);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || itemId != null) {
+      map['item_id'] = Variable<String>(itemId);
+    }
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  ListingsCompanion toCompanion(bool nullToAbsent) {
+    return ListingsCompanion(
+      id: Value(id),
+      payload: Value(payload),
+      status: Value(status),
+      itemId: itemId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(itemId),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ListingRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ListingRow(
+      id: serializer.fromJson<String>(json['id']),
+      payload: serializer.fromJson<String>(json['payload']),
+      status: serializer.fromJson<String>(json['status']),
+      itemId: serializer.fromJson<String?>(json['itemId']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'payload': serializer.toJson<String>(payload),
+      'status': serializer.toJson<String>(status),
+      'itemId': serializer.toJson<String?>(itemId),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  ListingRow copyWith({
+    String? id,
+    String? payload,
+    String? status,
+    Value<String?> itemId = const Value.absent(),
+    DateTime? updatedAt,
+  }) => ListingRow(
+    id: id ?? this.id,
+    payload: payload ?? this.payload,
+    status: status ?? this.status,
+    itemId: itemId.present ? itemId.value : this.itemId,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  ListingRow copyWithCompanion(ListingsCompanion data) {
+    return ListingRow(
+      id: data.id.present ? data.id.value : this.id,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      status: data.status.present ? data.status.value : this.status,
+      itemId: data.itemId.present ? data.itemId.value : this.itemId,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ListingRow(')
+          ..write('id: $id, ')
+          ..write('payload: $payload, ')
+          ..write('status: $status, ')
+          ..write('itemId: $itemId, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, payload, status, itemId, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ListingRow &&
+          other.id == this.id &&
+          other.payload == this.payload &&
+          other.status == this.status &&
+          other.itemId == this.itemId &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ListingsCompanion extends UpdateCompanion<ListingRow> {
+  final Value<String> id;
+  final Value<String> payload;
+  final Value<String> status;
+  final Value<String?> itemId;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const ListingsCompanion({
+    this.id = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.status = const Value.absent(),
+    this.itemId = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ListingsCompanion.insert({
+    required String id,
+    required String payload,
+    required String status,
+    this.itemId = const Value.absent(),
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       payload = Value(payload),
+       status = Value(status),
+       updatedAt = Value(updatedAt);
+  static Insertable<ListingRow> custom({
+    Expression<String>? id,
+    Expression<String>? payload,
+    Expression<String>? status,
+    Expression<String>? itemId,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (payload != null) 'payload': payload,
+      if (status != null) 'status': status,
+      if (itemId != null) 'item_id': itemId,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ListingsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? payload,
+    Value<String>? status,
+    Value<String?>? itemId,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return ListingsCompanion(
+      id: id ?? this.id,
+      payload: payload ?? this.payload,
+      status: status ?? this.status,
+      itemId: itemId ?? this.itemId,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (itemId.present) {
+      map['item_id'] = Variable<String>(itemId.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ListingsCompanion(')
+          ..write('id: $id, ')
+          ..write('payload: $payload, ')
+          ..write('status: $status, ')
+          ..write('itemId: $itemId, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $ItemsTable items = $ItemsTable(this);
   late final $EventsTable events = $EventsTable(this);
   late final $OutfitsTable outfits = $OutfitsTable(this);
+  late final $ListingsTable listings = $ListingsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [items, events, outfits];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+    items,
+    events,
+    outfits,
+    listings,
+  ];
 }
 
 typedef $$ItemsTableCreateCompanionBuilder =
@@ -2909,6 +3286,203 @@ typedef $$OutfitsTableProcessedTableManager =
       OutfitRow,
       PrefetchHooks Function()
     >;
+typedef $$ListingsTableCreateCompanionBuilder =
+    ListingsCompanion Function({
+      required String id,
+      required String payload,
+      required String status,
+      Value<String?> itemId,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$ListingsTableUpdateCompanionBuilder =
+    ListingsCompanion Function({
+      Value<String> id,
+      Value<String> payload,
+      Value<String> status,
+      Value<String?> itemId,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$ListingsTableFilterComposer
+    extends Composer<_$AppDatabase, $ListingsTable> {
+  $$ListingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get itemId => $composableBuilder(
+    column: $table.itemId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ListingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ListingsTable> {
+  $$ListingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get itemId => $composableBuilder(
+    column: $table.itemId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ListingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ListingsTable> {
+  $$ListingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get itemId =>
+      $composableBuilder(column: $table.itemId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$ListingsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ListingsTable,
+          ListingRow,
+          $$ListingsTableFilterComposer,
+          $$ListingsTableOrderingComposer,
+          $$ListingsTableAnnotationComposer,
+          $$ListingsTableCreateCompanionBuilder,
+          $$ListingsTableUpdateCompanionBuilder,
+          (
+            ListingRow,
+            BaseReferences<_$AppDatabase, $ListingsTable, ListingRow>,
+          ),
+          ListingRow,
+          PrefetchHooks Function()
+        > {
+  $$ListingsTableTableManager(_$AppDatabase db, $ListingsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ListingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ListingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ListingsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> payload = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> itemId = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ListingsCompanion(
+                id: id,
+                payload: payload,
+                status: status,
+                itemId: itemId,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String payload,
+                required String status,
+                Value<String?> itemId = const Value.absent(),
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => ListingsCompanion.insert(
+                id: id,
+                payload: payload,
+                status: status,
+                itemId: itemId,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ListingsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ListingsTable,
+      ListingRow,
+      $$ListingsTableFilterComposer,
+      $$ListingsTableOrderingComposer,
+      $$ListingsTableAnnotationComposer,
+      $$ListingsTableCreateCompanionBuilder,
+      $$ListingsTableUpdateCompanionBuilder,
+      (ListingRow, BaseReferences<_$AppDatabase, $ListingsTable, ListingRow>),
+      ListingRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2919,4 +3493,6 @@ class $AppDatabaseManager {
       $$EventsTableTableManager(_db, _db.events);
   $$OutfitsTableTableManager get outfits =>
       $$OutfitsTableTableManager(_db, _db.outfits);
+  $$ListingsTableTableManager get listings =>
+      $$ListingsTableTableManager(_db, _db.listings);
 }

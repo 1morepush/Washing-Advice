@@ -401,6 +401,83 @@ class AiGateway implements VisionPort {
   /// costs the conversation.
   static const historyLimit = 40;
 
+  /// A draft listing, read from photographs of a garment for sale.
+  ///
+  /// At most [describePhotoLimit] photographs go up, and they are the first ones
+  /// given. Which are worth the server's reading is the caller's decision — the
+  /// cover and the brand tag before a third view of a sleeve — and this takes
+  /// no view on it, only enforces the cap so that a caller with more is trimmed
+  /// here and not rejected there.
+  ///
+  /// [context] is what the wardrobe already knows of the garment, when it is
+  /// one the person owns (`describeContextForItem` in the core builds it). It
+  /// goes up as a JSON form field because it travels beside photographs in a
+  /// multipart body. What the app knows outranks a fresh reading, so a brand
+  /// somebody typed is not second-guessed from a photograph of a logo; leave it
+  /// null for photographs of something that was never in the wardrobe.
+  ///
+  /// What comes back is a **proposal**, as everything the server reads is. It
+  /// is not a listing and decides nothing about one: `Listing.fromFacts` and
+  /// `Listing.fromGarment` in the core say which source wins, and the person
+  /// edits the rest.
+  ///
+  /// A response with no title cannot be a draft at all, and is a
+  /// [ScanContractError] like any other the app cannot read. Everything else
+  /// the photographs did not show is simply absent.
+  Future<ListingFacts> describeListing(
+    List<ScanImage> images, {
+    Map<String, Object?>? context,
+  }) async {
+    if (images.isEmpty) {
+      throw const ScanFailure(
+        'No photograph was provided.',
+        isRetryable: false,
+      );
+    }
+
+    final json = await _postForm(
+      'sell/describe',
+      fields: {'context': ?(context == null ? null : jsonEncode(context))},
+      files: [
+        for (final image in images.take(describePhotoLimit)) ('images', image),
+      ],
+    );
+
+    try {
+      return listingFactsFromJson(json);
+    } on FormatException catch (error) {
+      throw ScanContractError(error.message);
+    }
+  }
+
+  /// How many photographs a listing's description may carry with it.
+  ///
+  /// Matches the server's own cap, for the reason [wardrobeContextLimit] does:
+  /// trimming here costs the reading a view of the garment, and hitting the
+  /// limit there costs the whole call.
+  static const describePhotoLimit = 4;
+
+  /// Comparable listings and retail prices for something being sold.
+  ///
+  /// [request] is the body `priceSearchRequestJson` in the core writes, passed
+  /// through as it is: the phrases to search for, and enough about the garment
+  /// for the server to judge which results are alike.
+  ///
+  /// **A search that found nothing is an answer, not a failure.** When the
+  /// server has no search key, has used up its free allowance, or its search
+  /// service is down, it still answers 200 with a status and empty lists, and
+  /// this returns that [PriceSearch] like any other. A listing can be written
+  /// and priced by hand without a search, and the links beside the price are
+  /// there for exactly this; a screen that met these as exceptions would put an
+  /// error over a feature with a working fallback. Only a call that could not
+  /// be made or answered at all — no connection, a 503 from the host — throws.
+  ///
+  /// The prices are vetted twice: by the server, against the pages they came
+  /// from, and again by `priceSearchFromJson`, which skips anything that is not
+  /// a link to open, a price to use, or in US dollars.
+  Future<PriceSearch> searchPrices(Map<String, Object?> request) async =>
+      priceSearchFromJson(await _postJson('sell/prices', request));
+
   /// The garment with its background removed.
   ///
   /// Returns null when the server could not separate it — a plain refusal

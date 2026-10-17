@@ -5,6 +5,12 @@
 /// own bottom edge, which is a bar's height above the real one, and leave a gap
 /// between the composer and the keys. The bar must also not float on top of the
 /// keyboard. These put a keyboard on screen and measure.
+///
+/// Ask is the composer, and it is no longer inside the shell: it is pushed over
+/// the bar from More. It has no bar to float and no shell to take the inset off
+/// the body, so its own page has to do both jobs, and the first test says it
+/// still does. The tests about the bar itself run on a place that is still on
+/// it.
 library;
 
 import 'package:flutter/material.dart';
@@ -81,10 +87,33 @@ void main() {
     expect(top - bottom, lessThanOrEqualTo(16));
   });
 
-  testWidgets('and the bar is not left floating above the keyboard', (
+  testWidgets('and Ask, being over the bar, has none to leave on the keys', (
     tester,
   ) async {
     await open(tester, '/ask');
+    expect(find.byType(NavigationBar), findsNothing);
+
+    await showKeyboard(tester);
+    expect(find.byType(NavigationBar), findsNothing);
+
+    // And it is still the whole page: the composer, with the keyboard gone,
+    // is back at the bottom of the screen and not a bar's height above it.
+    tester.view.resetViewInsets();
+    await tester.pumpAndSettle();
+    expect(
+      tester.getRect(find.byType(TextField)).bottom,
+      lessThanOrEqualTo(_screen.height),
+    );
+    expect(
+      _screen.height - tester.getRect(find.byType(TextField)).bottom,
+      lessThanOrEqualTo(16),
+    );
+  });
+
+  testWidgets('the bar is not left floating above the keyboard', (
+    tester,
+  ) async {
+    await open(tester, '/outfits');
     expect(find.byType(NavigationBar), findsOneWidget);
 
     await showKeyboard(tester);
@@ -92,7 +121,7 @@ void main() {
   });
 
   testWidgets('the bar is back when the keyboard goes', (tester) async {
-    await open(tester, '/ask');
+    await open(tester, '/outfits');
     await showKeyboard(tester);
     expect(find.byType(NavigationBar), findsNothing);
 

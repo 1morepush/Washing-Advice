@@ -17,7 +17,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
 import '../../data/images/image_store.dart';
-import '../../widgets/item_thumbnail.dart';
+import '../../widgets/stored_image.dart';
 
 enum CutoutStatus { idle, working, failed, done }
 

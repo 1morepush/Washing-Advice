@@ -1,9 +1,12 @@
-/// The places that are not on the bar: Packing, Insights and Settings.
+/// The places that are not on the bar: Ask, Packing, Insights and Settings.
 ///
-/// A list in words rather than three more icons, for the reason the drawer it
+/// A list in words rather than four more icons, for the reason the drawer it
 /// replaces gave: a feature with an unlabelled icon is a feature nobody finds.
 /// Each opens over the bar, as its own screen with a Back arrow, and Back
 /// returns here.
+///
+/// Ask is first. It had a seat on the bar until Sell took it, and of what is
+/// left it is the one a person is most likely to come looking for.
 library;
 
 import 'package:flutter/material.dart';
@@ -23,6 +26,12 @@ class MoreScreen extends StatelessWidget {
       children: const [
         GroupCard(
           children: [
+            _Place(
+              icon: Icons.chat_bubble_outline,
+              title: 'Ask',
+              subtitle: 'Questions about your clothes and their care',
+              route: '/ask',
+            ),
             _Place(
               icon: Icons.luggage_outlined,
               title: 'Packing',

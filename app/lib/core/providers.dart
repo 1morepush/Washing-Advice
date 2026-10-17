@@ -19,9 +19,11 @@ import '../data/capture/image_capture_source.dart';
 import '../data/drift/connection.dart';
 import '../data/drift/database.dart';
 import '../data/drift/drift_event_log.dart';
+import '../data/drift/drift_listing_repository.dart';
 import '../data/drift/drift_outfit_repository.dart';
 import '../data/drift/drift_wardrobe_repository.dart';
 import '../data/images/image_store.dart';
+import 'link_opener.dart';
 import 'settings.dart';
 
 /// The open database.
@@ -131,6 +133,15 @@ Uri _baseUri(String raw) {
 /// run, which is what makes the scan flow drivable without a camera.
 final imageCaptureProvider = Provider<ImageCaptureSource>(
   (ref) => ImagePickerCaptureSource(),
+);
+
+/// Opens a link outside the app.
+///
+/// Overridden with a `RecordingLinkOpener` in tests, so that tapping a link
+/// launches nothing and the test can say which one it was. See
+/// `link_opener.dart` for why it is a port, and why the launch is external.
+final linkOpenerProvider = Provider<LinkOpener>(
+  (ref) => const UrlLauncherLinkOpener(),
 );
 
 /// Appends events and keeps the cached counters on an item in step.
@@ -280,6 +291,41 @@ List<WardrobeItem> itemsOfOutfit(
   for (final id in outfit.itemIds)
     if (byId[id] case final WardrobeItem item) item,
 ];
+
+/// The listings: garments being sold, or sold.
+///
+/// Drift, overridden in tests and the demo like [outfitRepositoryProvider].
+///
+/// **Read only where listings are shown or changed**: the Sell screens, and
+/// the listing controller. Many tests pump the whole app with nothing but the
+/// wardrobe overridden, and a screen that reached for this one — the garment
+/// page, say — would open a real database under every one of them. What the
+/// wardrobe needs to know about a listing, it asks the controller when it is
+/// told to, not by watching.
+final listingRepositoryProvider = Provider<ListingRepository>(
+  (ref) => DriftListingRepository(ref.watch(databaseProvider)),
+);
+
+/// Every listing, newest first, kept live so that saving one moves it to the
+/// top of the Sell tab without anybody refreshing.
+final listingsProvider = StreamProvider<List<Listing>>(
+  (ref) => ref.watch(listingRepositoryProvider).watchAll(),
+);
+
+/// One listing, kept live.
+///
+/// Derived from [listingsProvider] and not read once, so an edit saved by the
+/// controller reaches the editor that made it and any other screen showing the
+/// same listing, as the garment page's item does. Null once the listing is
+/// deleted, which is what a link to one deleted on the other screen should see.
+///
+/// A listing is compared by value, so this only tells its listeners when
+/// *that* listing changed, not whenever any of them did.
+final listingProvider = Provider.family<AsyncValue<Listing?>, ListingId>(
+  (ref, id) => ref
+      .watch(listingsProvider)
+      .whenData((all) => all.where((listing) => listing.id == id).firstOrNull),
+);
 
 /// What the outfits screen is currently asking for.
 final outfitRequestProvider = StateProvider<OutfitRequest>(

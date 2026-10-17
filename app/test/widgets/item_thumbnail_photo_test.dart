@@ -14,6 +14,7 @@ import 'package:washing_advice/core/providers.dart';
 import 'package:washing_advice/data/images/file_image_store.dart';
 import 'package:washing_advice/data/images/memory_image_store.dart';
 import 'package:washing_advice/widgets/item_thumbnail.dart';
+import 'package:washing_advice/widgets/stored_image.dart';
 
 import '../support/fixtures.dart';
 

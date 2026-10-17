@@ -110,6 +110,46 @@ class Outfits extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// Listings: garments being sold on Depop.
+///
+/// The same JSON-plus-lifted-columns shape as [Items] and [Outfits], for the
+/// same reason: a `Listing` is a wide object — photographs, a price search with
+/// its evidence, the facts a model read — that the core already serialises
+/// losslessly, and the app only queries it by a few things. Those are lifted
+/// out; everything else stays in the payload, so a field added to the domain
+/// is not a migration.
+///
+/// Named explicitly because Drift would otherwise generate a row class called
+/// `Listing`, which is the core's domain type, for the reason [Outfits] gives.
+///
+/// Listings are kept on the phone and are never synced, unlike [Items] and
+/// [Events], so nothing here carries what sync needs.
+@DataClassName('ListingRow')
+class Listings extends Table {
+  TextColumn get id => text()();
+
+  /// The full `Listing`, as the core serialises it.
+  TextColumn get payload => text()();
+
+  // --- Lifted for querying. Derived from the payload by [listingRowFor]. ---
+
+  /// `draft`, `listed` or `sold`: which of the Sell tab's three lists it is on.
+  TextColumn get status => text()();
+
+  /// The garment it was made from, when it was made from one.
+  ///
+  /// Null for a listing written from photographs alone, which is a listing
+  /// like any other. What "Sell this" asks is which listing a garment already
+  /// has, and this is how it finds out without decoding every payload.
+  TextColumn get itemId => text().nullable()();
+
+  /// What the list is ordered by, most recent first.
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 /// The append-only event log.
 class Events extends Table {
   TextColumn get id => text()();
@@ -127,7 +167,7 @@ class Events extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Items, Events, Outfits])
+@DriftDatabase(tables: [Items, Events, Outfits, Listings])
 class AppDatabase extends _$AppDatabase {
   /// Takes its executor rather than opening one.
   ///
@@ -137,7 +177,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -170,6 +210,10 @@ class AppDatabase extends _$AppDatabase {
         'CREATE INDEX IF NOT EXISTS idx_outfits_occasion '
         'ON outfits (occasion)',
       );
+      await customStatement(
+        'CREATE INDEX IF NOT EXISTS idx_listings_status '
+        'ON listings (status)',
+      );
     },
     // Version 2 adds saved outfits. A new table only, so existing wardrobes
     // migrate without touching a single stored item — which is the whole
@@ -195,6 +239,17 @@ class AppDatabase extends _$AppDatabase {
         // off a label, so every existing row genuinely has none. The column
         // fills in as items are saved from here on.
         await m.addColumn(items, items.originLower);
+      }
+      if (from < 5) {
+        // Version 5 adds listings. A new table only, as version 2's outfits
+        // were: no stored item is touched, so a wardrobe somebody has spent
+        // months photographing comes through exactly as it was, and the Sell
+        // tab starts empty because nothing has been listed yet.
+        await m.createTable(listings);
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_listings_status '
+          'ON listings (status)',
+        );
       }
       await customStatement(
         'CREATE INDEX IF NOT EXISTS idx_events_recorded '
@@ -224,6 +279,19 @@ OutfitsCompanion outfitRowFor(Outfit outfit) => OutfitsCompanion.insert(
 /// `|a|b|c|`, delimited at both ends so a `LIKE '%|a|%'` cannot match `|xa|`.
 String packedItemIds(Iterable<ItemId> ids) =>
     ids.isEmpty ? '|' : '|${ids.map((i) => i.value).join('|')}|';
+
+/// Builds the storage row for a listing.
+///
+/// The single place the lifted columns are derived from the listing the payload
+/// is written from, so the two cannot disagree — the same rule [rowFor] and
+/// [outfitRowFor] follow.
+ListingsCompanion listingRowFor(Listing listing) => ListingsCompanion.insert(
+  id: listing.id.value,
+  payload: jsonEncode(listing.toJson()),
+  status: listing.status.name,
+  itemId: Value(listing.itemId?.value),
+  updatedAt: listing.updatedAt,
+);
 
 /// Builds the storage row for an item.
 ///

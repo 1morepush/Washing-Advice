@@ -56,6 +56,11 @@ dependencies:
   # platform channels.
   image: ^4.9.2
 
+  # Opening a link outside the app: the Depop and eBay searches beside a price,
+  # and the listings a price was built on. Behind `LinkOpener`; see
+  # lib/core/link_opener.dart.
+  url_launcher: ^6.3.3
+
 dev_dependencies:
   # Direct, not just transitive via drift: the migration test opens a raw
   # database so it can stamp an old schema version and upgrade from it.

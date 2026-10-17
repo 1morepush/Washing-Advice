@@ -79,10 +79,10 @@ async function tapText(page, text) {
  * between them. Same two lookups as `tapText`, for the same reason.
  */
 async function expectBar(page) {
-  for (const label of ['Wardrobe', 'Laundry', 'Outfits', 'Ask', 'More']) {
+  for (const label of ['Wardrobe', 'Laundry', 'Outfits', 'Sell', 'More']) {
     // The destination as the bar exposes it: a tab or a button whose name
     // *starts with* the label as a whole word (Flutter appends "Tab 2 of 5"),
-    // so neither a screen title that happens to say "Ask" nor a longer label
+    // so neither a screen title that happens to say "Sell" nor a longer label
     // such as "More options" can stand in for a destination that is missing.
     const name = new RegExp(`^${label}(\\s|$)`);
     const found =

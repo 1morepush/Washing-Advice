@@ -401,6 +401,7 @@ void main() {
         clearNotes: true,
         clearPrice: true,
         clearPriceSearch: true,
+        clearEditedQueries: true,
         clearFacts: true,
       );
 
@@ -416,6 +417,7 @@ void main() {
       expect(cleared.notes, isNull);
       expect(cleared.priceCents, isNull);
       expect(cleared.priceSearch, isNull);
+      expect(cleared.editedQueries, isNull);
       expect(cleared.facts, isNull);
       // And nothing else went with them.
       expect(cleared.title, listing.title);
@@ -430,6 +432,36 @@ void main() {
       expect(cleared.brand, isNull);
       expect(cleared.sizeLabel, listing.sizeLabel);
       expect(cleared.material, listing.material);
+    });
+
+    test('keeps the phrases the person wrote unless told otherwise', () {
+      final listing = fullListing();
+
+      expect(listing.copyWith(title: 'x').editedQueries, listing.editedQueries);
+      // Searching again replaces the last search and not what was written.
+      expect(
+        listing.copyWith(clearPriceSearch: true).editedQueries,
+        listing.editedQueries,
+      );
+    });
+
+    test('replaces the phrases the person wrote', () {
+      const rewritten = SearchQueries(depop: 'new depop', retail: 'new retail');
+
+      final changed = fullListing().copyWith(editedQueries: rewritten);
+
+      expect(changed.editedQueries, rewritten);
+      expect(changed.searchQueries, rewritten);
+    });
+
+    test('taking the phrases back returns to the reading', () {
+      final cleared = fullListing().copyWith(
+        clearEditedQueries: true,
+        clearPriceSearch: true,
+      );
+
+      expect(cleared.editedQueries, isNull);
+      expect(cleared.searchQueries, fullListing().facts!.searchQueries);
     });
 
     test('replaces a list wholesale', () {
@@ -485,6 +517,7 @@ void main() {
         'styleWords': original.copyWith(styleWords: ['other']),
         'era': original.copyWith(era: 'Y2K'),
         'priceSearch': original.copyWith(clearPriceSearch: true),
+        'editedQueries': original.copyWith(clearEditedQueries: true),
         'facts': original.copyWith(clearFacts: true),
         'photos': original.copyWith(photos: const []),
         'typedComparableCents': original.copyWith(typedComparableCents: [1]),
@@ -514,9 +547,23 @@ void main() {
   });
 
   group('what to search for', () {
-    test('uses the last search\'s phrases first, since they may be corrected',
-        () {
+    test('uses the phrases the person wrote before any other', () {
+      // The full listing has all three sources, each different, so this can
+      // only be the written one.
+      final listing = fullListing();
+
+      expect(
+        listing.searchQueries,
+        const SearchQueries(
+          depop: 'nike 90s crewneck sweatshirt grey',
+          retail: 'nike club fleece crew grey',
+        ),
+      );
+    });
+
+    test('then the last search\'s phrases, since they may be corrected', () {
       final listing = fullListing().copyWith(
+        clearEditedQueries: true,
         priceSearch: PriceSearch(
           status: PriceSearchStatus.ok,
           queries: const SearchQueries(
@@ -531,7 +578,10 @@ void main() {
     });
 
     test('then the phrases the photographs produced', () {
-      final listing = fullListing().copyWith(clearPriceSearch: true);
+      final listing = fullListing().copyWith(
+        clearEditedQueries: true,
+        clearPriceSearch: true,
+      );
 
       expect(
         listing.searchQueries,
@@ -544,6 +594,7 @@ void main() {
 
     test('a search whose phrases were too short to use is passed over', () {
       final listing = fullListing().copyWith(
+        clearEditedQueries: true,
         priceSearch: PriceSearch(
           status: PriceSearchStatus.unavailable,
           queries: const SearchQueries(depop: '', retail: ''),
@@ -552,6 +603,41 @@ void main() {
 
       expect(listing.searchQueries!.depop,
           'Nike vintage crewneck sweatshirt grey');
+    });
+
+    test('phrases the person left too short to use are passed over', () {
+      // One of the two blank, as it is while somebody retypes it: not half a
+      // search, and not an error either.
+      final listing = fullListing().copyWith(
+        editedQueries: const SearchQueries(depop: 'nike crew', retail: ' '),
+      );
+
+      expect(listing.searchQueries, fullListing().priceSearch!.queries);
+      expect(listing.canLookUpPrices, isTrue);
+    });
+
+    test('phrases the person wrote make a listing with nothing else searchable',
+        () {
+      final listing = Listing(
+        id: const ListingId('x'),
+        createdAt: created,
+        updatedAt: created,
+        title: 'Mystery jumper',
+        editedQueries: const SearchQueries(
+          depop: 'cashmere jumper oatmeal',
+          retail: 'cashmere crew jumper',
+        ),
+      );
+
+      expect(listing.searchQueries!.depop, 'cashmere jumper oatmeal');
+      expect(listing.canLookUpPrices, isTrue);
+    });
+
+    test('and they are not searched with when there is no title to send', () {
+      final listing = fullListing().copyWith(title: '  ');
+
+      expect(listing.searchQueries, fullListing().editedQueries);
+      expect(listing.canLookUpPrices, isFalse);
     });
 
     test('then words built from the listing itself', () {
@@ -683,6 +769,7 @@ void main() {
       expect(back.notes, 'Ships within 5 days.');
       expect(back.priceCents, 3000);
       expect(back.priceSearch, original.priceSearch);
+      expect(back.editedQueries, original.editedQueries);
       expect(back.facts, original.facts);
       expect(back.photos, original.photos);
       expect(back.typedComparableCents, [2500, 2900]);
@@ -715,6 +802,7 @@ void main() {
         'notes',
         'priceCents',
         'priceSearch',
+        'editedQueries',
         'facts',
       ]) {
         expect(json.containsKey(key), isFalse, reason: key);
@@ -762,6 +850,40 @@ void main() {
       expect(listing.priceSearch, isNull);
       expect(listing.facts, isNull);
       expect(listing.typedComparablesSold, isFalse);
+    });
+
+    test('a listing stored before the phrases had a field still loads', () {
+      // What an earlier build wrote: everything but `editedQueries`.
+      final json = stored(fullListing())..remove('editedQueries');
+
+      final listing = Listing.fromJson(json);
+
+      expect(listing.editedQueries, isNull);
+      expect(listing, fullListing().copyWith(clearEditedQueries: true));
+      // And it still knows what to search with: the last search's phrases.
+      expect(listing.searchQueries, fullListing().priceSearch!.queries);
+    });
+
+    test('phrases that cannot be read do not lose the listing', () {
+      for (final unreadable in <Object?>[
+        'nike crew',
+        42,
+        ['a', 'b'],
+        <String, Object?>{},
+        {'depop': 1, 'retail': null},
+      ]) {
+        final json = stored(fullListing())..['editedQueries'] = unreadable;
+
+        final listing = Listing.fromJson(json);
+
+        expect(listing.title, fullListing().title, reason: '$unreadable');
+        // Passed over rather than searched with: nothing usable was written.
+        expect(
+          listing.searchQueries,
+          fullListing().priceSearch!.queries,
+          reason: '$unreadable',
+        );
+      }
     });
 
     test('a name it has never heard of falls back instead of failing', () {

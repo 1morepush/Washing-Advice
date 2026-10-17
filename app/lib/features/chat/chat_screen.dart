@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme.dart';
+import '../../widgets/back_navigation.dart';
 import '../../widgets/rinse_kit.dart';
 import 'chat_controller.dart';
 
@@ -93,6 +94,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: backLeading(context, '/more'),
         title: const Text('Ask'),
         actions: [
           if (!state.isEmpty)

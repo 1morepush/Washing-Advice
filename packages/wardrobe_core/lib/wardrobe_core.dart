@@ -17,6 +17,8 @@
 ///   washer or dryer.
 /// * `matching` — recognising a garment already in the wardrobe.
 /// * `outfits` — styling: colour harmony, suggestions, saved outfits, packing.
+/// * `selling` — listing a garment on Depop: its vocabulary, the description, a
+///   suggested price and what is left after fees, and the listings kept.
 /// * `vision` — the contract the AI layer must satisfy (no implementation).
 /// * `events` — the append-only history and the projections derived from it.
 library;
@@ -62,6 +64,8 @@ export 'src/outfits/outfit_repository.dart';
 export 'src/outfits/packing.dart';
 export 'src/outfits/styling.dart';
 export 'src/outfits/wardrobe_gaps.dart';
+// Selling: listing a garment on Depop, and pricing it.
+export 'src/selling/money.dart';
 // Shared kernel.
 export 'src/shared/clock.dart';
 export 'src/shared/confidence.dart';

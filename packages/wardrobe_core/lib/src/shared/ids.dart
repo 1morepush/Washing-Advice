@@ -94,6 +94,16 @@ final class ItemId extends EntityId {
   const ItemId(super.value);
 }
 
+/// Identifies one listing — a thing being sold, from first draft to sold.
+///
+/// Its own id rather than the garment's. A garment can be listed, sold on and
+/// listed again when a parcel comes back, and a listing can be written for
+/// something that was never in the wardrobe at all, so neither can stand in
+/// for the other.
+final class ListingId extends EntityId {
+  const ListingId(super.value);
+}
+
 /// Identifies one entry in the append-only event log.
 final class EventId extends EntityId {
   const EventId(super.value);

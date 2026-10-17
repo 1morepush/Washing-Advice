@@ -335,7 +335,7 @@ const Map<String, DepopColour> _colourNames = {
   'aubergine': DepopColour.purple,
 
   // Blues. Light and mid blues are blue; the dark ones are navy, and so is
-  // indigo, which is how denim is described in the shop.
+  // indigo, which is the deepest of them.
   'denim': DepopColour.blue,
   'sky': DepopColour.blue,
   'cobalt': DepopColour.blue,

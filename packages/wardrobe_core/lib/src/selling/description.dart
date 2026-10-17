@@ -45,8 +45,9 @@ import 'listing.dart';
 final class DescriptionCheck {
   const DescriptionCheck({required this.length, required this.hashtagCount});
 
-  /// Characters, as Depop counts them: UTF-16 code units, which is what the
-  /// text field it will be pasted into measures.
+  /// Characters, counted as Dart counts a string: in UTF-16 code units, so an
+  /// emoji is two. The same count is used to keep a composed description within
+  /// [depopDescriptionLimit], so the two never disagree about its length.
   final int length;
 
   /// Words that start with `#`.
@@ -57,12 +58,12 @@ final class DescriptionCheck {
   bool get tooManyHashtags => hashtagCount > depopHashtagLimit;
 }
 
-/// Counts what Depop counts in [text].
+/// Counts the characters and the hashtags in [text].
 ///
 /// A hashtag is a `#` followed by letters, digits or underscores, and not
 /// itself in the middle of a word — `#nike` and `(#nike)` count, `item#4` and a
-/// link's `#section` do not. Every occurrence counts, repeats included, since
-/// that is what Depop's own counter does.
+/// link's `#section` do not. Every occurrence counts, repeats included: five
+/// tags written is five used, whether or not two of them are the same.
 DescriptionCheck checkDescription(String text) => DescriptionCheck(
       length: text.length,
       hashtagCount: _hashtagPattern.allMatches(text).length,

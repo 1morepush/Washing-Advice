@@ -11,7 +11,7 @@
 /// 1. **Sold beats asking.** What something sold for is what somebody paid; an
 ///    asking price is what somebody hopes for. With two or more sold prices
 ///    the suggestion is their middle, asked 12% higher to leave room for
-///    offers, which is how things sell on Depop.
+///    offers.
 /// 2. **Asking prices are not marked up.** Other sellers' asking prices already
 ///    include their room for offers, so a price built on them is the middle of
 ///    what they ask, and no more.
@@ -144,7 +144,7 @@ final class PriceSuggestion {
 
 /// The mark-up on sold prices, in percent, to leave room for offers.
 ///
-/// Inside the 10–15% a seller is usually advised to add.
+/// Inside the 10–15% band the Depop briefing recommends.
 const int _soldMarkupPercent = 12;
 
 /// Below this, in cents, a sale is hardly worth the trip to the post office.

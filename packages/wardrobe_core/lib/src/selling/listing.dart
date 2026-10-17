@@ -28,9 +28,8 @@ import 'lenient_json.dart';
 
 /// How long a listing can sit before it is worth refreshing.
 ///
-/// Depop shows recently listed things first, so a listing that has sat for a
-/// fortnight has sunk below everything posted since. Refreshing or relisting it
-/// is the standard advice, and this is when to say so.
+/// Listings go stale on Depop, and refreshing or relisting one that has sat for
+/// a couple of weeks is the advice. This is when the app says so.
 const Duration listingRefreshAfter = Duration(days: 14);
 
 bool _sameList<T>(List<T> a, List<T> b) {
@@ -957,7 +956,7 @@ final class Listing {
   final DateTime? soldAt;
 
   /// What it actually sold for, in US cents. Not necessarily the asking price:
-  /// offers are the normal way things sell.
+  /// a buyer may have made an offer.
   final int? soldPriceCents;
 
   final DepopDepartment? department;

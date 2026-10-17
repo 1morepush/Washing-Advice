@@ -191,3 +191,98 @@ class TestThePromptAsksForEveryWarning:
 
         missing = [w.value for w in CareWarning if w.value not in CARE_TAG_PROMPT]
         assert not missing, f"the care-tag prompt never asks for: {missing}"
+
+
+# --- Selling ----------------------------------------------------------------
+#
+# `listing.schema.json` has its own golden fixtures, in a subfolder on purpose:
+# the scan checks above glob `examples/*.json` without recursing, and these
+# payloads are not scans. The same two questions are asked of them — does the
+# fixture match the schema, and does what the server actually returns?
+
+LISTING = CONTRACTS / "examples" / "listing"
+LISTING_SCHEMA_ID = "https://washing-advice.app/contracts/listing.schema.json"
+
+
+def _listing_schema() -> tuple[dict[str, Any], Registry]:  # type: ignore[type-arg]
+    schema = json.loads((CONTRACTS / "listing.schema.json").read_text())
+    _, registry = _load()
+    return schema, registry
+
+
+def assert_valid_listing(payload: dict[str, Any], *, label: str) -> None:
+    """Validates against the schema's root, which is `oneOf` the two responses."""
+    schema, registry = _listing_schema()
+    validator = Draft202012Validator(schema, registry=registry)
+    errors = sorted(validator.iter_errors(payload), key=lambda e: list(e.path))
+    assert not errors, "\n".join(f"{label}: {list(e.path)}: {e.message}" for e in errors[:5])
+
+
+def assert_valid_definition(payload: dict[str, Any], definition: str, *, label: str) -> None:
+    """Validates against one `$defs` entry, the way a request body is checked."""
+    _, registry = _listing_schema()
+    validator = Draft202012Validator(
+        {"$ref": f"{LISTING_SCHEMA_ID}#/$defs/{definition}"}, registry=registry
+    )
+    errors = sorted(validator.iter_errors(payload), key=lambda e: list(e.path))
+    assert not errors, "\n".join(f"{label}: {list(e.path)}: {e.message}" for e in errors[:5])
+
+
+def listing_response_fixtures() -> list[str]:
+    return sorted(path.name for path in LISTING.glob("*.json"))
+
+
+def listing_request_fixtures() -> list[str]:
+    return sorted(path.name for path in (LISTING / "requests").glob("*.json"))
+
+
+class TestTheListingFixtures:
+    def test_there_are_fixtures_to_check(self) -> None:
+        # A glob that matched nothing would make every parametrised test below
+        # pass by not existing.
+        assert len(listing_response_fixtures()) >= 4
+        assert set(listing_request_fixtures()) >= {"describe_context.json", "price_search.json"}
+
+    @pytest.mark.parametrize("name", listing_response_fixtures())
+    def test_every_response_fixture_matches_the_schema(self, name: str) -> None:
+        payload = json.loads((LISTING / name).read_text())
+
+        assert_valid_listing(payload, label=name)
+
+    @pytest.mark.parametrize("name", listing_response_fixtures())
+    def test_and_exactly_one_of_the_two_response_shapes(self, name: str) -> None:
+        """`oneOf` only works if a payload matches one alternative, not both.
+
+        The app dispatches on the shape, so two indistinguishable responses
+        would validate and then be decoded as the wrong one.
+        """
+        schema, registry = _listing_schema()
+        alternatives = [
+            Draft202012Validator({"$defs": schema["$defs"], **branch}, registry=registry)
+            for branch in schema["oneOf"]
+        ]
+        payload = json.loads((LISTING / name).read_text())
+
+        matches = sum(1 for validator in alternatives if not list(validator.iter_errors(payload)))
+
+        assert matches == 1, f"{name} matched {matches} alternatives, expected 1"
+
+    def test_the_describe_context_fixture_matches_its_definition(self) -> None:
+        payload = json.loads((LISTING / "requests" / "describe_context.json").read_text())
+
+        assert_valid_definition(payload, "describeContext", label="describe_context.json")
+
+    def test_the_price_search_fixture_matches_its_definition(self) -> None:
+        payload = json.loads((LISTING / "requests" / "price_search.json").read_text())
+
+        assert_valid_definition(payload, "priceSearchRequest", label="price_search.json")
+
+    def test_a_request_the_schema_refuses_is_refused(self) -> None:
+        """The checks above would pass if the definitions accepted anything."""
+        schema, registry = _listing_schema()
+        validator = Draft202012Validator(
+            {"$ref": f"{LISTING_SCHEMA_ID}#/$defs/priceSearchRequest"}, registry=registry
+        )
+
+        assert list(validator.iter_errors({"title": "Nike crewneck"}))
+        assert schema["$defs"]["priceSearchRequest"]["additionalProperties"] is False

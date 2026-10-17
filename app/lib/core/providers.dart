@@ -22,6 +22,7 @@ import '../data/drift/drift_event_log.dart';
 import '../data/drift/drift_outfit_repository.dart';
 import '../data/drift/drift_wardrobe_repository.dart';
 import '../data/images/image_store.dart';
+import 'link_opener.dart';
 import 'settings.dart';
 
 /// The open database.
@@ -131,6 +132,15 @@ Uri _baseUri(String raw) {
 /// run, which is what makes the scan flow drivable without a camera.
 final imageCaptureProvider = Provider<ImageCaptureSource>(
   (ref) => ImagePickerCaptureSource(),
+);
+
+/// Opens a link outside the app.
+///
+/// Overridden with a `RecordingLinkOpener` in tests, so that tapping a link
+/// launches nothing and the test can say which one it was. See
+/// `link_opener.dart` for why it is a port, and why the launch is external.
+final linkOpenerProvider = Provider<LinkOpener>(
+  (ref) => const UrlLauncherLinkOpener(),
 );
 
 /// Appends events and keeps the cached counters on an item in step.

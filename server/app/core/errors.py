@@ -126,6 +126,20 @@ class MachineNotIdentifiedError(ApiError):
     code = "machine_not_identified"
 
 
+class InvalidFieldError(ApiError):
+    """A form field that arrived as text and does not say what it should.
+
+    A 422 like the two above, and for the same reason: the request was
+    well-formed, it is what it says that is wrong. A multipart field cannot be
+    a JSON body, so the framework cannot check its shape for us; the endpoint
+    parses it and reports here which key was wrong, in the envelope every other
+    failure uses rather than a second, differently shaped one.
+    """
+
+    status_code = 422  # Unprocessable Content
+    code = "invalid_field"
+
+
 def install_error_handlers(app: FastAPI) -> None:
     """Registers the handlers that turn exceptions into the error envelope."""
 

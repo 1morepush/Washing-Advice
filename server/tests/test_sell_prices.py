@@ -332,6 +332,20 @@ class TestTheTwoSearches:
         assert outcome.result.status is PriceSearchStatus.OK
         assert len(outcome.result.comparables) == 3
 
+    async def test_no_more_results_are_read_than_were_asked_for(self) -> None:
+        # A service that sends extra is not owed a place in the prompt.
+        gemini = Gemini(reply({"results": []}))
+        many_depop = [hit(f"https://www.depop.com/products/item-{n}/") for n in range(25)]
+        many_shops = [hit(f"https://shop{n}.example.com/crew") for n in range(25)]
+        tavily = Tavily(answer(*many_depop), answer(*many_shops))
+
+        await searcher_for(tavily, reader=gemini.reader()).search(request())
+
+        prompt = gemini.prompts()[0]
+        assert prompt.count("(Depop search)") == 10
+        assert prompt.count("(retail search)") == 8
+        assert "[17]" in prompt and "[18]" not in prompt
+
     async def test_a_page_found_twice_is_read_once(self) -> None:
         gemini = Gemini(reply({"results": []}))
         tavily = Tavily(

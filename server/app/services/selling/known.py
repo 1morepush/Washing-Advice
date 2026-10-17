@@ -6,10 +6,12 @@ prompt as given, but a prompt is a request and a model is free to disagree with
 it, so they are also laid over the reading afterwards. The seller's word is not
 a candidate the model gets to weigh against its own.
 
-Each known fact becomes `userEdited` at full confidence — the strongest
-provenance there is, which is how the rest of the system already treats a value
-a person typed — so nothing downstream is tempted to ask "is this really Nike?"
-of a brand the seller wrote.
+The brand and the size, which the contract carries with a confidence, become
+`userEdited` at full confidence — the strongest provenance there is, which is
+how the rest of the system already treats a value a person typed — so nothing
+downstream is tempted to ask "is this really Nike?" of a brand the seller wrote.
+The material, the colours and the item type, which the contract carries bare,
+simply take the place of what was read.
 
 The title and the search phrases are the one place a fact can be contradicted
 without being overwritten. A model that read an Adidas logo on a garment the

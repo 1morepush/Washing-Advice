@@ -140,9 +140,10 @@ class PriceSearcher:
         try:
             claims = await self._reader.read(_item(request), results)
         except ProviderError as error:
-            # The reader is a model, and the model is a free tier. Its trouble
-            # is the price lookup's, but not an error: the search was spent and
-            # the answer is that there is not one.
+            # The reader is a model on a free tier, and it can be rate-limited
+            # or down. That is the lookup failing, not the request being wrong:
+            # the searches are spent, and the answer is that there are no
+            # prices this time. Not kept, so asking again tries again.
             logger.warning("price reader failed: %s", error)
             return self._unanswered(
                 request, PriceSearchStatus.UNAVAILABLE, stages=[*stages, self._reader.name]
@@ -154,9 +155,12 @@ class PriceSearcher:
 
     async def _attempt(self, search: SearchRequest) -> list[SearchHit] | SearchError:
         try:
-            return await self._search.search(search)
+            hits = await self._search.search(search)
         except SearchError as error:
             return error
+        # No more than were asked for. A service that sends extra is not thereby
+        # owed a place in the prompt, and a prompt is sized by what is in it.
+        return hits[: search.max_results]
 
     def _answered(
         self,

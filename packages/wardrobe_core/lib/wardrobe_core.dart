@@ -67,6 +67,7 @@ export 'src/outfits/wardrobe_gaps.dart';
 // Selling: listing a garment on Depop, and pricing it.
 export 'src/selling/condition_suggestion.dart';
 export 'src/selling/depop.dart';
+export 'src/selling/listing.dart';
 export 'src/selling/money.dart';
 export 'src/selling/search_links.dart';
 export 'src/selling/shipping.dart';

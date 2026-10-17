@@ -1,0 +1,10 @@
+{
+  "queries": {
+    "depop": "Nike vintage crewneck sweatshirt grey",
+    "retail": "Nike Club Fleece crew sweatshirt grey"
+  },
+  "itemType": "sweatshirt",
+  "title": "Nike vintage crewneck sweatshirt grey",
+  "brand": "Nike",
+  "colors": ["Grey"]
+}

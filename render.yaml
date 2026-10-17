@@ -27,6 +27,14 @@ services:
         value: fake
       - key: GEMINI_API_KEY
         sync: false
+      # Live prices for the Sell tab come from a web search, not from a model's
+      # memory. Get a free key at https://tavily.com (no card, 1,000 searches a
+      # month) and paste it in the Render dashboard under Environment. Left
+      # unset, POST /v1/sell/prices still answers, with status "notConfigured",
+      # and the app falls back to links that open the same searches on Depop,
+      # eBay and Google Shopping, and to prices typed in by hand.
+      - key: TAVILY_API_KEY
+        sync: false
       # Sync is off on this deployment, and that is deliberate.
       #
       # The free plan has no persistent disk, so the only store available is an

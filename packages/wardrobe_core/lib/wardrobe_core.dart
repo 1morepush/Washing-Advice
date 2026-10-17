@@ -65,6 +65,7 @@ export 'src/outfits/packing.dart';
 export 'src/outfits/styling.dart';
 export 'src/outfits/wardrobe_gaps.dart';
 // Selling: listing a garment on Depop, and pricing it.
+export 'src/selling/condition_suggestion.dart';
 export 'src/selling/depop.dart';
 export 'src/selling/money.dart';
 // Shared kernel.

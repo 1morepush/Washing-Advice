@@ -46,7 +46,11 @@ Future<void> main() async {
   // Awaited, so the wardrobe stream's first emission already has the seed in
   // it. Without this the list subscribes to an empty repository and the app
   // opens on the empty state before flicking to the real one.
-  await repository.saveAll(await _withCutouts(_inPiles(_seed()), images));
+  //
+  // Kept as well as saved: the sample listings point at these garments'
+  // photographs, which exist only once the cutouts have been stored.
+  final wardrobe = await _withCutouts(_inPiles(_seed()), images);
+  await repository.saveAll(wardrobe);
 
   // A real settings store. The sync section reads it while building — which is
   // correct, it needs to know whether sync is configured — and the previous
@@ -84,6 +88,11 @@ Future<void> main() async {
         // shows what it looks like in use rather than its empty state.
         outfitRepositoryProvider.overrideWithValue(
           InMemoryOutfitRepository(_demoOutfits()),
+        ),
+        // Three listings, one in each state, so the Sell tab shows what it
+        // looks like in use rather than its empty state.
+        listingRepositoryProvider.overrideWithValue(
+          InMemoryListingRepository(demoListings(wardrobe)),
         ),
         idGeneratorProvider.overrideWithValue(ids),
         aiGatewayProvider.overrideWithValue(_CannedGateway()),
@@ -455,7 +464,59 @@ class _CannedGateway extends AiGateway {
           'SÉCHAGE EN TAMBOUR À BASSE TEMPÉRATURE',
     );
   }
+
+  /// A listing read from photographs.
+  ///
+  /// Built through the core's decoder from a literal map shaped like
+  /// `contracts/examples/listing/describe.json`, so an answer the app could not
+  /// read would fail here as it would against the real server. The demo cannot
+  /// read that file at run time.
+  @override
+  Future<ListingFacts> describeListing(
+    List<ScanImage> images, {
+    Map<String, Object?>? context,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 900));
+
+    lastDiagnostics = ScanDiagnostics(
+      stagesRun: const ['gemini'],
+      stageAnswered: 'gemini',
+      elapsedMs: 2140,
+    );
+
+    return listingFactsFromJson(_cannedDescription(context));
+  }
+
+  /// What a price search finds.
+  ///
+  /// Shaped like `contracts/examples/listing/prices_ok.json`, and decoded by
+  /// the core as the real answer is. It always finds the same sweater's
+  /// listings, which is what the demo's camera and its draft listing are both
+  /// of.
+  @override
+  Future<PriceSearch> searchPrices(Map<String, Object?> request) async {
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
+
+    lastDiagnostics = ScanDiagnostics(
+      stagesRun: const ['tavily', 'gemini'],
+      stageAnswered: 'gemini',
+      elapsedMs: 3920,
+    );
+
+    return priceSearchFromJson(
+      _cannedPrices(
+        searchedAt: DateTime.now().toUtc(),
+        // Echoed back, as the real server does, so phrases the person
+        // corrected come back as the ones that were tried.
+        queries: request['queries'],
+      ),
+    );
+  }
 }
+
+/// The demo's server, for tests of what it answers.
+@visibleForTesting
+AiGateway demoGateway() => _CannedGateway();
 
 /// The demo wardrobe as the app opens on it, laundry piles included.
 @visibleForTesting
@@ -826,3 +887,227 @@ List<Outfit> _demoOutfits() {
     ),
   ];
 }
+
+/// The Sell tab's three listings, one in each state.
+///
+/// Chosen so the tab, and the editor behind each, show real behaviour and not
+/// a uniform list: a draft with the evidence for its price attached, a listing
+/// that has sat long enough to be nudged, and a sale.
+///
+/// Dated from [now], because the nudge is measured against the clock and a
+/// listing "posted on the 3rd" stops being sixteen days old the day after.
+/// Their photographs are the demo garments' own, which the wardrobe has stored.
+@visibleForTesting
+List<Listing> demoListings(List<WardrobeItem> wardrobe, {DateTime? now}) {
+  final at = now ?? DateTime.now().toUtc();
+
+  /// The garment's photograph, or nothing when the garment has none.
+  List<ListingPhoto> photoOf(String id, ListingShot shot) => [
+    for (final item in wardrobe)
+      if (item.id.value == id)
+        for (final photo in item.photos.photos.take(1))
+          ListingPhoto(uri: photo.uri, shot: shot),
+  ];
+
+  final jumper = wardrobe.firstWhere((item) => item.id.value == 'demo-jumper');
+
+  return [
+    // A draft from the jumper in the wardrobe, as "Sell this" would make it,
+    // with a price search that found sales: the editor has comparables, what
+    // it costs new, a suggestion and what is left after Depop's share to show.
+    Listing.fromGarment(
+      id: const ListingId('demo-listing-1'),
+      now: at.subtract(const Duration(hours: 3)),
+      item: jumper,
+      facts: listingFactsFromJson(_cannedDescription(null)),
+    ).copyWith(
+      // The suggestion's own figure, which the person has agreed to.
+      priceCents: 3000,
+      priceSearch: priceSearchFromJson(
+        _cannedPrices(searchedAt: at.subtract(const Duration(hours: 2))),
+      ),
+      updatedAt: at.subtract(const Duration(hours: 2)),
+    ),
+
+    // Up for sale for sixteen days: two days past the point a listing is worth
+    // refreshing. Not from the wardrobe, which a listing need not be.
+    Listing(
+      id: const ListingId('demo-listing-2'),
+      createdAt: at.subtract(const Duration(days: 17)),
+      updatedAt: at.subtract(const Duration(days: 16)),
+      status: ListingStatus.listed,
+      listedAt: at.subtract(const Duration(days: 16)),
+      department: DepopDepartment.men,
+      title: "Levi's 501 straight leg jeans medium wash W32 L32",
+      itemType: ItemType.jeans,
+      brand: "Levi's",
+      sizeLabel: 'W32 L32',
+      condition: DepopCondition.usedGood,
+      colours: const [DepopColour.blue],
+      material: '100% cotton',
+      measurements: const Measurements(waistIn: 32, inseamIn: 32),
+      flaws: const ['light fading at the knees'],
+      styleWords: const ['straight leg', 'denim', 'classic'],
+      priceCents: 4500,
+      photos: photoOf('demo-jeans', ListingShot.cover),
+    ),
+
+    // Sold for less than it was asked at, as a buyer's offer usually leaves it.
+    Listing(
+      id: const ListingId('demo-listing-3'),
+      createdAt: at.subtract(const Duration(days: 40)),
+      updatedAt: at.subtract(const Duration(days: 22)),
+      status: ListingStatus.sold,
+      listedAt: at.subtract(const Duration(days: 38)),
+      soldAt: at.subtract(const Duration(days: 22)),
+      soldPriceCents: 3400,
+      department: DepopDepartment.women,
+      title: "Vintage cream silk button up blouse women's medium",
+      itemType: ItemType.blouse,
+      sizeLabel: 'M',
+      condition: DepopCondition.likeNew,
+      colours: const [DepopColour.cream],
+      material: '100% silk',
+      styleWords: const ['vintage', 'silk', 'button up'],
+      priceCents: 3800,
+      photos: photoOf('demo-silk', ListingShot.cover),
+    ),
+  ];
+}
+
+/// What the demo reads off photographs.
+///
+/// With nothing known, the garment its camera always shows: the charcoal
+/// jumper. Only what a photograph of a jumper's front can show — no size and
+/// no fabric, since no label is in it, which is how the real server treats a
+/// photograph with no label. Shaped like `describe.json`.
+///
+/// With a garment's wardrobe record, that record said back ([_readingOf]), as
+/// the real server writes its description around what it is told.
+Map<String, Object?> _cannedDescription(Map<String, Object?>? context) {
+  final known = context?['known'];
+  if (known is Map<String, Object?>) {
+    final reading = _readingOf(known);
+    if (reading != null) return reading;
+  }
+
+  return {
+    'title': 'Uniqlo merino wool crewneck sweater charcoal',
+    'itemType': 'sweater',
+    'brand': {'value': 'Uniqlo', 'confidence': 0.71, 'source': 'aiInference'},
+    'colors': ['Charcoal'],
+    'styleWords': ['merino', 'crewneck', 'minimal'],
+    'visibleFlaws': ['light pilling on the sleeves'],
+    'searchQueries': {
+      'depop': 'Uniqlo merino wool crewneck sweater charcoal',
+      'retail': 'Uniqlo extra fine merino crew neck sweater charcoal',
+    },
+  };
+}
+
+/// A reading of a garment the wardrobe already knows, or null when what it
+/// knows is too little to make a title of.
+///
+/// Its brand, kind and first colour, and nothing the demo would be inventing:
+/// no style words and no flaws, which for a real reading are what photographs
+/// add, and here would be made up about a garment nobody has looked at.
+Map<String, Object?>? _readingOf(Map<String, Object?> known) {
+  final brand = known['brand'] as String?;
+  final type = ItemType.values.asNameMap()[known['itemType']];
+  final colour = (known['colors'] as List<Object?>?)?.firstOrNull as String?;
+
+  final title = [
+    ?brand,
+    ?type?.label.toLowerCase(),
+    ?colour?.toLowerCase(),
+  ].join(' ');
+  if (title.length < SearchQueries.minLength) return null;
+
+  return {
+    'title': title,
+    'itemType': type?.name ?? 'other',
+    if (brand != null)
+      'brand': {'value': brand, 'confidence': 1.0, 'source': 'userEdited'},
+    'colors': [?colour],
+    'styleWords': <String>[],
+    'visibleFlaws': <String>[],
+    'searchQueries': {'depop': title, 'retail': title},
+  };
+}
+
+/// A price search that found the jumper's listings, shaped like
+/// `prices_ok.json`.
+///
+/// Two sales of the same sweater at $24 and $26, one more asking $30 and a
+/// similar one at $34, so the suggestion has the whole rule to show: the middle
+/// of the sales, $25, asked 12% higher for offers, is $28, which lists at $30
+/// and leaves $28.56 after Depop's fees. What it costs new is another brand's
+/// crewneck at $60, which is only a similar item, so it caps nothing.
+///
+/// Every link is an address on depop.com or nike.com, in the form of the
+/// contract's examples. They are examples and not listings, so one that is
+/// followed may find nothing there, which is harmless.
+Map<String, Object?> _cannedPrices({
+  required DateTime searchedAt,
+  Object? queries,
+}) => {
+  'status': 'ok',
+  'searchedAt': searchedAt.toIso8601String(),
+  'provider': 'tavily',
+  'queries':
+      queries ??
+      {
+        'depop': 'Uniqlo merino wool crewneck sweater charcoal',
+        'retail': 'Uniqlo extra fine merino crew neck sweater charcoal',
+      },
+  'comparables': [
+    {
+      'title': 'Uniqlo extra fine merino crewneck sweater charcoal M',
+      'url': 'https://www.depop.com/products/example-uniqlo-merino-charcoal/',
+      'price': 26.0,
+      'currency': 'USD',
+      'sold': true,
+      'condition': 'Used - Excellent',
+      'match': 'same',
+      'why': 'Same Uniqlo merino crewneck, also charcoal',
+    },
+    {
+      'title': 'Uniqlo merino wool crew neck sweater dark grey',
+      'url': 'https://www.depop.com/products/example-uniqlo-merino-dark-grey/',
+      'price': 24.0,
+      'currency': 'USD',
+      'sold': true,
+      'condition': 'Used - Good',
+      'match': 'same',
+      'why': 'Same Uniqlo merino crewneck in a dark grey',
+    },
+    {
+      'title': 'Uniqlo merino crewneck sweater grey size S',
+      'url': 'https://www.depop.com/products/example-uniqlo-merino-grey-s/',
+      'price': 30.0,
+      'currency': 'USD',
+      'sold': false,
+      'match': 'same',
+      'why': 'Same Uniqlo merino crewneck, listed and not sold',
+    },
+    {
+      'title': 'J.Crew merino wool crewneck sweater heather charcoal',
+      'url': 'https://www.depop.com/products/example-jcrew-merino-charcoal/',
+      'price': 34.0,
+      'currency': 'USD',
+      'match': 'similar',
+      'why': 'Comparable merino crewneck from a similar brand',
+    },
+  ],
+  'retail': [
+    {
+      'title': 'Nike Sportswear Club Fleece Crew',
+      'url': 'https://www.nike.com/t/sportswear-club-fleece-crew-example',
+      'price': 60.0,
+      'currency': 'USD',
+      'seller': 'nike.com',
+      'match': 'similar',
+    },
+  ],
+  'excluded': {'notUsd': 2, 'unverifiedPrice': 1, 'notComparable': 4},
+};

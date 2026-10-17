@@ -814,6 +814,7 @@ final class Listing {
     this.notes,
     this.priceCents,
     this.priceSearch,
+    this.editedQueries,
     this.facts,
     List<ListingPhoto> photos = const [],
     List<int> typedComparableCents = const [],
@@ -1003,6 +1004,17 @@ final class Listing {
   /// The last price search, with the evidence it found.
   final PriceSearch? priceSearch;
 
+  /// The two search phrases as the person last wrote them, when they did.
+  ///
+  /// The editor lets them correct the phrases *before* prices are looked up, so
+  /// a wrong guess about the brand is a typo to fix and not a wasted search.
+  /// That needs somewhere to keep them. [priceSearch] is the wrong place: it
+  /// only exists once a search has run, and it holds what a search was told,
+  /// not what the person meant. [facts] is wrong too, being what the
+  /// photographs showed. So they are a field of their own, and [searchQueries]
+  /// reads them first.
+  final SearchQueries? editedQueries;
+
   /// What the photographs showed, as the server read it. Kept so the editor can
   /// show how sure the reading was.
   final ListingFacts? facts;
@@ -1068,13 +1080,24 @@ final class Listing {
     return elapsed.isNegative ? Duration.zero : elapsed;
   }
 
-  /// What to search with: the phrases of the last search, else those the
-  /// photographs produced, else words built from the listing itself.
+  /// What to search with: the phrases the person wrote, else those of the last
+  /// search, else those the photographs produced, else words built from the
+  /// listing itself.
   ///
-  /// Null when there is too little to search on. The last search comes first
-  /// because the person may have corrected its phrases, and a second look-up
-  /// should start from the corrected ones.
+  /// Null when there is too little to search on. Each source counts only when
+  /// both of its phrases are long enough to search with, so a pair left half
+  /// blank while somebody retypes it passes the choice to the next source.
+  ///
+  /// What the person wrote comes first because it is the latest word on the
+  /// matter: every look-up is made with whatever this returned, so the last
+  /// search's phrases are either the same ones or older. The last search still
+  /// comes before the photographs because a listing saved before the phrases
+  /// had a field of their own may have had them corrected in a search, and a
+  /// second look-up should start from the corrected ones.
   SearchQueries? get searchQueries {
+    final written = editedQueries;
+    if (written != null && written.isSearchable) return written;
+
     final searched = priceSearch?.queries;
     if (searched != null && searched.isSearchable) return searched;
 
@@ -1122,7 +1145,8 @@ final class Listing {
   /// A null argument leaves the field alone, as in the rest of the core, so the
   /// `clear` flags exist for the nullable fields somebody can take back: the
   /// department, brand, size, condition, material, era, notes, asking price,
-  /// price search and facts, and the three lifecycle dates and the sold price.
+  /// price search, written search phrases and facts, and the three lifecycle
+  /// dates and the sold price.
   /// Which listing it is ([id]), where it came from ([itemId]) and when it was
   /// created do not change.
   ///
@@ -1147,6 +1171,7 @@ final class Listing {
     String? notes,
     int? priceCents,
     PriceSearch? priceSearch,
+    SearchQueries? editedQueries,
     ListingFacts? facts,
     List<ListingPhoto>? photos,
     List<int>? typedComparableCents,
@@ -1164,6 +1189,7 @@ final class Listing {
     bool clearNotes = false,
     bool clearPrice = false,
     bool clearPriceSearch = false,
+    bool clearEditedQueries = false,
     bool clearFacts = false,
   }) =>
       Listing(
@@ -1192,6 +1218,8 @@ final class Listing {
         priceCents: clearPrice ? null : (priceCents ?? this.priceCents),
         priceSearch:
             clearPriceSearch ? null : (priceSearch ?? this.priceSearch),
+        editedQueries:
+            clearEditedQueries ? null : (editedQueries ?? this.editedQueries),
         facts: clearFacts ? null : (facts ?? this.facts),
         photos: photos ?? this.photos,
         typedComparableCents: typedComparableCents ?? this.typedComparableCents,
@@ -1269,6 +1297,7 @@ final class Listing {
         if (notes != null) 'notes': notes,
         if (priceCents != null) 'priceCents': priceCents,
         if (priceSearch != null) 'priceSearch': priceSearch!.toJson(),
+        if (editedQueries != null) 'editedQueries': editedQueries!.toJson(),
         if (facts != null) 'facts': facts!.toJson(),
         'photos': [for (final p in photos) p.toJson()],
         'typedComparableCents': typedComparableCents,
@@ -1299,6 +1328,7 @@ final class Listing {
 
     final itemId = readTrimmed(json['itemId']);
     final priceSearch = readObject(json['priceSearch']);
+    final editedQueries = readObject(json['editedQueries']);
     final facts = readObject(json['facts']);
 
     return Listing(
@@ -1331,6 +1361,8 @@ final class Listing {
       priceCents: readInt(json['priceCents']),
       priceSearch:
           priceSearch == null ? null : PriceSearch.fromJson(priceSearch),
+      editedQueries:
+          editedQueries == null ? null : SearchQueries.fromJson(editedQueries),
       facts: facts == null ? null : ListingFacts.fromJson(facts),
       photos: readObjects(json['photos'])
           .map(ListingPhoto.tryFromJson)
@@ -1379,6 +1411,7 @@ final class Listing {
           other.notes == notes &&
           other.priceCents == priceCents &&
           other.priceSearch == priceSearch &&
+          other.editedQueries == editedQueries &&
           other.facts == facts &&
           _sameList(other.photos, photos) &&
           _sameList(other.typedComparableCents, typedComparableCents) &&
@@ -1409,6 +1442,7 @@ final class Listing {
         notes,
         priceCents,
         priceSearch,
+        editedQueries,
         facts,
         Object.hashAll(photos),
         Object.hashAll(typedComparableCents),

@@ -115,6 +115,12 @@ Listing fullListing() => Listing(
       notes: 'Ships within 5 days.',
       priceCents: 3000,
       priceSearch: fullSearch(),
+      // Not the phrases the photographs produced or the last search used, so
+      // a round trip that mixed them up would be seen.
+      editedQueries: const SearchQueries(
+        depop: 'nike 90s crewneck sweatshirt grey',
+        retail: 'nike club fleece crew grey',
+      ),
       facts: fullFacts(),
       photos: const [
         ListingPhoto(uri: 'store://cover.jpg', shot: ListingShot.cover),

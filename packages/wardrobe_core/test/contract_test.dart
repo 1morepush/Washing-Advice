@@ -16,6 +16,8 @@ import 'dart:io';
 import 'package:test/test.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
+import 'support/fixtures.dart';
+
 /// Locates `contracts/` by walking up from the current directory.
 ///
 /// Checks for the schema file rather than merely for a directory of the right
@@ -339,6 +341,421 @@ void main() {
       };
 
       expect(listed, {for (final v in CareWarning.values) v.name});
+    });
+  });
+
+  group('listing fixtures', () {
+    Map<String, Object?> resultOf(String name) =>
+        loadFixture('listing/$name')['result']! as Map<String, Object?>;
+
+    test('every file decodes, a description told from prices by its shape', () {
+      final directory = Directory('${findContracts().path}/examples/listing');
+      final files = [
+        for (final entity in directory.listSync())
+          if (entity is File && entity.path.endsWith('.json')) entity,
+      ];
+
+      // Guards the loop below from passing because it found nothing to read.
+      expect(
+        [for (final file in files) file.uri.pathSegments.last],
+        containsAll([
+          'describe.json',
+          'describe_minimal.json',
+          'prices_not_configured.json',
+          'prices_ok.json',
+        ]),
+      );
+
+      for (final file in files) {
+        final body =
+            jsonDecode(file.readAsStringSync()) as Map<String, Object?>;
+        final result = body['result']! as Map<String, Object?>;
+
+        // A prices response has a status and a description has a title.
+        if (result.containsKey('status')) {
+          expect(
+            priceSearchFromJson(result).queries.isSearchable,
+            isTrue,
+            reason: file.path,
+          );
+        } else {
+          expect(
+            listingFactsFromJson(result).searchQueries.isSearchable,
+            isTrue,
+            reason: file.path,
+          );
+        }
+        expect(body['diagnostics'], isA<Map<String, Object?>>(),
+            reason: file.path);
+      }
+    });
+
+    test('a full description decodes to the values the fixture holds', () {
+      final facts = listingFactsFromJson(resultOf('describe.json'));
+
+      expect(facts.title, 'Nike vintage crewneck sweatshirt grey');
+      expect(facts.itemType, ItemType.sweatshirt);
+      expect(facts.brand!.value, 'Nike');
+      expect(facts.brand!.confidence, closeTo(0.93, 1e-9));
+      expect(facts.brand!.source, Provenance.aiInference);
+      expect(facts.colors, ['Grey']);
+      expect(facts.material, '80% cotton, 20% polyester');
+      expect(facts.sizeOnTag!.value, 'M');
+      expect(facts.sizeOnTag!.confidence, closeTo(0.9, 1e-9));
+      expect(facts.styleWords, [
+        'vintage',
+        'crewneck',
+        'embroidered logo',
+        '90s',
+      ]);
+      expect(facts.era, '90s');
+      expect(facts.visibleFlaws, ['small mark on the left cuff']);
+      expect(
+        facts.searchQueries,
+        const SearchQueries(
+          depop: 'Nike vintage crewneck sweatshirt grey',
+          retail: 'Nike Club Fleece crew sweatshirt grey',
+        ),
+      );
+    });
+
+    test('a minimal description decodes with everything optional absent', () {
+      final facts = listingFactsFromJson(resultOf('describe_minimal.json'));
+
+      expect(facts.title, 'Grey crewneck sweatshirt');
+      expect(facts.itemType, ItemType.sweatshirt);
+      expect(facts.brand, isNull);
+      expect(facts.material, isNull);
+      expect(facts.sizeOnTag, isNull);
+      expect(facts.era, isNull);
+      expect(facts.colors, isEmpty);
+      expect(facts.styleWords, isEmpty);
+      expect(facts.visibleFlaws, isEmpty);
+      expect(facts.searchQueries.depop, 'grey crewneck sweatshirt');
+    });
+
+    test('a description starts a listing that has all it was told', () {
+      final facts = listingFactsFromJson(resultOf('describe.json'));
+      final listing = Listing.fromFacts(
+        id: const ListingId('from-fixture'),
+        now: DateTime.utc(2026, 10, 17),
+        facts: facts,
+      );
+
+      expect(listing.brand, 'Nike');
+      expect(listing.sizeLabel, 'M');
+      expect(listing.colours, [DepopColour.grey]);
+      expect(listing.flaws, ['small mark on the left cuff']);
+      expect(listing.canLookUpPrices, isTrue);
+    });
+
+    test('a search decodes to the values the fixture holds, in cents', () {
+      final search = priceSearchFromJson(resultOf('prices_ok.json'));
+
+      expect(search.status, PriceSearchStatus.ok);
+      expect(search.searchedAt, DateTime.utc(2026, 10, 17, 14, 5));
+      expect(search.provider, 'tavily');
+      expect(search.excluded.notUsd, 2);
+      expect(search.excluded.unverifiedPrice, 1);
+      expect(search.excluded.notComparable, 4);
+
+      expect([
+        for (final c in search.comparables) c.priceCents
+      ], [
+        3200,
+        2800,
+        3500,
+      ]);
+      expect([for (final c in search.comparables) c.sold], [true, false, null]);
+      expect([
+        for (final c in search.comparables) c.condition
+      ], [
+        'Used - Excellent',
+        null,
+        null,
+      ]);
+      expect([
+        for (final c in search.comparables) c.match
+      ], [
+        ComparableMatch.same,
+        ComparableMatch.same,
+        ComparableMatch.similar,
+      ]);
+      expect(
+        search.comparables.first.url,
+        Uri.parse(
+          'https://www.depop.com/products/example-vintage-nike-grey-crewneck/',
+        ),
+      );
+      expect(search.comparables.first.why, 'Same 90s Nike crewneck, also grey');
+
+      expect(search.retail.single.priceCents, 6000);
+      expect(search.retail.single.seller, 'nike.com');
+      expect(search.retail.single.match, ComparableMatch.similar);
+    });
+
+    test('a search that was not configured decodes with nothing in it', () {
+      final search =
+          priceSearchFromJson(resultOf('prices_not_configured.json'));
+
+      expect(search.status, PriceSearchStatus.notConfigured);
+      expect(search.comparables, isEmpty);
+      expect(search.retail, isEmpty);
+      expect(search.searchedAt, isNull);
+      expect(search.provider, isNull);
+      expect(search.excluded.total, 0);
+      // The phrases come back so the app can offer the same searches as links.
+      expect(search.queries.isSearchable, isTrue);
+    });
+
+    test('a search in the fixture prices at \$30, leaving \$28.56', () {
+      // The contract's own example, run through the pricing rule: two of the
+      // same product (a sale at \$32 and an asking price of \$28), the similar
+      // \$35 listing kept out, and a similar shop item that does not cap.
+      final search = priceSearchFromJson(resultOf('prices_ok.json'));
+      final suggestion = suggestPrice(
+        comparables: search.comparables,
+        retail: search.retail,
+        condition: DepopCondition.usedExcellent,
+      );
+
+      expect(suggestion.listPriceCents, 3000);
+      expect(suggestion.netCents, 2856);
+    });
+
+    test('a search stored on the phone reads back as it was received', () {
+      final search = priceSearchFromJson(resultOf('prices_ok.json'));
+      final stored = PriceSearch.fromJson(
+        jsonDecode(jsonEncode(search.toJson())) as Map<String, Object?>,
+      );
+
+      expect(stored, search);
+    });
+  });
+
+  group('listing request fixtures', () {
+    test('there is a test for every request fixture', () {
+      final directory = Directory(
+        '${findContracts().path}/examples/listing/requests',
+      );
+      final names = {
+        for (final entity in directory.listSync())
+          if (entity is File && entity.path.endsWith('.json'))
+            entity.uri.pathSegments.last,
+      };
+
+      // A new request fixture without a builder test below would otherwise be
+      // a contract nobody checks.
+      expect(names, {'describe_context.json', 'price_search.json'});
+    });
+
+    test('the price search builder writes exactly the fixture', () {
+      final fixture = loadFixture('listing/requests/price_search.json');
+
+      final built = priceSearchRequestJson(
+        queries: const SearchQueries(
+          depop: 'Nike vintage crewneck sweatshirt grey',
+          retail: 'Nike Club Fleece crew sweatshirt grey',
+        ),
+        itemType: ItemType.sweatshirt,
+        title: 'Nike vintage crewneck sweatshirt grey',
+        brand: 'Nike',
+        colors: const ['Grey'],
+      );
+
+      expect(built.keys.toSet(), fixture.keys.toSet());
+      expect(
+        (built['queries']! as Map<String, Object?>).keys.toSet(),
+        (fixture['queries']! as Map<String, Object?>).keys.toSet(),
+      );
+      expect(built, fixture);
+    });
+
+    test('the describe context builder writes exactly the fixture', () {
+      final fixture = loadFixture('listing/requests/describe_context.json');
+
+      final built = describeContextJson(
+        itemType: ItemType.sweatshirt,
+        brand: 'Nike',
+        colors: const ['Grey'],
+        material: '80% cotton, 20% polyester',
+        sizeLabel: 'M',
+        notes: 'Bought in 2019, worn a handful of times',
+      );
+
+      expect(built.keys.toSet(), fixture.keys.toSet());
+      expect(
+        (built['known']! as Map<String, Object?>).keys.toSet(),
+        (fixture['known']! as Map<String, Object?>).keys.toSet(),
+      );
+      expect(built, fixture);
+    });
+
+    test('the context for a garment has the same keys as the fixture', () {
+      final fixture = loadFixture('listing/requests/describe_context.json');
+      final item = buildItem(
+        type: ItemType.sweatshirt,
+        brand: 'Nike',
+        sizeLabel: 'M',
+        colors: [Colors.grey],
+        composition: const {Fiber.cotton: 80, Fiber.polyester: 20},
+        usage: const UsageStats.none(),
+      ).copyWith(notes: 'Bought in 2019, worn a handful of times');
+
+      final built = describeContextForItem(item);
+
+      expect(built.keys.toSet(), fixture.keys.toSet());
+      expect(
+        (built['known']! as Map<String, Object?>).keys.toSet(),
+        (fixture['known']! as Map<String, Object?>).keys.toSet(),
+      );
+      // The garment's notes are sent as the person typed them.
+      expect(built['notes'], fixture['notes']);
+      expect(
+        (built['known']! as Map<String, Object?>)['itemType'],
+        (fixture['known']! as Map<String, Object?>)['itemType'],
+      );
+    });
+  });
+
+  group('listing schema agreement', () {
+    late Map<String, Object?> defs;
+
+    Map<String, Object?> child(Map<String, Object?> parent, String key) =>
+        parent[key]! as Map<String, Object?>;
+
+    Map<String, Object?> properties(String definition) =>
+        child(child(defs, definition), 'properties');
+
+    setUpAll(() {
+      final schema = jsonDecode(
+        File('${findContracts().path}/listing.schema.json').readAsStringSync(),
+      ) as Map<String, Object?>;
+      defs = child(schema, r'$defs');
+    });
+
+    Set<String> enumValues(Map<String, Object?> definition) => {
+          for (final value in definition['enum']! as List<Object?>)
+            value! as String,
+        };
+
+    test('the search statuses are the ones Dart has, both ways', () {
+      expect(
+        enumValues(child(properties('priceSearch'), 'status')),
+        {for (final v in PriceSearchStatus.values) v.name},
+      );
+    });
+
+    test('the match levels are the ones Dart has, both ways', () {
+      final dart = {for (final v in ComparableMatch.values) v.name};
+
+      expect(enumValues(child(properties('comparable'), 'match')), dart);
+      expect(enumValues(child(properties('retailReference'), 'match')), dart);
+    });
+
+    test('the only currency is US dollars', () {
+      expect(child(defs, 'currency')['const'], 'USD');
+    });
+
+    test('search phrases are the lengths the core says they are', () {
+      final depop = child(properties('searchQueries'), 'depop');
+      final retail = child(properties('searchQueries'), 'retail');
+
+      for (final phrase in [depop, retail]) {
+        expect(phrase['minLength'], SearchQueries.minLength);
+        expect(phrase['maxLength'], SearchQueries.maxLength);
+      }
+    });
+
+    test('the price search request is cut to the schema\'s lengths', () {
+      final request = properties('priceSearchRequest');
+      final built = priceSearchRequestJson(
+        queries: SearchQueries(depop: 'd' * 999, retail: 'r' * 999),
+        itemType: ItemType.hoodie,
+        title: 't' * 999,
+        brand: 'b' * 999,
+        colors: ['c' * 999, 'c' * 999, 'c' * 999, 'c' * 999],
+      );
+      final colours = built['colors']! as List<Object?>;
+
+      expect(
+        (built['title']! as String).length,
+        child(request, 'title')['maxLength'],
+      );
+      expect(
+        (built['brand']! as String).length,
+        child(request, 'brand')['maxLength'],
+      );
+      expect(colours, hasLength(child(request, 'colors')['maxItems']! as int));
+      expect(
+        (colours.first! as String).length,
+        child(child(request, 'colors'), 'items')['maxLength'],
+      );
+    });
+
+    test('the describe context is cut to the schema\'s lengths', () {
+      final context = child(defs, 'describeContext');
+      final known = child(child(context, 'properties'), 'known');
+      final knownProperties = child(known, 'properties');
+      final built = describeContextJson(
+        itemType: ItemType.hoodie,
+        brand: 'b' * 999,
+        colors: ['c' * 999, 'c' * 999, 'c' * 999, 'c' * 999],
+        material: 'm' * 999,
+        sizeLabel: 's' * 999,
+        notes: 'n' * 999,
+      );
+      final builtKnown = built['known']! as Map<String, Object?>;
+      final colours = builtKnown['colors']! as List<Object?>;
+
+      expect(
+        (builtKnown['brand']! as String).length,
+        child(knownProperties, 'brand')['maxLength'],
+      );
+      expect(
+        (builtKnown['material']! as String).length,
+        child(knownProperties, 'material')['maxLength'],
+      );
+      expect(
+        (builtKnown['sizeLabel']! as String).length,
+        child(knownProperties, 'sizeLabel')['maxLength'],
+      );
+      expect(
+        colours,
+        hasLength(child(knownProperties, 'colors')['maxItems']! as int),
+      );
+      expect(
+        (colours.first! as String).length,
+        child(child(knownProperties, 'colors'), 'items')['maxLength'],
+      );
+      expect(
+        (built['notes']! as String).length,
+        child(child(context, 'properties'), 'notes')['maxLength'],
+      );
+    });
+
+    test('a listing\'s facts are written in the schema\'s shape', () {
+      // The keys of ListingFacts.toJson are the listingFacts properties, so
+      // what is stored on the phone is what the server sends.
+      final stored = ListingFacts(
+        title: 'Nike vintage crewneck sweatshirt grey',
+        itemType: ItemType.sweatshirt,
+        searchQueries: const SearchQueries(depop: 'a b c', retail: 'd e f'),
+        brand: Confident(
+          'Nike',
+          confidence: 0.9,
+          source: Provenance.aiInference,
+        ),
+        material: 'cotton',
+        sizeOnTag: Confident(
+          'M',
+          confidence: 0.9,
+          source: Provenance.aiInference,
+        ),
+        era: '90s',
+      ).toJson();
+
+      expect(stored.keys.toSet(), properties('listingFacts').keys.toSet());
     });
   });
 }

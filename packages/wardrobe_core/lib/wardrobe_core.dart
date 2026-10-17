@@ -73,6 +73,7 @@ export 'src/selling/money.dart';
 export 'src/selling/pricing.dart';
 export 'src/selling/search_links.dart';
 export 'src/selling/shipping.dart';
+export 'src/selling/wire.dart';
 // Shared kernel.
 export 'src/shared/clock.dart';
 export 'src/shared/confidence.dart';

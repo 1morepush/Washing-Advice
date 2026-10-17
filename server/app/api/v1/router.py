@@ -11,6 +11,7 @@ from app.api.v1 import (
     images,
     machines,
     scan,
+    sell,
     stains,
     style,
     sync,
@@ -25,4 +26,5 @@ api_router.include_router(stains.router)
 api_router.include_router(condition.router)
 api_router.include_router(style.router)
 api_router.include_router(chat.router)
+api_router.include_router(sell.router)
 api_router.include_router(sync.router)

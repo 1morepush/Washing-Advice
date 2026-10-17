@@ -286,3 +286,58 @@ class TestTheListingFixtures:
 
         assert list(validator.iter_errors({"title": "Nike crewneck"}))
         assert schema["$defs"]["priceSearchRequest"]["additionalProperties"] is False
+
+
+class TestLiveListingResponsesMatchTheContract:
+    """What the server actually returns for a listing, not what it intends to."""
+
+    def describe(self, client: TestClient, seeds: tuple[int, ...], **form: str) -> dict[str, Any]:
+        response = client.post(
+            "/v1/sell/describe",
+            files=[
+                ("images", (f"photo{seed}.png", png_bytes(seed), "image/png")) for seed in seeds
+            ],
+            data=form,
+        )
+        assert response.status_code == 200, response.text
+        body: dict[str, Any] = response.json()
+        return body
+
+    def test_a_draft_from_one_photograph(self, client: TestClient) -> None:
+        assert_valid_listing(self.describe(client, (21,)), label="live describe, one photograph")
+
+    def test_a_draft_from_four(self, client: TestClient) -> None:
+        body = self.describe(client, (21, 22, 23, 24))
+
+        assert_valid_listing(body, label="live describe, four photographs")
+
+    def test_a_draft_for_a_garment_the_wardrobe_knows(self, client: TestClient) -> None:
+        context = (LISTING / "requests" / "describe_context.json").read_text()
+
+        body = self.describe(client, (21,), context=context)
+
+        assert_valid_listing(body, label="live describe, with the example context")
+
+    def test_every_kind_of_draft_the_fake_can_write_validates(self, client: TestClient) -> None:
+        # The fake varies on purpose: some drafts have a brand, a size and
+        # flaws and some have none. All of those shapes have to be the schema's.
+        for seed in range(40):
+            assert_valid_listing(
+                self.describe(client, (seed,)), label=f"live describe, seed {seed}"
+            )
+
+    def test_a_draft_is_a_describe_response_and_not_a_price_search(
+        self, client: TestClient
+    ) -> None:
+        schema, registry = _listing_schema()
+        describe_branch = Draft202012Validator(
+            {"$defs": schema["$defs"], **schema["oneOf"][0]}, registry=registry
+        )
+        prices_branch = Draft202012Validator(
+            {"$defs": schema["$defs"], **schema["oneOf"][1]}, registry=registry
+        )
+
+        body = self.describe(client, (21,))
+
+        assert not list(describe_branch.iter_errors(body))
+        assert list(prices_branch.iter_errors(body))

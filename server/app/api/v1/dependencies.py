@@ -31,6 +31,9 @@ from app.services.images.cutout import BackgroundRemover, BorderSampledRemover
 from app.services.machines.base import MachineIdentifier
 from app.services.machines.fake import FakeMachineIdentifier
 from app.services.machines.gemini_identifier import GeminiMachineIdentifier
+from app.services.selling.base import ListingDescriber
+from app.services.selling.fake import FakeListingDescriber
+from app.services.selling.gemini_describer import GeminiListingDescriber
 from app.services.stains.base import StainAdviser
 from app.services.stains.fake import FakeStainAdviser
 from app.services.stains.gemini_adviser import GeminiStainAdviser
@@ -136,6 +139,9 @@ _live_readers: list[ConditionReader] = []
 _live_chat_advisers: list[ChatAdviser] = []
 """And again for chat advisers."""
 
+_live_describers: list[ListingDescriber] = []
+"""And again for listing describers."""
+
 
 @lru_cache
 def get_stain_adviser() -> StainAdviser:
@@ -233,6 +239,29 @@ def get_condition_reader() -> ConditionReader:
 
 
 @lru_cache
+def get_listing_describer() -> ListingDescriber:
+    """The listing describer described by the current settings.
+
+    Reuses `VISION_PROVIDER` like every other AI-backed dependency here: there is
+    one AI backend either way.
+    """
+    settings = get_settings()
+    if settings.vision_provider == "fake":
+        describer: ListingDescriber = FakeListingDescriber()
+    else:
+        try:
+            describer = GeminiListingDescriber.from_settings(settings)
+        except ProviderError as error:
+            raise ProviderUnavailableError(
+                str(error),
+                hint="set GEMINI_API_KEY, or set VISION_PROVIDER=fake",
+            ) from error
+
+    _live_describers.append(describer)
+    return describer
+
+
+@lru_cache
 def get_machine_identifier() -> MachineIdentifier:
     """The machine identifier described by the current settings.
 
@@ -266,6 +295,7 @@ async def close_providers() -> None:
         *_live_stylists,
         *_live_readers,
         *_live_chat_advisers,
+        *_live_describers,
     ):
         closer = getattr(provider, "aclose", None)
         if closer is not None:
@@ -276,6 +306,7 @@ async def close_providers() -> None:
     _live_stylists.clear()
     _live_readers.clear()
     _live_chat_advisers.clear()
+    _live_describers.clear()
 
 
 def reset_wiring() -> None:
@@ -290,6 +321,7 @@ def reset_wiring() -> None:
     get_stylist.cache_clear()
     get_condition_reader.cache_clear()
     get_chat_adviser.cache_clear()
+    get_listing_describer.cache_clear()
     get_knowledge_cache.cache_clear()
     get_background_remover.cache_clear()
     # Closed before it is dropped: a SQLite store left to the garbage collector
@@ -304,4 +336,5 @@ def reset_wiring() -> None:
     _live_stylists.clear()
     _live_readers.clear()
     _live_chat_advisers.clear()
+    _live_describers.clear()
     get_settings.cache_clear()

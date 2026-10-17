@@ -353,6 +353,36 @@ void main() {
       expect(find.byType(BackButton), findsNothing);
     });
 
+    testWidgets('and no other screen has read the listings', (tester) async {
+      // The listings are Drift-backed unless overridden, and this app has only
+      // its wardrobe overridden: a screen that read them would open a real
+      // database, as every test that pumps the app would then be doing. Only
+      // the Sell screens, and the controller when it is asked, are to.
+      await open(tester);
+
+      // The wardrobe, and a garment on it.
+      await tester.tap(find.text('Blue jumper'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ItemDetailScreen), findsOneWidget);
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+
+      // The other places, and everything More opens.
+      await tapPlace(tester, 'Laundry');
+      await tapPlace(tester, 'Outfits');
+      await tapPlace(tester, 'More');
+      for (final title in ['Ask', 'Packing', 'Insights', 'Settings']) {
+        await tester.tap(find.widgetWithText(ListTile, title));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byType(BackButton));
+        await tester.pumpAndSettle();
+      }
+
+      expect(container.exists(listingRepositoryProvider), isFalse);
+      expect(container.exists(listingsProvider), isFalse);
+      expect(container.exists(databaseProvider), isFalse);
+    });
+
     testWidgets('Back from Sell goes to the first place', (tester) async {
       await open(tester);
       await tapPlace(tester, 'Sell');

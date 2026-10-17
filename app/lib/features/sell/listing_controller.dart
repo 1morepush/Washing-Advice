@@ -174,6 +174,7 @@ class ListingController {
       try {
         facts = await _describe(images, context: describeContextForItem(item));
       } on ScanFailure {
+        // The wardrobe alone will do; `describeFailed` says what was missed.
         facts = null;
       }
     }
@@ -211,23 +212,23 @@ class ListingController {
   /// whatever the listing found last time, so a search that finds nothing
   /// where the last found something loses the something.
   ///
-  /// Throws [ScanFailure] when the server cannot be reached or answers with an
-  /// error. Nothing is changed then.
+  /// Throws [ScanFailure] when the server cannot be reached, answers with an
+  /// error, or answers with something that cannot be read. Nothing is changed
+  /// then.
   Future<Listing> searchPrices(Listing listing) async {
     final queries = listing.searchQueries;
     if (!listing.canLookUpPrices || queries == null) return listing;
 
-    final search = await _ref
-        .read(aiGatewayProvider)
-        .searchPrices(
-          priceSearchRequestJson(
-            queries: queries,
-            itemType: listing.itemType,
-            title: listing.title,
-            brand: listing.brand,
-            colors: [for (final colour in listing.colours) colour.label],
-          ),
-        );
+    final request = priceSearchRequestJson(
+      queries: queries,
+      itemType: listing.itemType,
+      title: listing.title,
+      brand: listing.brand,
+      colors: [for (final colour in listing.colours) colour.label],
+    );
+    final search = await _asking(
+      () => _ref.read(aiGatewayProvider).searchPrices(request),
+    );
 
     return _put(listing.copyWith(priceSearch: search, updatedAt: _now()));
   }
@@ -280,6 +281,11 @@ class ListingController {
   /// leaves every image the garment holds, cutouts included. Only photographs
   /// taken for the listing go.
   ///
+  /// A photograph taken for a listing is named after it, and no other listing
+  /// holds it, so the garment is the only other owner there is to check. That
+  /// stops being true the day a listing is made by copying another's
+  /// photographs, and this is where to look then.
+  ///
   /// The listing goes first. A photograph that will not delete is left where it
   /// is, which costs a few hundred kilobytes, and does not stop the rest.
   Future<void> delete(Listing listing) async {
@@ -316,23 +322,26 @@ class ListingController {
     return listing;
   }
 
-  /// Asks the server to read [images], whatever goes wrong becoming a
-  /// [ScanFailure].
+  /// Asks the server to read [images].
+  Future<ListingFacts> _describe(
+    List<ScanImage> images, {
+    Map<String, Object?>? context,
+  }) => _asking(
+    () =>
+        _ref.read(aiGatewayProvider).describeListing(images, context: context),
+  );
+
+  /// A call to the server, whatever goes wrong becoming a [ScanFailure].
   ///
   /// The gateway already says "could not reach the server" and "that photo
   /// could not be read" as one. What it lets through is an answer it could not
   /// make sense of — a body that is not JSON, a draft with no title — and to a
   /// screen deciding whether to offer a retry that is the same thing: the
-  /// photographs were not read, and sending them again will not change what
-  /// the server sends back.
-  Future<ListingFacts> _describe(
-    List<ScanImage> images, {
-    Map<String, Object?>? context,
-  }) async {
+  /// request got nowhere, and sending it again will not change what the server
+  /// sends back. So the screens catch one kind of failure from here, not three.
+  Future<T> _asking<T>(Future<T> Function() call) async {
     try {
-      return await _ref
-          .read(aiGatewayProvider)
-          .describeListing(images, context: context);
+      return await call();
     } on ScanFailure {
       rethrow;
     } on Exception catch (error) {

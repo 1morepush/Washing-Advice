@@ -942,6 +942,36 @@ void main() {
       });
 
       test(
+        'an answer it cannot read is a failure too, and changes nothing',
+        () async {
+          final listing = await saved(draft());
+
+          for (final unreadable in <Exception>[
+            ScanContractError('the response had no "result"'),
+            const FormatException('not JSON'),
+          ]) {
+            gateway.searchError = unreadable;
+
+            await expectLater(
+              controller().searchPrices(listing),
+              throwsA(
+                isA<ScanFailure>()
+                    .having(
+                      (f) => f.message,
+                      'message',
+                      contains('cannot read'),
+                    )
+                    .having((f) => f.isRetryable, 'isRetryable', false),
+              ),
+              reason: '$unreadable',
+            );
+          }
+
+          expect(await listings.byId(listing.id), listing);
+        },
+      );
+
+      test(
         'throws, and changes nothing, when the server cannot be reached',
         () async {
           final listing = await saved(draft());

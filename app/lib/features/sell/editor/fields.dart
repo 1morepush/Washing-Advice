@@ -115,6 +115,16 @@ class QuietText extends StatelessWidget {
   }
 }
 
+/// A text button whose label lines up with the text above and below it.
+///
+/// The theme's text button is padded for a place of its own, which put every
+/// one of these a sixteenth of a screen to the right of the sentence it
+/// belongs to.
+final ButtonStyle inlineTextButton = TextButton.styleFrom(
+  padding: EdgeInsets.zero,
+  alignment: AlignmentDirectional.centerStart,
+);
+
 /// A text box for a word or a few, filled from [value] once.
 ///
 /// [onChanged] hears every edit, as it is typed. [value] is what the listing
@@ -131,6 +141,7 @@ class EditorTextField extends StatefulWidget {
     required this.onChanged,
     required this.label,
     this.hint,
+    this.hintMaxLines = 1,
     this.helper,
     this.minLines,
     this.maxLines = 1,
@@ -147,7 +158,11 @@ class EditorTextField extends StatefulWidget {
   final String label;
 
   /// What an empty box suggests, shown once it is focused.
+  ///
+  /// One line unless asked for more: a hint takes the room it needs even when
+  /// it is not showing, so a long one makes a box taller than its text.
   final String? hint;
+  final int hintMaxLines;
 
   /// A line under the box, for what it is for or what to do about it.
   final String? helper;
@@ -219,12 +234,9 @@ class _EditorTextFieldState extends State<EditorTextField> {
     decoration: InputDecoration(
       labelText: widget.label,
       hintText: widget.hint,
-      hintMaxLines: 3,
+      hintMaxLines: widget.hintMaxLines,
       helperText: widget.helper,
       helperMaxLines: 4,
-      // The label stays above the text however long a hint is, so a long
-      // hint under large text does not sit on top of it.
-      floatingLabelBehavior: FloatingLabelBehavior.always,
     ),
     onChanged: _changed,
     onSubmitted: widget.onSubmitted,
@@ -359,7 +371,6 @@ class _ParsedFieldState<T extends Object> extends State<ParsedField<T>> {
       helperMaxLines: 4,
       errorText: _invalid && !_focus.hasFocus ? widget.invalidMessage : null,
       errorMaxLines: 3,
-      floatingLabelBehavior: FloatingLabelBehavior.always,
     ),
     onChanged: _changed,
     onSubmitted: widget.onSubmitted,

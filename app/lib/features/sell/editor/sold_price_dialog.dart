@@ -93,7 +93,6 @@ class _SoldPriceDialogState extends State<_SoldPriceDialog> {
               helperMaxLines: 3,
               errorText: _valid ? null : 'Use an amount like 32 or 32.50.',
               errorMaxLines: 3,
-              floatingLabelBehavior: FloatingLabelBehavior.always,
             ),
             onChanged: (_) => setState(() {}),
           ),

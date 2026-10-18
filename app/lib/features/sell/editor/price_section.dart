@@ -24,6 +24,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
@@ -152,6 +153,9 @@ class _PriceSectionState extends ConsumerState<PriceSection> {
           key: const ValueKey('search-depop'),
           value: phrases?.depop ?? '',
           label: 'Search Depop for',
+          minLines: 1,
+          maxLines: 3,
+          inputFormatters: [FilteringTextInputFormatter.singleLineFormatter],
           textInputAction: TextInputAction.next,
           onChanged: (text) =>
               session.edit((listing) => _withPhrase(listing, depop: text)),
@@ -162,13 +166,16 @@ class _PriceSectionState extends ConsumerState<PriceSection> {
           value: phrases?.retail ?? '',
           label: 'Search shops for',
           helper: 'Brand, model and color, to find what it costs new.',
+          minLines: 1,
+          maxLines: 3,
+          inputFormatters: [FilteringTextInputFormatter.singleLineFormatter],
           textInputAction: TextInputAction.done,
           onChanged: (text) =>
               session.edit((listing) => _withPhrase(listing, retail: text)),
         ),
         const SizedBox(height: 16),
-        Align(
-          alignment: AlignmentDirectional.centerStart,
+        SizedBox(
+          width: double.infinity,
           child: FilledButton.icon(
             onPressed: why == null && !_looking ? _lookUp : null,
             icon: _looking

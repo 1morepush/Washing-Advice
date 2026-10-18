@@ -122,12 +122,15 @@ class _GarmentSaleState extends ConsumerState<GarmentSale> {
             'laundry and outfits. It stays in its history.',
           ),
           const SizedBox(height: 12),
-          FilledButton.tonal(
-            onPressed: _marking ? null : () => _mark(garment),
-            child: Text(
-              'Mark the ${garment.displayName} as sold',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.labelLarge,
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.tonal(
+              onPressed: _marking ? null : () => _mark(garment),
+              child: Text(
+                'Mark the ${garment.displayName} as sold',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.labelLarge,
+              ),
             ),
           ),
         ],

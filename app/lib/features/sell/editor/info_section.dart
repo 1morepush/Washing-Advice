@@ -74,6 +74,7 @@ class InfoSection extends ConsumerWidget {
           hint:
               'Brand, item, style words — e.g. Nike vintage crewneck '
               'sweatshirt grey',
+          hintMaxLines: 3,
           helper: listing.title.trim().isEmpty
               ? "Buyers search by these words, and it's the first line of "
                     'the description.'
@@ -107,7 +108,7 @@ class InfoSection extends ConsumerWidget {
           key: const ValueKey('size'),
           value: listing.sizeLabel ?? '',
           label: 'Size',
-          hint: 'As printed on the tag — M, W32 L30, UK 10',
+          hint: 'As on the tag: M, W32 L30, UK 10',
           textInputAction: TextInputAction.next,
           onChanged: (text) => _text(
             text,
@@ -134,7 +135,10 @@ class InfoSection extends ConsumerWidget {
           key: const ValueKey('material'),
           value: listing.material ?? '',
           label: 'Material',
-          hint: 'As the label says — 80% cotton, 20% polyester',
+          hint: 'As on the label: 80% cotton',
+          minLines: 1,
+          maxLines: 3,
+          inputFormatters: [FilteringTextInputFormatter.singleLineFormatter],
           textInputAction: TextInputAction.next,
           onChanged: (text) => _text(
             text,
@@ -243,10 +247,7 @@ class _CategoryBlock extends StatelessWidget {
         DropdownButtonFormField<ItemType>(
           initialValue: listing.itemType,
           isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'Item type',
-            floatingLabelBehavior: FloatingLabelBehavior.always,
-          ),
+          decoration: const InputDecoration(labelText: 'Item type'),
           items: [
             for (final type in ItemType.values)
               DropdownMenuItem(value: type, child: Text(type.label)),
@@ -278,6 +279,7 @@ class _CategoryBlock extends StatelessWidget {
           Align(
             alignment: AlignmentDirectional.centerStart,
             child: TextButton.icon(
+              style: inlineTextButton,
               onPressed: () => _copy(context, category),
               icon: const Icon(Icons.copy_outlined, size: 18),
               label: const Text('Copy category'),

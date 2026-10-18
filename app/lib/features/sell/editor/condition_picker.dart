@@ -93,6 +93,7 @@ class ConditionPicker extends StatelessWidget {
             Align(
               alignment: AlignmentDirectional.centerStart,
               child: TextButton(
+                style: inlineTextButton,
                 onPressed: () => _pick(suggestion.condition, true),
                 child: Text('Use ${suggestion.condition.label}'),
               ),
@@ -101,6 +102,7 @@ class ConditionPicker extends StatelessWidget {
         Align(
           alignment: AlignmentDirectional.centerStart,
           child: TextButton(
+            style: inlineTextButton,
             onPressed: () => _showMeanings(context),
             child: const Text('What do these mean?'),
           ),

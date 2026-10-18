@@ -95,7 +95,6 @@ class _AddEntryState extends State<_AddEntry> {
             labelText: widget.label,
             hintText: widget.hint,
             hintMaxLines: 2,
-            floatingLabelBehavior: FloatingLabelBehavior.always,
           ),
           onSubmitted: (_) => _add(),
         ),

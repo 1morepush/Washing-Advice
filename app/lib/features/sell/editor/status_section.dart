@@ -100,15 +100,19 @@ class _StatusSectionState extends ConsumerState<StatusSection> {
       'come back and say so here.',
     ),
     const SizedBox(height: 16),
-    OutlinedButton.icon(
-      onPressed: () => openLink(context, ref, depopHome),
-      icon: const Icon(Icons.open_in_new),
-      label: const Text('Open Depop'),
+    _wide(
+      OutlinedButton.icon(
+        onPressed: () => openLink(context, ref, depopHome),
+        icon: const Icon(Icons.open_in_new),
+        label: const Text('Open Depop'),
+      ),
     ),
     const SizedBox(height: 12),
-    FilledButton(
-      onPressed: _changing ? null : () => _change(widget.session.markListed),
-      child: const Text("I've posted it on Depop"),
+    _wide(
+      FilledButton(
+        onPressed: _changing ? null : () => _change(widget.session.markListed),
+        child: const Text("I've posted it on Depop"),
+      ),
     ),
   ];
 
@@ -131,22 +135,27 @@ class _StatusSectionState extends ConsumerState<StatusSection> {
               'relisting it on Depop puts it back in front of buyers.',
         ),
         const SizedBox(height: 12),
-        FilledButton.tonal(
-          onPressed: _changing
-              ? null
-              : () => _change(widget.session.markListed),
-          child: const Text("I've refreshed it on Depop"),
+        _wide(
+          FilledButton.tonal(
+            onPressed: _changing
+                ? null
+                : () => _change(widget.session.markListed),
+            child: const Text("I've refreshed it on Depop"),
+          ),
         ),
       ],
       const SizedBox(height: 16),
-      FilledButton(
-        onPressed: _changing ? null : _askWhatItSoldFor,
-        child: const Text('It sold'),
+      _wide(
+        FilledButton(
+          onPressed: _changing ? null : _askWhatItSoldFor,
+          child: const Text('It sold'),
+        ),
       ),
       const SizedBox(height: 4),
       Align(
         alignment: AlignmentDirectional.centerStart,
         child: TextButton(
+          style: inlineTextButton,
           onPressed: _changing ? null : () => _backToDraft(confirm: false),
           child: const Text('Back to draft'),
         ),
@@ -188,12 +197,17 @@ class _StatusSectionState extends ConsumerState<StatusSection> {
       Align(
         alignment: AlignmentDirectional.centerStart,
         child: TextButton(
+          style: inlineTextButton,
           onPressed: _changing ? null : () => _backToDraft(confirm: true),
           child: const Text('Back to draft'),
         ),
       ),
     ];
   }
+
+  /// A button across the whole card: the one thing to do next.
+  static Widget _wide(Widget button) =>
+      SizedBox(width: double.infinity, child: button);
 
   /// `1 day`, `16 days`.
   static String _days(Duration duration) {

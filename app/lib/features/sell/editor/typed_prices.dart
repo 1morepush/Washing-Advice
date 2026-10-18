@@ -141,7 +141,6 @@ class _AmountEntryState extends State<_AmountEntry> {
             prefixText: r'$',
             errorText: _invalid ? 'Use an amount like 32 or 32.50.' : null,
             errorMaxLines: 3,
-            floatingLabelBehavior: FloatingLabelBehavior.always,
           ),
           onChanged: (_) {
             if (_invalid) setState(() => _invalid = false);

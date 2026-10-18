@@ -14,6 +14,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -75,6 +76,8 @@ Future<EditorApp> openEditor(
   Appearance appearance = Appearance.light,
   ImageCaptureSource? camera,
   FakePriceGateway? gateway,
+  Map<String, Uint8List> storedImages = const {},
+  GlobalKey? boundary,
 }) async {
   SharedPreferences.setMockInitialValues({});
 
@@ -83,6 +86,9 @@ Future<EditorApp> openEditor(
   await wardrobe.saveAll(garments);
   final events = InMemoryEventLog();
   final images = MemoryImageStore();
+  for (final MapEntry(:key, :value) in storedImages.entries) {
+    await images.save(value, name: key);
+  }
   final links = RecordingLinkOpener();
   final server = gateway ?? FakePriceGateway();
 
@@ -115,17 +121,15 @@ Future<EditorApp> openEditor(
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
 
+  Widget app = WashingAdviceApp(
+    initialLocation:
+        location ??
+        (listing == null ? '/listing/none' : '/listing/${listing.id.value}'),
+  );
+  // So that a test that wants to look at the screen can take a picture of it.
+  if (boundary != null) app = RepaintBoundary(key: boundary, child: app);
   await tester.pumpWidget(
-    UncontrolledProviderScope(
-      container: container,
-      child: WashingAdviceApp(
-        initialLocation:
-            location ??
-            (listing == null
-                ? '/listing/none'
-                : '/listing/${listing.id.value}'),
-      ),
-    ),
+    UncontrolledProviderScope(container: container, child: app),
   );
   await tester.pumpAndSettle();
 

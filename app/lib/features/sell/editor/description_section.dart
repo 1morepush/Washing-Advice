@@ -79,10 +79,13 @@ class DescriptionSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        FilledButton.icon(
-          onPressed: text.isEmpty ? null : () => _copy(context, text),
-          icon: const Icon(Icons.copy_outlined),
-          label: const Text('Copy description'),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: text.isEmpty ? null : () => _copy(context, text),
+            icon: const Icon(Icons.copy_outlined),
+            label: const Text('Copy description'),
+          ),
         ),
       ],
     );

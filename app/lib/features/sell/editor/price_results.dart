@@ -218,6 +218,19 @@ class _LinkTile extends StatelessWidget {
     final theme = Theme.of(context);
     final radius = context.rinse.tileBorderRadius;
 
+    final heading = Text(
+      title,
+      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+    );
+    final price = Text(
+      formatUsd(cents),
+      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+    );
+    // Beside each other, the title is left with what the price does not take,
+    // which at large text is a column a word wide. Then the price goes first,
+    // on a line of its own, and the title has the card.
+    final large = MediaQuery.textScalerOf(context).scale(1) > 1.3;
+
     return Semantics(
       link: true,
       hint: 'Opens the page this came from',
@@ -232,26 +245,19 @@ class _LinkTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      formatUsd(cents),
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
+                if (large) ...[
+                  price,
+                  const SizedBox(height: 2),
+                  heading,
+                ] else
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: heading),
+                      const SizedBox(width: 12),
+                      price,
+                    ],
+                  ),
                 const SizedBox(height: 8),
                 Wrap(spacing: 6, runSpacing: 6, children: tags),
                 if (why case final String why) ...[

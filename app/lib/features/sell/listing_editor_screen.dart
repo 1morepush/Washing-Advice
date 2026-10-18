@@ -36,6 +36,7 @@ import '../../widgets/state_view.dart';
 import '../../widgets/status_message.dart';
 import 'editor/description_section.dart';
 import 'editor/edit_session.dart';
+import 'editor/fields.dart' show inlineTextButton;
 import 'editor/info_section.dart';
 import 'editor/photos_section.dart';
 import 'editor/price_section.dart';
@@ -224,8 +225,10 @@ class _Editor extends StatelessWidget {
                   child: TextButton.icon(
                     key: const ValueKey('delete'),
                     onPressed: session.busy ? null : onDelete,
-                    style: TextButton.styleFrom(
-                      foregroundColor: Theme.of(context).colorScheme.error,
+                    style: inlineTextButton.copyWith(
+                      foregroundColor: WidgetStatePropertyAll(
+                        Theme.of(context).colorScheme.error,
+                      ),
                     ),
                     icon: const Icon(Icons.delete_outline),
                     label: const Text('Delete listing'),

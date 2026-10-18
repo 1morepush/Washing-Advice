@@ -14,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../../core/providers.dart';
+import '../../../core/theme.dart';
 import 'fields.dart';
 
 /// Opens [uri] outside the app, and says so if nothing on the phone could.
@@ -53,7 +54,14 @@ class CheckItYourself extends ConsumerWidget {
       key: key,
       contentPadding: EdgeInsets.zero,
       leading: const Icon(Icons.open_in_new),
-      title: Text(title),
+      // The colour of a link, so that it reads as one.
+      title: Text(
+        title,
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: searchable ? context.rinse.textAccent : null,
+        ),
+      ),
       subtitle: Text(why),
       enabled: searchable,
       onTap: searchable ? () => openLink(context, ref, address(phrase)) : null,

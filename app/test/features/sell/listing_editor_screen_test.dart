@@ -17,12 +17,9 @@ import 'package:washing_advice/features/sell/sell_screen.dart';
 import 'listing_editor_harness.dart';
 
 void main() {
-  /// Tall enough that nothing is below the fold, so a test taps what it sees.
-  const tall = Size(400, 3200);
-
   group('a listing that is not there', () {
     testWidgets('says so plainly, with a way back to Sell', (tester) async {
-      await openEditor(tester, location: '/listing/gone', size: tall);
+      await openEditor(tester, location: '/listing/gone', size: tallScreen);
 
       expect(find.byType(ListingEditorScreen), findsOneWidget);
       expect(find.text('This listing no longer exists'), findsOneWidget);
@@ -34,7 +31,7 @@ void main() {
     });
 
     testWidgets('has the arrow, too', (tester) async {
-      await openEditor(tester, location: '/listing/gone', size: tall);
+      await openEditor(tester, location: '/listing/gone', size: tallScreen);
 
       await tester.tap(find.byType(BackButton));
       await tester.pumpAndSettle();
@@ -46,7 +43,7 @@ void main() {
   group('the description', () {
     testWidgets('is the one the core composes, exactly', (tester) async {
       final listing = sampleListing();
-      await openEditor(tester, listing: listing, size: tall);
+      await openEditor(tester, listing: listing, size: tallScreen);
 
       final preview = tester.widget<SelectableText>(
         find.descendant(
@@ -63,7 +60,7 @@ void main() {
     });
 
     testWidgets('can be selected, and not typed in', (tester) async {
-      await openEditor(tester, listing: sampleListing(), size: tall);
+      await openEditor(tester, listing: sampleListing(), size: tallScreen);
 
       final preview = find.descendant(
         of: find.byType(DescriptionSection),
@@ -82,7 +79,7 @@ void main() {
 
     testWidgets("shows Depop's two counters", (tester) async {
       final listing = sampleListing();
-      await openEditor(tester, listing: listing, size: tall);
+      await openEditor(tester, listing: listing, size: tallScreen);
 
       final text = composeDescription(listing);
       final check = checkDescription(text);
@@ -102,7 +99,7 @@ void main() {
       // of two thousand: it cuts, and ends in an ellipsis. The counter reads
       // the limit with its comma, as Depop's own does.
       final listing = sampleListing(title: 'Nike ${'crewneck ' * 250}');
-      await openEditor(tester, listing: listing, size: tall);
+      await openEditor(tester, listing: listing, size: tallScreen);
 
       expect(composeDescription(listing), hasLength(depopDescriptionLimit));
       expect(find.text('1,000 / 1,000 characters'), findsOneWidget);
@@ -115,7 +112,7 @@ void main() {
       final listing = sampleListing().copyWith(
         notes: '#one #two #three #four #five #six #seven',
       );
-      await openEditor(tester, listing: listing, size: tall);
+      await openEditor(tester, listing: listing, size: tallScreen);
 
       final count = checkDescription(composeDescription(listing)).hashtagCount;
       expect(count, greaterThan(depopHashtagLimit));
@@ -135,7 +132,7 @@ void main() {
     ) async {
       final listing = sampleListing();
       final clipboard = ClipboardSpy(tester);
-      await openEditor(tester, listing: listing, size: tall);
+      await openEditor(tester, listing: listing, size: tallScreen);
 
       await tester.tap(find.text('Copy description'));
       await tester.pump();
@@ -157,7 +154,7 @@ void main() {
         createdAt: DateTime.utc(2026, 10, 15),
         updatedAt: DateTime.utc(2026, 10, 15),
       );
-      await openEditor(tester, listing: blank, size: tall);
+      await openEditor(tester, listing: blank, size: tallScreen);
 
       expect(find.textContaining('Nothing to paste yet'), findsOneWidget);
       expect(
@@ -176,7 +173,7 @@ void main() {
       final app = await openEditor(
         tester,
         listing: sampleListing(),
-        size: tall,
+        size: tallScreen,
       );
 
       await tester.tap(find.text('Delete listing'));
@@ -194,7 +191,7 @@ void main() {
       final app = await openEditor(
         tester,
         listing: sampleListing(),
-        size: tall,
+        size: tallScreen,
       );
 
       await tester.tap(find.text('Delete listing'));
@@ -215,7 +212,7 @@ void main() {
       await openEditor(
         tester,
         listing: sampleListing(itemId: const ItemId('sweat')),
-        size: tall,
+        size: tallScreen,
       );
 
       await tester.tap(find.text('Delete listing'));

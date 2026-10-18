@@ -28,6 +28,13 @@ import 'package:washing_advice/main.dart';
 
 import '../../support/recording_link_opener.dart';
 
+/// A phone-wide surface tall enough for the whole editor at once, so a test
+/// taps what it sees and not what it has scrolled to.
+///
+/// The editor is a few thousand logical pixels long. The layout tests use a
+/// real phone instead, and scroll.
+const Size tallScreen = Size(400, 14000);
+
 /// Everything an editor test may want to look at, after [openEditor].
 class EditorApp {
   EditorApp._({

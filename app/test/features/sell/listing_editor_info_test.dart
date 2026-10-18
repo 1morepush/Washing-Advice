@@ -19,8 +19,6 @@ import '../../support/fixtures.dart';
 import 'listing_editor_harness.dart';
 
 void main() {
-  const tall = Size(400, 4200);
-
   Finder field(String label) => find.widgetWithText(TextField, label);
 
   /// The description as it is shown now.
@@ -49,7 +47,7 @@ void main() {
     testWidgets('is the first line of the description, as it is typed', (
       tester,
     ) async {
-      await openEditor(tester, listing: sampleListing(), size: tall);
+      await openEditor(tester, listing: sampleListing(), size: tallScreen);
       expect(pasted(tester), startsWith('Nike vintage crewneck sweatshirt'));
 
       await type(tester, 'Title', 'Nike 90s embroidered crewneck grey');
@@ -63,7 +61,7 @@ void main() {
       await openEditor(
         tester,
         listing: sampleListing(title: ''),
-        size: tall,
+        size: tallScreen,
       );
 
       // The prompt is gentle: it is a hint in an empty box, and a line under it.
@@ -81,7 +79,7 @@ void main() {
     });
 
     testWidgets('stops prompting once there is one', (tester) async {
-      await openEditor(tester, listing: sampleListing(), size: tall);
+      await openEditor(tester, listing: sampleListing(), size: tallScreen);
 
       expect(
         find.textContaining("it's the first line of the description"),
@@ -95,7 +93,7 @@ void main() {
       final app = await openEditor(
         tester,
         listing: sampleListing(),
-        size: tall,
+        size: tallScreen,
       );
 
       // Typed, and gone before the pause is up: the case a debounce loses.
@@ -113,7 +111,7 @@ void main() {
         tester,
         listing: sampleListing(),
         location: '/sell',
-        size: tall,
+        size: tallScreen,
       );
       GoRouter.of(
         tester.element(find.byType(SellScreen)),
@@ -144,7 +142,7 @@ void main() {
         tester,
         listing: sampleListing(),
         location: '/sell',
-        size: tall,
+        size: tallScreen,
       );
       final router = GoRouter.of(tester.element(find.byType(SellScreen)));
       router.push('/listing/draft-1');
@@ -169,7 +167,7 @@ void main() {
       final app = await openEditor(
         tester,
         listing: sampleListing(),
-        size: tall,
+        size: tallScreen,
       );
 
       await type(tester, 'Title', 'Stored by the pause');
@@ -186,7 +184,7 @@ void main() {
     testWidgets('keeps the cursor where it is while it is being stored', (
       tester,
     ) async {
-      await openEditor(tester, listing: sampleListing(), size: tall);
+      await openEditor(tester, listing: sampleListing(), size: tallScreen);
       await tester.showKeyboard(field('Title'));
 
       tester.testTextInput.updateEditingValue(
@@ -211,7 +209,7 @@ void main() {
       final app = await openEditor(
         tester,
         listing: sampleListing(),
-        size: tall,
+        size: tallScreen,
       );
 
       await type(tester, 'Title', 'Typed, then deleted');
@@ -229,7 +227,7 @@ void main() {
       tester,
     ) async {
       final clipboard = ClipboardSpy(tester);
-      await openEditor(tester, listing: sampleListing(), size: tall);
+      await openEditor(tester, listing: sampleListing(), size: tallScreen);
 
       expect(find.text('Tops › Sweatshirts'), findsOneWidget);
       expect(
@@ -253,7 +251,7 @@ void main() {
           itemType: ItemType.blouse,
           department: DepopDepartment.women,
         ),
-        size: tall,
+        size: tallScreen,
       );
       expect(find.text('Tops › Blouses'), findsOneWidget);
 
@@ -271,7 +269,7 @@ void main() {
       await openEditor(
         tester,
         listing: sampleListing(itemType: ItemType.blouse, department: null),
-        size: tall,
+        size: tallScreen,
       );
 
       expect(
@@ -293,7 +291,7 @@ void main() {
       await openEditor(
         tester,
         listing: sampleListing(department: null),
-        size: tall,
+        size: tallScreen,
       );
 
       expect(find.text('Tops › Sweatshirts'), findsOneWidget);
@@ -305,7 +303,7 @@ void main() {
       final app = await openEditor(
         tester,
         listing: sampleListing(),
-        size: tall,
+        size: tallScreen,
       );
 
       await tester.tap(find.widgetWithText(ChoiceChip, 'Men'));
@@ -318,7 +316,7 @@ void main() {
       final app = await openEditor(
         tester,
         listing: sampleListing(),
-        size: tall,
+        size: tallScreen,
       );
 
       await tester.tap(find.byType(DropdownButtonFormField<ItemType>));
@@ -334,7 +332,7 @@ void main() {
 
   group('brand, size, material, era and notes', () {
     testWidgets('go into the description as they are typed', (tester) async {
-      await openEditor(tester, listing: sampleListing(), size: tall);
+      await openEditor(tester, listing: sampleListing(), size: tallScreen);
 
       await type(tester, 'Brand', 'Adidas');
       await type(tester, 'Size', 'L');
@@ -353,7 +351,7 @@ void main() {
       final app = await openEditor(
         tester,
         listing: sampleListing(),
-        size: tall,
+        size: tallScreen,
       );
 
       await type(tester, 'Brand', '');
@@ -375,7 +373,7 @@ void main() {
       final app = await openEditor(
         tester,
         listing: sampleListing(),
-        size: tall,
+        size: tallScreen,
       );
 
       await type(tester, 'Era', 'Y2K');
@@ -394,7 +392,7 @@ void main() {
       final app = await openEditor(
         tester,
         listing: sampleListing(),
-        size: tall,
+        size: tallScreen,
       );
 
       for (final condition in DepopCondition.values) {
@@ -422,7 +420,7 @@ void main() {
       final app = await openEditor(
         tester,
         listing: sampleListing(condition: null, flaws: const []),
-        size: tall,
+        size: tallScreen,
       );
 
       expect(
@@ -442,7 +440,7 @@ void main() {
     });
 
     testWidgets('has all five meanings in a sheet', (tester) async {
-      await openEditor(tester, listing: sampleListing(), size: tall);
+      await openEditor(tester, listing: sampleListing(), size: tallScreen);
 
       await tester.tap(find.text('What do these mean?'));
       await tester.pumpAndSettle();
@@ -465,7 +463,7 @@ void main() {
         tester,
         listing: sampleListing(itemId: garment.id, condition: null),
         garments: [garment],
-        size: tall,
+        size: tallScreen,
       );
 
       expect(
@@ -487,7 +485,7 @@ void main() {
     testWidgets('is not suggested for a listing with no garment', (
       tester,
     ) async {
-      await openEditor(tester, listing: sampleListing(), size: tall);
+      await openEditor(tester, listing: sampleListing(), size: tallScreen);
 
       expect(find.textContaining('Suggested:'), findsNothing);
     });
@@ -498,7 +496,7 @@ void main() {
       final app = await openEditor(
         tester,
         listing: sampleListing(colours: const []),
-        size: tall,
+        size: tallScreen,
       );
 
       await tester.tap(find.widgetWithText(FilterChip, 'Grey'));
@@ -526,7 +524,7 @@ void main() {
         listing: sampleListing(
           colours: const [DepopColour.grey, DepopColour.white],
         ),
-        size: tall,
+        size: tallScreen,
       );
       await tester.tap(find.widgetWithText(FilterChip, 'Navy'));
       await tester.pump();
@@ -544,7 +542,7 @@ void main() {
     });
 
     testWidgets('start as the listing has them', (tester) async {
-      await openEditor(tester, listing: sampleListing(), size: tall);
+      await openEditor(tester, listing: sampleListing(), size: tallScreen);
 
       expect(
         tester
@@ -568,7 +566,7 @@ void main() {
       final app = await openEditor(
         tester,
         listing: sampleListing().copyWith(styleWords: const []),
-        size: tall,
+        size: tallScreen,
       );
       expect(pasted(tester), isNot(contains('#boxy')));
 
@@ -589,7 +587,7 @@ void main() {
     });
 
     testWidgets('are not added twice', (tester) async {
-      await openEditor(tester, listing: sampleListing(), size: tall);
+      await openEditor(tester, listing: sampleListing(), size: tallScreen);
 
       await tester.enterText(field('Add a style word'), 'Vintage, crewneck');
       await tester.tap(addIn(StyleWordsEditor));
@@ -604,7 +602,7 @@ void main() {
       final app = await openEditor(
         tester,
         listing: sampleListing(),
-        size: tall,
+        size: tallScreen,
       );
 
       await tester.tap(find.byTooltip('Remove vintage'));
@@ -615,7 +613,7 @@ void main() {
     });
 
     testWidgets('are added from the keyboard, too', (tester) async {
-      await openEditor(tester, listing: sampleListing(), size: tall);
+      await openEditor(tester, listing: sampleListing(), size: tallScreen);
 
       await tester.enterText(field('Add a style word'), 'oversized');
       await tester.testTextInput.receiveAction(TextInputAction.done);
@@ -629,7 +627,7 @@ void main() {
       final app = await openEditor(
         tester,
         listing: sampleListing(),
-        size: tall,
+        size: tallScreen,
       );
 
       await tester.enterText(field('Add a style word'), ' , ,');
@@ -647,7 +645,7 @@ void main() {
       final app = await openEditor(
         tester,
         listing: sampleListing(),
-        size: tall,
+        size: tallScreen,
       );
       expect(find.text('small mark on the left cuff'), findsOneWidget);
       expect(pasted(tester), contains('Flaws: small mark on the left cuff'));
@@ -691,7 +689,7 @@ void main() {
       await openEditor(
         tester,
         listing: sampleListing(flaws: const []),
-        size: tall,
+        size: tallScreen,
       );
 
       expect(
@@ -705,7 +703,7 @@ void main() {
     });
 
     testWidgets('say a photograph is to be taken of each', (tester) async {
-      await openEditor(tester, listing: sampleListing(), size: tall);
+      await openEditor(tester, listing: sampleListing(), size: tallScreen);
 
       expect(find.textContaining('Photograph each one'), findsOneWidget);
     });
@@ -715,7 +713,7 @@ void main() {
     testWidgets('always ask for pit to pit and length, in inches', (
       tester,
     ) async {
-      await openEditor(tester, listing: sampleListing(), size: tall);
+      await openEditor(tester, listing: sampleListing(), size: tallScreen);
 
       expect(field('Pit to pit'), findsOneWidget);
       expect(field('Length'), findsOneWidget);
@@ -737,7 +735,7 @@ void main() {
           itemType: ItemType.jeans,
           measurements: const Measurements(waistIn: 32, inseamIn: 30),
         ),
-        size: tall,
+        size: tallScreen,
       );
 
       expect(field('Waist'), findsOneWidget);
@@ -752,7 +750,7 @@ void main() {
       await openEditor(
         tester,
         listing: sampleListing(measurements: const Measurements(waistIn: 30)),
-        size: tall,
+        size: tallScreen,
       );
 
       expect(field('Waist'), findsOneWidget);
@@ -761,7 +759,7 @@ void main() {
     testWidgets('appear when the item type changes to a bottom', (
       tester,
     ) async {
-      await openEditor(tester, listing: sampleListing(), size: tall);
+      await openEditor(tester, listing: sampleListing(), size: tallScreen);
       expect(field('Waist'), findsNothing);
 
       await tester.tap(find.byType(DropdownButtonFormField<ItemType>));
@@ -777,7 +775,7 @@ void main() {
       final app = await openEditor(
         tester,
         listing: sampleListing(),
-        size: tall,
+        size: tallScreen,
       );
 
       await type(tester, 'Pit to pit', '23.5');
@@ -794,7 +792,7 @@ void main() {
     });
 
     testWidgets('are taken out when the box is emptied', (tester) async {
-      await openEditor(tester, listing: sampleListing(), size: tall);
+      await openEditor(tester, listing: sampleListing(), size: tallScreen);
 
       await type(tester, 'Pit to pit', '');
       await type(tester, 'Length', '');
@@ -809,7 +807,7 @@ void main() {
       final app = await openEditor(
         tester,
         listing: sampleListing(),
-        size: tall,
+        size: tallScreen,
       );
 
       for (final bad in ['0', '.', '..', '1.2.3', '9999', '0.0', '301']) {
@@ -826,7 +824,7 @@ void main() {
     testWidgets('drop the marks a measurement is not written with', (
       tester,
     ) async {
-      await openEditor(tester, listing: sampleListing(), size: tall);
+      await openEditor(tester, listing: sampleListing(), size: tallScreen);
 
       await type(tester, 'Length', '2a8 in');
 
@@ -841,7 +839,7 @@ void main() {
       final app = await openEditor(
         tester,
         listing: sampleListing(),
-        size: tall,
+        size: tallScreen,
       );
 
       // Nothing a measurement is written with: the box ends up empty, and an

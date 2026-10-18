@@ -38,6 +38,7 @@ import 'editor/description_section.dart';
 import 'editor/edit_session.dart';
 import 'editor/info_section.dart';
 import 'editor/photos_section.dart';
+import 'editor/price_section.dart';
 import 'listing_controller.dart';
 
 class ListingEditorScreen extends ConsumerStatefulWidget {
@@ -197,6 +198,11 @@ class _Editor extends StatelessWidget {
               ),
               InfoSection(
                 key: const ValueKey('info'),
+                listing: listing,
+                session: session,
+              ),
+              PriceSection(
+                key: const ValueKey('price-section'),
                 listing: listing,
                 session: session,
               ),

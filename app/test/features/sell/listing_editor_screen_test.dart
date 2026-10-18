@@ -7,6 +7,8 @@
 /// somebody deletes is gone.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
@@ -204,6 +206,46 @@ void main() {
       expect(find.byType(ListingEditorScreen), findsNothing);
       // Not the screen that says it is gone: the person asked for this.
       expect(find.text('This listing no longer exists'), findsNothing);
+    });
+
+    testWidgets('is always available, even while prices are being looked up', (
+      tester,
+    ) async {
+      final gateway = FakePriceGateway()..hold = Completer<void>();
+      final app = await openEditor(
+        tester,
+        listing: sampleListing(),
+        gateway: gateway,
+        size: tallScreen,
+      );
+      await tester.tap(find.text('Look up prices'));
+      await tester.pump();
+      expect(find.text('Looking up prices…'), findsOneWidget);
+
+      expect(
+        tester
+            .widget<TextButton>(
+              find.widgetWithText(TextButton, 'Delete listing'),
+            )
+            .onPressed,
+        isNotNull,
+      );
+      // By hand: the spinner of the look-up never lets the screen settle.
+      await tester.tap(find.text('Delete listing'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.text('Delete'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SellScreen), findsOneWidget);
+      expect(await app.stored('draft-1'), isNull);
+
+      // The server answers after the listing has gone. It stays gone.
+      gateway.hold!.complete();
+      await tester.pumpAndSettle(const Duration(seconds: 1));
+      expect(await app.stored('draft-1'), isNull);
     });
 
     testWidgets('says the garment stays, for a listing made from one', (

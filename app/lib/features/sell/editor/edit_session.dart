@@ -66,7 +66,6 @@ class ListingEditSession extends ChangeNotifier {
   bool _disposed = false;
   bool _deleted = false;
   bool _saveFailed = false;
-  int _running = 0;
 
   /// Every write waits on this one, so they land in the order they were asked.
   Future<void> _writing = Future<void>.value();
@@ -80,13 +79,6 @@ class ListingEditSession extends ChangeNotifier {
   /// to the person because the alternative is a screen that looks saved and
   /// is not.
   bool get saveFailed => _saveFailed;
-
-  /// Whether a look-up, a status change or a sale is in flight.
-  ///
-  /// The listing is not to be deleted while one is: the controller writes the
-  /// listing it was handed, and one that is written after it was deleted
-  /// would be a listing nobody asked for.
-  bool get busy => _running > 0;
 
   /// Changes the listing and stores it soon.
   ///
@@ -155,12 +147,22 @@ class ListingEditSession extends ChangeNotifier {
   /// controller kept it; when it kept the earlier prices instead
   /// ([PriceLookup.failedWith]) nothing on the working copy changes.
   ///
+  /// **A look-up that outlives the listing is undone.** The person can delete
+  /// the listing while the server is still thinking, and the controller stores
+  /// the listing it was handed when the answer arrives, which would put back
+  /// what they just deleted. When that happens the listing is deleted again.
+  ///
   /// Throws [ScanFailure] when the server could not be reached or its answer
   /// could not be read.
   Future<PriceLookup> lookUpPrices() async {
     await flush();
     final sent = _listing;
-    final lookup = await _during(() => _controller.searchPrices(sent));
+    final lookup = await _controller.searchPrices(sent);
+
+    if (_deleted) {
+      if (lookup.listing != sent) await _controller.delete(lookup.listing);
+      return lookup;
+    }
 
     if (lookup.failedWith == null && lookup.listing != sent) {
       final written = lookup.listing;
@@ -190,7 +192,7 @@ class ListingEditSession extends ChangeNotifier {
   Future<void> _changeStatus(Future<Listing> Function(Listing) change) async {
     await flush();
     final sent = _listing;
-    final written = await _during(() => change(sent));
+    final written = await change(sent);
 
     _fold(
       written,
@@ -208,8 +210,7 @@ class ListingEditSession extends ChangeNotifier {
   }
 
   /// Marks the garment this was made from as sold, and says whether it is.
-  Future<bool> markGarmentSold() =>
-      _during(() => _controller.markGarmentSold(_listing));
+  Future<bool> markGarmentSold() => _controller.markGarmentSold(_listing);
 
   /// Stores [image] as a photograph of [shot] and puts it on the listing.
   ///
@@ -239,10 +240,10 @@ class ListingEditSession extends ChangeNotifier {
   ///
   /// From here nothing more is written: a change still waiting for its turn
   /// to be stored would put the listing back. What is already being written
-  /// finishes first, for the same reason. False, and nothing done, while an
-  /// action is running (see [busy]).
-  Future<bool> delete() async {
-    if (_deleted || busy) return false;
+  /// finishes first, for the same reason. Always possible, even with a price
+  /// look-up on its way (see [lookUpPrices]).
+  Future<void> delete() async {
+    if (_deleted) return;
 
     _deleted = true;
     _timer?.cancel();
@@ -256,22 +257,9 @@ class ListingEditSession extends ChangeNotifier {
       rethrow;
     }
     _notify();
-    return true;
   }
 
   // --- Behind the scenes --------------------------------------------------
-
-  /// Runs [action], counting it as in flight while it does.
-  Future<T> _during<T>(Future<T> Function() action) async {
-    _running++;
-    _notify();
-    try {
-      return await action();
-    } finally {
-      _running--;
-      _notify();
-    }
-  }
 
   /// Puts what an action changed onto the working copy.
   ///

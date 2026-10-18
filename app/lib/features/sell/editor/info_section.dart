@@ -82,6 +82,7 @@ class InfoSection extends ConsumerWidget {
           minLines: 1,
           maxLines: 3,
           textCapitalization: TextCapitalization.sentences,
+          keyboardType: TextInputType.text,
           textInputAction: TextInputAction.next,
           inputFormatters: [FilteringTextInputFormatter.singleLineFormatter],
           onChanged: (text) =>
@@ -138,6 +139,7 @@ class InfoSection extends ConsumerWidget {
           hint: 'As on the label: 80% cotton',
           minLines: 1,
           maxLines: 3,
+          keyboardType: TextInputType.text,
           inputFormatters: [FilteringTextInputFormatter.singleLineFormatter],
           textInputAction: TextInputAction.next,
           onChanged: (text) => _text(

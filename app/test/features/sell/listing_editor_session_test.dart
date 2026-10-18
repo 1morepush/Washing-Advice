@@ -260,19 +260,6 @@ void main() {
       expect(stored.priceSearch, gateway.search);
     });
 
-    test('is busy while it waits, and not before or after', () async {
-      gateway.hold = Completer<void>();
-      expect(session.busy, isFalse);
-
-      final lookup = session.lookUpPrices();
-      await until(() => gateway.searched.isNotEmpty);
-      expect(session.busy, isTrue);
-
-      gateway.hold!.complete();
-      await lookup;
-      expect(session.busy, isFalse);
-    });
-
     test('keeps what was typed and stored while it was on its way', () async {
       // The look-up is slow, as it is when the server is asleep, and the
       // person goes on writing. What they wrote is stored by the pause. Then
@@ -355,7 +342,6 @@ void main() {
 
       await expectLater(session.lookUpPrices(), throwsA(isA<ScanFailure>()));
 
-      expect(session.busy, isFalse);
       expect(session.listing, draft());
     });
 
@@ -497,9 +483,15 @@ void main() {
 
   group('deleting', () {
     test('removes the listing', () async {
-      final deleted = await session.delete();
+      await session.delete();
 
-      expect(deleted, isTrue);
+      expect(await listings.byId(const ListingId('l1')), isNull);
+    });
+
+    test('is a no-op the second time', () async {
+      await session.delete();
+      await session.delete();
+
       expect(await listings.byId(const ListingId('l1')), isNull);
     });
 
@@ -529,18 +521,50 @@ void main() {
       expect(await listings.byId(const ListingId('l1')), isNull);
     });
 
-    test('is refused while prices are being looked up', () async {
-      // The look-up would store the listing again when it came back.
+    test('is not undone by a look-up that comes back afterwards', () async {
+      // Deleted while the server is still thinking. The controller stores the
+      // listing it was handed when the answer arrives, which would put back
+      // what was deleted; the session takes it away again.
       gateway.hold = Completer<void>();
       final lookup = session.lookUpPrices();
       await until(() => gateway.searched.isNotEmpty);
 
-      final deleted = await session.delete();
+      await session.delete();
+      expect(await listings.byId(const ListingId('l1')), isNull);
+
       gateway.hold!.complete();
       await lookup;
 
-      expect(deleted, isFalse);
-      expect(await listings.byId(const ListingId('l1')), isNotNull);
+      expect(await listings.byId(const ListingId('l1')), isNull);
+    });
+
+    test('is not undone by a look-up that failed, either', () async {
+      gateway.hold = Completer<void>();
+      gateway.error = const ScanFailure('The server is asleep.');
+      final lookup = session.lookUpPrices();
+      await until(() => gateway.searched.isNotEmpty);
+
+      await session.delete();
+      gateway.hold!.complete();
+      await expectLater(lookup, throwsA(isA<ScanFailure>()));
+
+      expect(await listings.byId(const ListingId('l1')), isNull);
+    });
+
+    test('leaves nothing of the look-up behind when it comes back', () async {
+      gateway.hold = Completer<void>();
+      final lookup = session.lookUpPrices();
+      await until(() => gateway.searched.isNotEmpty);
+      await session.delete();
+
+      gateway.hold!.complete();
+      await lookup;
+      await session.flush();
+      await Future<void>.delayed(longerThanThePause);
+
+      // Never stored again, by the look-up or by anything it left waiting.
+      expect(await listings.byId(const ListingId('l1')), isNull);
+      expect(listings.all(), completion(isEmpty));
     });
 
     test('takes nothing more from the screen once it is done', () async {

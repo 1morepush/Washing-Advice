@@ -105,13 +105,8 @@ class _ListingEditorScreenState extends ConsumerState<ListingEditorScreen>
 
     setState(() => _leaving = true);
     try {
-      final deleted = await session.delete();
+      await session.delete();
       if (!mounted) return;
-      if (!deleted) {
-        setState(() => _leaving = false);
-        _say('Wait for the price look-up to finish, then delete it.');
-        return;
-      }
       context.go('/sell');
     } on Exception {
       if (!mounted) return;
@@ -224,7 +219,7 @@ class _Editor extends StatelessWidget {
                   alignment: AlignmentDirectional.centerStart,
                   child: TextButton.icon(
                     key: const ValueKey('delete'),
-                    onPressed: session.busy ? null : onDelete,
+                    onPressed: onDelete,
                     style: inlineTextButton.copyWith(
                       foregroundColor: WidgetStatePropertyAll(
                         Theme.of(context).colorScheme.error,

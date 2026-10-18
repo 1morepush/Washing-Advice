@@ -73,6 +73,8 @@ class _PriceSectionState extends ConsumerState<PriceSection> {
   }
 
   Future<void> _lookUp() async {
+    // The keyboard is in the way of what is about to appear.
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _looking = true;
       _waking = false;
@@ -155,6 +157,7 @@ class _PriceSectionState extends ConsumerState<PriceSection> {
           label: 'Search Depop for',
           minLines: 1,
           maxLines: 3,
+          keyboardType: TextInputType.text,
           inputFormatters: [FilteringTextInputFormatter.singleLineFormatter],
           textInputAction: TextInputAction.next,
           onChanged: (text) =>
@@ -168,6 +171,7 @@ class _PriceSectionState extends ConsumerState<PriceSection> {
           helper: 'Brand, model and color, to find what it costs new.',
           minLines: 1,
           maxLines: 3,
+          keyboardType: TextInputType.text,
           inputFormatters: [FilteringTextInputFormatter.singleLineFormatter],
           textInputAction: TextInputAction.done,
           onChanged: (text) =>

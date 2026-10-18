@@ -955,6 +955,9 @@ List<Listing> demoListings(List<WardrobeItem> wardrobe, {DateTime? now}) {
     // Sold for less than it was asked at, as a buyer's offer usually leaves it.
     Listing(
       id: const ListingId('demo-listing-3'),
+      // The blouse its photograph is of, still in the wardrobe: so the sale
+      // offers to take it out, as a sale of a garment does.
+      itemId: const ItemId('demo-silk'),
       createdAt: at.subtract(const Duration(days: 40)),
       updatedAt: at.subtract(const Duration(days: 22)),
       status: ListingStatus.sold,

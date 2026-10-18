@@ -170,6 +170,13 @@ void main() {
         expect(sold.needsRefresh(now), isFalse);
       });
 
+      test(
+        'is of the blouse in the wardrobe, which is not yet marked sold',
+        () {
+          expect(sold.itemId, const ItemId('demo-silk'));
+        },
+      );
+
       test('shows a demo garment\'s photograph', () {
         expect(sold.photos.single.uri, 'wa-memory:demo-silk-front');
       });

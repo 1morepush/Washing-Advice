@@ -106,8 +106,8 @@ void main() {
       ),
       findsOneWidget,
     );
-    // No garment behind it, so nothing to take out of the wardrobe.
-    expect(find.textContaining('Mark the'), findsNothing);
+    // The blouse is still in the wardrobe, so the sale offers to take it out.
+    expect(find.text('Mark the Cream silk blouse as sold'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

@@ -61,6 +61,12 @@ void main() {
         ),
         wardrobeRepositoryProvider.overrideWithValue(repository),
         outfitRepositoryProvider.overrideWithValue(InMemoryOutfitRepository()),
+        // The Sell screens read the listings, and the places that do the
+        // opening here include Sell itself. Overridden so that doing so is not
+        // a real database; whether anywhere *else* reads them is asked below.
+        listingRepositoryProvider.overrideWithValue(
+          InMemoryListingRepository(),
+        ),
         eventLogProvider.overrideWithValue(InMemoryEventLog()),
         imageStoreProvider.overrideWithValue(MemoryImageStore()),
         nudgesProvider.overrideWithValue(nudges),

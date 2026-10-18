@@ -36,6 +36,7 @@ import '../../widgets/state_view.dart';
 import '../../widgets/status_message.dart';
 import 'editor/description_section.dart';
 import 'editor/edit_session.dart';
+import 'editor/info_section.dart';
 import 'editor/photos_section.dart';
 import 'listing_controller.dart';
 
@@ -193,6 +194,11 @@ class _Editor extends StatelessWidget {
               DescriptionSection(
                 key: const ValueKey('description'),
                 listing: listing,
+              ),
+              InfoSection(
+                key: const ValueKey('info'),
+                listing: listing,
+                session: session,
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),

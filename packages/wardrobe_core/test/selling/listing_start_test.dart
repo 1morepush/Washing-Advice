@@ -352,6 +352,30 @@ void main() {
         expect(listing.brand, 'Champion');
       });
 
+      test('the brand, when the wardrobe\'s was only a model\'s guess', () {
+        final guessed = hoodie().copyWith(
+          brand: Confident('Nike',
+              confidence: 0.6, source: Provenance.aiInference),
+        );
+
+        final listing =
+            fromGarment(guessed, facts: facts(brand: read('Champion')));
+
+        expect(listing.brand, 'Champion');
+      });
+
+      test('but keeps a brand that came off a scanned tag', () {
+        final scanned = hoodie().copyWith(
+          brand:
+              Confident('Nike', confidence: 0.95, source: Provenance.tagScan),
+        );
+
+        final listing =
+            fromGarment(scanned, facts: facts(brand: read('Champion')));
+
+        expect(listing.brand, 'Nike');
+      });
+
       test('the size', () {
         final listing = fromGarment(
           hoodie(sizeLabel: null),
@@ -462,16 +486,26 @@ void main() {
           () {
         expect(
           fromGarment(hoodie(), facts: facts(title: '  ')).title,
-          'Nike hoodie charcoal',
+          'Nike charcoal hoodie',
         );
       });
 
-      test('is built from brand, type and colour when there are no facts', () {
-        expect(fromGarment(hoodie()).title, 'Nike hoodie charcoal');
+      test('is built from brand, colour and type when there are no facts', () {
+        expect(fromGarment(hoodie()).title, 'Nike charcoal hoodie');
+      });
+
+      test('puts the colour before the type, and starts with a capital', () {
+        final blouse = buildItem(
+          id: 'blouse-1',
+          type: ItemType.blouse,
+          colors: [Colors.offWhite],
+        );
+
+        expect(fromGarment(blouse).title, 'Cream blouse');
       });
 
       test('has no brand in it when there is none', () {
-        expect(fromGarment(hoodie(brand: null)).title, 'hoodie charcoal');
+        expect(fromGarment(hoodie(brand: null)).title, 'Charcoal hoodie');
       });
 
       test('has no type in it when the type is just Other', () {
@@ -750,7 +784,7 @@ void main() {
       test('can still search for prices from the words it built', () {
         final listing = fromGarment(hoodie());
 
-        expect(listing.searchQueries!.depop, 'Nike hoodie charcoal');
+        expect(listing.searchQueries!.depop, 'Nike charcoal hoodie');
         expect(listing.searchQueries!.retail, 'Nike hoodie grey');
       });
     });

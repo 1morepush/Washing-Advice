@@ -134,8 +134,6 @@ String _tagText(String word) =>
 /// Color: Grey
 /// Material: 80% cotton, 20% polyester
 ///
-/// Ships within 5 days.
-///
 /// #nike #sweatshirt #vintage #crewneck #90s
 /// ```
 ///

@@ -445,7 +445,7 @@ final class ListingFacts {
     List<String> visibleFlaws = const [],
   })  : colors = List<String>.unmodifiable(colors),
         styleWords = List<String>.unmodifiable(styleWords),
-        visibleFlaws = List<String>.unmodifiable(visibleFlaws);
+        visibleFlaws = List<String>.unmodifiable(_realFlaws(visibleFlaws));
 
   /// Brand, item and the words a buyer searches for, most important first:
   /// `Nike vintage crewneck sweatshirt grey`. Becomes the first line of the
@@ -475,6 +475,10 @@ final class ListingFacts {
 
   /// What a buyer would complain about, said plainly. Empty when none is
   /// visible, which is not a promise that none exists.
+  ///
+  /// Never an entry that says there are none ("No visible flaws"): a model
+  /// asked for a list will sometimes answer with a sentence, and a sentence
+  /// that reached the description would tell a buyer something nobody checked.
   final List<String> visibleFlaws;
 
   final SearchQueries searchQueries;
@@ -879,8 +883,11 @@ final class Listing {
   /// an era, and flaws visible in the photographs. A brand somebody typed is
   /// not second-guessed from a picture of a sweatshirt.
   ///
-  /// Two parts of that are narrower than "the wardrobe's word is final":
+  /// Three parts of that are narrower than "the wardrobe's word is final":
   ///
+  /// * The **brand** is used only when a tag was scanned or the person typed
+  ///   it, as the fabric is. One a model guessed from the garment's photographs
+  ///   is filled from the [facts] like the rest, which weigh it by confidence.
   /// * The **fabric** is used only when a label or the person stated it. A
   ///   composition that is only a model's guess from a photograph is not
   ///   something to sell on, and it is left for the facts, which read it off a
@@ -897,7 +904,7 @@ final class Listing {
   /// garment, not a silhouette on transparency.
   ///
   /// Works when the description could not be fetched, with [facts] null: the
-  /// title is then built from the brand, the type and the first colour.
+  /// title is then built from the brand, the first colour and the type.
   factory Listing.fromGarment({
     required ListingId id,
     required DateTime now,
@@ -907,7 +914,15 @@ final class Listing {
     final suggestion = suggestCondition(item);
     final colourNames = colourNamesOf(item);
     final type = item.type.value;
-    final brand = _tidy(item.brand?.value) ?? facts?.brand?.value;
+    // Only a brand somebody read off a tag or typed is the wardrobe's word. One
+    // a model guessed from a picture is no better than the facts' own guess.
+    final stated = item.brand;
+    final statedBrand = stated != null &&
+            (stated.source == Provenance.tagScan ||
+                stated.source == Provenance.userEdited)
+        ? _tidy(stated.value)
+        : null;
+    final brand = statedBrand ?? facts?.brand?.value;
 
     var colours = depopColoursFor(colourNames);
     if (colours.isEmpty && facts != null) {
@@ -1469,20 +1484,36 @@ String _clip(String text) {
   return String.fromCharCodes(runes.take(SearchQueries.maxLength)).trimRight();
 }
 
-/// `Nike sweatshirt grey`: what a title is when nobody has read the photographs.
+/// `Nike grey sweatshirt`: what a title is when nobody has read the photographs.
 ///
-/// The type is left out when it is [ItemType.other] — "Nike other grey" is not
-/// a title.
+/// The brand first when there is one, then the colour, then the type, as a
+/// buyer says it. The type is left out when it is [ItemType.other] — "Nike grey
+/// other" is not a title.
 String _titleFrom({
   required String? brand,
   required ItemType type,
   required String? colour,
-}) =>
-    [
-      if (brand != null) brand,
-      if (type != ItemType.other) type.label.toLowerCase(),
-      if (colour != null) colour.toLowerCase(),
-    ].join(' ');
+}) {
+  final words = [
+    if (brand != null) brand,
+    if (colour != null) colour.toLowerCase(),
+    if (type != ItemType.other) type.label.toLowerCase(),
+  ].join(' ');
+  return words.isEmpty ? words : words[0].toUpperCase() + words.substring(1);
+}
+
+/// An entry that says there is nothing wrong: "None", "N/A", "No visible
+/// flaws", "Appears free of any damage — no defects".
+final RegExp _claimsNoFlaws = RegExp(
+  r'^(no|none|nil|n/?a)\b|\bno (visible )?(flaws|damage|defects)\b',
+  caseSensitive: false,
+);
+
+/// [flaws] without the entries that claim there are none.
+List<String> _realFlaws(List<String> flaws) => [
+      for (final flaw in flaws)
+        if (!_claimsNoFlaws.hasMatch(flaw.trim())) flaw,
+    ];
 
 /// [lines] without any that repeat an earlier one, ignoring case and spacing.
 List<String> _withoutRepeats(List<String> lines) {

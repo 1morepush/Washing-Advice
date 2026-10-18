@@ -121,6 +121,60 @@ void main() {
       expect(facts.visibleFlaws, isEmpty);
     });
 
+    group('drops a flaw that says there are none', () {
+      List<String> flawsOf(List<String> entries) => listingFactsFromJson(
+            describeResult(overrides: {'visibleFlaws': entries}),
+          ).visibleFlaws;
+
+      test('whatever the way it is put', () {
+        expect(
+          flawsOf([
+            'No visible flaws',
+            'none',
+            'None visible',
+            'NIL',
+            'N/A',
+            'n/a',
+            'NA',
+            'No damage',
+            'No defects noted',
+            'Appears to have no visible damage',
+            'The garment shows no flaws.',
+            'no',
+          ]),
+          isEmpty,
+        );
+      });
+
+      test('and keeps the real ones, in order', () {
+        expect(
+          flawsOf([
+            'small mark on the left cuff',
+            'No visible flaws',
+            'light pilling under the arms',
+          ]),
+          ['small mark on the left cuff', 'light pilling under the arms'],
+        );
+      });
+
+      test('but not a flaw that merely starts with the letters', () {
+        expect(
+          flawsOf(
+              ['Nicks on the zip', 'Nine loose threads', 'Noticeable fade']),
+          ['Nicks on the zip', 'Nine loose threads', 'Noticeable fade'],
+        );
+      });
+
+      test('also when a stored listing is read back', () {
+        final facts = ListingFacts.fromJson({
+          ...describeResult(),
+          'visibleFlaws': ['None', 'hole in the hem'],
+        });
+
+        expect(facts.visibleFlaws, ['hole in the hem']);
+      });
+    });
+
     test('reads an item type this build does not know as Other', () {
       final facts = listingFactsFromJson(
         describeResult(overrides: const {'itemType': 'poncho'}),

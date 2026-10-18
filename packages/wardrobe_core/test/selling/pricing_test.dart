@@ -95,7 +95,11 @@ void main() {
     });
 
     test('describe themselves in words', () {
-      expect(DepopFees.us.label, r'3.3% + $0.45');
+      expect(DepopFees.us.label, '3.3%\u00a0+\u00a0\$0.45');
+    });
+
+    test('never break across lines inside the words', () {
+      expect(DepopFees.us.label.contains(' '), isFalse);
     });
 
     test('describe other fees in words too', () {
@@ -107,9 +111,9 @@ void main() {
             asOfDay: 2,
           );
 
-      expect(fees(0.05, 30).label, r'5% + $0.30');
-      expect(fees(0.1, 0).label, r'10% + $0.00');
-      expect(fees(0.0325, 45).label, r'3.25% + $0.45');
+      expect(fees(0.05, 30).label, '5%\u00a0+\u00a0\$0.30');
+      expect(fees(0.1, 0).label, '10%\u00a0+\u00a0\$0.00');
+      expect(fees(0.0325, 45).label, '3.25%\u00a0+\u00a0\$0.45');
     });
 
     test('can be replaced when Depop changes them', () {

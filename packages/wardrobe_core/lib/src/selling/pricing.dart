@@ -82,11 +82,12 @@ final class DepopFees {
   /// What the seller is left with from a sale at [priceCents].
   int netCents(int priceCents) => priceCents - feeCents(priceCents);
 
-  /// The fee in words: `3.3% + $0.45`.
+  /// The fee in words: `3.3% + $0.45`, with non-breaking spaces, so that it
+  /// never wraps in the middle of a bracket on a narrow screen.
   String get label {
     var share = (percent * 100).toStringAsFixed(2);
     if (share.contains('.')) share = share.replaceFirst(RegExp(r'\.?0+$'), '');
-    return '$share% + ${formatUsd(fixedCents)}';
+    return '$share%\u00a0+\u00a0${formatUsd(fixedCents)}';
   }
 }
 
@@ -148,7 +149,7 @@ final class PriceSuggestion {
 const int _soldMarkupPercent = 12;
 
 /// Below this, in cents, a sale is hardly worth the trip to the post office.
-const int _worthwhileNetCents = 500;
+const int worthwhileNetCents = 500;
 
 /// Suggests a price for something, from the evidence there is.
 ///
@@ -273,7 +274,7 @@ PriceSuggestion suggestPrice({
 
   final net = listed == null ? null : fees.netCents(listed);
   var belowWorthwhile = false;
-  if (net != null && net < _worthwhileNetCents) {
+  if (net != null && net < worthwhileNetCents) {
     belowWorthwhile = true;
     reasons.add(
       "After Depop's fees you'd get ${formatUsd(net)} — "

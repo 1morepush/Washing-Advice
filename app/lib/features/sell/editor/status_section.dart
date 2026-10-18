@@ -17,6 +17,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../../widgets/notice.dart';
+import '../list/listing_when.dart';
 import 'edit_session.dart';
 import 'editor_text.dart';
 import 'fields.dart';
@@ -111,7 +112,7 @@ class _StatusSectionState extends ConsumerState<StatusSection> {
     _wide(
       FilledButton(
         onPressed: _changing ? null : () => _change(widget.session.markListed),
-        child: const Text("I've posted it on Depop"),
+        child: const Text("I've posted it"),
       ),
     ),
   ];
@@ -188,7 +189,7 @@ class _StatusSectionState extends ConsumerState<StatusSection> {
       if (soldAt != null) ...[
         const SizedBox(height: 4),
         QuietText(
-          'Sold ${MaterialLocalizations.of(context).formatShortDate(soldAt)}'
+          'Sold ${shortDate(soldAt)}'
           '${took == null ? '' : ' · listed for ${_days(took)}'}',
         ),
       ],
@@ -209,9 +210,10 @@ class _StatusSectionState extends ConsumerState<StatusSection> {
   static Widget _wide(Widget button) =>
       SizedBox(width: double.infinity, child: button);
 
-  /// `1 day`, `16 days`.
+  /// `under a day`, `1 day`, `16 days`.
   static String _days(Duration duration) {
     final days = duration.inDays;
+    if (days < 1) return 'under a day';
     return days == 1 ? '1 day' : '$days days';
   }
 }

@@ -20,6 +20,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../../core/theme.dart';
 import '../../../widgets/notice.dart';
+import '../list/listing_when.dart';
 import 'editor_text.dart';
 import 'fields.dart';
 import 'price_links.dart';
@@ -108,7 +109,7 @@ class _Found extends StatelessWidget {
             warning: true,
             text:
                 '${_whyNotNew(failedNew!)} — showing prices checked '
-                '${checked == null ? 'earlier' : MaterialLocalizations.of(context).formatShortDate(checked)}.',
+                '${checked == null ? 'earlier' : shortDate(checked)}.',
           ),
           const SizedBox(height: 12),
         ],

@@ -51,7 +51,11 @@ class ListingCard extends StatelessWidget {
                     // somebody has to find.
                     Text(
                       title.isEmpty ? 'Untitled draft' : title,
-                      maxLines: 3,
+                      // More lines as the text grows: at 320 wide and a large
+                      // text size a title three lines long is a few words.
+                      maxLines: MediaQuery.textScalerOf(context).scale(1) > 1.3
+                          ? 6
+                          : 3,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleSmall?.copyWith(
                         color: title.isEmpty

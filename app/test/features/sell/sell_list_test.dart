@@ -489,18 +489,18 @@ void main() {
       expect(note, findsOneWidget);
       expect(
         tester.widget<Text>(note).data,
-        allOf(contains('3.3% + \$0.45'), contains('17 October 2026')),
+        allOf(contains('3.3%\u00a0+\u00a0\$0.45'), contains('17 October 2026')),
       );
     });
   });
 
   group('starting a listing', () {
-    testWidgets('is a button that is always there', (tester) async {
+    testWidgets('is a floating button once there is a list, and not before', (
+      tester,
+    ) async {
       await h.open(tester);
-      expect(
-        find.widgetWithText(FloatingActionButton, 'New listing'),
-        findsOneWidget,
-      );
+      // The empty state has the two ways to start in buttons of its own.
+      expect(find.byType(FloatingActionButton), findsNothing);
 
       await have([draft('d', title: 'Nike crewneck', price: 3000)]);
       await tester.pumpAndSettle();
@@ -552,6 +552,7 @@ void main() {
     });
 
     testWidgets('dismissing the choice goes nowhere', (tester) async {
+      await have([draft('d', title: 'Nike crewneck', price: 3000)]);
       await h.open(tester);
       await tester.tap(find.text('New listing'));
       await tester.pumpAndSettle();
@@ -712,8 +713,22 @@ void main() {
       expectWhole(tester, find.text('Sell what you no longer wear'));
     });
 
-    testWidgets('the empty state\'s last button can be scrolled clear of the '
-        'New listing button', (tester) async {
+    testWidgets('a long title is given more lines at a large text size', (
+      tester,
+    ) async {
+      const title = "Vintage Nike grey crewneck sweatshirt women's medium";
+      await have([draft('d', title: title, price: 3000)]);
+      await h.open(tester, size: phone, textScale: scale);
+
+      final paragraph = tester.renderObject<RenderParagraph>(find.text(title));
+      expect(paragraph.didExceedMaxLines, isFalse);
+      expect(paragraph.maxLines, greaterThan(3));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the empty state has no floating button over its own', (
+      tester,
+    ) async {
       await h.open(tester, size: phone, textScale: scale);
       // As far as it goes.
       await tester.fling(
@@ -723,11 +738,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      expect(find.byType(FloatingActionButton), findsNothing);
+      // And the last button is where it can be tapped.
       final button = tester.getRect(
         find.widgetWithText(FilledButton, 'Choose from my wardrobe'),
       );
-      final floating = tester.getRect(find.byType(FloatingActionButton));
-      expect(button.overlaps(floating), isFalse);
+      expect(button.bottom, lessThanOrEqualTo(phone.height));
     });
 
     testWidgets('the two ways to start lay out', (tester) async {

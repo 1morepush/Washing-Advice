@@ -285,7 +285,7 @@ void main() {
       'Copy category',
       'What do these mean?',
       'Delete listing',
-      "I've posted it on Depop",
+      "I've posted it",
     ]) {
       final finder = find.text(label, skipOffstage: false);
       expect(finder, findsOneWidget, reason: label);

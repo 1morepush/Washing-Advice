@@ -663,7 +663,7 @@ void main() {
         expect(made.reused, isFalse);
         expect(made.listing.facts, isNull);
         // Built from the brand, the type and the colour the wardrobe holds.
-        expect(made.listing.title, 'Uniqlo sweatshirt charcoal');
+        expect(made.listing.title, 'Uniqlo charcoal sweatshirt');
         expect(made.listing.brand, 'Uniqlo');
         expect(made.listing.itemId, item.id);
         expect(await listings.byId(made.listing.id), made.listing);

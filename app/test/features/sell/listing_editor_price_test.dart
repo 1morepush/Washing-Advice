@@ -535,7 +535,7 @@ void main() {
 
       expect(
         find.text(
-          "The new search didn't answer — showing prices checked Oct 12, 2026.",
+          "The new search didn't answer — showing prices checked 12 Oct 2026.",
         ),
         findsOneWidget,
       );
@@ -600,7 +600,7 @@ void main() {
       expect(
         find.text(
           'The free price-search allowance is used up for now — showing '
-          'prices checked Oct 12, 2026.',
+          'prices checked 12 Oct 2026.',
         ),
         findsOneWidget,
       );
@@ -632,7 +632,7 @@ void main() {
       expect(
         find.text(
           'The new search found nothing — showing prices checked '
-          'Oct 12, 2026.',
+          '12 Oct 2026.',
         ),
         findsOneWidget,
       );
@@ -930,7 +930,9 @@ void main() {
         '30',
       );
       expect(
-        find.text("You get \$28.56 after Depop's fees (3.3% + \$0.45)"),
+        find.text(
+          "You get \$28.56 after Depop's fees (3.3%\u00a0+\u00a0\$0.45)",
+        ),
         findsOneWidget,
       );
       await saved(tester);
@@ -1113,14 +1115,16 @@ void main() {
       await type(tester, 'Your price', '30');
 
       expect(
-        find.text("You get \$28.56 after Depop's fees (3.3% + \$0.45)"),
+        find.text(
+          "You get \$28.56 after Depop's fees (3.3%\u00a0+\u00a0\$0.45)",
+        ),
         findsOneWidget,
       );
       await type(tester, 'Your price', '45.50');
       expect(
         find.text(
           "You get ${formatUsd(DepopFees.us.netCents(4550))} after Depop's "
-          'fees (3.3% + \$0.45)',
+          'fees (3.3%\u00a0+\u00a0\$0.45)',
         ),
         findsOneWidget,
       );
@@ -1136,7 +1140,7 @@ void main() {
       );
 
       expect(
-        find.text("Fees as of Oct 17, 2026 — check Depop's fee page."),
+        find.text("Fees as of 17 October 2026 — check Depop's fee page."),
         findsOneWidget,
       );
     });

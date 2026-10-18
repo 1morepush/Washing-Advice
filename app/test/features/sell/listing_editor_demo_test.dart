@@ -40,7 +40,7 @@ void main() {
     expect(find.text(r'Use $30.00'), findsOneWidget);
     // The price it is already priced at, and what is left of it.
     expect(
-      find.text("You get \$28.56 after Depop's fees (3.3% + \$0.45)"),
+      find.text("You get \$28.56 after Depop's fees (3.3%\u00a0+\u00a0\$0.45)"),
       findsOneWidget,
     );
     expect(find.text('Draft'), findsOneWidget);
@@ -102,7 +102,7 @@ void main() {
     expect(
       find.text(
         "You got ${formatUsd(DepopFees.us.netCents(3400))} after Depop's fees "
-        '(3.3% + \$0.45)',
+        '(3.3%\u00a0+\u00a0\$0.45)',
       ),
       findsOneWidget,
     );

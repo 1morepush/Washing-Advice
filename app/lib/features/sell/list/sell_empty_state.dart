@@ -21,11 +21,7 @@ import '../../../widgets/rinse_kit.dart';
 import 'new_listing_sheet.dart';
 
 class SellEmptyState extends StatelessWidget {
-  const SellEmptyState({required this.bottomClearance, super.key});
-
-  /// Room under the content for a floating button, so the last button can be
-  /// scrolled clear of it.
-  final double bottomClearance;
+  const SellEmptyState({super.key});
 
   static const _edge = 32.0;
 
@@ -36,19 +32,11 @@ class SellEmptyState extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) => SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(
-          _edge,
-          _edge,
-          _edge,
-          _edge + bottomClearance,
-        ),
+        padding: EdgeInsets.fromLTRB(_edge, _edge, _edge, _edge),
         child: ConstrainedBox(
           // Centred when it fits, scrolling when it does not.
           constraints: BoxConstraints(
-            minHeight: math.max(
-              0.0,
-              constraints.maxHeight - 2 * _edge - bottomClearance,
-            ),
+            minHeight: math.max(0.0, constraints.maxHeight - 2 * _edge),
           ),
           child: Center(
             child: Column(

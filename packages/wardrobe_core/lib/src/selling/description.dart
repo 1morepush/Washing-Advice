@@ -224,7 +224,7 @@ List<String> _detailLines(Listing listing, {required bool allFlaws}) {
   final material = listing.material?.trim();
   final measurements = [
     for (final m in listing.measurements.given)
-      '${m.label} ${_inches(m.inches)}"',
+      '${m.label} ${formatInches(m.inches)}"',
   ];
   final colours = [for (final c in listing.colours) c.label];
   final condition = _conditionLine(listing, allFlaws: allFlaws);
@@ -281,7 +281,9 @@ String? _withoutFullStop(String flaw) {
 }
 
 /// A measurement without trailing zeros: `21`, `27.5`, `27.25`.
-String _inches(double inches) {
+///
+/// How the description writes one, and so how the editor's box should show it.
+String formatInches(double inches) {
   final text = inches.toStringAsFixed(2);
   return text.replaceFirst(RegExp(r'\.?0+$'), '');
 }

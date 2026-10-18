@@ -13,6 +13,8 @@
 /// digits and never through a double, so $32.57 is 3257 and not 3256.99999.
 library;
 
+import 'package:wardrobe_core/wardrobe_core.dart' show formatInches;
+
 /// The dearest price a person can type, in cents: $100,000, the ceiling the
 /// price contract itself carries. Beyond it is a slip of the finger.
 const int maxTypedPriceCents = 10000000;
@@ -84,5 +86,4 @@ double? parseInchesInput(String text) {
 
 /// [inches] as the text of a measurement box, without trailing zeros: `21`,
 /// `27.5`, `27.25`. The same way the description writes it.
-String inchesInputText(double inches) =>
-    inches.toStringAsFixed(2).replaceFirst(RegExp(r'\.?0+$'), '');
+String inchesInputText(double inches) => formatInches(inches);

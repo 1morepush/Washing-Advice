@@ -142,11 +142,11 @@ void main() {
         size: tallScreen,
       );
 
-      await tester.tap(find.text("I've posted it on Depop"));
+      await tester.tap(find.text("I've posted it"));
       await tester.pumpAndSettle();
 
       expect(find.text('Listed today'), findsOneWidget);
-      expect(find.text("I've posted it on Depop"), findsNothing);
+      expect(find.text("I've posted it"), findsNothing);
       final stored = (await app.stored('draft-1'))!;
       expect(stored.status, ListingStatus.listed);
       expect(stored.listedAt, isNotNull);
@@ -162,7 +162,7 @@ void main() {
       );
 
       await tester.enterText(field('Title'), 'Typed, then posted');
-      await tester.tap(find.text("I've posted it on Depop"));
+      await tester.tap(find.text("I've posted it"));
       await tester.pumpAndSettle();
 
       final stored = (await app.stored('draft-1'))!;
@@ -176,7 +176,7 @@ void main() {
       await openEditor(tester, listing: listed(days: 3), size: tallScreen);
 
       expect(find.text('Listed 3 days ago'), findsOneWidget);
-      expect(find.text("I've posted it on Depop"), findsNothing);
+      expect(find.text("I've posted it"), findsNothing);
       expect(find.text('Open Depop'), findsNothing);
     });
 
@@ -228,7 +228,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Draft'), findsOneWidget);
-      expect(find.text("I've posted it on Depop"), findsOneWidget);
+      expect(find.text("I've posted it"), findsOneWidget);
       final stored = (await app.stored('draft-1'))!;
       expect(stored.status, ListingStatus.draft);
       expect(stored.listedAt, isNull);
@@ -254,7 +254,7 @@ void main() {
         find.descendant(
           of: find.byType(AlertDialog),
           matching: find.text(
-            "You get \$28.56 after Depop's fees (3.3% + \$0.45)",
+            "You get \$28.56 after Depop's fees (3.3%\u00a0+\u00a0\$0.45)",
           ),
         ),
         findsOneWidget,
@@ -274,7 +274,7 @@ void main() {
           of: find.byType(AlertDialog),
           matching: find.text(
             "You get ${formatUsd(DepopFees.us.netCents(2700))} after "
-            "Depop's fees (3.3% + \$0.45)",
+            "Depop's fees (3.3%\u00a0+\u00a0\$0.45)",
           ),
         ),
         findsOneWidget,
@@ -391,15 +391,37 @@ void main() {
       expect(
         find.text(
           "You got ${formatUsd(DepopFees.us.netCents(3400))} after Depop's "
-          'fees (3.3% + \$0.45)',
+          'fees (3.3%\u00a0+\u00a0\$0.45)',
         ),
         findsOneWidget,
       );
       expect(
-        find.text('Sold Sep 25, 2026 · listed for 16 days'),
+        find.text('Sold 25 Sep 2026 · listed for 16 days'),
         findsOneWidget,
       );
       expect(find.text('It sold'), findsNothing);
+    });
+
+    testWidgets('sold the day it was posted says under a day, not 0 days', (
+      tester,
+    ) async {
+      await openEditor(
+        tester,
+        listing: sampleListing(
+          status: ListingStatus.sold,
+          listedAt: DateTime.utc(2026, 9, 25, 9),
+          soldAt: DateTime.utc(2026, 9, 25, 12),
+          soldPriceCents: 3400,
+          priceCents: 3800,
+        ),
+        size: tallScreen,
+      );
+
+      expect(
+        find.text('Sold 25 Sep 2026 · listed for under a day'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('0 days'), findsNothing);
     });
 
     testWidgets('can be taken back, after asking', (tester) async {
@@ -584,7 +606,7 @@ void main() {
         size: tallScreen,
       );
 
-      await tester.tap(find.text("I've posted it on Depop"));
+      await tester.tap(find.text("I've posted it"));
       await tester.pumpAndSettle();
       expect(find.text('Listed today'), findsOneWidget);
 

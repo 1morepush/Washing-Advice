@@ -23,16 +23,10 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../../widgets/notice.dart';
 import '../../../widgets/rinse_kit.dart';
+import '../list/listing_when.dart';
 import 'amount_input.dart';
 import 'edit_session.dart';
 import 'fields.dart';
-
-/// Below this, in cents, what is left of a sale is hardly worth the postage.
-///
-/// The same line the core draws for its own suggestion
-/// (`PriceSuggestion.belowWorthwhileNet`), applied here to the price the person
-/// typed, which the core never sees.
-const int worthwhileNetCents = 500;
 
 /// What the garment cost, in cents, when it was bought in US dollars; else
 /// null.
@@ -207,7 +201,7 @@ class YourPrice extends StatelessWidget {
           const SizedBox(height: 2),
           QuietText(
             'Fees as of '
-            '${MaterialLocalizations.of(context).formatShortDate(fees.asOf)}'
+            '${calendarDate(fees.asOf)}'
             " — check Depop's fee page.",
           ),
         ] else

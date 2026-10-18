@@ -75,14 +75,20 @@ class _SellScreenState extends ConsumerState<SellScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Sell')),
-      floatingActionButton: FloatingActionButton.extended(
-        // Its own tag: the Wardrobe's button is on the screen next door, and two
-        // heroes sharing a tag collide when a screen is pushed over both.
-        heroTag: 'new-listing',
-        onPressed: () => chooseHowToStartListing(context),
-        icon: const Icon(Icons.add),
-        label: const Text('New listing'),
-      ),
+      // Only once there is a list to add to. The empty state offers the same
+      // two ways to start in its own buttons, and a floating one over them at
+      // 320 wide covers the second.
+      floatingActionButton: (listings.valueOrNull?.isNotEmpty ?? false)
+          ? FloatingActionButton.extended(
+              // Its own tag: the Wardrobe's button is on the screen next door,
+              // and two heroes sharing a tag collide when a screen is pushed
+              // over both.
+              heroTag: 'new-listing',
+              onPressed: () => chooseHowToStartListing(context),
+              icon: const Icon(Icons.add),
+              label: const Text('New listing'),
+            )
+          : null,
       body: listings.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         // Shown, not swallowed: a Sell tab that read as empty because the
@@ -97,7 +103,7 @@ class _SellScreenState extends ConsumerState<SellScreen> {
           error: error,
         ),
         data: (all) => all.isEmpty
-            ? const SellEmptyState(bottomClearance: _floatingButtonClearance)
+            ? const SellEmptyState()
             : _Listings(groups: ListingGroups.of(all), now: now),
       ),
     );

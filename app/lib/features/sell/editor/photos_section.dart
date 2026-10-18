@@ -129,7 +129,7 @@ class _PhotosSectionState extends ConsumerState<PhotosSection> {
         ),
         if (full) ...[
           const SizedBox(height: 8),
-          const QuietText('Depop takes up to 8 photos.'),
+          QuietText('Depop takes up to $depopPhotoLimit photos.'),
         ],
       ],
     );

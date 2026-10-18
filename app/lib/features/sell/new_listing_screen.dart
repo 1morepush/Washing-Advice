@@ -316,12 +316,22 @@ class _WriteBar extends StatelessWidget {
               ),
             ),
           ),
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton.icon(
-            onPressed: enabled ? onWrite : null,
-            icon: const Icon(Icons.auto_awesome_outlined),
-            label: const Text('Write the listing'),
+        // The bar sits over the list for good, so at a large text size it is
+        // kept to a button's own height: the label stops growing at 1.3 times,
+        // and the hint above it is a line, not a paragraph.
+        MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: MediaQuery.textScalerOf(
+              context,
+            ).clamp(maxScaleFactor: 1.3),
+          ),
+          child: SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: enabled ? onWrite : null,
+              icon: const Icon(Icons.auto_awesome_outlined),
+              label: const Text('Write the listing'),
+            ),
           ),
         ),
       ],

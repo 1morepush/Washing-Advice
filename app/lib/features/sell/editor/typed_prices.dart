@@ -73,7 +73,14 @@ class TypedPrices extends StatelessWidget {
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('These sold'),
+          // A row label at the weight of the others on this page, not the
+          // list tile's heavier heading.
+          title: Text(
+            'These sold',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
+          ),
           subtitle: const Text(
             'Switch on if these are what things sold for, not asking prices. '
             'Sold prices count for more.',

@@ -981,10 +981,10 @@ void main() {
           expect(await listings.byId(found.id), lookup.listing);
         });
 
-        test('replaces them when it answered, and found nothing', () async {
-          // An answer is not a failure. The server looked and nothing usable
-          // came back, which is something to show, and it is not the server
-          // being asleep.
+        test('keeps them when it answered ok, and found nothing', () async {
+          // The server says ok for a search that ran and came back empty. That
+          // is not better than prices the listing already holds, and a person
+          // who looks again to refresh must not lose them to it.
           gateway.search = PriceSearch(
             status: PriceSearchStatus.ok,
             searchedAt: DateTime.utc(2026, 10, 18, 9),
@@ -997,10 +997,59 @@ void main() {
 
           final lookup = await controller().searchPrices(found);
 
+          expect(lookup.listing, found);
+          expect(lookup.failedWith, PriceSearchStatus.ok);
+          expect(await listings.byId(found.id), found);
+        });
+
+        test('replaces them when it answered with only shop prices', () async {
+          // Half an answer is still an answer with something in it.
+          gateway.search = PriceSearch(
+            status: PriceSearchStatus.ok,
+            searchedAt: DateTime.utc(2026, 10, 18, 9),
+            queries: found.priceSearch!.queries,
+            retail: [
+              RetailReference(
+                title: 'Nike Club Fleece crew sweatshirt',
+                url: Uri.parse('https://www.nike.com/t/club-fleece-crew'),
+                priceCents: 6500,
+                match: ComparableMatch.same,
+              ),
+            ],
+          );
+          expect(gateway.search.retail, isNotEmpty);
+
+          final lookup = await controller().searchPrices(found);
+
           expect(lookup.failedWith, isNull);
-          expect(lookup.listing.priceSearch!.status, PriceSearchStatus.ok);
+          expect(lookup.listing.priceSearch, gateway.search);
           expect(lookup.listing.priceSearch!.comparables, isEmpty);
         });
+
+        test(
+          'replaces an empty answer with another, whatever it holds',
+          () async {
+            // Nothing worth keeping is held, so the newest answer is the one.
+            final empty = PriceSearch(
+              status: PriceSearchStatus.ok,
+              searchedAt: DateTime.utc(2026, 10, 10, 9),
+              queries: found.priceSearch!.queries,
+            );
+            final bare = await controller().save(
+              found.copyWith(priceSearch: empty),
+            );
+            gateway.search = PriceSearch(
+              status: PriceSearchStatus.ok,
+              searchedAt: DateTime.utc(2026, 10, 18, 9),
+              queries: found.priceSearch!.queries,
+            );
+
+            final lookup = await controller().searchPrices(bare);
+
+            expect(lookup.failedWith, isNull);
+            expect(lookup.listing.priceSearch, gateway.search);
+          },
+        );
 
         test(
           'throws, and keeps them, when the server cannot be reached',

@@ -69,6 +69,19 @@ class PriceResults extends StatelessWidget {
   }
 }
 
+/// What went wrong with a new search, in the words of the status it ended with.
+///
+/// [PriceSearchStatus.ok] is a search that ran and found nothing: the earlier
+/// prices were kept because they are better than none.
+String _whyNotNew(PriceSearchStatus status) => switch (status) {
+  PriceSearchStatus.ok => 'The new search found nothing',
+  PriceSearchStatus.quotaExceeded =>
+    'The free price-search allowance is used up for now',
+  PriceSearchStatus.notConfigured =>
+    "Live price search isn't set up on this server",
+  PriceSearchStatus.unavailable => "The new search didn't answer",
+};
+
 /// A search that ran: when, and what it found.
 class _Found extends StatelessWidget {
   const _Found({required this.search, required this.failedNew});
@@ -94,7 +107,7 @@ class _Found extends StatelessWidget {
             icon: Icons.cloud_off_outlined,
             warning: true,
             text:
-                "The new search didn't answer — showing prices checked "
+                '${_whyNotNew(failedNew!)} — showing prices checked '
                 '${checked == null ? 'earlier' : MaterialLocalizations.of(context).formatShortDate(checked)}.',
           ),
           const SizedBox(height: 12),

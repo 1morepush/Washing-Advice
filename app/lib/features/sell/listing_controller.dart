@@ -48,7 +48,8 @@ class GarmentNotFound implements Exception {
 /// [failedWith] is set only when the look-up did not come back with prices and
 /// **the listing already held some**: the earlier ones were kept, and this is
 /// the status of the answer that was not, so that a screen can say the new
-/// search failed instead of showing old prices as though they were new. Null
+/// search failed instead of showing old prices as though they were new. It is
+/// [PriceSearchStatus.ok] when the search ran and found nothing. Null
 /// for every other outcome, including a first look-up that failed, because
 /// then the failure is what the listing now holds and says for itself.
 typedef PriceLookup = ({Listing listing, PriceSearchStatus? failedWith});
@@ -222,9 +223,10 @@ class ListingController {
   /// whatever the listing found last time.
   ///
   /// **With one exception: prices are never lost to a failure.** When the
-  /// listing already holds a search that found prices ([PriceSearchStatus.ok])
-  /// and the new answer is any other status, the earlier search stays as it is
-  /// and nothing is saved. The server being asleep, or the free allowance
+  /// listing already holds a search that found prices ([PriceSearchStatus.ok]
+  /// with a comparable or a shop price) and the new answer did not, whether by
+  /// another status or by an `ok` with nothing in it, the earlier search stays
+  /// as it is and nothing is saved. The server being asleep, or the free allowance
   /// being spent, says nothing about what the listing sold for last week, and
   /// a person who looks again to refresh a price should not lose the evidence
   /// they had. [PriceLookup.failedWith] says what the new answer was.
@@ -250,9 +252,7 @@ class ListingController {
     );
 
     final held = listing.priceSearch;
-    if (held != null &&
-        held.status == PriceSearchStatus.ok &&
-        search.status != PriceSearchStatus.ok) {
+    if (held != null && _foundPrices(held) && !_foundPrices(search)) {
       return (listing: listing, failedWith: search.status);
     }
 
@@ -261,6 +261,16 @@ class ListingController {
     );
     return (listing: saved, failedWith: null);
   }
+
+  /// Whether [search] answered with something to show: it ran, and came back
+  /// with at least one comparable or one shop price.
+  ///
+  /// The server says `ok` for a search that ran and found nothing usable, and
+  /// for a half-answered one, so the status alone is no measure of whether a
+  /// search is worth holding on to.
+  static bool _foundPrices(PriceSearch search) =>
+      search.status == PriceSearchStatus.ok &&
+      (search.comparables.isNotEmpty || search.retail.isNotEmpty);
 
   /// Keeps the two search phrases the person wrote, to be used from now on.
   ///

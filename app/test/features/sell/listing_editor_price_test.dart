@@ -582,11 +582,73 @@ void main() {
       await saved(tester);
     });
 
+    testWidgets('names the real reason: the allowance used up', (tester) async {
+      final gateway = FakePriceGateway(
+        search: sampleSearch(status: PriceSearchStatus.quotaExceeded),
+      );
+      await openEditor(
+        tester,
+        listing: sampleListing(
+          priceSearch: sampleSearch(at: DateTime.utc(2026, 10, 12, 9)),
+        ),
+        gateway: gateway,
+        size: tallScreen,
+      );
+
+      await lookUp(tester);
+
+      expect(
+        find.text(
+          'The free price-search allowance is used up for now — showing '
+          'prices checked Oct 12, 2026.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining("didn't answer"), findsNothing);
+      await saved(tester);
+    });
+
+    testWidgets('keeps the earlier prices when the new search found nothing, '
+        'and says so', (tester) async {
+      final listing = sampleListing(
+        priceSearch: sampleSearch(at: DateTime.utc(2026, 10, 12, 9)),
+      );
+      final gateway = FakePriceGateway(
+        search: sampleSearch(
+          comparables: const [],
+          retail: const [],
+          at: DateTime.utc(2026, 10, 18, 9),
+        ),
+      );
+      final app = await openEditor(
+        tester,
+        listing: listing,
+        gateway: gateway,
+        size: tallScreen,
+      );
+
+      await lookUp(tester);
+
+      expect(
+        find.text(
+          'The new search found nothing — showing prices checked '
+          'Oct 12, 2026.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Vintage Nike grey crewneck sweatshirt'),
+        findsOneWidget,
+      );
+      expect((await app.stored('draft-1'))!.priceSearch, listing.priceSearch);
+      await saved(tester);
+    });
+
     testWidgets('stops saying the new search failed when the next one works', (
       tester,
     ) async {
       final gateway = FakePriceGateway(
-        search: sampleSearch(status: PriceSearchStatus.quotaExceeded),
+        search: sampleSearch(status: PriceSearchStatus.unavailable),
       );
       await openEditor(
         tester,

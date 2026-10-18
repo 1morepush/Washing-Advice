@@ -765,13 +765,7 @@ void main() {
       await h.addGarment('a');
       h.gateway.hold = Completer<void>();
 
-      await sellThis(
-        tester,
-        'a',
-        size: phone,
-        textScale: scale,
-        settle: false,
-      );
+      await sellThis(tester, 'a', size: phone, textScale: scale, settle: false);
       await tester.pump(wakingAfter + const Duration(seconds: 1));
 
       expect(find.textContaining('The server sleeps'), findsOneWidget);

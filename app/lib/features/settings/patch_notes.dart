@@ -99,6 +99,51 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.34.0',
+    name: 'Fold and Sold',
+    date: DateTime.utc(2026, 10, 17),
+    headline: 'A Sell tab that writes your Depop listing and prices it',
+    changes: [
+      'Sell is a new place on the bottom bar, in the seat Ask had. Ask has '
+          'moved into More, first in the list, and an old link to it still '
+          'opens it.',
+      'Start a listing from photos or from a garment you own. A checklist '
+          'asks for the cover, the back, the brand tag and the size label, '
+          'with a line on why a buyer wants each, then any flaws and anything '
+          'else, up to the eight photos Depop takes. Or tap Sell this on a '
+          'garment, or Choose from my wardrobe, which shows what you have '
+          'worn least first. A garment brings its brand, size, fabric and '
+          'colours with it, and a Depop condition is suggested from how often '
+          'it has been worn, with the reason. If the server cannot read the '
+          'photos you can try again or write the listing yourself, and the '
+          'photos you took are kept.',
+      'The listing is laid out like Depop\'s form, with the description ready '
+          'to paste and the same counters Depop shows: characters out of '
+          '1,000 and hashtags out of 5. It always owns up to flaws and never '
+          'says there are none. Nothing is posted for you, because Depop has '
+          'no way to be told to: you copy it in.',
+      'It looks up a price. Look up prices searches Depop and the shops that '
+          'sell it new, and lists each match with its price, whether it sold '
+          'or is still for sale, whether it is the same item or a similar '
+          'one, and a link to check. A suggested price follows, with the '
+          'reasons, and what you would get after Depop\'s fees: \$30 leaves '
+          '\$28.56. Links that search Depop, eBay\'s sold listings and Google '
+          'Shopping are always there, and you can type in prices you found '
+          'yourself.',
+      'Live prices need a free search key on the server (tavily.com, no card, '
+          '1,000 searches a month, which is about 500 listings). Until it is '
+          'set you get the links to check yourself, and everything else '
+          'works.',
+      'Your listings are kept as Drafts, Listed and Sold, each with its price '
+          'and what is left after fees. One that has been up for two weeks '
+          'says so on its card, with the advice to drop the price a little or '
+          'relist it so it shows as new. Sold shows a running total. When '
+          'something sells, say what for, and Mark the garment as sold takes '
+          'it out of your wardrobe in one tap and keeps it in its history. '
+          'Listings stay on the phone and are not synced.',
+    ],
+  ),
+  Release(
     version: '0.33.0',
     name: 'Spot Check',
     date: DateTime.utc(2026, 10, 16),

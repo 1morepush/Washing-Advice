@@ -298,7 +298,7 @@ void main() {
       );
     });
 
-    testWidgets('replaces itself, so Back from the listing is Sell', (
+    testWidgets('is left behind, so Back from the listing is Sell', (
       tester,
     ) async {
       await h.addGarment('b', name: 'Never worn shirt', worn: 0);

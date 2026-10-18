@@ -27,14 +27,21 @@ import 'listing_wait.dart';
 /// `pushReplacement` is not used because on the web it adds a history entry
 /// rather than replacing one, which leaves the finished screen one Back away.
 void leaveTaskFor(BuildContext context, String location) {
-  _leaveTask(GoRouter.of(context), Navigator.of(context).canPop(), location);
+  unawaited(
+    _leaveTask(GoRouter.of(context), Navigator.of(context).canPop(), location),
+  );
 }
 
-void _leaveTask(GoRouter router, bool canPop, String location) {
+Future<void> _leaveTask(GoRouter router, bool canPop, String location) async {
   if (canPop) {
     router.pop();
+    // A frame, so the address bar has been told about Sell before the listing
+    // is pushed. Pushed in the same breath, the browser is told only about the
+    // listing, and its history keeps the screen that was just left.
+    await WidgetsBinding.instance.endOfFrame;
   } else {
     router.go('/sell');
+    await WidgetsBinding.instance.endOfFrame;
   }
   unawaited(router.push<void>(location));
 }
@@ -91,7 +98,7 @@ Future<void> startListingForGarment(
 
     final location = '/listing/${made.listing.id.value}';
     if (fromTask) {
-      _leaveTask(router, canPop, location);
+      unawaited(_leaveTask(router, canPop, location));
     } else {
       unawaited(router.push<void>(location));
     }

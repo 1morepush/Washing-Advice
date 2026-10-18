@@ -7,6 +7,7 @@
 /// carries its provenance.
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -19,6 +20,8 @@ import '../../core/theme.dart';
 import '../../widgets/back_navigation.dart';
 import '../../widgets/item_thumbnail.dart';
 import '../../widgets/status_message.dart';
+import '../sell/listing_controller.dart';
+import '../sell/start/start_listing.dart';
 import 'condition_sheet.dart';
 import 'item_details.dart';
 import 'report_wear_sheet.dart';
@@ -85,8 +88,12 @@ class ItemDetailScreen extends ConsumerWidget {
               onSelected: (choice) => switch (choice) {
                 'wear' => showReportWearSheet(context, value),
                 'check' => showConditionSheet(context, value),
-                'sell' => context.push<void>(
-                  '/sell/from-wardrobe/${value.id.value}',
+                'sell' => unawaited(
+                  startListingForGarment(
+                    context,
+                    ref.read(listingControllerProvider),
+                    value.id,
+                  ),
                 ),
                 _ => _confirmAndDelete(context, ref, value),
               },

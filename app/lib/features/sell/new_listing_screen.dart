@@ -14,15 +14,14 @@
 /// the same photographs, from a blank draft. Either way the photographs taken are
 /// never taken again.
 ///
-/// The screen replaces itself with the editor, so Back from the editor is Sell
-/// and not a camera pointing at nothing.
+/// The screen leaves for the editor, so Back from the editor is Sell and not a
+/// camera pointing at nothing.
 library;
 
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
@@ -35,6 +34,7 @@ import 'listing_controller.dart';
 import 'start/listing_wait.dart';
 import 'start/photo_checklist.dart';
 import 'start/photo_set.dart';
+import 'start/start_listing.dart';
 
 /// Where the person is: taking photographs, waiting on the server, or told it
 /// could not read them.
@@ -71,7 +71,11 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
   /// Whether the stored photographs now belong to a listing, or have been let go.
   bool _handedOver = false;
 
-  ListingController get _controller => ref.read(listingControllerProvider);
+  /// Read once and kept: a request that outlives the screen still has to reach
+  /// the controller, and a disposed screen cannot read a provider.
+  late final ListingController _controller = ref.read(
+    listingControllerProvider,
+  );
 
   // --- Photographs --------------------------------------------------------
 
@@ -183,23 +187,30 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
   }
 
   void _fail(String message, {required bool retryable}) {
-    if (!mounted) return;
+    if (!mounted) {
+      // Left while it was writing, and nobody is here to be offered a retry.
+      // The photographs belong to no listing and never will, so they go the way
+      // they go when the failure screen is backed out of.
+      _discard();
+      return;
+    }
     setState(() {
       _phase = _Phase.failed;
       _failure = (message: message, retryable: retryable);
     });
   }
 
-  /// Replaces this screen with the draft.
+  /// Leaves this screen for the draft.
   ///
-  /// Replaces and does not push, so that Back from the editor lands on Sell and
-  /// not on a checklist whose photographs have just been made into a listing.
+  /// Sell is what is beneath the draft, so that Back from the editor lands there
+  /// and not on a checklist whose photographs have just been made into a
+  /// listing. See [leaveTaskFor] for why this is not a replacement.
   void _open(Listing listing) {
     // The listing exists whether or not anyone is still here to see it, and the
     // photographs are now its own.
     _handedOver = true;
     if (!mounted) return;
-    context.pushReplacement('/listing/${listing.id.value}');
+    leaveTaskFor(context, '/listing/${listing.id.value}');
   }
 
   /// Backing out of the failure screen, which gives the photographs up.
@@ -210,14 +221,15 @@ class _NewListingScreenState extends ConsumerState<NewListingScreen> {
   /// Not while the server is still reading them: that listing is about to exist,
   /// and will want them.
   void _leave() {
+    if (_phase != _Phase.failed) return;
+    _discard();
+  }
+
+  /// Deletes the stored photographs, once, unless a listing has them.
+  void _discard() {
     final id = _id;
     final stored = _stored;
-    if (_phase != _Phase.failed ||
-        _handedOver ||
-        id == null ||
-        stored == null) {
-      return;
-    }
+    if (_handedOver || id == null || stored == null) return;
     _handedOver = true;
     unawaited(
       _controller.delete(

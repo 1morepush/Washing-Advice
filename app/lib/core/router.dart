@@ -21,11 +21,11 @@ import '../features/scan/care_tag_screen.dart';
 import '../features/scan/retake_screen.dart';
 import '../features/scan/scan_screen.dart';
 import '../features/scan/spread_screen.dart';
+import '../features/sell/list/new_listing_sheet.dart' show newFromWardrobeRoute;
 import '../features/sell/listing_editor_screen.dart';
 import '../features/sell/new_listing_screen.dart';
 import '../features/sell/pick_garment_screen.dart';
 import '../features/sell/sell_screen.dart';
-import '../features/sell/start_from_garment_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/stains/stain_screen.dart';
 import '../features/wardrobe/edit_item_screen.dart';
@@ -177,10 +177,13 @@ GoRouter _router(String initialLocation) => GoRouter(
       path: '/sell/from-wardrobe',
       builder: (_, _) => const PickGarmentScreen(),
     ),
+    // An address from before listings were started from the screen that asked
+    // for them. It does no work: starting one is done behind a dialog, once, by
+    // the garment's page or the picker, and a route that did it on entry made
+    // the browser's Back go round in circles. The picker is where it leads.
     GoRoute(
       path: '/sell/from-wardrobe/:id',
-      builder: (_, state) =>
-          StartFromGarmentScreen(id: ItemId(state.pathParameters['id']!)),
+      redirect: (_, _) => newFromWardrobeRoute,
     ),
     GoRoute(
       path: '/listing/:id',

@@ -5,13 +5,15 @@
 /// favourites. Each row says how often the garment has been worn, since that is
 /// why it is where it is.
 ///
-/// Picking one replaces this screen with the one that starts its listing, so
-/// Back from the editor that follows is Sell and not this list again.
+/// Picking one starts its listing from here, behind a dialog, and leaves this
+/// screen once the editor is ready, so Back from the editor is Sell and not
+/// this list again.
 library;
+
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../core/providers.dart';
@@ -22,7 +24,9 @@ import '../../widgets/status_message.dart';
 import 'list/listing_clock.dart';
 import 'list/new_listing_sheet.dart' show newFromPhotosRoute;
 import 'start/garment_choice_tile.dart';
+import 'listing_controller.dart';
 import 'start/least_worn.dart';
+import 'start/start_listing.dart';
 
 class PickGarmentScreen extends ConsumerWidget {
   const PickGarmentScreen({super.key});
@@ -51,14 +55,14 @@ class PickGarmentScreen extends ConsumerWidget {
   }
 }
 
-class _Garments extends StatelessWidget {
+class _Garments extends ConsumerWidget {
   const _Garments({required this.items, required this.now});
 
   final List<WardrobeItem> items;
   final DateTime now;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
     return ListView.separated(
@@ -88,10 +92,16 @@ class _Garments extends StatelessWidget {
           key: ValueKey(item.id.value),
           item: item,
           now: now,
-          // Replaces and does not push: the picker has done its job, and a
-          // listing's Back should land on Sell.
-          onTap: () =>
-              context.pushReplacement('/sell/from-wardrobe/${item.id.value}'),
+          // Leaves the picker behind once the listing is ready: it has done
+          // its job, and a listing's Back should land on Sell.
+          onTap: () => unawaited(
+            startListingForGarment(
+              context,
+              ref.read(listingControllerProvider),
+              item.id,
+              fromTask: true,
+            ),
+          ),
         );
       },
     );
@@ -133,7 +143,7 @@ class _NothingToChoose extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: () => context.pushReplacement(newFromPhotosRoute),
+                onPressed: () => leaveTaskFor(context, newFromPhotosRoute),
                 icon: const Icon(Icons.photo_camera_outlined),
                 label: const Text('Photograph something to sell'),
               ),

@@ -34,7 +34,6 @@ import 'package:washing_advice/features/sell/listing_editor_screen.dart';
 import 'package:washing_advice/features/sell/new_listing_screen.dart';
 import 'package:washing_advice/features/sell/pick_garment_screen.dart';
 import 'package:washing_advice/features/sell/sell_screen.dart';
-import 'package:washing_advice/features/sell/start_from_garment_screen.dart';
 import 'package:washing_advice/features/settings/settings_screen.dart';
 import 'package:washing_advice/features/wardrobe/item_detail_screen.dart';
 import 'package:washing_advice/features/wardrobe/wardrobe_screen.dart';
@@ -499,17 +498,6 @@ void main() {
       );
     });
 
-    testWidgets('/sell/from-wardrobe/:id', (tester) async {
-      // A garment that is not there: for one that is, the screen does its work
-      // and replaces itself with the listing, which is tested with the screen.
-      await opensAndLeaves(
-        tester,
-        location: '/sell/from-wardrobe/ghost',
-        screen: StartFromGarmentScreen,
-        parent: PickGarmentScreen,
-      );
-    });
-
     testWidgets('/listing/:id', (tester) async {
       await opensAndLeaves(
         tester,
@@ -519,17 +507,12 @@ void main() {
       );
     });
 
-    testWidgets('the garment in the address reaches its screen', (
+    testWidgets('an old address for starting from a garment is the picker', (
       tester,
     ) async {
       await open(tester, location: '/sell/from-wardrobe/demo-jumper');
 
-      expect(
-        tester
-            .widget<StartFromGarmentScreen>(find.byType(StartFromGarmentScreen))
-            .id,
-        const ItemId('demo-jumper'),
-      );
+      expect(find.byType(PickGarmentScreen), findsOneWidget);
     });
 
     testWidgets('the listing in the address reaches its screen', (

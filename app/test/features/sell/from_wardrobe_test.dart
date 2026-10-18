@@ -22,7 +22,6 @@ import 'package:washing_advice/features/sell/new_listing_screen.dart';
 import 'package:washing_advice/features/sell/pick_garment_screen.dart';
 import 'package:washing_advice/features/sell/sell_screen.dart';
 import 'package:washing_advice/features/sell/start/least_worn.dart';
-import 'package:washing_advice/features/sell/start_from_garment_screen.dart';
 import 'package:washing_advice/features/wardrobe/item_detail_screen.dart';
 
 import '../../support/fixtures.dart';
@@ -57,6 +56,30 @@ void main() {
       tester.widget<ListingEditorScreen>(find.byType(ListingEditorScreen)).id,
       id,
     );
+  }
+
+  /// "Sell this" on the garment's own page, the way a person reaches it.
+  Future<void> sellThis(
+    WidgetTester tester,
+    String id, {
+    Size size = const Size(400, 800),
+    double textScale = 1,
+    bool settle = true,
+  }) async {
+    await h.open(
+      tester,
+      location: '/item/$id',
+      size: size,
+      textScale: textScale,
+    );
+    await tester.tap(find.byType(PopupMenuButton<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sell this'));
+    if (settle) {
+      await tester.pumpAndSettle();
+    } else {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
   }
 
   group('least worn first', () {
@@ -287,7 +310,6 @@ void main() {
       await tester.tap(find.text('Never worn shirt'));
       await tester.pumpAndSettle();
       expect(find.byType(PickGarmentScreen), findsNothing);
-      expect(find.byType(StartFromGarmentScreen), findsNothing);
       await tester.tap(find.byType(BackButton));
       await tester.pumpAndSettle();
 
@@ -332,7 +354,7 @@ void main() {
     testWidgets('makes the garment\'s listing and opens it', (tester) async {
       final coat = await h.addGarment('a', name: 'Wool coat');
 
-      await h.open(tester, location: '/sell/from-wardrobe/a');
+      await sellThis(tester, 'a');
 
       expectOnEditor(tester, const ListingId('listing-1'));
       final listing = (await h.listings.all()).single;
@@ -351,7 +373,7 @@ void main() {
       await h.addGarment('a');
       h.gateway.hold = Completer<void>();
 
-      await h.open(tester, location: '/sell/from-wardrobe/a', settle: false);
+      await sellThis(tester, 'a', settle: false);
       expect(h.gateway.described, hasLength(1));
       // A rebuild — a phone turned, a text size changed — is not a new request.
       tester.view.physicalSize = const Size(800, 400);
@@ -371,7 +393,7 @@ void main() {
       await h.addGarment('a');
       h.gateway.hold = Completer<void>();
 
-      await h.open(tester, location: '/sell/from-wardrobe/a', settle: false);
+      await sellThis(tester, 'a', settle: false);
 
       expect(find.text('Starting your listing…'), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -398,7 +420,7 @@ void main() {
       final coat = await h.addGarment('a', name: 'Wool coat');
       h.gateway.describeError = asleep;
 
-      await h.open(tester, location: '/sell/from-wardrobe/a');
+      await sellThis(tester, 'a');
 
       expectOnEditor(tester, const ListingId('listing-1'));
       expect(
@@ -420,7 +442,7 @@ void main() {
     ) async {
       await h.addGarment('a', photo: false);
 
-      await h.open(tester, location: '/sell/from-wardrobe/a');
+      await sellThis(tester, 'a');
 
       expectOnEditor(tester, const ListingId('listing-1'));
       expect(find.textContaining('Could not read the photos'), findsOneWidget);
@@ -441,7 +463,7 @@ void main() {
         ),
       );
 
-      await h.open(tester, location: '/sell/from-wardrobe/a');
+      await sellThis(tester, 'a');
 
       expectOnEditor(tester, const ListingId('mine'));
       expect(
@@ -465,7 +487,7 @@ void main() {
         ).markListed(DateTime.utc(2026, 10, 2)),
       );
 
-      await h.open(tester, location: '/sell/from-wardrobe/a');
+      await sellThis(tester, 'a');
 
       expectOnEditor(tester, const ListingId('up'));
       expect(h.listings.length, 1);
@@ -484,61 +506,69 @@ void main() {
         ).markSold(DateTime.utc(2026, 9, 20), priceCents: 2800),
       );
 
-      await h.open(tester, location: '/sell/from-wardrobe/a');
+      await sellThis(tester, 'a');
 
       expectOnEditor(tester, const ListingId('listing-1'));
       expect(h.listings.length, 2);
       expect(find.byType(SnackBar), findsNothing);
     });
 
-    testWidgets('a garment that is not there says so and makes nothing', (
+    testWidgets('a garment deleted under the menu says so and makes nothing', (
       tester,
     ) async {
-      await h.open(tester, location: '/sell/from-wardrobe/ghost');
+      final coat = await h.addGarment('a');
+      await h.open(tester, location: '/item/a');
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      // Gone between the menu opening and the tap.
+      await h.wardrobe.save(coat.copyWith(lifecycle: LifecycleState.removed));
+      await tester.tap(find.text('Sell this'));
+      await tester.pumpAndSettle();
 
-      // The words the stain screen uses for the same thing.
+      // The words the stain screen uses for the same thing, and the dialog gone.
       expect(
         find.text('That item is no longer in your wardrobe.'),
-        findsOneWidget,
+        findsWidgets,
       );
+      expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.byType(ListingEditorScreen), findsNothing);
       expect(h.listings.length, 0);
       expect(h.gateway.described, isEmpty);
-
-      await tester.tap(find.byType(BackButton));
-      await tester.pumpAndSettle();
-      expect(find.byType(PickGarmentScreen), findsOneWidget);
     });
 
-    testWidgets('nor one that was deleted', (tester) async {
-      await h.addGarment('a', lifecycle: LifecycleState.removed);
-
-      await h.open(tester, location: '/sell/from-wardrobe/a');
-
-      expect(
-        find.text('That item is no longer in your wardrobe.'),
-        findsOneWidget,
-      );
-      expect(h.listings.length, 0);
-    });
-
-    testWidgets('a failure that is not the garment\'s can be tried again', (
-      tester,
-    ) async {
+    testWidgets('a failure that is not the garment\'s says so, and can be '
+        'tried again', (tester) async {
       await h.addGarment('a');
       h.lookupFailure = const FileSystemException('No space left on device');
 
-      await h.open(tester, location: '/sell/from-wardrobe/a');
+      await sellThis(tester, 'a');
 
       expect(find.textContaining('could not be started'), findsOneWidget);
-      expect(find.text('Try again'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.byType(ListingEditorScreen), findsNothing);
+      expect(find.byType(ItemDetailScreen), findsOneWidget);
 
       h.lookupFailure = null;
-      await tester.tap(find.text('Try again'));
+      await tester.tap(find.byType(PopupMenuButton<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sell this'));
       await tester.pumpAndSettle();
 
       expectOnEditor(tester, const ListingId('listing-1'));
+    });
+
+    testWidgets('an old address does no work and leads to the picker', (
+      tester,
+    ) async {
+      await h.addGarment('a');
+
+      await h.open(tester, location: '/sell/from-wardrobe/a');
+
+      // Nothing is made by arriving: not a request, not a listing.
+      expect(find.byType(PickGarmentScreen), findsOneWidget);
+      expect(find.byType(ListingEditorScreen), findsNothing);
+      expect(h.listings.length, 0);
+      expect(h.gateway.described, isEmpty);
     });
   });
 
@@ -639,7 +669,6 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(ItemDetailScreen), findsOneWidget);
-      expect(find.byType(StartFromGarmentScreen), findsNothing);
     });
 
     testWidgets('pressed twice opens the same listing and not a second', (
@@ -736,9 +765,9 @@ void main() {
       await h.addGarment('a');
       h.gateway.hold = Completer<void>();
 
-      await h.open(
+      await sellThis(
         tester,
-        location: '/sell/from-wardrobe/a',
+        'a',
         size: phone,
         textScale: scale,
         settle: false,
@@ -749,21 +778,6 @@ void main() {
       expect(tester.takeException(), isNull);
       h.gateway.hold!.complete();
       await tester.pumpAndSettle();
-    });
-
-    testWidgets('a garment that is not there lays out', (tester) async {
-      await h.open(
-        tester,
-        location: '/sell/from-wardrobe/ghost',
-        size: phone,
-        textScale: scale,
-      );
-
-      expect(tester.takeException(), isNull);
-      expectWhole(
-        tester,
-        find.text('That item is no longer in your wardrobe.'),
-      );
     });
 
     testWidgets('the garment\'s menu, with Sell this in it, lays out', (

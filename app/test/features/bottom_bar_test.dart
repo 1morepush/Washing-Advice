@@ -61,6 +61,12 @@ void main() {
         ),
         wardrobeRepositoryProvider.overrideWithValue(repository),
         outfitRepositoryProvider.overrideWithValue(InMemoryOutfitRepository()),
+        // The Sell screens read the listings, and the places that do the
+        // opening here include Sell itself. Overridden so that doing so is not
+        // a real database; whether anywhere *else* reads them is asked below.
+        listingRepositoryProvider.overrideWithValue(
+          InMemoryListingRepository(),
+        ),
         eventLogProvider.overrideWithValue(InMemoryEventLog()),
         imageStoreProvider.overrideWithValue(MemoryImageStore()),
         nudgesProvider.overrideWithValue(nudges),
@@ -494,9 +500,11 @@ void main() {
     });
 
     testWidgets('/sell/from-wardrobe/:id', (tester) async {
+      // A garment that is not there: for one that is, the screen does its work
+      // and replaces itself with the listing, which is tested with the screen.
       await opensAndLeaves(
         tester,
-        location: '/sell/from-wardrobe/a',
+        location: '/sell/from-wardrobe/ghost',
         screen: StartFromGarmentScreen,
         parent: PickGarmentScreen,
       );

@@ -253,6 +253,20 @@ for (const theme of ['light', 'dark']) {
     await ready(page);
     await shot(page, 'packing');
 
+    // Selling, by address as the screens above are. The demo seeds three
+    // listings, one in each state, so the tab shows a draft with its price and
+    // what Depop's fee leaves, one that has sat long enough to be nudged, and a
+    // sale with the running total. The bar is checked because this is a place
+    // on it. Then the draft's editor, which carries the evidence for its price.
+    await page.goto(`${BASE}/#/sell`, { waitUntil: 'load' });
+    await ready(page);
+    await expectBar(page);
+    await shot(page, 'sell');
+
+    await page.goto(`${BASE}/#/listing/demo-listing-1`, { waitUntil: 'load' });
+    await ready(page);
+    await shot(page, 'listing-editor');
+
     // Settings the way a person gets there now: through More. Failing to find
     // either word means the list or the bar has lost its way in.
     await page.goto(`${BASE}/#/more`, { waitUntil: 'load' });

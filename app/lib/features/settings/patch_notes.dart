@@ -101,7 +101,7 @@ final patchNotes = <Release>[
   Release(
     version: '0.34.0',
     name: 'Fold and Sold',
-    date: DateTime.utc(2026, 10, 17),
+    date: DateTime.utc(2026, 10, 18),
     headline: 'A Sell tab that writes your Depop listing and prices it',
     changes: [
       'Sell is a new place on the bottom bar, in the seat Ask had. Ask has '

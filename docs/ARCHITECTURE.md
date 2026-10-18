@@ -55,11 +55,14 @@ a feature involves a judgement about clothing, it belongs in the core.
 | `laundry` | Separation rules and the sorting engine |
 | `machines` | Washer and dryer profiles, and translation of abstract requirements into real settings |
 | `matching` | Recognising an item already in the wardrobe |
+| `selling` | Depop's vocabulary (conditions, colours, categories) and fees, the price to ask and what is left of it, the description with its limits, and the listing model and its storage port. In the core, and not in a widget or the AI layer, because the price and the payout are what someone acts on: deterministic, tested and explained a sentence at a time, with the model only ever reading photographs and search results |
 | `vision` | The contract the AI layer must satisfy — interfaces only, no implementation |
 | `events` | The append-only history and the projections derived from it |
 
 Dependencies run one way: `laundry` → `machines` → `care` → `wardrobe` →
-`shared`. There is no cycle, and nothing depends on `vision`.
+`shared`. There is no cycle, and nothing depends on `vision`. `selling` sits
+beside `laundry`, on `wardrobe` and `shared`, and nothing depends on it.
+See [ADR 9](adr/0009-selling-on-depop.md).
 
 ## The five decisions worth understanding
 

@@ -31,6 +31,10 @@ which cycle to select on *your* machine.
   reminder opens that screen for you.
 - **Ask it anything.** "Can this go in the dryer?" answered against your own
   wardrobe, with a label reading kept apart from a guess.
+- **Sell what you no longer wear.** Photograph it, or pick a garment you own,
+  and get a Depop description ready to paste, a price worked out from what
+  similar things sold for, and what Depop's fees leave you. Nothing is posted
+  for you: Depop has no way to be told to.
 
 **The rule the whole thing is built around: no laundry decision is ever made by
 a language model.** The AI turns pixels into facts — what this garment is, what
@@ -556,7 +560,8 @@ this app. Either way, the result runs through the identical matcher that turns
 ### Sync between your own devices
 
 Optional, and off until you turn it on — the app is offline-first and stays
-fully usable without it.
+fully usable without it. What it carries is the wardrobe and its history; the
+listings on the Sell tab stay on the phone they were made on.
 
 Reconciliation happens **on the device**, not on the server. Items merge by
 provenance, so a scanned care label beats a photo guess whichever arrived
@@ -591,14 +596,17 @@ drops data between them. It found two such bugs the first time it ran.
 ### Getting around
 
 A bar along the bottom holds the five places you move between all day:
-**Wardrobe**, **Laundry**, **Outfits**, **Ask** and **More**, which holds
-**Packing**, **Insights** and **Settings**. Each place keeps its own history. Go
+**Wardrobe**, **Laundry**, **Outfits**, **Sell** and **More**, which holds
+**Ask**, **Packing**, **Insights** and **Settings**. Ask had a place on the bar
+until Sell took it; it is the first thing under More, and an old link to it
+still opens it. Each place keeps its own history. Go
 three screens deep in the wardrobe, switch to Laundry and back, and you are
 where you left it; tap the place you are already in to return to its first
 screen. Back goes back: a garment opened from the Laundry returns to the
 Laundry, not the wardrobe, and the app is only left from the first place.
-Anything that is a task of its own (a scan, a garment, a stain, an enlarged
-picture) covers the bar, so it never offers a way out of the middle of one.
+Anything that is a task of its own (a scan, a garment, a stain, a listing being
+written, an enlarged picture) covers the bar, so it never offers a way out of
+the middle of one.
 
 Added to an iPhone's home screen, the app leaves room for the rounded corners
 and the home indicator instead of drawing its last labels under them.
@@ -627,7 +635,7 @@ already had.
 
 Most laundry questions are not ones a screen anticipates. What the triangle with
 two lines means, whether a jumper that says 30° survives 40°, how much detergent
-for half a drum. **Ask** is a plain chat box for those.
+for half a drum. **Ask**, under **More**, is a plain chat box for those.
 
 It knows what is in your wardrobe, so a garment can be named rather than
 described: *can I tumble dry the navy jumper?* It also knows, per garment,
@@ -656,6 +664,145 @@ The figure at the top is **readiness**: the share of washable items the app can
 actually advise on. It predicts how useful a pile scan will be before you find
 out at the machine, and it links straight to the next label worth scanning.
 
+### Sell what you no longer wear
+
+The **Sell** tab turns a garment into a Depop listing ready to paste, and keeps
+track of it afterwards. It writes down what a buyer needs to know and suggests a
+price to ask. It does not post anything. **Depop has no public API**, so there
+is nothing for an app to post to, and this one does not scrape Depop to make
+one: you copy the description and fill in Depop's form yourself, with every
+field already worked out.
+
+**Two ways to start.** Photograph it, or choose it from the wardrobe.
+
+- *Photographs* follow the checklist a buyer looks for: the cover, the back, the
+  brand tag and the size label, each with a line on why, then any flaws and
+  anything else, up to the eight Depop takes. Nothing is sent until you tap
+  **Write the listing**. The server then reads up to four of them, the cover and
+  the labels before the rest, and drafts a title, the brand, colours, material
+  and size where a label shows them, style words and the flaws it can see.
+- *A garment you own*, from **Sell this** on its page or **Choose from my
+  wardrobe**, which lists what you own *least worn first* because that is what
+  people sell. The listing starts from what the app already knows: its
+  photographs, the brand you typed, the size on its label, the fabric off its
+  care label, its colours. What the wardrobe knows wins over a fresh reading of
+  a photograph, so a brand you typed is not second-guessed from a logo. The
+  condition is only *suggested*, from its wear history, and says why: *Used -
+  Excellent: worn 4 times, no wear reported*. A garment that already has a draft
+  or a listing up opens that one instead of starting a second.
+
+**A server that cannot read the photographs does not stop the listing.** They
+are stored on the phone before they are sent. If the reading fails you are
+offered *Try again*, with the same photographs and not a second set, and *Write
+it myself*, which opens a blank draft with them already in it. A garment from the
+wardrobe opens either way, filled in from what the wardrobe knows, with a note
+that its photographs could not be read.
+
+**The listing is laid out like Depop's form.** The **description** is ready to
+paste, built from fields you can edit, with the same *N / 1,000* and *N / 5
+hashtags* counters Depop shows. It always includes a line about flaws and never
+says there are none: the app has not examined the garment, and "no flaws" is a
+promise it cannot make. The **details** are the ones Depop filters by:
+department, brand, size, one of Depop's five conditions, up to two colours,
+material, measurements and flaws. The **shipping** note estimates a packed
+weight for the label, with *weigh it to be sure*.
+
+**The price is looked up, then worked out.** *Look up prices* searches Depop and
+the shops that sell it new, and shows each match with its price, whether it
+**sold** or is still **for sale**, whether it is the *same item* or a *similar*
+one, and a link to check. It shows what it dropped and why ("2 not in US
+dollars"), so an empty list reads as *nothing usable* and not as *nothing
+looked*. The suggested price is arithmetic in the core, deterministic and
+tested like every laundry decision, and each step is a sentence on screen:
+
+1. With two or more sales, the middle sold price, asked 12% higher to leave room
+   for offers.
+2. Otherwise the middle asking price, not marked up: other sellers' prices
+   already allow for offers.
+3. Otherwise a share of the price new, set by condition.
+4. A used garment is never priced above the same product new.
+5. Rounded the way listings are priced: to the nearest $5, or a whole dollar
+   under $10.
+
+What you paid plays no part, because it is a sunk cost and not a market. Beside
+the price is **what you would get**: Depop takes 3.3% + $0.45 of a US sale and
+no selling fee, so $30 leaves $28.56. Links that open the same searches on
+Depop, on eBay's sold listings and on Google Shopping are always there, and
+prices you find yourself can be typed in and join the suggestion.
+
+**Keeping track.** Listings sit under **Drafts**, **Listed** and **Sold**, and
+every card shows the price and what is left of it after fees. **I've posted it**
+marks one as up. One that has sat for **two weeks** says so on its card, with the
+two things that help: drop the price a little, or relist it so it shows as new.
+**It sold** asks what it sold for, since offers are common, and **Mark the
+garment as sold** takes it out of the wardrobe in one tap while its history keeps
+it. Sold carries a running total of what the sales left after fees.
+
+#### What leaves the phone
+
+The **photographs** go to Gemini through the server, exactly as every scan's do,
+on the free-tier terms [set out below](#the-free-tier-is-free-not-private). Up to
+four go for a draft, and a garment from the wardrobe sends what the wardrobe
+knows with them.
+
+The **price look-up sends text, not pictures.** The two search phrases written
+for the listing go to the server, which passes them to
+[Tavily](https://tavily.com), a web search service. A Gemini call then reads the
+pages that come back, with the listing's title, brand, colours and kind of
+garment, to say which are the same item or a similar one. No photograph goes
+with it. The server remembers an answer for six hours, so searching again for the
+same phrases does not spend more of the allowance.
+
+The **listings stay on the phone.** They are not synced, and nothing is uploaded
+in the background.
+
+#### Turning on live prices
+
+Prices come from a web search and not from a model's memory, and the search
+needs a key. It is free and takes no card.
+
+1. Sign up at [tavily.com](https://tavily.com) and copy the API key. The free
+   plan gives 1,000 searches a month: about 500 listings, since a look-up makes
+   two.
+2. Set `TAVILY_API_KEY` on the server. On Render that is the dashboard's
+   **washing-advice-server → Environment**, and saving it redeploys. Running the
+   server yourself, it is an environment variable like the Gemini one:
+   `TAVILY_API_KEY=... uv run uvicorn app.main:app`.
+
+Without the key everything else in the Sell tab works. The look-up answers
+`notConfigured`, and the listing shows the links to check yourself and takes the
+prices you type in.
+
+**The server's endpoints are open**, as the scan endpoints already are. There is
+no account, so anyone who finds the server's address could use up the free search
+allowance, just as they could the Gemini one. When that happens the search
+answers `quotaExceeded` and the app falls back to the same links.
+
+#### What to keep in mind
+
+Every comparable was checked by code after a model read it: its link has to come
+from the search itself, its price has to appear on that page, and the price has
+to be in US dollars, or it is dropped and counted. A price is still only as good
+as what was found.
+
+- **Comparables come only from pages the search has indexed.** A Depop listing
+  that is not indexed is invisible to it, and one is only called sold when its
+  page says so. The links to Depop's and eBay's own searches are there for what
+  it misses.
+- **"Similar" is judged from a description of the photographs**, not by
+  comparing pictures; a free visual search does not exist. It is a claim to
+  check, which is what the link beside every comparable is for.
+- **Only US dollars.** Another currency is left out and counted, not converted: a
+  figure built on an invented exchange rate looks like evidence and is not.
+- **Depop's words are mirrored.** Its condition labels, colour names and category
+  paths sit in one table in the core, and the category paths are a
+  reconstruction, not Depop's exact wording. The app suggests them and copies
+  them; you pick them in Depop.
+- **The fees are dated.** 3.3% + $0.45 is Depop's US fee as of 17 October 2026,
+  kept in one place and shown beside every payout with its date. Depop may also
+  charge the 3.3% on shipping a buyer pays, which is not counted. Check
+  Depop's fee page before relying on the figure.
+
 ---
 
 ## Where your data lives
@@ -669,32 +816,40 @@ On your phone, and nowhere else unless you send it somewhere.
 - **Sync is off** until you turn it on, and it points at a server you run. See
   [Turning on sync](#turning-on-sync), including what the credential is and is
   not.
+- **Listings** are kept in a table of their own beside the wardrobe, on the same
+  phone, and are not synced.
 - **Nothing in this repository is anybody's real wardrobe.** The screenshots are
   a seeded demo build (`app/lib/main_demo.dart`) with invented garments and
   drawn illustrations, generated in a container with no camera.
 
 **What does leave the phone: the photographs you scan.** Identifying a garment,
-reading a care label, sorting a pile, removing a background and looking at a
-stain all upload that image to the backend named in Settings, which forwards it
-to the model provider if a key is configured. The default is `localhost`, so
+reading a care label, sorting a pile, removing a background, looking at a stain
+and writing a listing from photographs all upload that image to the backend
+named in Settings, which forwards it to the model provider if a key is
+configured. The default is `localhost`, so
 out of the box the only machine involved is your own; point it at a hosted
 server and your photographs go there instead.
 
-**And two features send facts about your clothes rather than pictures of them.**
-The Stylist sends the wardrobe as text — type, colour, fabric — because it
-already holds those and re-deriving them from forty photographs would cost a
+**And three features send facts about your clothes rather than pictures of
+them.** The Stylist sends the wardrobe as text — type, colour, fabric — because
+it already holds those and re-deriving them from forty photographs would cost a
 multiple of the time. **Ask** sends the same kind of summary plus how each
 garment is washed, along with the question you typed and the conversation so
-far, so the answer can be about your actual clothes. Both go to the same backend
-as everything else, and both are capped so a large wardrobe does not put its
-whole contents into every request.
+far, so the answer can be about your actual clothes. **Looking up a price** sends
+the title, brand, colours and kind of the garment you are selling, and the two
+search phrases written for it; the server passes those to a web search
+([Tavily](https://tavily.com)) and then to the model to read what came back.
+They all go to the same backend as everything else, and the Stylist and Ask are
+capped so a large wardrobe does not put its whole contents into every request.
+[Selling](#sell-what-you-no-longer-wear) has the rest.
 
 The server keeps no wardrobe and no conversations. It holds a cache keyed by the
 SHA-256 of an image so an identical re-scan is not paid for twice, and that cache
 stores the *reading* rather than the picture, in memory, bounded, and gone when
-the process restarts. Questions are not cached at all: each one arrives with
-whatever context it needs, is answered, and is forgotten. The request itself
-still passes through, which is the thing to weigh when choosing a backend.
+the process restarts. It remembers the answer to a price search the same way,
+for six hours. Questions are not cached at all: each one arrives with whatever
+context it needs, is answered, and is forgotten. The request itself still passes
+through, which is the thing to weigh when choosing a backend.
 
 ### The free tier is free, not private
 
@@ -704,8 +859,9 @@ Google's pricing page draws the line itself: on the **free tier your content is
 used to improve Google's products**, and on the paid tier it explicitly is not.
 
 That applies to everything described above once a key is configured — the
-photographs, the wardrobe facts the Stylist sends, and the questions Ask sends
-with them. Running with `VISION_PROVIDER=fake`, which is the default, sends
+photographs, the wardrobe facts the Stylist sends, the questions Ask sends with
+them, and the text a price look-up has Gemini read. (The search itself is
+Tavily's, on terms of its own; what it is sent is two search phrases.) Running with `VISION_PROVIDER=fake`, which is the default, sends
 nothing anywhere; there is no middle setting that keeps the features and opts
 out of the terms.
 
@@ -774,7 +930,10 @@ is a [Render](https://render.com) Blueprint: **New + → Blueprint**, connect
 this repo, **Apply**. It provisions a free web service that rebuilds on every
 push to `main`, starts with the fake provider so the service is live
 immediately, and only needs `GEMINI_API_KEY` set in the Render dashboard to
-switch on real identification (`VISION_PROVIDER=gemini` alongside it).
+switch on real identification (`VISION_PROVIDER=gemini` alongside it). Live
+prices for the Sell tab want one more, `TAVILY_API_KEY`, set in the same place;
+without it the tab still works, minus the look-up. See
+[Turning on live prices](#turning-on-live-prices).
 
 Free-tier services spin down after 15 minutes idle and take up to a minute to
 wake back up — a "could not reach the server" on the first scan after a while
@@ -874,6 +1033,9 @@ A few decisions worth reading about:
 - [A cost-ordered vision pipeline](docs/adr/0007-cost-ordered-vision-pipeline.md) —
   memory first, on-device next, a paid model last.
 - [App layering and the capture seam](docs/adr/0008-app-layering-and-the-capture-seam.md).
+- [Selling on Depop: a model reads, a search finds, the core prices](docs/adr/0009-selling-on-depop.md) —
+  why the price comes from a search the server can cite and not from a model's
+  memory, and why the arithmetic from there to a payout is the core's.
 
 ---
 
@@ -881,9 +1043,9 @@ A few decisions worth reading about:
 
 | # | Scope | Status |
 |---|---|---|
-| 1 | Domain core: care model, sorting engine, machine translation, matching, events | **Done** — 662 core tests |
-| 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts, machine identification | **Done** — 404 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage | **Done** — 1168 app tests |
+| 1 | Domain core: care model, sorting engine, machine translation, matching, events, selling | **Done** — 1244 core tests |
+| 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts, machine identification, listing descriptions and price search | **Done** — 1299 tests |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage, the Sell tab | **Done** — 1601 app tests |
 | 4 | Care-label scanning, item editing, filter sheet, garment cutouts, grid view | **Done** |
 | 5 | Pile scanning, load grouping, machine profiles, wear and wash history | **Done** |
 | 6 | Outfit suggestions, laundry-aware packing, wardrobe insights | **Done** |
@@ -913,8 +1075,9 @@ A few decisions worth reading about:
 | 27 | A bottom bar that keeps each place's history; Laundry in three stages; Outfits as Ideas and Saved with labelled sources; Settings in groups | **Done** |
 | 28 | The Rinse look: soft cards without outlines, rounded Nunito type, garment silhouettes and washing symbols, stage colours for Laundry, quick filters on the Wardrobe, in Light, Dark and AMOLED | **Done** |
 | 29 | A garment's picture enlarges on tap, with pinch and double-tap zoom, paging through its other photos, and a way on to the garment | **Done** |
+| 30 | Selling on Depop: a Sell tab that writes a listing from photographs or a garment, prices it from a search it can cite, and keeps drafts, listed and sold with what fees leave; Ask moves under More | **Done** |
 
-Released as `0.33.0 — Spot Check`; the app's own **Settings → What's new**
+Released as `0.34.0 — Fold and Sold`; the app's own **Settings → What's new**
 carries the full list, and `app/lib/features/settings/patch_notes.dart` records
 which version digit moves for what.
 
@@ -949,6 +1112,11 @@ Stated plainly, because the code says so too.
   It exercises all three stages and reports which the API accepted. The key is
   read from the environment and never printed, and no error path echoes a
   response body — those can contain the image that was sent.
+- **Live prices have never been fetched from the real services.** The search
+  and the model's reading of what it finds are tested against stubs and recorded
+  response shapes, and everything the model says about a comparable is checked
+  by code before it is shown — but CI has no keys, so the first real search is
+  the one made on a phone once the key is set.
 - **No photograph has been taken on a physical device.** The app opens the
   phone's own camera (`ImageSource.camera`), iOS and Android are both declared
   for it, and the refusal paths are tested — but a container has no camera, so
@@ -962,6 +1130,9 @@ Stated plainly, because the code says so too.
   installed iPhone app held upright and believes the browser's own figure when
   it gives one. Swiping between several photos in the viewer is covered by tests
   only, because the demo has no garment with several.
+- **The Sell tab has not run on a handset either.** Its screens are covered by
+  widget tests, at a 320 px width and with large text among them, and the
+  photographs it asks for come through the same camera that is unverified above.
 - **Washing symbols cover only some instructions.** Hand wash, 60 °C and above,
   medium or high iron, do-not-iron and most dry-cleaning solvents have no
   artwork, so a row of symbols can be shorter than the label. The words beside
@@ -1043,6 +1214,8 @@ Stated plainly, because the code says so too.
   background yet, so two devices drift until one of them is told to catch up.
 - **There is no export.** Sync is the only copy off the phone, and its token
   cannot be recovered; a JSON backup of garments and history does not exist yet.
+  The Sell tab's listings are not in sync at all, so they exist on one phone
+  only.
 - **Sync has no hosted deployment.** The endpoints, the client and the
   reconciliation all exist and are exercised end to end against a real server in
   CI, but nobody is running that server anywhere. You point the app at your own.

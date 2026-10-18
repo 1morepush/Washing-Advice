@@ -799,8 +799,8 @@ as what was found.
   reconstruction, not Depop's exact wording. The app suggests them and copies
   them; you pick them in Depop.
 - **The fees are dated.** 3.3% + $0.45 is Depop's US fee as of 17 October 2026,
-  kept in one place and shown beside every payout with its date. Depop may also
-  charge the 3.3% on shipping a buyer pays, which is not counted. Check
+  kept in one place with its date, and quoted at the foot of the Sell tab. Depop
+  may also charge the 3.3% on shipping a buyer pays, which is not counted. Check
   Depop's fee page before relying on the figure.
 
 ---

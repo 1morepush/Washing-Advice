@@ -61,6 +61,11 @@ void main() {
         ),
         wardrobeRepositoryProvider.overrideWithValue(repository),
         outfitRepositoryProvider.overrideWithValue(InMemoryOutfitRepository()),
+        // Lazily, so `container.exists` below still says whether a screen
+        // reached for the listings: only the Sell screens may.
+        listingRepositoryProvider.overrideWith(
+          (ref) => InMemoryListingRepository(),
+        ),
         eventLogProvider.overrideWithValue(InMemoryEventLog()),
         imageStoreProvider.overrideWithValue(MemoryImageStore()),
         nudgesProvider.overrideWithValue(nudges),

@@ -63,6 +63,10 @@ class EditorApp {
 /// Opens the app at [location], or at the editor for [listing] when it is
 /// given and [location] is not.
 ///
+/// The server is [gateway], a fake that answers a price search with what it
+/// has been told to, unless [server] is given, which stands in for it
+/// whole.
+///
 /// [listing] and [garments] are stored first. The surface is [size] logical
 /// pixels at a device pixel ratio of one, so a test can say 320 and mean it.
 Future<EditorApp> openEditor(
@@ -76,6 +80,7 @@ Future<EditorApp> openEditor(
   Appearance appearance = Appearance.light,
   ImageCaptureSource? camera,
   FakePriceGateway? gateway,
+  AiGateway? server,
   Map<String, Uint8List> storedImages = const {},
   GlobalKey? boundary,
 }) async {
@@ -90,7 +95,7 @@ Future<EditorApp> openEditor(
     await images.save(value, name: key);
   }
   final links = RecordingLinkOpener();
-  final server = gateway ?? FakePriceGateway();
+  final fake = gateway ?? FakePriceGateway();
 
   final container = ProviderContainer(
     overrides: [
@@ -102,7 +107,7 @@ Future<EditorApp> openEditor(
       listingRepositoryProvider.overrideWithValue(listings),
       eventLogProvider.overrideWithValue(events),
       imageStoreProvider.overrideWithValue(images),
-      aiGatewayProvider.overrideWithValue(server),
+      aiGatewayProvider.overrideWithValue(server ?? fake),
       linkOpenerProvider.overrideWithValue(links),
       imageCaptureProvider.overrideWithValue(
         camera ?? FixedImageCaptureSource(const []),
@@ -138,7 +143,7 @@ Future<EditorApp> openEditor(
     wardrobe: wardrobe,
     events: events,
     images: images,
-    gateway: server,
+    gateway: fake,
     links: links,
     container: container,
   );

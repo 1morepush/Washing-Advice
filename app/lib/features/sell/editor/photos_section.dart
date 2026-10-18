@@ -157,6 +157,8 @@ class _PhotoTile extends StatelessWidget {
     final theme = Theme.of(context);
     final radius = context.rinse.tileBorderRadius;
 
+    // The whole tile is the button, the caption as much as the picture: a
+    // label that looks like the way in and is not is a tap that does nothing.
     return Semantics(
       button: true,
       label:
@@ -166,37 +168,35 @@ class _PhotoTile extends StatelessWidget {
       onTap: onTap,
       child: SizedBox(
         width: _tile,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: radius,
-              child: SizedBox.square(
-                dimension: _tile,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    StoredImage(
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: radius,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: radius,
+                  child: SizedBox.square(
+                    dimension: _tile,
+                    child: StoredImage(
                       uri: photo.uri,
                       fallback: PhotoSilhouette(type: type),
                     ),
-                    Material(
-                      type: MaterialType.transparency,
-                      child: InkWell(onTap: onTap),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+                const SizedBox(height: 4),
+                Text(
+                  photo.shot.label,
+                  maxLines: 2,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              photo.shot.label,
-              maxLines: 2,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

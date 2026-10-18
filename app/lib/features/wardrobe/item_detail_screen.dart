@@ -85,6 +85,9 @@ class ItemDetailScreen extends ConsumerWidget {
               onSelected: (choice) => switch (choice) {
                 'wear' => showReportWearSheet(context, value),
                 'check' => showConditionSheet(context, value),
+                'sell' => context.push<void>(
+                  '/sell/from-wardrobe/${value.id.value}',
+                ),
                 _ => _confirmAndDelete(context, ref, value),
               },
               itemBuilder: (menuContext) => [
@@ -111,6 +114,22 @@ class ItemDetailScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+                // Only for a garment still owned: one that is sold, given away
+                // or thrown out is not something to put on Depop. It does no
+                // more than open the route; whether a listing exists already
+                // is for the screen it opens to find out, and this page reads
+                // nothing about listings.
+                if (value.lifecycle.isOwned)
+                  const PopupMenuItem(
+                    value: 'sell',
+                    child: Row(
+                      children: [
+                        Icon(Icons.sell_outlined),
+                        SizedBox(width: 12),
+                        Text('Sell this'),
+                      ],
+                    ),
+                  ),
                 PopupMenuItem(
                   value: 'delete',
                   child: Row(

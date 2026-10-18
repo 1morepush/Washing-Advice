@@ -500,9 +500,11 @@ void main() {
     });
 
     testWidgets('/sell/from-wardrobe/:id', (tester) async {
+      // A garment that is not there: for one that is, the screen does its work
+      // and replaces itself with the listing, which is tested with the screen.
       await opensAndLeaves(
         tester,
-        location: '/sell/from-wardrobe/a',
+        location: '/sell/from-wardrobe/ghost',
         screen: StartFromGarmentScreen,
         parent: PickGarmentScreen,
       );

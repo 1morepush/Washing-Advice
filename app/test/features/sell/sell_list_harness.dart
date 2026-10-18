@@ -11,6 +11,7 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show FontLoader, rootBundle;
@@ -27,6 +28,7 @@ import 'package:washing_advice/data/images/memory_image_store.dart';
 import 'package:washing_advice/features/sell/list/listing_clock.dart';
 import 'package:washing_advice/main.dart';
 
+import '../../support/fixtures.dart';
 import '../../support/recording_link_opener.dart';
 
 /// The real typeface, for a test that is about whether text fits.
@@ -128,6 +130,41 @@ class ScriptedCamera implements ImageCaptureSource {
   }
 }
 
+/// The listings, able to fail the lookup of a garment's listing when told to.
+///
+/// Stands between the screens and the in-memory repository, which stays the one
+/// a test reads: this answers as it does, except for the one call "Sell this"
+/// makes first.
+class _Listings implements ListingRepository {
+  _Listings(this._inner);
+
+  final InMemoryListingRepository _inner;
+
+  /// Thrown by [forItem] instead of answering, when set.
+  Object? lookupFailure;
+
+  @override
+  Future<List<Listing>> all() => _inner.all();
+
+  @override
+  Future<Listing?> byId(ListingId id) => _inner.byId(id);
+
+  @override
+  Future<List<Listing>> forItem(ItemId id) {
+    if (lookupFailure case final Object failure) return Future.error(failure);
+    return _inner.forItem(id);
+  }
+
+  @override
+  Future<void> save(Listing listing) => _inner.save(listing);
+
+  @override
+  Future<void> delete(ListingId id) => _inner.delete(id);
+
+  @override
+  Stream<List<Listing>> watchAll() => _inner.watchAll();
+}
+
 /// The app, built the way the test needs it.
 class SellHarness {
   SellHarness._(this._preferences, this.now);
@@ -145,6 +182,7 @@ class SellHarness {
   final SharedPreferences _preferences;
 
   final listings = InMemoryListingRepository();
+  late final _Listings _screensListings = _Listings(listings);
   final wardrobe = InMemoryWardrobeRepository();
   final images = MemoryImageStore();
   final gateway = FakeSellGateway();
@@ -153,6 +191,11 @@ class SellHarness {
 
   /// What the screens think the time is. Change it to move the clock.
   DateTime now;
+
+  /// Makes looking up a garment's listing fail with this, when set: the phone
+  /// unable to read its own storage.
+  set lookupFailure(Object? failure) =>
+      _screensListings.lookupFailure = failure;
 
   /// The providers, built on first use inside the test that wants them and
   /// torn down with it.
@@ -163,7 +206,7 @@ class SellHarness {
         wardrobeRepositoryProvider.overrideWithValue(wardrobe),
         outfitRepositoryProvider.overrideWithValue(InMemoryOutfitRepository()),
         eventLogProvider.overrideWithValue(InMemoryEventLog()),
-        listingRepositoryProvider.overrideWithValue(listings),
+        listingRepositoryProvider.overrideWithValue(_screensListings),
         imageStoreProvider.overrideWithValue(images),
         aiGatewayProvider.overrideWithValue(gateway),
         imageCaptureProvider.overrideWithValue(camera),
@@ -178,16 +221,62 @@ class SellHarness {
     return built;
   }();
 
+  /// A garment in the wardrobe, with a photograph in the image store unless
+  /// told not to have one.
+  ///
+  /// [worn] is how many times it has been worn, and [lastWornDaysAgo] when it
+  /// was last, counted back from the harness's clock.
+  Future<WardrobeItem> addGarment(
+    String id, {
+    String? name,
+    ItemType type = ItemType.sweater,
+    int worn = 3,
+    int? lastWornDaysAgo,
+    LifecycleState lifecycle = LifecycleState.active,
+    bool photo = true,
+  }) async {
+    var item = confidentItem(
+      id: id,
+      name: name ?? 'Garment $id',
+      type: type,
+      usage: UsageStats(
+        timesWorn: worn,
+        lastWornAt: lastWornDaysAgo == null
+            ? null
+            : now.subtract(Duration(days: lastWornDaysAgo)),
+      ),
+      lifecycle: lifecycle,
+    );
+    if (photo) {
+      final uri = await images.save(
+        Uint8List.fromList(utf8.encode('photo-of-$id')),
+        name: '$id-front',
+      );
+      item = item.copyWith(
+        photos: PhotoSet([
+          ItemPhoto(
+            uri: uri,
+            role: PhotoRole.front,
+            capturedAt: DateTime.utc(2026, 8, 5),
+          ),
+        ]),
+      );
+    }
+    await wardrobe.save(item);
+    return item;
+  }
+
   /// Opens the app at [location].
   ///
   /// [size] is a phone's, in logical pixels, and [textScale] the system's text
   /// size. Pumps until the first screen has settled, so it is not for a screen
-  /// that animates for ever.
+  /// that animates for ever: with [settle] false it pumps a moment and no more.
   Future<void> open(
     WidgetTester tester, {
     String location = '/sell',
     Size size = const Size(400, 800),
     double textScale = 1,
+    bool settle = true,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -203,6 +292,10 @@ class SellHarness {
         child: WashingAdviceApp(initialLocation: location),
       ),
     );
-    await tester.pumpAndSettle();
+    if (settle) {
+      await tester.pumpAndSettle();
+    } else {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
   }
 }

@@ -48,6 +48,10 @@ ScanImage photoOf(String mark) => ScanImage(bytes: utf8.encode(mark));
 /// What a photograph says it is, for a test that wants to know which went where.
 String markOf(ScanImage image) => utf8.decode(image.bytes);
 
+/// The same, for bytes read back from the image store. Empty where there are
+/// none, which no photograph in a test is.
+String markOfBytes(List<int>? bytes) => bytes == null ? '' : utf8.decode(bytes);
+
 /// The server, as far as the Sell screens can tell.
 ///
 /// Overrides the one call these screens make and records what it was asked. It

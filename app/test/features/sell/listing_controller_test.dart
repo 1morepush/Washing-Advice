@@ -820,7 +820,7 @@ void main() {
       test('keeps the answer on the listing, and saves it', () async {
         final listing = await saved(draft());
 
-        final updated = await controller().searchPrices(listing);
+        final updated = (await controller().searchPrices(listing)).listing;
 
         expect(updated.priceSearch, gateway.search);
         expect(updated.priceSearch!.comparables, hasLength(2));
@@ -849,7 +849,7 @@ void main() {
             ),
           );
 
-          final updated = await controller().searchPrices(listing);
+          final updated = (await controller().searchPrices(listing)).listing;
 
           expect(updated.priceSearch!.status, status);
           expect(updated.priceSearch!.comparables, isEmpty);
@@ -867,7 +867,7 @@ void main() {
             retail: 'retail phrase the server was given',
           ),
         );
-        final after = await controller().searchPrices(listing);
+        final after = (await controller().searchPrices(listing)).listing;
         gateway.searched.clear();
 
         await controller().searchPrices(after);
@@ -896,30 +896,178 @@ void main() {
         });
       });
 
-      test(
-        'a better result replaces a worse one, and so does a worse',
-        () async {
-          // Documented, not hidden: a failed look-up is stored as the answer it
-          // is, and so replaces what the last one found.
-          final listing = await saved(draft());
-          final found = await controller().searchPrices(listing);
-          expect(found.priceSearch!.comparables, isNotEmpty);
+      group('looking again, when the listing already has prices', () {
+        late Listing found;
 
+        setUp(() async {
+          found = (await controller().searchPrices(
+            await saved(draft()),
+          )).listing;
+          expect(found.priceSearch!.status, PriceSearchStatus.ok);
+          expect(found.priceSearch!.comparables, isNotEmpty);
+        });
+
+        PriceSearch answering(PriceSearchStatus status) =>
+            PriceSearch(status: status, queries: found.priceSearch!.queries);
+
+        for (final status in [
+          PriceSearchStatus.notConfigured,
+          PriceSearchStatus.quotaExceeded,
+          PriceSearchStatus.unavailable,
+        ]) {
+          test('keeps them when the new answer is ${status.name}', () async {
+            gateway.search = answering(status);
+
+            final lookup = await controller().searchPrices(found);
+
+            // The earlier search, untouched, and the new status for the screen
+            // to say so with.
+            expect(lookup.listing, found);
+            expect(lookup.listing.priceSearch!.comparables, isNotEmpty);
+            expect(lookup.failedWith, status);
+          });
+        }
+
+        test('saves nothing when it keeps them', () async {
+          gateway.search = answering(PriceSearchStatus.unavailable);
+
+          await controller().searchPrices(found);
+
+          // Not even a new time: a look-up that changed nothing must not move
+          // the listing to the top of the Sell tab.
+          expect(await listings.byId(found.id), found);
+        });
+
+        test('still asks the server, once, for the failure', () async {
+          gateway.search = answering(PriceSearchStatus.quotaExceeded);
+          gateway.searched.clear();
+
+          await controller().searchPrices(found);
+
+          expect(gateway.searched, hasLength(1));
+        });
+
+        test('keeps them again after a second failure', () async {
+          gateway.search = answering(PriceSearchStatus.unavailable);
+          final first = await controller().searchPrices(found);
+
+          final second = await controller().searchPrices(first.listing);
+
+          expect(second.listing, found);
+          expect(second.failedWith, PriceSearchStatus.unavailable);
+        });
+
+        test('replaces them when the new answer found prices', () async {
+          gateway.search = PriceSearch(
+            status: PriceSearchStatus.ok,
+            searchedAt: DateTime.utc(2026, 10, 18, 9),
+            queries: found.priceSearch!.queries,
+            comparables: [
+              SaleComparable(
+                title: 'Nike crewneck grey',
+                url: Uri.parse('https://www.depop.com/products/example-3/'),
+                priceCents: 2500,
+                sold: true,
+                match: ComparableMatch.similar,
+              ),
+            ],
+          );
+
+          final lookup = await controller().searchPrices(found);
+
+          expect(lookup.failedWith, isNull);
+          expect(lookup.listing.priceSearch, gateway.search);
+          expect(lookup.listing.priceSearch!.comparables, hasLength(1));
+          expect(await listings.byId(found.id), lookup.listing);
+        });
+
+        test('replaces them when it answered, and found nothing', () async {
+          // An answer is not a failure. The server looked and nothing usable
+          // came back, which is something to show, and it is not the server
+          // being asleep.
+          gateway.search = PriceSearch(
+            status: PriceSearchStatus.ok,
+            searchedAt: DateTime.utc(2026, 10, 18, 9),
+            queries: const SearchQueries(
+              depop: 'a different phrase',
+              retail: 'another different phrase',
+            ),
+            excluded: const ExcludedCounts(notComparable: 4),
+          );
+
+          final lookup = await controller().searchPrices(found);
+
+          expect(lookup.failedWith, isNull);
+          expect(lookup.listing.priceSearch!.status, PriceSearchStatus.ok);
+          expect(lookup.listing.priceSearch!.comparables, isEmpty);
+        });
+
+        test(
+          'throws, and keeps them, when the server cannot be reached',
+          () async {
+            gateway.searchError = const ScanFailure('The server is asleep.');
+
+            await expectLater(
+              controller().searchPrices(found),
+              throwsA(isA<ScanFailure>()),
+            );
+
+            expect(await listings.byId(found.id), found);
+          },
+        );
+      });
+
+      group('looking, when the listing has no prices yet', () {
+        test('keeps a failure, which is all there is to keep', () async {
+          final listing = await saved(draft());
           gateway.search = PriceSearch(
             status: PriceSearchStatus.quotaExceeded,
-            queries: found.priceSearch!.queries,
+            queries: const SearchQueries(
+              depop: 'the phrase tried',
+              retail: 'the retail phrase tried',
+            ),
           );
-          final lost = await controller().searchPrices(found);
 
-          expect(lost.priceSearch!.status, PriceSearchStatus.quotaExceeded);
-          expect(lost.priceSearch!.comparables, isEmpty);
-        },
-      );
+          final lookup = await controller().searchPrices(listing);
+
+          // Nothing was lost, so nothing is reported as lost: the failure is
+          // what the listing now holds, and it says so itself.
+          expect(lookup.failedWith, isNull);
+          expect(
+            lookup.listing.priceSearch!.status,
+            PriceSearchStatus.quotaExceeded,
+          );
+        });
+
+        test('replaces an earlier failure with a later one', () async {
+          final listing = await saved(draft());
+          gateway.search = PriceSearch(
+            status: PriceSearchStatus.unavailable,
+            queries: const SearchQueries(
+              depop: 'the phrase tried',
+              retail: 'the retail phrase tried',
+            ),
+          );
+          final first = await controller().searchPrices(listing);
+
+          gateway.search = PriceSearch(
+            status: PriceSearchStatus.notConfigured,
+            queries: first.listing.priceSearch!.queries,
+          );
+          final second = await controller().searchPrices(first.listing);
+
+          expect(second.failedWith, isNull);
+          expect(
+            second.listing.priceSearch!.status,
+            PriceSearchStatus.notConfigured,
+          );
+        });
+      });
 
       test('does nothing without a title to search with', () async {
         final listing = await saved(draft().copyWith(title: ' '));
 
-        final same = await controller().searchPrices(listing);
+        final same = (await controller().searchPrices(listing)).listing;
 
         expect(same, listing);
         expect(gateway.searched, isEmpty);
@@ -935,7 +1083,7 @@ void main() {
           ),
         );
 
-        final same = await controller().searchPrices(blank);
+        final same = (await controller().searchPrices(blank)).listing;
 
         expect(same, blank);
         expect(gateway.searched, isEmpty);

@@ -61,11 +61,11 @@ void main() {
         ),
         wardrobeRepositoryProvider.overrideWithValue(repository),
         outfitRepositoryProvider.overrideWithValue(InMemoryOutfitRepository()),
-        // The Sell screens read the listings, and the places that do the
-        // opening here include Sell itself. Overridden so that doing so is not
-        // a real database; whether anywhere *else* reads them is asked below.
-        listingRepositoryProvider.overrideWithValue(
-          InMemoryListingRepository(),
+        // The Sell screens read the listings, and Sell itself is among the
+        // places opened here. Lazily, so `container.exists` below still says
+        // whether a screen reached for them: only the Sell screens may.
+        listingRepositoryProvider.overrideWith(
+          (ref) => InMemoryListingRepository(),
         ),
         eventLogProvider.overrideWithValue(InMemoryEventLog()),
         imageStoreProvider.overrideWithValue(MemoryImageStore()),

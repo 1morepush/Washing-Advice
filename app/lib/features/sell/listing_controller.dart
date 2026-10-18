@@ -43,6 +43,16 @@ class GarmentNotFound implements Exception {
   String toString() => message;
 }
 
+/// What [ListingController.searchPrices] left the listing holding.
+///
+/// [failedWith] is set only when the look-up did not come back with prices and
+/// **the listing already held some**: the earlier ones were kept, and this is
+/// the status of the answer that was not, so that a screen can say the new
+/// search failed instead of showing old prices as though they were new. Null
+/// for every other outcome, including a first look-up that failed, because
+/// then the failure is what the listing now holds and says for itself.
+typedef PriceLookup = ({Listing listing, PriceSearchStatus? failedWith});
+
 class ListingController {
   const ListingController(this._ref);
 
@@ -208,16 +218,25 @@ class ListingController {
   ///
   /// **Every status is kept**, not only a good one: a search with no key, no
   /// allowance left or no luck is an answer, and it carries the phrases that
-  /// were tried, so they survive for the next look-up. It also **replaces**
-  /// whatever the listing found last time, so a search that finds nothing
-  /// where the last found something loses the something.
+  /// were tried, so they survive for the next look-up. An answer replaces
+  /// whatever the listing found last time.
+  ///
+  /// **With one exception: prices are never lost to a failure.** When the
+  /// listing already holds a search that found prices ([PriceSearchStatus.ok])
+  /// and the new answer is any other status, the earlier search stays as it is
+  /// and nothing is saved. The server being asleep, or the free allowance
+  /// being spent, says nothing about what the listing sold for last week, and
+  /// a person who looks again to refresh a price should not lose the evidence
+  /// they had. [PriceLookup.failedWith] says what the new answer was.
   ///
   /// Throws [ScanFailure] when the server cannot be reached, answers with an
   /// error, or answers with something that cannot be read. Nothing is changed
   /// then.
-  Future<Listing> searchPrices(Listing listing) async {
+  Future<PriceLookup> searchPrices(Listing listing) async {
     final queries = listing.searchQueries;
-    if (!listing.canLookUpPrices || queries == null) return listing;
+    if (!listing.canLookUpPrices || queries == null) {
+      return (listing: listing, failedWith: null);
+    }
 
     final request = priceSearchRequestJson(
       queries: queries,
@@ -230,7 +249,17 @@ class ListingController {
       () => _ref.read(aiGatewayProvider).searchPrices(request),
     );
 
-    return _put(listing.copyWith(priceSearch: search, updatedAt: _now()));
+    final held = listing.priceSearch;
+    if (held != null &&
+        held.status == PriceSearchStatus.ok &&
+        search.status != PriceSearchStatus.ok) {
+      return (listing: listing, failedWith: search.status);
+    }
+
+    final saved = await _put(
+      listing.copyWith(priceSearch: search, updatedAt: _now()),
+    );
+    return (listing: saved, failedWith: null);
   }
 
   /// Keeps the two search phrases the person wrote, to be used from now on.

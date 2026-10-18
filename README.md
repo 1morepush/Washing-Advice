@@ -1043,9 +1043,9 @@ A few decisions worth reading about:
 
 | # | Scope | Status |
 |---|---|---|
-| 1 | Domain core: care model, sorting engine, machine translation, matching, events, selling | **Done** — 1244 core tests |
+| 1 | Domain core: care model, sorting engine, machine translation, matching, events, selling | **Done** — 1252 core tests |
 | 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts, machine identification, listing descriptions and price search | **Done** — 1299 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage, the Sell tab | **Done** — 1871 app tests |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage, the Sell tab | **Done** — 1877 app tests |
 | 4 | Care-label scanning, item editing, filter sheet, garment cutouts, grid view | **Done** |
 | 5 | Pile scanning, load grouping, machine profiles, wear and wash history | **Done** |
 | 6 | Outfit suggestions, laundry-aware packing, wardrobe insights | **Done** |

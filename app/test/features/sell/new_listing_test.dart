@@ -475,7 +475,7 @@ void main() {
       );
     });
 
-    testWidgets('replaces the camera, so Back from the editor is Sell', (
+    testWidgets('leaves the camera, so Back from the editor is Sell', (
       tester,
     ) async {
       await h.open(tester);
@@ -728,6 +728,29 @@ void main() {
 
       expect(find.byType(SellScreen), findsOneWidget);
       expect(h.images.length, 0);
+    });
+
+    testWidgets('leaving while it is writing, then failing, leaves nothing '
+        'behind', (tester) async {
+      h.gateway.describeError = asleep;
+      h.gateway.hold = Completer<void>();
+      await h.open(tester);
+      await tester.tap(find.text('Photograph something to sell'));
+      await tester.pumpAndSettle();
+      await takeCover(tester);
+      await tester.tap(find.text('Write the listing'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(h.images.length, 1);
+
+      // Gone to Sell before the server has answered, and then it fails.
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(SellScreen), findsOneWidget);
+      h.gateway.hold!.complete();
+      await tester.pumpAndSettle();
+
+      expect(h.images.length, 0);
+      expect(h.listings.length, 0);
     });
 
     testWidgets('writing it by hand keeps them, though Back is used after', (

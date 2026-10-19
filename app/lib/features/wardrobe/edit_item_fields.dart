@@ -263,6 +263,15 @@ const _swatches = <(String, String)>[
   ('Brown', '#6B4A2F'),
 ];
 
+/// The names of the swatches, for the test that holds each to a Depop colour.
+///
+/// A colour named here ends up on a listing, and `depopColoursFor` in the core
+/// is what turns it into one of Depop's. The core cannot read this list — it is
+/// the editor's, and private — so the other half of that agreement is a test
+/// in the app, which needs the names.
+@visibleForTesting
+List<String> get swatchNames => [for (final (name, _) in _swatches) name];
+
 class _ColorEditorState extends State<ColorEditor> {
   final _hex = TextEditingController();
   String? _hexError;

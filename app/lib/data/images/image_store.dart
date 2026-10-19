@@ -79,3 +79,25 @@ String imageName(
 /// it behind.
 String cutoutNameFor(ItemId id, ItemPhoto photo) =>
     imageName(id, photo.role, takenAt: photo.capturedAt, cutout: true);
+
+/// Names a stored photograph on a listing.
+///
+/// In the shape of [imageName] and for the same reasons: derived from the owner
+/// and what the picture is of, so that nothing is named by chance, with the
+/// time it was taken to tell apart the photographs that share a shot. A
+/// listing can carry several of a flaw, or of any other angle, and the second
+/// must not be written over the first.
+///
+/// [takenAt] is required, unlike for [imageName], where leaving it out is what
+/// keeps photographs stored before retaking existed at the URIs they have. A
+/// listing has no such history: every one of its photographs is new, and a name
+/// without a time would be a name two of them could share.
+///
+/// A listing made from a garment does not use this for the garment's own
+/// photographs. It points at the files the wardrobe already has, which is also
+/// why deleting a listing must never delete them.
+String listingImageName(
+  ListingId id,
+  ListingShot shot, {
+  required DateTime takenAt,
+}) => '${id.value}-${shot.name}-${takenAt.toUtc().microsecondsSinceEpoch}';

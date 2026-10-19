@@ -46,7 +46,13 @@ class Settings(BaseSettings):
     gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
     gemini_timeout_seconds: float = 45.0
 
-    @field_validator("vision_provider", "gemini_model", "gemini_base_url", mode="before")
+    @field_validator(
+        "vision_provider",
+        "gemini_model",
+        "gemini_base_url",
+        "tavily_base_url",
+        mode="before",
+    )
     @classmethod
     def _trim(cls, value: object) -> object:
         """Strips surrounding whitespace from values typed into a dashboard.
@@ -110,6 +116,60 @@ class Settings(BaseSettings):
         ),
     )
 
+    # --- Selling ------------------------------------------------------------
+
+    tavily_api_key: str | None = Field(
+        default=None,
+        # Out of `repr()` as well as `describe()`: a settings object that ends
+        # up in a log line, a traceback or a debugger pane would otherwise print
+        # the key it was built to keep out of them.
+        repr=False,
+        description=(
+            "Set to enable live prices in the Sell tab; free at tavily.com. "
+            "Without it the price search answers 'notConfigured'. Never logged."
+        ),
+    )
+    tavily_base_url: str = "https://api.tavily.com"
+    tavily_timeout_seconds: float = Field(
+        default=20.0,
+        gt=0,
+        description=(
+            "Per search. Two run at once, so this is also the longest the "
+            "search half of a price lookup can take."
+        ),
+    )
+
+    price_search_cache_seconds: int = Field(
+        default=6 * 60 * 60,
+        ge=0,
+        description=(
+            "How long an answered price search is remembered. Every search "
+            "spends free-allowance credits, and a listing is reopened far more "
+            "often than the market for a grey sweatshirt moves. 0 turns it off."
+        ),
+    )
+    price_search_cache_entries: int = Field(
+        default=200,
+        ge=0,
+        description="How many answered searches are kept; the least recently used go first.",
+    )
+
+    @field_validator("tavily_api_key", mode="before")
+    @classmethod
+    def _trim_search_key(cls, value: object) -> object:
+        """Trims the key, and reads a blank one as no key.
+
+        A secret pasted into a dashboard picks up a newline or a trailing space
+        as readily as anything else, and an untrimmed one goes into an
+        `Authorization` header as a key the service has never issued: every
+        search then reads as "the search key was rejected" while the dashboard
+        looks right. A field left empty arrives as `""`, which would otherwise
+        count as configured and make a call that can only fail.
+        """
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
+
     # --- Request limits -----------------------------------------------------
 
     max_image_bytes: int = Field(
@@ -137,6 +197,10 @@ class Settings(BaseSettings):
     def gemini_configured(self) -> bool:
         return bool(self.gemini_api_key)
 
+    @property
+    def tavily_configured(self) -> bool:
+        return bool(self.tavily_api_key)
+
     def describe(self) -> dict[str, object]:
         """A safe-to-log summary.
 
@@ -148,6 +212,7 @@ class Settings(BaseSettings):
             "vision_provider": self.vision_provider,
             "gemini_configured": self.gemini_configured,
             "gemini_model": self.gemini_model if self.gemini_configured else None,
+            "tavily_configured": self.tavily_configured,
             "knowledge_cache_enabled": self.knowledge_cache_enabled,
             "sufficient_confidence": self.sufficient_confidence,
         }

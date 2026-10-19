@@ -1,0 +1,22 @@
+{
+  "result": {
+    "title": "Nike vintage crewneck sweatshirt grey",
+    "itemType": "sweatshirt",
+    "brand": { "value": "Nike", "confidence": 0.93, "source": "aiInference" },
+    "colors": ["Grey"],
+    "material": "80% cotton, 20% polyester",
+    "sizeOnTag": { "value": "M", "confidence": 0.9, "source": "aiInference" },
+    "styleWords": ["vintage", "crewneck", "embroidered logo", "90s"],
+    "era": "90s",
+    "visibleFlaws": ["small mark on the left cuff"],
+    "searchQueries": {
+      "depop": "Nike vintage crewneck sweatshirt grey",
+      "retail": "Nike Club Fleece crew sweatshirt grey"
+    }
+  },
+  "diagnostics": {
+    "stagesRun": ["gemini"],
+    "stageAnswered": "gemini",
+    "elapsedMs": 2140
+  }
+}

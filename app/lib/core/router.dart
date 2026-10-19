@@ -21,6 +21,11 @@ import '../features/scan/care_tag_screen.dart';
 import '../features/scan/retake_screen.dart';
 import '../features/scan/scan_screen.dart';
 import '../features/scan/spread_screen.dart';
+import '../features/sell/list/new_listing_sheet.dart' show newFromWardrobeRoute;
+import '../features/sell/listing_editor_screen.dart';
+import '../features/sell/new_listing_screen.dart';
+import '../features/sell/pick_garment_screen.dart';
+import '../features/sell/sell_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/stains/stain_screen.dart';
 import '../features/wardrobe/edit_item_screen.dart';
@@ -35,11 +40,16 @@ import '../widgets/photo_viewer.dart';
 /// Two kinds of destination. The five places on the bottom bar are the
 /// branches of one `StatefulShellRoute`: each keeps its own stack, and Back
 /// from them goes to the first place and then leaves the app. Everything else
-/// — a garment, a scan, a stain, Packing, Insights, Settings — is a top-level
-/// route reached with `push`, so it covers the bar and Back returns to where
-/// the user was (see `back_navigation.dart`). What is a screen *of* a place,
-/// rather than a task of its own, sits inside that place's branch and keeps
-/// the bar: Worn Today under Laundry.
+/// — a garment, a listing being written, a scan, a stain, Ask, Packing,
+/// Insights, Settings — is a top-level route reached with `push`, so it covers
+/// the bar and Back returns to where the user was (see
+/// `back_navigation.dart`). What is a screen *of* a place, rather than a task
+/// of its own, sits inside that place's branch and keeps the bar: Worn Today
+/// under Laundry.
+///
+/// Ask used to be a place of its own and is now one of those tasks, opened
+/// from More. Its address is unchanged, so an old `/ask` link still opens the
+/// chat.
 ///
 /// [initialLocation] is a parameter so a test can start on the screen it is
 /// about, and so a future session restore can reopen where the user left off,
@@ -104,7 +114,7 @@ GoRouter _router(String initialLocation) => GoRouter(
         ),
         StatefulShellBranch(
           routes: [
-            GoRoute(path: '/ask', builder: (_, _) => const ChatScreen()),
+            GoRoute(path: '/sell', builder: (_, _) => const SellScreen()),
           ],
         ),
         StatefulShellBranch(
@@ -159,6 +169,30 @@ GoRouter _router(String initialLocation) => GoRouter(
         ),
       ),
     ),
+    // Writing a listing is a task of its own, so these cover the bar like the
+    // garment page does, and Back returns to the Sell tab or the garment the
+    // person came from. The Sell tab itself is a place on the bar, above.
+    GoRoute(path: '/sell/new', builder: (_, _) => const NewListingScreen()),
+    GoRoute(
+      path: '/sell/from-wardrobe',
+      builder: (_, _) => const PickGarmentScreen(),
+    ),
+    // An address from before listings were started from the screen that asked
+    // for them. It does no work: starting one is done behind a dialog, once, by
+    // the garment's page or the picker, and a route that did it on entry made
+    // the browser's Back go round in circles. The picker is where it leads.
+    GoRoute(
+      path: '/sell/from-wardrobe/:id',
+      redirect: (_, _) => newFromWardrobeRoute,
+    ),
+    GoRoute(
+      path: '/listing/:id',
+      builder: (_, state) =>
+          ListingEditorScreen(id: ListingId(state.pathParameters['id']!)),
+    ),
+    // Ask was a place on the bar until Sell took its seat. Pushed from More
+    // like Packing, and still reachable by its old address.
+    GoRoute(path: '/ask', builder: (_, _) => const ChatScreen()),
     GoRoute(path: '/packing', builder: (_, _) => const PackingScreen()),
     GoRoute(path: '/insights', builder: (_, _) => const InsightsScreen()),
     GoRoute(path: '/scan', builder: (_, _) => const ScanScreen()),

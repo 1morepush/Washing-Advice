@@ -1,0 +1,13 @@
+{
+  "result": {
+    "status": "notConfigured",
+    "queries": {
+      "depop": "Nike vintage crewneck sweatshirt grey",
+      "retail": "Nike Club Fleece crew sweatshirt grey"
+    },
+    "comparables": [],
+    "retail": [],
+    "excluded": { "notUsd": 0, "unverifiedPrice": 0, "notComparable": 0 }
+  },
+  "diagnostics": { "stagesRun": [], "stageAnswered": null, "elapsedMs": 0 }
+}

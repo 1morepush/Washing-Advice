@@ -91,13 +91,13 @@ void main() {
         expect(shape.side, theme.extension<RinseShape>()!.cardEdge);
       });
 
-      testWidgets('More is one grouped card of three places', (tester) async {
+      testWidgets('More is one grouped card of four places', (tester) async {
         await tester.pumpWidget(
           MaterialApp(theme: theme, home: const MoreScreen()),
         );
 
         expect(find.byType(GroupCard), findsOneWidget);
-        for (final place in ['Packing', 'Insights', 'Settings']) {
+        for (final place in ['Ask', 'Packing', 'Insights', 'Settings']) {
           expect(find.text(place), findsOneWidget);
         }
       });

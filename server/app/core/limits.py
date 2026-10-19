@@ -21,6 +21,16 @@ ALLOWED_MIME_TYPES: frozenset[str] = frozenset(
     }
 )
 
+MAX_LISTING_PHOTOS = 4
+"""Photographs read into one listing draft.
+
+Fewer than the scans allow, which is `Settings.max_images_per_request`. Every
+photograph is sent to the model whole, so the count sets how long the upload and
+the reading take on a phone's connection and how many tokens one draft costs
+against a free allowance. It is a number the app can build its checklist around
+rather than a memory limit.
+"""
+
 _MAGIC_PREFIXES: tuple[tuple[bytes, str], ...] = (
     (b"\xff\xd8\xff", "image/jpeg"),
     (b"\x89PNG\r\n\x1a\n", "image/png"),

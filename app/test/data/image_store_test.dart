@@ -56,6 +56,84 @@ void main() {
   runImageStoreContract('FileImageStore', files);
   runImageStoreContract('DriftImageStore', drift);
 
+  group('listingImageName', () {
+    final taken = DateTime.utc(2026, 10, 17, 9, 30, 15, 250, 125);
+
+    test('is the listing, what the photograph is of, and when', () {
+      expect(
+        listingImageName(
+          const ListingId('abc-123'),
+          ListingShot.sizeLabel,
+          takenAt: taken,
+        ),
+        'abc-123-sizeLabel-${taken.microsecondsSinceEpoch}',
+      );
+    });
+
+    test('has the shape of a garment photograph\'s name', () {
+      // Owner, then what it shows, then when: a name reads the same wherever
+      // it is found in the store.
+      final shape = RegExp(r'^abc-123-[a-zA-Z]+-\d+$');
+
+      expect(
+        imageName(const ItemId('abc-123'), PhotoRole.back, takenAt: taken),
+        matches(shape),
+      );
+      expect(
+        listingImageName(
+          const ListingId('abc-123'),
+          ListingShot.back,
+          takenAt: taken,
+        ),
+        matches(shape),
+      );
+    });
+
+    test('tells photographs of one shot apart by when they were taken', () {
+      // Two photographs of flaws are two photographs, not one rewritten.
+      final first = listingImageName(
+        const ListingId('abc-123'),
+        ListingShot.flaw,
+        takenAt: taken,
+      );
+      final second = listingImageName(
+        const ListingId('abc-123'),
+        ListingShot.flaw,
+        takenAt: taken.add(const Duration(microseconds: 1)),
+      );
+
+      expect(first, isNot(second));
+    });
+
+    test('tells listings apart, and shots of one listing apart', () {
+      String name(String id, ListingShot shot) =>
+          listingImageName(ListingId(id), shot, takenAt: taken);
+
+      expect({
+        name('a', ListingShot.cover),
+        name('a', ListingShot.back),
+        name('b', ListingShot.cover),
+      }, hasLength(3));
+    });
+
+    test('names an instant the same whichever zone it is written in', () {
+      // A phone that crosses a time zone between two saves must not name the
+      // same photograph twice.
+      final utc = listingImageName(
+        const ListingId('abc-123'),
+        ListingShot.cover,
+        takenAt: taken,
+      );
+      final local = listingImageName(
+        const ListingId('abc-123'),
+        ListingShot.cover,
+        takenAt: taken.toLocal(),
+      );
+
+      expect(local, utc);
+    });
+  });
+
   group('DriftImageStore specifics', () {
     test('hands back a reference, not the image itself', () async {
       // The reason it exists rather than reusing the memory store's `data:`
@@ -174,6 +252,17 @@ void runImageStoreContract(String name, ImageStore Function() create) {
       // Rather than with hand-written strings, so a change to `imageName`
       // cannot produce something a store mishandles.
       final derived = imageName(const ItemId('abc-123'), PhotoRole.front);
+      final uri = await store.save(_bytes(12), name: derived);
+
+      expect(await store.read(uri), hasLength(12));
+    });
+
+    test('and with the names a listing derives', () async {
+      final derived = listingImageName(
+        const ListingId('abc-123'),
+        ListingShot.brandTag,
+        takenAt: DateTime.utc(2026, 10, 17, 9),
+      );
       final uri = await store.save(_bytes(12), name: derived);
 
       expect(await store.read(uri), hasLength(12));

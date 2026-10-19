@@ -7,6 +7,7 @@
 /// carries its provenance.
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -19,6 +20,8 @@ import '../../core/theme.dart';
 import '../../widgets/back_navigation.dart';
 import '../../widgets/item_thumbnail.dart';
 import '../../widgets/status_message.dart';
+import '../sell/listing_controller.dart';
+import '../sell/start/start_listing.dart';
 import 'condition_sheet.dart';
 import 'item_details.dart';
 import 'report_wear_sheet.dart';
@@ -85,6 +88,13 @@ class ItemDetailScreen extends ConsumerWidget {
               onSelected: (choice) => switch (choice) {
                 'wear' => showReportWearSheet(context, value),
                 'check' => showConditionSheet(context, value),
+                'sell' => unawaited(
+                  startListingForGarment(
+                    context,
+                    ref.read(listingControllerProvider),
+                    value.id,
+                  ),
+                ),
                 _ => _confirmAndDelete(context, ref, value),
               },
               itemBuilder: (menuContext) => [
@@ -111,6 +121,22 @@ class ItemDetailScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+                // Only for a garment still owned: one that is sold, given away
+                // or thrown out is not something to put on Depop. It does no
+                // more than open the route; whether a listing exists already
+                // is for the screen it opens to find out, and this page reads
+                // nothing about listings.
+                if (value.lifecycle.isOwned)
+                  const PopupMenuItem(
+                    value: 'sell',
+                    child: Row(
+                      children: [
+                        Icon(Icons.sell_outlined),
+                        SizedBox(width: 12),
+                        Text('Sell this'),
+                      ],
+                    ),
+                  ),
                 PopupMenuItem(
                   value: 'delete',
                   child: Row(

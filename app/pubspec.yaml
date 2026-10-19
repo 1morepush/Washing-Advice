@@ -3,7 +3,7 @@ description: >-
   AI wardrobe and laundry assistant. Presentation only — every judgement about
   how to treat a garment lives in the wardrobe_core package.
 publish_to: 'none'
-version: 0.33.0+1
+version: 0.34.0+1
 
 environment:
   sdk: ^3.12.2
@@ -55,6 +55,11 @@ dependencies:
   # from was a few hundred kilobytes — paid on every upload. Pure Dart, no
   # platform channels.
   image: ^4.9.2
+
+  # Opening a link outside the app: the Depop and eBay searches beside a price,
+  # and the listings a price was built on. Behind `LinkOpener`; see
+  # lib/core/link_opener.dart.
+  url_launcher: ^6.3.3
 
 dev_dependencies:
   # Direct, not just transitive via drift: the migration test opens a raw

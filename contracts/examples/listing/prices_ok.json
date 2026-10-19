@@ -1,0 +1,56 @@
+{
+  "result": {
+    "status": "ok",
+    "searchedAt": "2026-10-17T14:05:00Z",
+    "provider": "tavily",
+    "queries": {
+      "depop": "Nike vintage crewneck sweatshirt grey",
+      "retail": "Nike Club Fleece crew sweatshirt grey"
+    },
+    "comparables": [
+      {
+        "title": "Vintage Nike grey crewneck sweatshirt embroidered swoosh",
+        "url": "https://www.depop.com/products/example-vintage-nike-grey-crewneck/",
+        "price": 32.0,
+        "currency": "USD",
+        "sold": true,
+        "condition": "Used - Excellent",
+        "match": "same",
+        "why": "Same 90s Nike crewneck, also grey"
+      },
+      {
+        "title": "Nike crewneck sweatshirt grey size M",
+        "url": "https://www.depop.com/products/example-nike-crewneck-m/",
+        "price": 28.0,
+        "currency": "USD",
+        "sold": false,
+        "match": "same",
+        "why": "Nike crewneck in grey, listed not sold"
+      },
+      {
+        "title": "Champion reverse weave crewneck grey",
+        "url": "https://www.depop.com/products/example-champion-crewneck/",
+        "price": 35.0,
+        "currency": "USD",
+        "match": "similar",
+        "why": "Comparable heavyweight crewneck from a similar brand"
+      }
+    ],
+    "retail": [
+      {
+        "title": "Nike Sportswear Club Fleece Crew",
+        "url": "https://www.nike.com/t/sportswear-club-fleece-crew-example",
+        "price": 60.0,
+        "currency": "USD",
+        "seller": "nike.com",
+        "match": "similar"
+      }
+    ],
+    "excluded": { "notUsd": 2, "unverifiedPrice": 1, "notComparable": 4 }
+  },
+  "diagnostics": {
+    "stagesRun": ["tavily", "gemini"],
+    "stageAnswered": "gemini",
+    "elapsedMs": 3920
+  }
+}

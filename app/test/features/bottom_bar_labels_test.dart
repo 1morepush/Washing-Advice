@@ -67,7 +67,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
-      for (final label in ['Wardrobe', 'Laundry', 'Outfits', 'Ask', 'More']) {
+      for (final label in ['Wardrobe', 'Laundry', 'Outfits', 'Sell', 'More']) {
         final text = find.descendant(
           of: find.byType(NavigationBar),
           matching: find.text(label),

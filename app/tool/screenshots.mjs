@@ -79,10 +79,10 @@ async function tapText(page, text) {
  * between them. Same two lookups as `tapText`, for the same reason.
  */
 async function expectBar(page) {
-  for (const label of ['Wardrobe', 'Laundry', 'Outfits', 'Ask', 'More']) {
+  for (const label of ['Wardrobe', 'Laundry', 'Outfits', 'Sell', 'More']) {
     // The destination as the bar exposes it: a tab or a button whose name
     // *starts with* the label as a whole word (Flutter appends "Tab 2 of 5"),
-    // so neither a screen title that happens to say "Ask" nor a longer label
+    // so neither a screen title that happens to say "Sell" nor a longer label
     // such as "More options" can stand in for a destination that is missing.
     const name = new RegExp(`^${label}(\\s|$)`);
     const found =
@@ -252,6 +252,20 @@ for (const theme of ['light', 'dark']) {
     await page.goto(`${BASE}/#/packing`, { waitUntil: 'load' });
     await ready(page);
     await shot(page, 'packing');
+
+    // Selling, by address as the screens above are. The demo seeds three
+    // listings, one in each state, so the tab shows a draft with its price and
+    // what Depop's fee leaves, one that has sat long enough to be nudged, and a
+    // sale with the running total. The bar is checked because this is a place
+    // on it. Then the draft's editor, which carries the evidence for its price.
+    await page.goto(`${BASE}/#/sell`, { waitUntil: 'load' });
+    await ready(page);
+    await expectBar(page);
+    await shot(page, 'sell');
+
+    await page.goto(`${BASE}/#/listing/demo-listing-1`, { waitUntil: 'load' });
+    await ready(page);
+    await shot(page, 'listing-editor');
 
     // Settings the way a person gets there now: through More. Failing to find
     // either word means the list or the bar has lost its way in.

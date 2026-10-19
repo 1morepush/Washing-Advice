@@ -56,6 +56,19 @@ def _fresh_wiring() -> Iterator[None]:
     reset_wiring()
 
 
+@pytest.fixture(autouse=True)
+def _no_search_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keeps a real Tavily key out of every test.
+
+    The suite must never reach the network, and each search spends a credit
+    from a free allowance somebody else is counting on. A developer with the
+    key exported (or in `server/.env`) would otherwise have every test that
+    builds the default wiring make a live search. An empty value wins over
+    both, and reads as "no key".
+    """
+    monkeypatch.setenv("TAVILY_API_KEY", "")
+
+
 @pytest.fixture
 def client() -> Iterator[TestClient]:
     with TestClient(create_app()) as test_client:

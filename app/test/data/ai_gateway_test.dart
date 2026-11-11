@@ -9,6 +9,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
@@ -142,6 +143,40 @@ void main() {
 
       expect(requested.path, '/v1/scan/pile');
       expect(method, 'POST');
+    });
+
+    test('scanWorn posts the photo to v1/scan/worn and reads the fixture', () async {
+      // The contract fixture both sides parse, not a hand-written copy: if the
+      // server's shape moves, this is where the app notices.
+      final fixture =
+          jsonDecode(
+                File('../contracts/examples/worn_scan.json').readAsStringSync(),
+              )
+              as Map<String, Object?>;
+
+      final result = await gatewayReturning(fixture).scanWorn(image());
+
+      expect(requested.path, '/v1/scan/worn');
+      expect(method, 'POST');
+      expect(result.detections, isNotEmpty);
+      final first = result.detections.first;
+      expect(first.cutout, isNotNull);
+      expect(first.cutoutKind, isNotNull);
+      expect(first.boundingBox.width, greaterThan(0));
+    });
+
+    test('scanWorn reads an empty photo as no detections', () async {
+      final fixture =
+          jsonDecode(
+                File(
+                  '../contracts/examples/worn_scan_empty.json',
+                ).readAsStringSync(),
+              )
+              as Map<String, Object?>;
+
+      final result = await gatewayReturning(fixture).scanWorn(image());
+
+      expect(result.detections, isEmpty);
     });
 
     test('cutout posts to v1/image/cutout', () async {

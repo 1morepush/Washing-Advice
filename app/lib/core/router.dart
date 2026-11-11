@@ -8,6 +8,8 @@ library;
 import 'package:go_router/go_router.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
+import '../features/calendar/calendar_day_screen.dart';
+import '../features/calendar/calendar_screen.dart';
 import '../features/chat/chat_screen.dart';
 import '../features/insights/insights_screen.dart';
 import '../features/laundry/laundry_screen.dart';
@@ -194,6 +196,20 @@ GoRouter _router(String initialLocation) => GoRouter(
     // like Packing, and still reachable by its old address.
     GoRoute(path: '/ask', builder: (_, _) => const ChatScreen()),
     GoRoute(path: '/packing', builder: (_, _) => const PackingScreen()),
+    // The calendar is top level like Packing. A day is its child, so that a
+    // link straight to one builds the month beneath it and Back has somewhere
+    // to go; from inside the app it is pushed and the stack is the same.
+    GoRoute(
+      path: '/calendar',
+      builder: (_, _) => const CalendarScreen(),
+      routes: [
+        GoRoute(
+          path: ':date',
+          builder: (_, state) =>
+              CalendarDayScreen(slug: state.pathParameters['date']!),
+        ),
+      ],
+    ),
     GoRoute(path: '/insights', builder: (_, _) => const InsightsScreen()),
     GoRoute(path: '/scan', builder: (_, _) => const ScanScreen()),
     GoRoute(path: '/scan/bulk', builder: (_, _) => const BulkScanScreen()),

@@ -99,6 +99,35 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.35.0',
+    name: 'Spare Set',
+    date: DateTime.utc(2026, 11, 11),
+    headline: 'Save your whole wardrobe to a file, and bring it back',
+    changes: [
+      'Settings has a new Backup group. Save a backup packs everything into '
+          'one file you keep wherever you like: every garment, its photos '
+          'and cut-outs, your wear and wash history, saved outfits, your '
+          'listings and your machine and sorting choices. Until now the '
+          'wardrobe lived only on this phone, and clearing the browser\'s '
+          'data or losing the phone lost it.',
+      'Restore from a backup checks the whole file before it changes '
+          'anything, then shows what is in it and when it was made. Merge '
+          'adds what is missing and keeps the newer copy of anything in both '
+          'places, and never deletes. Replace everything asks a second time '
+          'and says how much would go. A file that is damaged, or made by a '
+          'newer version of the app, is refused and nothing is touched.',
+      'Settings says when you last saved a backup, and mentions it quietly '
+          'if you never have, or if it is over a month old and you have '
+          'added clothes since. The backup leaves out the sync token and the '
+          'server address, because it is a file people email to themselves.',
+      'The server now limits how often one network can ask it for AI work: '
+          '20 requests a minute and 200 a day, and 1,000 a day for everyone '
+          'together. Its address is public, and this stops a stranger who '
+          'finds it from using up the free allowances. If you ever reach '
+          'the limit the app says how long to wait.',
+    ],
+  ),
+  Release(
     version: '0.34.0',
     name: 'Fold and Sold',
     date: DateTime.utc(2026, 10, 19),

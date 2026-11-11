@@ -185,7 +185,10 @@ final class WornReviewing extends WornPhotoState {
   WornReviewing renaming(int index, String name) => _with(
     finds: [
       for (final (at, find) in finds.indexed)
-        if (at == index) find.withDraft(find.draft.copyWith(name: name)) else find,
+        if (at == index)
+          find.withDraft(find.draft.copyWith(name: name))
+        else
+          find,
     ],
   );
 
@@ -609,9 +612,7 @@ class WornPhotoController extends StateNotifier<WornPhotoState> {
             );
           }
 
-          await intake.saveItem(
-            find.draft.copyWith(photos: PhotoSet(photos)),
-          );
+          await intake.saveItem(find.draft.copyWith(photos: PhotoSet(photos)));
           saved++;
         } on Exception {
           // One garment failing to write must not abandon the rest.

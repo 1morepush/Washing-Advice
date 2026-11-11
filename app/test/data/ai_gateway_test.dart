@@ -145,25 +145,30 @@ void main() {
       expect(method, 'POST');
     });
 
-    test('scanWorn posts the photo to v1/scan/worn and reads the fixture', () async {
-      // The contract fixture both sides parse, not a hand-written copy: if the
-      // server's shape moves, this is where the app notices.
-      final fixture =
-          jsonDecode(
-                File('../contracts/examples/worn_scan.json').readAsStringSync(),
-              )
-              as Map<String, Object?>;
+    test(
+      'scanWorn posts the photo to v1/scan/worn and reads the fixture',
+      () async {
+        // The contract fixture both sides parse, not a hand-written copy: if the
+        // server's shape moves, this is where the app notices.
+        final fixture =
+            jsonDecode(
+                  File(
+                    '../contracts/examples/worn_scan.json',
+                  ).readAsStringSync(),
+                )
+                as Map<String, Object?>;
 
-      final result = await gatewayReturning(fixture).scanWorn(image());
+        final result = await gatewayReturning(fixture).scanWorn(image());
 
-      expect(requested.path, '/v1/scan/worn');
-      expect(method, 'POST');
-      expect(result.detections, isNotEmpty);
-      final first = result.detections.first;
-      expect(first.cutout, isNotNull);
-      expect(first.cutoutKind, isNotNull);
-      expect(first.boundingBox.width, greaterThan(0));
-    });
+        expect(requested.path, '/v1/scan/worn');
+        expect(method, 'POST');
+        expect(result.detections, isNotEmpty);
+        final first = result.detections.first;
+        expect(first.cutout, isNotNull);
+        expect(first.cutoutKind, isNotNull);
+        expect(first.boundingBox.width, greaterThan(0));
+      },
+    );
 
     test('scanWorn reads an empty photo as no detections', () async {
       final fixture =

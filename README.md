@@ -828,6 +828,9 @@ On your phone, and nowhere else unless you send it somewhere.
   not.
 - **Listings** are kept in a table of their own beside the wardrobe, on the same
   phone, and are not synced.
+- **A backup** is a file you make yourself, in Settings > Backup. See
+  [Backup and restore](#backup-and-restore). On an iPhone's home-screen web app,
+  clearing site data erases the wardrobe, so make one now and then.
 - **Nothing in this repository is anybody's real wardrobe.** The screenshots are
   a seeded demo build (`app/lib/main_demo.dart`) with invented garments and
   drawn illustrations, generated in a container with no camera.
@@ -975,6 +978,47 @@ flutter run -t lib/main_demo.dart -d chrome   # or any connected device
 `flutter run` without `-t` starts the real app, which expects the server at
 `http://localhost:8000` — editable in Settings, because a phone cannot reach a
 development machine's localhost.
+
+### Backup and restore
+
+**Settings > Backup > Save a backup** writes one zip named like
+`washing-advice-backup-2026-11-11.zip` and hands it to you: a download in the browser, the share sheet
+on a phone (which includes "save to Files"), a save dialog on a desktop. It says
+what is in it ("84 garments, 212 photos, 3 listings") and how big it is. Nothing
+is uploaded anywhere.
+
+It holds every garment (deleted ones too, so a deletion survives), the history,
+saved outfits, listings, every photograph and cutout they use, and the settings
+worth keeping: machines, the two sorting choices and the look. It does **not**
+hold the sync token, the server address, the sync cursors or the evening reminder
+time (that needs this phone's permission), so passing the file around never
+shares the key to a synced wardrobe.
+
+Inside: `manifest.json` (format version, app version, created-at, counts),
+`data/*.json` (the same JSON the database and sync use) and `images/` (the
+pictures, stored uncompressed, openable in any viewer). Reading is strict about
+damage and relaxed about novelty: a truncated or altered file, or one whose
+counts do not add up, is refused before anything changes; a backup from a newer
+format is refused with "update the app"; keys it does not know are ignored.
+
+**Restore from a backup** checks the file, shows when it was made and what it
+holds, and asks how to apply it:
+
+- **Merge** (the default) adds what is missing, keeps the newer of two copies of
+  the same garment, outfit or listing (by `updatedAt`), unions the history by
+  event id, and never deletes. A garment you deleted after the backup stays
+  deleted, because the deletion is the newer copy.
+- **Replace everything** makes the wardrobe exactly the backup, after a second
+  confirmation that says how much will be lost.
+
+Pictures are written first and the records in one database transaction, so a
+failed restore leaves the existing wardrobe as it was. The sync cursors are
+forgotten afterwards so the next sync re-sends what was restored. Settings shows
+when the last backup was made, with a quiet note if there has never been one, or
+it is over a month old and the wardrobe has grown.
+
+The archive is built in memory, so it is as large as your pictures; a few
+hundred garments is tens of megabytes.
 
 ### Turning on sync
 
@@ -1222,10 +1266,9 @@ Stated plainly, because the code says so too.
   so the first local `flutter build apk` or iOS build is what proves them.
 - **Sync only runs when you tap "Sync now".** Nothing syncs on launch or in the
   background yet, so two devices drift until one of them is told to catch up.
-- **There is no export.** Sync is the only copy off the phone, and its token
-  cannot be recovered; a JSON backup of garments and history does not exist yet.
-  The Sell tab's listings are not in sync at all, so they exist on one phone
-  only.
+- **Backups are manual.** Nothing saves one for you, and the app only nudges on
+  the Settings screen. A backup includes the Sell tab's listings, which sync does
+  not carry. Sync is still the only way to keep two devices level.
 - **Sync has no hosted deployment.** The endpoints, the client and the
   reconciliation all exist and are exercised end to end against a real server in
   CI, but nobody is running that server anywhere. You point the app at your own.

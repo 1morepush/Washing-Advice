@@ -10,8 +10,13 @@ publish_to: none
 environment:
   sdk: ^3.6.0
 
-# No `dependencies:` block, by design. See docs/adr/0002-pure-dart-core.md —
-# the domain must stay portable and instantly testable.
+# One runtime dependency, and only for the backup file: a zip has to be read
+# as well as written, and reading deflate is not something to reimplement. The
+# rest of the domain is still dependency-free (see
+# docs/adr/0001-pure-dart-domain-core.md, and its amendment). `archive` is pure
+# Dart, so the core still runs anywhere a Dart VM does, the browser included.
+dependencies:
+  archive: ^4.6.0
 
 dev_dependencies:
   test: ^1.25.0

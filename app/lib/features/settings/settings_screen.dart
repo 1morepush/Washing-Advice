@@ -12,6 +12,7 @@ import '../../core/settings.dart';
 import '../../core/theme.dart';
 import '../../widgets/back_navigation.dart';
 import '../../data/api/ai_gateway.dart';
+import '../backup/backup_section.dart';
 import '../sync/sync_section.dart';
 import 'appearance_section.dart';
 import 'machine_section.dart';
@@ -135,6 +136,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             title: 'Sync',
             info: syncInfo,
             children: [SyncSection()],
+          ),
+
+          const SettingsGroup(
+            title: 'Backup',
+            info: backupInfo,
+            children: [BackupSection()],
           ),
 
           // The things that are set once, or only when something is wrong.

@@ -60,8 +60,13 @@ dependencies:
   # and the listings a price was built on. Behind `LinkOpener`; see
   # lib/core/link_opener.dart.
   url_launcher: ^6.3.3
+  share_plus: ^13.3.1
+  file_selector: ^1.1.0
 
 dev_dependencies:
+  # Direct, for the backup tests: they open the archive the app made, and make
+  # damaged variants of it, to check what the app says about each.
+  archive: ^4.6.0
   # Direct, not just transitive via drift: the migration test opens a raw
   # database so it can stamp an old schema version and upgrade from it.
   sqlite3: ^2.4.0

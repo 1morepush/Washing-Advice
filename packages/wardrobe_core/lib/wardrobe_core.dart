@@ -21,10 +21,18 @@
 ///   suggested price and what is left after fees, and the listings kept.
 /// * `vision` — the contract the AI layer must satisfy (no implementation).
 /// * `events` — the append-only history and the projections derived from it.
+/// * `backup` — the one-file backup of everything, and the rules for restoring
+///   it.
 library;
 
 // Exports are ordered by path, which keeps each bounded context together.
 
+// Backup: the file that carries a wardrobe off the phone, and back.
+export 'src/backup/backup_archive.dart';
+export 'src/backup/backup_manifest.dart';
+export 'src/backup/backup_reminder.dart';
+export 'src/backup/backup_snapshot.dart';
+export 'src/backup/restore_plan.dart';
 // Care: the ISO 3758 model, rule table, resolution and plain-English output.
 export 'src/care/care_language.dart';
 export 'src/care/care_resolver.dart';

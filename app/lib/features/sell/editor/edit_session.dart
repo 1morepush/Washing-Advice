@@ -236,6 +236,48 @@ class ListingEditSession extends ChangeNotifier {
     return true;
   }
 
+  /// Makes the photograph at [index] the cover. The rules are the core's:
+  /// see [makePhotoCover].
+  void makeCover(int index) => edit(
+    (listing) =>
+        listing.copyWith(photos: makePhotoCover(listing.photos, index)),
+  );
+
+  /// Moves the photograph at [from] to [to]; see [movePhoto].
+  void movePhotoTo(int from, int to) => edit(
+    (listing) => listing.copyWith(photos: movePhoto(listing.photos, from, to)),
+  );
+
+  /// Whether a garment also holds the photograph at [index], which decides
+  /// whether removing it deletes the picture or only takes it off the listing.
+  Future<bool> garmentHoldsPhoto(int index) {
+    final photos = _listing.photos;
+    if (index < 0 || index >= photos.length) return Future.value(false);
+    return _controller.garmentHolds(_listing, photos[index]);
+  }
+
+  /// Takes the photograph at [index] off the listing, and deletes its stored
+  /// picture unless a garment also holds it (the controller decides).
+  ///
+  /// The listing is stored first, then the picture deleted, so an interruption
+  /// between the two leaves a stray file and not a listing that points at
+  /// nothing.
+  Future<void> removePhoto(int index) async {
+    final photos = _listing.photos;
+    if (index < 0 || index >= photos.length) return;
+    final gone = photos[index];
+
+    edit(
+      (listing) =>
+          listing.copyWith(photos: removePhotoAt(listing.photos, index)),
+    );
+    await flush();
+    if (_deleted) return;
+    // Another photograph on this listing may hold the same picture.
+    if (_listing.photos.any((photo) => photo.uri == gone.uri)) return;
+    await _controller.deletePhotoFiles(_listing, [gone]);
+  }
+
   /// Deletes the listing, and the photographs that were its own.
   ///
   /// From here nothing more is written: a change still waiting for its turn

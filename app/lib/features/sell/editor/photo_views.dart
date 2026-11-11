@@ -15,6 +15,8 @@ import '../../../core/theme.dart';
 import '../../../widgets/garment_glyph.dart';
 import '../../../widgets/rinse_kit.dart';
 import '../../../widgets/stored_image.dart';
+import 'edit_session.dart';
+import 'photo_actions.dart';
 
 /// What stands in for a photograph that cannot be shown: the silhouette of what
 /// is being sold, on the well every garment sits on.
@@ -38,29 +40,35 @@ class PhotoSilhouette extends StatelessWidget {
   );
 }
 
-/// Opens [photos] full screen, on the one at [index].
+/// Opens the listing's photographs full screen, on the one at [index].
+///
+/// Drawn from [session], not a copy of the list, so that making a photo the
+/// cover or removing one in here is seen here at once, and by the strip when
+/// the viewer closes.
 Future<void> showListingPhotos(
   BuildContext context, {
-  required List<ListingPhoto> photos,
+  required ListingEditSession session,
   required int index,
   required ItemType type,
 }) => Navigator.of(context).push<void>(
   MaterialPageRoute(
     fullscreenDialog: true,
-    builder: (_) => ListingPhotoPager(photos: photos, index: index, type: type),
+    builder: (_) =>
+        ListingPhotoPager(session: session, index: index, type: type),
   ),
 );
 
-/// The photographs of a listing, one to a page.
+/// The photographs of a listing, one to a page, with what can be done to the
+/// one on show.
 class ListingPhotoPager extends StatefulWidget {
   const ListingPhotoPager({
-    required this.photos,
+    required this.session,
     required this.index,
     required this.type,
     super.key,
   });
 
-  final List<ListingPhoto> photos;
+  final ListingEditSession session;
   final int index;
   final ItemType type;
 
@@ -70,7 +78,10 @@ class ListingPhotoPager extends StatefulWidget {
 
 class _ListingPhotoPagerState extends State<ListingPhotoPager> {
   late final PageController _pages = PageController(
-    initialPage: widget.index.clamp(0, widget.photos.length - 1),
+    initialPage: widget.index.clamp(
+      0,
+      (widget.session.listing.photos.length - 1).clamp(0, 1 << 20),
+    ),
   );
   late int _page = _pages.initialPage;
 
@@ -80,26 +91,79 @@ class _ListingPhotoPagerState extends State<ListingPhotoPager> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final photos = widget.photos;
-
-    return Scaffold(
-      appBar: AppBar(
-        leading: const CloseButton(),
-        title: AppBarTitle(
-          '${photos[_page].shot.label} · ${_page + 1} of ${photos.length}',
-        ),
-      ),
-      body: PageView.builder(
-        controller: _pages,
-        itemCount: photos.length,
-        onPageChanged: (page) => setState(() => _page = page),
-        itemBuilder: (context, index) =>
-            _ZoomablePhoto(photo: photos[index], type: widget.type),
-      ),
-    );
+  /// Shows page [page] now, and remembers it.
+  void _show(int page) {
+    setState(() => _page = page);
+    if (_pages.hasClients) _pages.jumpToPage(page);
   }
+
+  Future<void> _do(PhotoAction action) async {
+    final session = widget.session;
+    final index = _page;
+    final moved = await doPhotoAction(context, session, action, index);
+    if (!mounted) return;
+
+    if (session.listing.photos.isEmpty) {
+      Navigator.of(context).pop();
+    } else if (moved != null) {
+      _show(moved);
+    } else {
+      // Removed, or kept after all: stay on a page that is still there.
+      final last = session.listing.photos.length - 1;
+      _show(_page.clamp(0, last));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: widget.session,
+    builder: (context, _) {
+      final photos = widget.session.listing.photos;
+      if (photos.isEmpty) return const Scaffold(body: SizedBox.shrink());
+      final page = _page.clamp(0, photos.length - 1);
+      final photo = photos[page];
+
+      return Scaffold(
+        appBar: AppBar(
+          leading: const CloseButton(),
+          title: AppBarTitle(
+            '${photo.shot.label} · ${page + 1} of ${photos.length}',
+          ),
+        ),
+        body: PageView.builder(
+          controller: _pages,
+          itemCount: photos.length,
+          onPageChanged: (page) => setState(() => _page = page),
+          itemBuilder: (context, index) => _ZoomablePhoto(
+            key: ValueKey(photos[index].uri),
+            photo: photos[index],
+            type: widget.type,
+          ),
+        ),
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final action in photoActionsFor(
+                  photo,
+                  page,
+                  photos.length,
+                ))
+                  OutlinedButton(
+                    key: ValueKey('pager-${action.name}'),
+                    onPressed: () => _do(action),
+                    child: Text(action.label),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
 }
 
 /// One photograph, whole, that can be pinched closer.
@@ -108,7 +172,7 @@ class _ListingPhotoPagerState extends State<ListingPhotoPager> {
 /// a swipe to the next page, and an [InteractiveViewer] that always took drags
 /// would leave the pager unable to turn.
 class _ZoomablePhoto extends StatefulWidget {
-  const _ZoomablePhoto({required this.photo, required this.type});
+  const _ZoomablePhoto({required this.photo, required this.type, super.key});
 
   final ListingPhoto photo;
   final ItemType type;

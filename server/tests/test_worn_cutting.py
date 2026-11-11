@@ -171,11 +171,11 @@ class TestAnOutlineThatPassesVetting:
 
         assert cut is not None
         rgba = pixels_of(cut)
-        # The crop starts at (55, 85) in the photograph. Photograph (60, 100) is
-        # inside both the mask and the red square.
-        assert tuple(rgba[100 - 85, 60 - 55]) == (*RED, 255)
-        # Photograph (110, 170) is inside the mask and outside the red square.
-        assert tuple(rgba[170 - 85, 110 - 55]) == (*SKY, 255)
+        # The crop starts at (55, 85) in the photograph. The mask covers photograph
+        # x 60..140, y 90..210; (75, 110) is well inside it and inside the red square.
+        assert tuple(rgba[110 - 85, 75 - 55]) == (*RED, 255)
+        # (120, 190) is inside the mask and outside the red square.
+        assert tuple(rgba[190 - 85, 120 - 55]) == (*SKY, 255)
 
     def test_is_transparent_outside_the_mask(self) -> None:
         cut = cut_garment(scene(), BOX, rect_mask(CORE))
@@ -278,7 +278,7 @@ class TestAnOutlineThatPassesVetting:
 
         assert cut is not None
         assert cut.kind is CutoutKind.OUTLINE
-        assert cut.width <= 105 and cut.height <= 155
+        assert (cut.width, cut.height) == (106, 156)  # margin only where there is room
 
     def test_is_capped_to_the_display_size(self) -> None:
         photo = Image.new("RGB", (3000, 4000), SKY)
@@ -319,10 +319,8 @@ class TestRegions:
         # The crop spans both shoes, not one.
         assert cut.width > 150
         # Each shoe's centre is opaque, and the gap between them is not.
-        left_centre = (120 - cut.height // 2 + 0, 0)
-        del left_centre
         row = cut.height // 2
-        assert alpha[row, 35 - 5] == 255 or alpha[row, 36 - 5] == 255
+        assert alpha[row, 30] == 255
         assert alpha[row, cut.width // 2] == 0
         assert alpha[row, cut.width - 36] == 255
 
@@ -440,8 +438,8 @@ class TestAMaskThatFallsBackToTheBox:
         ("size", "believed"),
         [
             ((16, 15), False),  # 0.6% of the box
-            ((38, 40), False),  # 1.8%
-            ((60, 60), True),  # 9.4%
+            ((27, 28), False),  # 1.97%
+            ((28, 28), True),  # 2.04%
         ],
     )
     def test_a_mask_is_too_small_to_be_a_garment_under_two_percent(
@@ -546,7 +544,9 @@ class TestOrientation:
     def test_an_upright_photograph_is_sent_untouched(self) -> None:
         # Not re-encoded: an ordinary shot should not pay a generation of JPEG
         # loss for a rotation it does not need.
-        original = ScanImage(data=self.sideways_jpeg(1, self.upright_scene()), mime_type="image/jpeg")
+        original = ScanImage(
+            data=self.sideways_jpeg(1, self.upright_scene()), mime_type="image/jpeg"
+        )
 
         assert orient_photo(original).for_model is original
 

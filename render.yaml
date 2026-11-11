@@ -49,5 +49,18 @@ services:
       # disk and SYNC_DB_PATH pointing into it.
       - key: SYNC_ENABLED
         value: false
+      # Request limits on the AI endpoints (scans, describe, prices, stains,
+      # condition, style, chat, machines), which spend the free Gemini and
+      # Tavily allowances. Optional; the defaults below apply when unset, and 0
+      # turns a limit off. Held in memory, so per instance and forgotten on
+      # restart. Health and sync are not limited.
+      #   RATE_LIMIT_PER_MINUTE=20        per client address
+      #   RATE_LIMIT_PER_DAY=200          per client address, rolling 24 hours
+      #   RATE_LIMIT_GLOBAL_PER_DAY=1000  everyone together, rolling 24 hours
+      #   RATE_LIMIT_MAX_CLIENTS=2000     addresses tracked at once
+      #   RATE_LIMIT_TRUST_FORWARDED_FOR=true
+      # Clients are told apart by the first X-Forwarded-For address, which
+      # Render's proxy sets. Behind any other host, or none, set the last one to
+      # false: the header is otherwise whatever the caller writes.
       - key: CORS_ALLOWED_ORIGINS
         value: https://1morepush.github.io

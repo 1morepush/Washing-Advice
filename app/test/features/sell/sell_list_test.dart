@@ -405,6 +405,118 @@ void main() {
     });
   });
 
+  group('a shipping discount', () {
+    testWidgets('comes off what a card says you get, and is named', (
+      tester,
+    ) async {
+      await have([
+        draft(
+          'd',
+          title: 'Nike crewneck',
+          price: 3000,
+        ).copyWith(shippingDiscountCents: 400),
+        listed(
+          'l',
+          at: h.now.subtract(const Duration(days: 5)),
+          price: 3800,
+        ).copyWith(shippingDiscountCents: 500),
+        sold(
+          's',
+          at: h.now.subtract(const Duration(days: 22)),
+          paid: 3400,
+        ).copyWith(shippingDiscountCents: 600),
+      ]);
+
+      await h.open(tester, size: tall);
+
+      // $28.56 less $4.00, $36.30 less $5.00, $32.43 less $6.00.
+      expect(
+        find.text(r'$30.00 · you get $24.56 after $4.00 shipping discount'),
+        findsOneWidget,
+      );
+      expect(
+        find.text(r'$38.00 · you get $31.30 after $5.00 shipping discount'),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          r'Sold for $34.00 · you got $26.43 after $6.00 shipping discount',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('is the same sum the core does', (tester) async {
+      await have([
+        draft(
+          'd',
+          title: 'Nike crewneck',
+          price: 3000,
+        ).copyWith(shippingDiscountCents: 400),
+      ]);
+
+      await h.open(tester, size: tall);
+
+      final net = DepopFees.us
+          .saleNet(3000, shippingDiscountCents: 400)
+          .netCents;
+      expect(find.textContaining(formatUsd(net)), findsOneWidget);
+    });
+
+    testWidgets('comes off the sold total, which says so', (tester) async {
+      await have([
+        sold(
+          'a',
+          at: h.now.subtract(const Duration(days: 22)),
+          paid: 3400,
+        ).copyWith(shippingDiscountCents: 600),
+        sold(
+          'b',
+          title: 'Wool coat',
+          at: h.now.subtract(const Duration(days: 9)),
+          paid: 5000,
+        ),
+      ]);
+
+      await h.open(tester, size: tall);
+
+      // $26.43 and $47.90.
+      expect(
+        find.text('2 sold · you got \$74.33 after fees and shipping discounts'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('leaves a card and the total alone when there is none', (
+      tester,
+    ) async {
+      await have([draft('d', title: 'Nike crewneck', price: 3000)]);
+
+      await h.open(tester, size: tall);
+
+      expect(find.textContaining('shipping discount'), findsNothing);
+    });
+
+    testWidgets('floors a card at nothing when it is more than the sale', (
+      tester,
+    ) async {
+      await have([
+        draft(
+          'd',
+          title: 'Nike crewneck',
+          price: 1000,
+        ).copyWith(shippingDiscountCents: 1500),
+      ]);
+
+      await h.open(tester, size: tall);
+
+      expect(
+        find.text(r'$10.00 · you get $0.00 after $15.00 shipping discount'),
+        findsOneWidget,
+      );
+    });
+  });
+
   group('the sold total', () {
     testWidgets('is the count and what Depop\'s fees left', (tester) async {
       await have([

@@ -13,9 +13,10 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:wardrobe_core/wardrobe_core.dart';
 
+import '../list/listing_money.dart';
 import 'amount_input.dart';
+import 'net_sentence.dart';
 
 /// Asks what a listing sold for. Null if the person backs out; otherwise the
 /// price typed in cents, which is null if the box was left empty, in which
@@ -23,15 +24,22 @@ import 'amount_input.dart';
 Future<({int? cents})?> showSoldPriceDialog(
   BuildContext context, {
   required int? asking,
+  int? shippingDiscountCents,
 }) => showDialog<({int? cents})>(
   context: context,
-  builder: (_) => _SoldPriceDialog(asking: asking),
+  builder: (_) => _SoldPriceDialog(
+    asking: asking,
+    shippingDiscountCents: shippingDiscountCents,
+  ),
 );
 
 class _SoldPriceDialog extends StatefulWidget {
-  const _SoldPriceDialog({required this.asking});
+  const _SoldPriceDialog({required this.asking, this.shippingDiscountCents});
 
   final int? asking;
+
+  /// The shipping discount on the listing, which comes off what is shown.
+  final int? shippingDiscountCents;
 
   @override
   State<_SoldPriceDialog> createState() => _SoldPriceDialogState();
@@ -68,7 +76,6 @@ class _SoldPriceDialogState extends State<_SoldPriceDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    const fees = DepopFees.us;
     final price = _effective;
 
     return AlertDialog(
@@ -100,8 +107,13 @@ class _SoldPriceDialogState extends State<_SoldPriceDialog> {
           Text(
             price == null
                 ? 'Type what it sold for to see what you get.'
-                : "You get ${formatUsd(fees.netCents(price))} after Depop's "
-                      'fees (${fees.label})',
+                : netSentence(
+                    'get',
+                    saleNetOf(
+                      price,
+                      shippingDiscountCents: widget.shippingDiscountCents,
+                    ),
+                  ),
             style: theme.textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.w700,
             ),

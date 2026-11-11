@@ -15,6 +15,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../data/api/ai_gateway.dart';
+import '../data/backup/backup_files_port.dart';
+import '../data/backup/platform_backup_files.dart';
 import '../data/capture/image_capture_source.dart';
 import '../data/drift/connection.dart';
 import '../data/drift/database.dart';
@@ -168,6 +170,14 @@ final imageStoreProvider = Provider<ImageStore>(
   (ref) => throw StateError(
     'imageStoreProvider must be overridden in main() with a platform store',
   ),
+);
+
+/// Where a backup file goes to and comes from.
+///
+/// Overridden with a fake in tests, which would otherwise have no share sheet
+/// to open. See `backup_files_port.dart`.
+final backupFilesProvider = Provider<BackupFiles>(
+  (ref) => const PlatformBackupFiles(),
 );
 
 /// New identifiers. Overridden in tests so ids are predictable.

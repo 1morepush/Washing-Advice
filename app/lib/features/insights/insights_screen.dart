@@ -20,6 +20,7 @@ import '../../core/theme.dart';
 import '../../widgets/back_navigation.dart';
 import '../../widgets/state_view.dart';
 import '../../widgets/status_message.dart';
+import '../let_go/let_go_cards.dart';
 
 class InsightsScreen extends ConsumerWidget {
   const InsightsScreen({super.key});
@@ -102,6 +103,8 @@ class InsightsScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   _Neglected(summary: data),
                   const SizedBox(height: 16),
+                  // Nothing at all unless something has gone a year unworn.
+                  const LetGoInsightsCard(),
                   _Value(summary: data),
                 ],
               ),

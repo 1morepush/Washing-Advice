@@ -50,7 +50,12 @@ class HistoryHarness {
 
   var _ids = 0;
 
-  late final ProviderContainer app = () {
+  /// The app's providers, built on first use inside the test that wants them.
+  late final ProviderContainer app = newApp();
+
+  /// A fresh set of providers over the same stores: the app as it is after a
+  /// restart, with nothing in memory and everything on the "phone".
+  ProviderContainer newApp() {
     final built = ProviderContainer(
       overrides: [
         settingsStoreProvider.overrideWithValue(SettingsStore(prefs)),
@@ -68,7 +73,7 @@ class HistoryHarness {
     );
     addTearDown(built.dispose);
     return built;
-  }();
+  }
 
   /// A garment, optionally added on a given day and with a picture.
   Future<WardrobeItem> addGarment(

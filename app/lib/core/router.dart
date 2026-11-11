@@ -14,6 +14,7 @@ import '../features/chat/chat_screen.dart';
 import '../features/insights/insights_screen.dart';
 import '../features/laundry/laundry_screen.dart';
 import '../features/laundry/worn_today_screen.dart';
+import '../features/let_go/let_go_screen.dart';
 import '../features/more/more_screen.dart';
 import '../features/outfits/outfits_screen.dart';
 import '../features/packing/packing_screen.dart';
@@ -179,6 +180,9 @@ GoRouter _router(String initialLocation) => GoRouter(
       path: '/sell/from-wardrobe',
       builder: (_, _) => const PickGarmentScreen(),
     ),
+    // What has not been worn in a year, offered for sale. A task of its own, so
+    // it covers the bar like the picker beside it.
+    GoRoute(path: '/sell/unworn', builder: (_, _) => const LetGoScreen()),
     // An address from before listings were started from the screen that asked
     // for them. It does no work: starting one is done behind a dialog, once, by
     // the garment's page or the picker, and a route that did it on entry made

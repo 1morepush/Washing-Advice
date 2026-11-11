@@ -249,6 +249,31 @@ void main() {
     });
   });
 
+  group('merge, images of a kept garment', () {
+    test('are not taken from the backup when only its counters change', () {
+      WardrobeItem withPhoto(String uri, DateTime at) =>
+          item('a', at: at).copyWith(
+            photos: PhotoSet([
+              ItemPhoto(uri: uri, role: PhotoRole.front, capturedAt: day(1)),
+            ]),
+          );
+
+      final here = BackupSnapshot(items: [withPhoto('here:a', day(9))]);
+      final backup = BackupSnapshot(
+        items: [withPhoto('there:a', day(2))],
+        events: [wornEvent('a', day(1), id: 'e1')],
+      );
+
+      final plan = merge(here, backup);
+
+      // Written again, with its counters brought up to date...
+      expect(plan.items.single.usage.timesWorn, 1);
+      // ...but it is still this phone's garment, with this phone's pictures.
+      expect(plan.imageUris, isEmpty);
+      expect(plan.itemImageUris, isEmpty);
+    });
+  });
+
   group('replace', () {
     test('writes everything in the backup and says what it clears', () {
       final here = BackupSnapshot(

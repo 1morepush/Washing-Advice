@@ -61,10 +61,11 @@ final class RestoreOutcome {
   RestoreMode get mode => plan.mode;
 
   bool get changedAnything =>
-      plan.itemCounts.changesAnything ||
-      plan.eventCounts.changesAnything ||
-      plan.outfitCounts.changesAnything ||
-      plan.listingCounts.changesAnything ||
+      plan.replacesEverything ||
+      plan.items.isNotEmpty ||
+      plan.events.isNotEmpty ||
+      plan.outfits.isNotEmpty ||
+      plan.listings.isNotEmpty ||
       settingsApplied > 0;
 }
 
@@ -177,7 +178,18 @@ class BackupService {
     final names = restoreNames(backup.imageUris);
     final wanted = plan.imageUris.where(names.containsKey).toList();
 
+    // Pictures that only a listing needs, and that are already here, stay as
+    // they are in a merge. A listing started from a garment shares that
+    // garment's file; the backup's copy of it may be older than the one this
+    // phone kept because its garment was edited later, and a listing must not
+    // put the old picture back under the new garment.
+    final needed = plan.itemImageUris;
+    final spare = mode == RestoreMode.merge
+        ? plan.imageUris.where((uri) => !needed.contains(uri)).toSet()
+        : const <String>{};
+
     final moved = <String, String>{};
+    final newlyWritten = <String>[];
     final alreadyReferenced = current.imageUris;
     try {
       for (var i = 0; i < wanted.length; i++) {
@@ -185,16 +197,22 @@ class BackupService {
         if (i % 4 == 3) await Future<void>.delayed(Duration.zero);
 
         final uri = wanted[i];
+        if (spare.contains(uri) && await images.read(uri) != null) {
+          moved[uri] = uri;
+          continue;
+        }
         final Uint8List? bytes = backup.imageBytes(uri);
         if (bytes == null) continue;
-        moved[uri] = await images.save(bytes, name: names[uri]!);
+        final stored = await images.save(bytes, name: names[uri]!);
+        moved[uri] = stored;
+        newlyWritten.add(stored);
       }
       onProgress?.call(wanted.length, wanted.length);
 
       await _commit(plan.withImageUris(moved));
     } on Object catch (error) {
       await _discard(
-        moved.values.where((uri) => !alreadyReferenced.contains(uri)),
+        newlyWritten.where((uri) => !alreadyReferenced.contains(uri)),
       );
       throw RestoreFailed(
         'The restore did not finish, and nothing on this phone was changed. '
@@ -219,24 +237,20 @@ class BackupService {
       overwrite: mode == RestoreMode.replace,
     );
 
-    final changed =
-        plan.itemCounts.changesAnything ||
-        plan.eventCounts.changesAnything ||
-        plan.outfitCounts.changesAnything ||
-        plan.listingCounts.changesAnything;
-    if (changed) {
+    final outcome = RestoreOutcome(
+      plan: plan,
+      imagesWritten: newlyWritten.length,
+      imagesMissing: plan.imageUris.length - moved.length,
+      settingsApplied: applied,
+    );
+    if (outcome.changedAnything) {
       // Sync sends what changed since its cursor, and these records are older
       // than that. Forgetting the cursors makes the next sync look at
       // everything, which merging makes harmless.
       await settings.clearCursors();
     }
 
-    return RestoreOutcome(
-      plan: plan,
-      imagesWritten: moved.length,
-      imagesMissing: plan.imageUris.length - moved.length,
-      settingsApplied: applied,
-    );
+    return outcome;
   }
 
   Future<void> _commit(RestorePlan plan) => _db.transaction(() async {

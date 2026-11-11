@@ -46,6 +46,7 @@ import '../events/wardrobe_event.dart';
 import '../outfits/model/outfit.dart';
 import '../selling/listing.dart';
 import '../shared/ids.dart';
+import '../wardrobe/model/lifecycle.dart';
 import '../wardrobe/model/wardrobe_item.dart';
 import 'backup_snapshot.dart';
 
@@ -78,7 +79,9 @@ final class RestoreCounts {
   /// Here and not in the backup, removed by a replace. Always zero for merge.
   final int removed;
 
-  /// Whether anything of this kind is written.
+  /// Whether this kind of record is changed. Deletion markers are written
+  /// without being counted, so for garments this can be false while rows
+  /// still go in; ask the plan's lists for that.
   bool get changesAnything => added > 0 || updated > 0 || removed > 0;
 
   @override
@@ -109,6 +112,7 @@ final class RestorePlan {
     required this.eventCounts,
     required this.outfitCounts,
     required this.listingCounts,
+    this.itemsFromBackup,
   });
 
   final RestoreMode mode;
@@ -139,15 +143,32 @@ final class RestorePlan {
       listings.isEmpty &&
       !replacesEverything;
 
-  /// The images the records to be written point at.
+  /// Which of [items] are the backup's own copies.
+  ///
+  /// Null means all of them. In a merge a garment this wardrobe keeps can
+  /// still be among [items] — written again with its counters brought up to
+  /// date from the merged history — and that one is *this phone's* record,
+  /// with this phone's pictures.
+  final Set<ItemId>? itemsFromBackup;
+
+  /// The garments whose records come from the backup.
+  List<WardrobeItem> get takenItems => itemsFromBackup == null
+      ? items
+      : [
+          for (final item in items)
+            if (itemsFromBackup!.contains(item.id)) item,
+        ];
+
+  /// The images the garments taken from the backup point at.
+  Set<String> get itemImageUris => BackupSnapshot(items: takenItems).imageUris;
+
+  /// The images the records to be written take from the backup.
   ///
   /// Only these need writing. In a merge, a garment this wardrobe keeps keeps
   /// its own pictures, and writing the backup's over them would put an older
   /// cutout back under a newer record.
-  Set<String> get imageUris => BackupSnapshot(
-        items: items,
-        listings: listings,
-      ).imageUris;
+  Set<String> get imageUris =>
+      BackupSnapshot(items: takenItems, listings: listings).imageUris;
 
   /// The same plan with its records pointing at images where they now are.
   RestorePlan withImageUris(Map<String, String> moved) => RestorePlan(
@@ -163,8 +184,17 @@ final class RestorePlan {
         eventCounts: eventCounts,
         outfitCounts: outfitCounts,
         listingCounts: listingCounts,
+        itemsFromBackup: itemsFromBackup,
       );
 }
+
+/// Whether a person can see this garment, i.e. it is not a deletion marker.
+///
+/// The counts a restore reports are of garments somebody would recognise. A
+/// deletion marker is still written — it is how a deletion survives — but
+/// "3 garments added" that includes two nobody can see would be a number
+/// nobody can check against anything.
+bool _visible(WardrobeItem item) => item.lifecycle != LifecycleState.removed;
 
 /// Works out what restoring [incoming] onto [current] in [mode] would do.
 RestorePlan planRestore({
@@ -197,8 +227,8 @@ RestorePlan _replace(BackupSnapshot current, BackupSnapshot incoming) {
     listings: incoming.listings,
     settings: incoming.settings,
     itemCounts: counts(
-      current.items.map((i) => i.id.value),
-      incoming.items.map((i) => i.id.value),
+      current.items.where(_visible).map((i) => i.id.value),
+      incoming.items.where(_visible).map((i) => i.id.value),
     ),
     eventCounts: counts(
       current.events.map((e) => e.id.value),
@@ -225,6 +255,7 @@ RestorePlan _merge(BackupSnapshot current, BackupSnapshot incoming) {
 
   final here = {for (final i in current.items) i.id: i};
   final winners = <ItemId, WardrobeItem>{};
+  final taken = <ItemId>{};
   var itemsAdded = 0;
   var itemsUpdated = 0;
   var itemsKept = 0;
@@ -232,12 +263,14 @@ RestorePlan _merge(BackupSnapshot current, BackupSnapshot incoming) {
     final mine = here[item.id];
     if (mine == null) {
       winners[item.id] = item;
-      itemsAdded++;
+      taken.add(item.id);
+      if (_visible(item)) itemsAdded++;
     } else if (item.updatedAt.isAfter(mine.updatedAt)) {
       winners[item.id] = item;
-      itemsUpdated++;
+      taken.add(item.id);
+      if (_visible(item)) itemsUpdated++;
     } else {
-      itemsKept++;
+      if (_visible(item)) itemsKept++;
     }
   }
 
@@ -292,6 +325,7 @@ RestorePlan _merge(BackupSnapshot current, BackupSnapshot incoming) {
   return RestorePlan(
     mode: RestoreMode.merge,
     items: winners.values.toList(),
+    itemsFromBackup: taken,
     events: newEvents,
     outfits: outfits,
     listings: listings,

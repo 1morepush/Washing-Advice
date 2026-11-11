@@ -170,6 +170,42 @@ class Settings(BaseSettings):
             return value.strip() or None
         return value
 
+    # --- Request rate limits ------------------------------------------------
+    # In-process, so per instance and forgotten on restart. 0 turns a limit off.
+
+    rate_limit_per_minute: int = Field(
+        default=20,
+        ge=0,
+        description="AI requests one client address may make per minute. 0 = no limit.",
+    )
+    rate_limit_per_day: int = Field(
+        default=200,
+        ge=0,
+        description="AI requests one client address may make per rolling day. 0 = no limit.",
+    )
+    rate_limit_global_per_day: int = Field(
+        default=1_000,
+        ge=0,
+        description=(
+            "AI requests the whole server will accept per rolling day, from "
+            "everyone: the cap that protects the free Gemini and Tavily allowances. "
+            "0 = no limit."
+        ),
+    )
+    rate_limit_max_clients: int = Field(
+        default=2_000,
+        ge=1,
+        description="Addresses tracked at once; the least recently seen is evicted.",
+    )
+    rate_limit_trust_forwarded_for: bool = Field(
+        default=True,
+        description=(
+            "Identify clients by the first X-Forwarded-For address. Right behind "
+            "Render's proxy; wrong when the server faces the internet directly, "
+            "where the header is whatever the client writes."
+        ),
+    )
+
     # --- Request limits -----------------------------------------------------
 
     max_image_bytes: int = Field(

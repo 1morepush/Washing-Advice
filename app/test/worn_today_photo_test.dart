@@ -83,7 +83,8 @@ void main() {
 
   WornTodayPhotoController controller() =>
       container.read(wornTodayPhotoControllerProvider.notifier);
-  WornTodayPhotoState state() => container.read(wornTodayPhotoControllerProvider);
+  WornTodayPhotoState state() =>
+      container.read(wornTodayPhotoControllerProvider);
 
   group('matching what is worn', () {
     testWidgets('confident matches are ticked', (tester) async {
@@ -113,7 +114,10 @@ void main() {
         [
           [_jumper()],
         ],
-        [_navyJumper('a', name: 'Navy jumper'), _navyJumper('b', name: 'Navy jumper 2')],
+        [
+          _navyJumper('a', name: 'Navy jumper'),
+          _navyJumper('b', name: 'Navy jumper 2'),
+        ],
       );
 
       await tester.runAsync(() => controller().start());
@@ -135,7 +139,10 @@ void main() {
       await tester.runAsync(() => controller().start());
 
       expect(state().matched, hasLength(1));
-      expect(state().unmatched.single.detection.scan.suggestedName, 'Mustard hat');
+      expect(
+        state().unmatched.single.detection.scan.suggestedName,
+        'Mustard hat',
+      );
       expect(state().selected, {0}, reason: 'the unknown one is not ticked');
     });
 

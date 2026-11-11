@@ -69,6 +69,17 @@ def _no_search_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TAVILY_API_KEY", "")
 
 
+@pytest.fixture(autouse=True)
+def _no_request_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Turns the request limiter off, so no test trips it by accident.
+
+    Tests of the limiter itself set these back to real numbers.
+    """
+    monkeypatch.setenv("RATE_LIMIT_PER_MINUTE", "0")
+    monkeypatch.setenv("RATE_LIMIT_PER_DAY", "0")
+    monkeypatch.setenv("RATE_LIMIT_GLOBAL_PER_DAY", "0")
+
+
 @pytest.fixture
 def client() -> Iterator[TestClient]:
     with TestClient(create_app()) as test_client:

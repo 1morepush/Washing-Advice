@@ -778,6 +778,16 @@ no account, so anyone who finds the server's address could use up the free searc
 allowance, just as they could the Gemini one. When that happens the search
 answers `quotaExceeded` and the app falls back to the same links.
 
+The AI endpoints do have a request limit: by default 20 a minute and 200 a day
+from one network address, and 1,000 a day from everyone together, answered with
+a 429 and a `Retry-After`. It is kept in the server's memory, so it resets when
+the free instance restarts, and it tells people apart by address, so two people
+on one network share a quota. It stops a script hammering the server by
+accident or in passing, and the daily total puts a ceiling on what a stranger
+can spend. It does not stop someone who changes address, and when the daily
+total is reached it refuses everyone, you included, until the window moves on.
+The numbers are environment settings (see `render.yaml`).
+
 #### What to keep in mind
 
 Every comparable was checked by code after a model read it: its link has to come

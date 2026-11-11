@@ -179,6 +179,47 @@
       }
     },
 
+    "cutoutKind": {
+      "description": "How a worn-photo cutout was made. `outline` means a per-garment mask was used, so the picture is the garment alone on transparency. `box` means only the bounding box could be trusted, so the picture is a rectangular crop of the photo with the background still in it, and the app should say so and offer the cutout editor.",
+      "enum": ["outline", "box"]
+    },
+
+    "wornDetection": {
+      "description": "One garment or accessory found on a person in a photo, with its picture cut from that photo. A detectedItem plus the cutout. `cutout` and `cutoutKind` come together or not at all: both are absent only if the picture could not be made, and the detection is still worth listing from its facts.",
+      "type": "object",
+      "required": ["scan", "boundingBox", "detectionConfidence"],
+      "additionalProperties": false,
+      "properties": {
+        "scan": { "$ref": "#/$defs/garmentScanResult" },
+        "boundingBox": { "$ref": "#/$defs/boundingBox" },
+        "detectionConfidence": {
+          "description": "How sure the model is that this is a distinct garment worn by the person — separate from how sure it is about the garment's attributes.",
+          "$ref": "#/$defs/confidence"
+        },
+        "cutout": {
+          "description": "Base64 of a PNG with an alpha channel, cropped to the garment and at most 768 px on its longer edge. Plain base64: no data: URI prefix.",
+          "type": "string",
+          "contentEncoding": "base64",
+          "contentMediaType": "image/png"
+        },
+        "cutoutKind": { "$ref": "#/$defs/cutoutKind" }
+      },
+      "dependentRequired": {
+        "cutout": ["cutoutKind"],
+        "cutoutKind": ["cutout"]
+      }
+    },
+
+    "wornScanResult": {
+      "description": "What scanning a photo of a person wearing their clothes produces. `detections` rather than the pile scan's `items`, so the two shapes cannot be mistaken for each other. Empty when nothing wearable could be found.",
+      "type": "object",
+      "required": ["detections"],
+      "additionalProperties": false,
+      "properties": {
+        "detections": { "type": "array", "items": { "$ref": "#/$defs/wornDetection" } }
+      }
+    },
+
     "scanDiagnostics": {
       "description": "How a result was arrived at, so the pipeline is observable in production.",
       "type": "object",
@@ -218,6 +259,15 @@
       "additionalProperties": false,
       "properties": {
         "result": { "$ref": "#/$defs/pileScanResult" },
+        "diagnostics": { "$ref": "#/$defs/scanDiagnostics" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["result", "diagnostics"],
+      "additionalProperties": false,
+      "properties": {
+        "result": { "$ref": "#/$defs/wornScanResult" },
         "diagnostics": { "$ref": "#/$defs/scanDiagnostics" }
       }
     }

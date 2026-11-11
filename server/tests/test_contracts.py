@@ -24,7 +24,7 @@ from fastapi.testclient import TestClient
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 
-from tests.conftest import png_bytes
+from tests.conftest import photo_bytes, png_bytes
 from tests.selling_support import (
     Gemini,
     Tavily,
@@ -74,7 +74,7 @@ def test_golden_fixtures_match_the_schema(name: str) -> None:
     assert_valid(payload, label=name)
 
 
-def test_the_three_result_shapes_are_mutually_exclusive() -> None:
+def test_the_four_result_shapes_are_mutually_exclusive() -> None:
     """`oneOf` only works if a payload matches exactly one alternative.
 
     If two shapes ever became indistinguishable, validation would start passing
@@ -118,6 +118,41 @@ class TestLiveResponsesMatchTheContract:
         )
         assert response.status_code == 200
         assert_valid(response.json(), label="live pile scan")
+
+    def test_worn_scan(self, client: TestClient) -> None:
+        # Several photographs, because the fake's outfit varies with the bytes:
+        # two pieces or three, and with or without a mask on the last. Every
+        # variety has to validate, and the set has to contain both kinds of
+        # cutout or the box-fallback shape is not being checked at all.
+        kinds: set[str] = set()
+        for seed in range(8):
+            response = client.post(
+                "/v1/scan/worn",
+                files={"image": ("worn.png", photo_bytes(seed), "image/png")},
+            )
+            assert response.status_code == 200
+            assert_valid(response.json(), label=f"live worn scan (seed {seed})")
+            detections = response.json()["result"]["detections"]
+            assert detections, f"seed {seed} found nothing"
+            kinds.update(d["cutoutKind"] for d in detections)
+
+        assert kinds == {"outline", "box"}
+
+    def test_worn_fixtures_carry_both_cutout_kinds_and_a_detection_with_none(self) -> None:
+        body = json.loads((CONTRACTS / "examples" / "worn_scan.json").read_text())
+        detections = body["result"]["detections"]
+
+        assert {d.get("cutoutKind") for d in detections} == {"outline", "box", None}
+        assert all(("cutout" in d) == ("cutoutKind" in d) for d in detections)
+
+    def test_a_cutout_without_its_kind_is_not_valid(self) -> None:
+        # `cutout` and `cutoutKind` travel together, so a response that broke
+        # that must be refused rather than decoded into a picture of unknown
+        # quality.
+        body = json.loads((CONTRACTS / "examples" / "worn_scan.json").read_text())
+        del body["result"]["detections"][0]["cutoutKind"]
+
+        assert list(_validator().iter_errors(body))
 
 
 class TestUnstatedFieldsAreAbsent:

@@ -46,6 +46,9 @@ from app.services.style.base import Stylist
 from app.services.style.fake import FakeStylist
 from app.services.style.gemini_stylist import GeminiStylist
 from app.services.sync.store import InMemorySyncStore, SqliteSyncStore, SyncStore
+from app.services.worn.base import WornScanner
+from app.services.worn.fake import FakeWornScanner
+from app.services.worn.gemini_scanner import GeminiWornScanner
 
 
 @lru_cache
@@ -149,6 +152,33 @@ _live_describers: list[ListingDescriber] = []
 
 _live_searchers: list[PriceSearcher] = []
 """And again for price searchers, which hold the search's connection pool."""
+
+_live_worn_scanners: list[WornScanner] = []
+"""And again for worn-photo scanners."""
+
+
+@lru_cache
+def get_worn_scanner() -> WornScanner:
+    """The worn-photo scanner described by the current settings.
+
+    Reuses `VISION_PROVIDER` like every other AI-backed dependency here: there
+    is one AI backend either way, and `/health` already says accurately whether
+    it will work.
+    """
+    settings = get_settings()
+    if settings.vision_provider == "fake":
+        scanner: WornScanner = FakeWornScanner()
+    else:
+        try:
+            scanner = GeminiWornScanner.from_settings(settings)
+        except ProviderError as error:
+            raise ProviderUnavailableError(
+                str(error),
+                hint="set GEMINI_API_KEY, or set VISION_PROVIDER=fake",
+            ) from error
+
+    _live_worn_scanners.append(scanner)
+    return scanner
 
 
 @lru_cache
@@ -345,6 +375,7 @@ async def close_providers() -> None:
         *_live_chat_advisers,
         *_live_describers,
         *_live_searchers,
+        *_live_worn_scanners,
     ):
         closer = getattr(provider, "aclose", None)
         if closer is not None:
@@ -357,6 +388,7 @@ async def close_providers() -> None:
     _live_chat_advisers.clear()
     _live_describers.clear()
     _live_searchers.clear()
+    _live_worn_scanners.clear()
 
 
 def reset_wiring() -> None:
@@ -373,6 +405,7 @@ def reset_wiring() -> None:
     get_chat_adviser.cache_clear()
     get_listing_describer.cache_clear()
     get_price_searcher.cache_clear()
+    get_worn_scanner.cache_clear()
     get_knowledge_cache.cache_clear()
     get_background_remover.cache_clear()
     # Closed before it is dropped: a SQLite store left to the garbage collector
@@ -389,4 +422,5 @@ def reset_wiring() -> None:
     _live_chat_advisers.clear()
     _live_describers.clear()
     _live_searchers.clear()
+    _live_worn_scanners.clear()
     get_settings.cache_clear()

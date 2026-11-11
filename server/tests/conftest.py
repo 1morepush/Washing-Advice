@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import io
 import struct
 import zlib
 from collections.abc import Iterator
 
 import pytest
 from fastapi.testclient import TestClient
+from PIL import Image, ImageDraw
 
 from app.api.v1.dependencies import reset_wiring
 from app.main import create_app
@@ -38,6 +40,23 @@ def png_bytes(seed: int = 0) -> bytes:
         + chunk(b"IDAT", zlib.compress(raw))
         + chunk(b"IEND", b"")
     )
+
+
+def photo_bytes(seed: int = 0, size: tuple[int, int] = (120, 160)) -> bytes:
+    """A PNG big enough to hold garments, varying with `seed`.
+
+    `png_bytes` is one pixel, which is right for a test that only needs *an*
+    image and wrong for a scan that cuts pictures out of one: every box on a
+    single pixel is nothing at all.
+    """
+    image = Image.new("RGB", size, (200, 205, 210))
+    ImageDraw.Draw(image).rectangle(
+        [size[0] * 0.25, size[1] * 0.2, size[0] * 0.75, size[1] * 0.9],
+        fill=(seed % 256, 80, 120),
+    )
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()
 
 
 def scan_image(seed: int = 0) -> ScanImage:

@@ -768,6 +768,7 @@ void main() {
       expect(back.era, '90s');
       expect(back.notes, 'Ships within 5 days.');
       expect(back.priceCents, 3000);
+      expect(back.shippingDiscountCents, 400);
       expect(back.priceSearch, original.priceSearch);
       expect(back.editedQueries, original.editedQueries);
       expect(back.facts, original.facts);
@@ -801,6 +802,7 @@ void main() {
         'era',
         'notes',
         'priceCents',
+        'shippingDiscountCents',
         'priceSearch',
         'editedQueries',
         'facts',
@@ -850,6 +852,57 @@ void main() {
       expect(listing.priceSearch, isNull);
       expect(listing.facts, isNull);
       expect(listing.typedComparablesSold, isFalse);
+    });
+
+    test('a listing stored before the shipping discount still loads', () {
+      final json = stored(fullListing())..remove('shippingDiscountCents');
+
+      final listing = Listing.fromJson(json);
+
+      expect(listing.shippingDiscountCents, isNull);
+      expect(listing, fullListing().copyWith(clearShippingDiscount: true));
+    });
+
+    test('a shipping discount that is not an amount reads as none', () {
+      for (final unreadable in <Object?>[
+        'four dollars',
+        null,
+        0,
+        -250,
+        true,
+        [400],
+        <String, Object?>{},
+      ]) {
+        final json = stored(fullListing())
+          ..['shippingDiscountCents'] = unreadable;
+
+        final listing = Listing.fromJson(json);
+
+        // Never loses the listing, and never invents a discount.
+        expect(listing.title, fullListing().title, reason: '$unreadable');
+        expect(listing.shippingDiscountCents, isNull, reason: '$unreadable');
+      }
+    });
+
+    test('a shipping discount can be set, changed and taken back', () {
+      final listing = draft();
+
+      final set = listing.copyWith(shippingDiscountCents: 350);
+      expect(set.shippingDiscountCents, 350);
+      expect(set, isNot(listing));
+      expect(set.toJson()['shippingDiscountCents'], 350);
+
+      // A null argument leaves it alone, like every other field.
+      expect(set.copyWith(title: 'x').shippingDiscountCents, 350);
+      expect(
+        set.copyWith(shippingDiscountCents: 500).shippingDiscountCents,
+        500,
+      );
+
+      final cleared = set.copyWith(clearShippingDiscount: true);
+      expect(cleared.shippingDiscountCents, isNull);
+      expect(cleared, listing);
+      expect(cleared.toJson().containsKey('shippingDiscountCents'), isFalse);
     });
 
     test('a listing stored before the phrases had a field still loads', () {

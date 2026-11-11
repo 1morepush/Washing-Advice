@@ -817,6 +817,7 @@ final class Listing {
     this.era,
     this.notes,
     this.priceCents,
+    this.shippingDiscountCents,
     this.priceSearch,
     this.editedQueries,
     this.facts,
@@ -1016,6 +1017,15 @@ final class Listing {
   /// The asking price the person chose, in US cents. Null until they have.
   final int? priceCents;
 
+  /// The shipping discount the seller chose, in US cents. Null for none.
+  ///
+  /// Depop's sell form lets the seller pay part or all of the buyer's
+  /// postage. It is a free dollar amount the seller picks, so this holds
+  /// whatever they typed and nothing is looked up. It comes off what the seller
+  /// is left with: see [DepopFees.saleNet], which every screen that shows a
+  /// net uses.
+  final int? shippingDiscountCents;
+
   /// The last price search, with the evidence it found.
   final PriceSearch? priceSearch;
 
@@ -1160,8 +1170,8 @@ final class Listing {
   /// A null argument leaves the field alone, as in the rest of the core, so the
   /// `clear` flags exist for the nullable fields somebody can take back: the
   /// department, brand, size, condition, material, era, notes, asking price,
-  /// price search, written search phrases and facts, and the three lifecycle
-  /// dates and the sold price.
+  /// shipping discount, price search, written search phrases and facts, and
+  /// the three lifecycle dates and the sold price.
   /// Which listing it is ([id]), where it came from ([itemId]) and when it was
   /// created do not change.
   ///
@@ -1185,6 +1195,7 @@ final class Listing {
     String? era,
     String? notes,
     int? priceCents,
+    int? shippingDiscountCents,
     PriceSearch? priceSearch,
     SearchQueries? editedQueries,
     ListingFacts? facts,
@@ -1203,6 +1214,7 @@ final class Listing {
     bool clearEra = false,
     bool clearNotes = false,
     bool clearPrice = false,
+    bool clearShippingDiscount = false,
     bool clearPriceSearch = false,
     bool clearEditedQueries = false,
     bool clearFacts = false,
@@ -1231,6 +1243,9 @@ final class Listing {
         era: clearEra ? null : (era ?? this.era),
         notes: clearNotes ? null : (notes ?? this.notes),
         priceCents: clearPrice ? null : (priceCents ?? this.priceCents),
+        shippingDiscountCents: clearShippingDiscount
+            ? null
+            : (shippingDiscountCents ?? this.shippingDiscountCents),
         priceSearch:
             clearPriceSearch ? null : (priceSearch ?? this.priceSearch),
         editedQueries:
@@ -1311,6 +1326,8 @@ final class Listing {
         if (era != null) 'era': era,
         if (notes != null) 'notes': notes,
         if (priceCents != null) 'priceCents': priceCents,
+        if (shippingDiscountCents != null)
+          'shippingDiscountCents': shippingDiscountCents,
         if (priceSearch != null) 'priceSearch': priceSearch!.toJson(),
         if (editedQueries != null) 'editedQueries': editedQueries!.toJson(),
         if (facts != null) 'facts': facts!.toJson(),
@@ -1374,6 +1391,12 @@ final class Listing {
       era: readString(json['era']),
       notes: readString(json['notes']),
       priceCents: readInt(json['priceCents']),
+      // A stored zero or negative is no discount, not a discount of nothing:
+      // it reads back as absent, the same as a listing from before the field.
+      shippingDiscountCents: switch (readInt(json['shippingDiscountCents'])) {
+        final int cents when cents > 0 => cents,
+        _ => null,
+      },
       priceSearch:
           priceSearch == null ? null : PriceSearch.fromJson(priceSearch),
       editedQueries:
@@ -1425,6 +1448,7 @@ final class Listing {
           other.era == era &&
           other.notes == notes &&
           other.priceCents == priceCents &&
+          other.shippingDiscountCents == shippingDiscountCents &&
           other.priceSearch == priceSearch &&
           other.editedQueries == editedQueries &&
           other.facts == facts &&
@@ -1456,6 +1480,7 @@ final class Listing {
         era,
         notes,
         priceCents,
+        shippingDiscountCents,
         priceSearch,
         editedQueries,
         facts,

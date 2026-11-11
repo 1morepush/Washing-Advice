@@ -114,6 +114,7 @@ Listing fullListing() => Listing(
       era: '90s',
       notes: 'Ships within 5 days.',
       priceCents: 3000,
+      shippingDiscountCents: 400,
       priceSearch: fullSearch(),
       // Not the phrases the photographs produced or the last search used, so
       // a round trip that mixed them up would be seen.

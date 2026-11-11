@@ -101,3 +101,16 @@ String listingImageName(
   ListingShot shot, {
   required DateTime takenAt,
 }) => '${id.value}-${shot.name}-${takenAt.toUtc().microsecondsSinceEpoch}';
+
+/// Names the original of a photo that several garments were found in.
+///
+/// Not derived from an item, unlike [imageName], because it belongs to none of
+/// them: a photo of somebody in a jumper, jeans and a hat is one file that
+/// three garments each point at. Deleting any one of those garments must leave
+/// the file for the other two, which is why nothing about the name says whose
+/// it is.
+///
+/// [batch] is when the photos were added and [number] is which of them this
+/// is, counted from one, so two photos from one batch cannot share a name.
+String wornPhotoName(DateTime batch, int number) =>
+    'worn-${batch.toUtc().microsecondsSinceEpoch}-$number';

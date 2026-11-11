@@ -157,6 +157,27 @@ it had just never been pointed at the wardrobe. Anything it finds that you
 already own is shown and left unticked, so photographing a drawer you half-did
 last week does not give you two of everything.
 
+**Or add clothes from a photo of you.** *From a photo of me* takes ordinary photos
+of you wearing outfits (pick several from your library, or take one) and gives
+you a tile for each garment and accessory it can see: a top, trousers, shoes, a
+hat. Each is named, typed and cut out of your real photo, so the picture is your
+clothes rather than a redrawn product shot, and it costs no more than the free
+scan. Photos are read one at a time with "Photo 2 of 5" shown, and a busy server
+is waited for rather than failing the batch. Garments you already own, or that
+came up in an earlier photo of the same batch, are shown and left unticked. The
+photo is kept once as each garment's **Worn** photo, and the cutout is its
+picture on the tile.
+
+Be clear about what that gives you. The pictures are your clothes *as worn*, with
+creases and your shape, not catalogue photos. A shirt under a jacket or trousers
+under a long coat come out partial. How clean the outline is depends on the
+model: where it returns only a box, the tile is a plain crop with the background
+still in it, and says so ("Includes some background") so you can tidy it in the
+cutout editor. Thin things like glasses and chains are the likeliest to come out
+rough. A photo cannot show a care label, so these garments get the usual "scan
+the care label" prompt. Each photo is one request against the free allowance,
+which is metered by the minute, so a big batch is worked through slowly.
+
 Where one garment ends and the next begins is your tap rather than a guess.
 Merging two loses a garment outright and splitting one puts a phantom in the
 wardrobe, and the tap costs less than either mistake.
@@ -288,6 +309,16 @@ record at all.
 **What did you wear today?** sits at the top of the basket. Tap the garments;
 they are logged as worn *and* moved to the basket together. No photograph —
 they are already in your wardrobe, so this is recognition rather than capture.
+
+**From a photo.** Instead of tapping, take or pick one mirror photo. The app
+finds each garment, matches it against your wardrobe, and shows "You're wearing:
+Blue jumper, Black jeans" ticked for you to confirm before anything is logged.
+A match it is not sure of is shown *unticked* and is never recorded silently,
+because a wear against the wrong garment skews its wash count and cost per wear.
+What matches nothing is listed apart as "Not in your wardrobe — add it?", which
+hands that garment to the add flow above, already selected. It is the same scan
+and the same free request, with the same limits: clothes shown as worn, partial
+when layered.
 
 The design is almost entirely in the ordering, because the failure mode is
 scrolling. Recently worn, due a wash (`wearsSinceWash` is the domain's own
@@ -744,6 +775,13 @@ The **photographs** go to Gemini through the server, exactly as every scan's do,
 on the free-tier terms [set out below](#the-free-tier-is-free-not-private). Up to
 four go for a draft, and a garment from the wardrobe sends what the wardrobe
 knows with them.
+
+Photos added with *From a photo of me*, or used for *Worn today → From a photo*,
+**include you, not only your clothes**: your face, your room and anyone beside
+you go to the server and on to Gemini in the same way. Use a photo you are
+comfortable sending. The cutouts kept on the phone have the surroundings removed
+(and the invisible pixels cleared), but the original photo is also kept as the
+garment's Worn photo until you delete the garment.
 
 The **price look-up sends text, not pictures.** The two search phrases written
 for the listing go to the server, which passes them to

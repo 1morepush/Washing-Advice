@@ -216,6 +216,24 @@ for (const theme of ['light', 'dark']) {
     await page.waitForTimeout(3000);
     await shot(page, 'laundry-plan');
 
+    // Adding clothes from a photo of the person wearing them: the start, then
+    // the review with its three kinds of tile (one already owned and unticked,
+    // one with a real outline, one that is a plain crop and says so).
+    await page.goto(`${BASE}/#/scan/worn`, { waitUntil: 'load' });
+    await ready(page);
+    await shot(page, 'scan-worn-start');
+    await tapText(page, 'Take a photo');
+    await page.waitForTimeout(3500);
+    await shot(page, 'scan-worn-review');
+
+    // Worn today from a mirror photo: what it matched, ticked, and what it
+    // did not recognise, offered as something to add.
+    await page.goto(`${BASE}/#/laundry/worn/photo`, { waitUntil: 'load' });
+    await ready(page);
+    await tapText(page, 'Take a photo');
+    await page.waitForTimeout(3500);
+    await shot(page, 'worn-today-photo');
+
     // The three stages (basket, washing, drying). `laundry-piles` predates the
     // way back out of one, so the stages are shot from the current build.
     await page.goto(`${BASE}/#/laundry`, { waitUntil: 'load' });

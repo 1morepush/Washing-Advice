@@ -210,3 +210,35 @@ Future<ScanImage> cropScanImage({
     height: bounds.height.round(),
   );
 }
+
+/// One detection's region of [photo], cut out by its normalised [box].
+///
+/// For the two flows that find several garments in one frame (the lay-flat
+/// scan and the worn-photo scan). The box is normalised, so it survives the
+/// photograph being resized between the phone and the model; multiplying it
+/// back up is the only place those flows touch pixels.
+///
+/// Never throws: a photograph that will not decode, or a crop that fails, is a
+/// worse picture rather than a lost garment, so the whole [photo] comes back.
+Future<ScanImage> cropToBox({
+  required ScanImage photo,
+  required ui.Image? decoded,
+  required BoundingBox box,
+}) async {
+  if (decoded == null) return photo;
+
+  final width = decoded.width.toDouble();
+  final height = decoded.height.toDouble();
+  final crop = Rect.fromLTWH(
+    box.left * width,
+    box.top * height,
+    box.width * width,
+    box.height * height,
+  );
+
+  try {
+    return await cropScanImage(image: photo, decoded: decoded, crop: crop);
+  } on Exception {
+    return photo;
+  }
+}

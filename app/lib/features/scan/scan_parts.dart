@@ -17,10 +17,19 @@ import '../../widgets/care_symbol.dart';
 /// Small thumbnails (a failed pile photo, a care label) take a tighter corner
 /// so the radius stays in proportion to the picture.
 class ScanThumb extends StatelessWidget {
-  const ScanThumb({required this.image, required this.size, super.key});
+  const ScanThumb({
+    required this.image,
+    required this.size,
+    this.fit = BoxFit.cover,
+    super.key,
+  });
 
   final ScanImage image;
   final double size;
+
+  /// How the picture fills the tile. A cutout is shown whole ([BoxFit.contain])
+  /// so a long coat or a pair of shoes is not cropped by the tile it sits on.
+  final BoxFit fit;
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +49,7 @@ class ScanThumb extends StatelessWidget {
           Uint8List.fromList(image.bytes),
           width: size,
           height: size,
-          fit: BoxFit.cover,
+          fit: fit,
           // A thumbnail that will not decode must not take the screen with it —
           // the photograph is still perfectly good to the server.
           errorBuilder: (_, _, _) => Container(

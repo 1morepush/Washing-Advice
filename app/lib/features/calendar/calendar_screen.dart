@@ -443,7 +443,12 @@ class _Mini extends StatelessWidget {
       padding: const EdgeInsets.all(1),
       child: item == null
           ? GarmentWell(child: const SizedBox.expand())
-          : ItemThumbnail(item: item, size: double.infinity),
+          : LayoutBuilder(
+              // Measured, for the reason the day screen gives: the garment is
+              // drawn to fit the tile and not to a fraction of an unbounded one.
+              builder: (_, box) =>
+                  ItemThumbnail(item: item, size: box.biggest.shortestSide),
+            ),
     );
   }
 }

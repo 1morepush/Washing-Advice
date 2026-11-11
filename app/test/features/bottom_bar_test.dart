@@ -413,7 +413,7 @@ void main() {
             ),
           )
           .map((tile) => (tile.title! as Text).data);
-      expect(titles, ['Ask', 'Packing', 'Insights', 'Settings']);
+      expect(titles, ['Ask', 'Packing', 'Calendar', 'Insights', 'Settings']);
 
       await tester.tap(find.widgetWithText(ListTile, 'Ask'));
       await tester.pumpAndSettle();

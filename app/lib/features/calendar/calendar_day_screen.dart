@@ -248,7 +248,13 @@ class _Piece extends StatelessWidget {
               child: EnlargeOnTap(
                 item: item,
                 onLongPress: true,
-                child: ItemThumbnail(item: item, size: double.infinity),
+                // A measured size, not `double.infinity`: a garment with no
+                // photograph is drawn as a silhouette, and given an unbounded
+                // size that draws smaller than a photographed neighbour.
+                child: LayoutBuilder(
+                  builder: (_, box) =>
+                      ItemThumbnail(item: item, size: box.maxWidth),
+                ),
               ),
             ),
             const SizedBox(height: 8),

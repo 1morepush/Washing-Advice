@@ -11,6 +11,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../features/chat/chat_screen.dart';
 import '../features/insights/insights_screen.dart';
 import '../features/laundry/laundry_screen.dart';
+import '../features/laundry/worn_today_photo_screen.dart';
 import '../features/laundry/worn_today_screen.dart';
 import '../features/more/more_screen.dart';
 import '../features/outfits/outfits_screen.dart';
@@ -92,6 +93,12 @@ GoRouter _router(String initialLocation) => GoRouter(
                 GoRoute(
                   path: 'worn',
                   builder: (_, _) => const WornTodayScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'photo',
+                      builder: (_, _) => const WornTodayPhotoScreen(),
+                    ),
+                  ],
                 ),
               ],
             ),

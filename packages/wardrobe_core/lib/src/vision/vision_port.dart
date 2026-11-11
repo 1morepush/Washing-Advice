@@ -244,6 +244,62 @@ final class PileScanResult {
   String toString() => 'PileScanResult($count items)';
 }
 
+/// How a worn-photo cutout was made.
+///
+/// A fact about the picture, not a quality score: the review screen words
+/// itself from it.
+enum CutoutKind {
+  /// A per-garment mask was used: the garment alone, on transparency.
+  outline,
+
+  /// Only the bounding box could be trusted: a rectangular crop of the photo
+  /// with whatever was behind the garment still in it.
+  box,
+}
+
+/// One garment or accessory found on a person in a photo, with its picture.
+final class WornDetection {
+  const WornDetection({
+    required this.scan,
+    required this.boundingBox,
+    required this.detectionConfidence,
+    this.cutout,
+    this.cutoutKind,
+  });
+
+  /// The attributes read for this garment.
+  final GarmentScanResult scan;
+
+  /// Where it sits in the photo.
+  final BoundingBox boundingBox;
+
+  /// How sure the model is that this is a distinct garment the person is
+  /// wearing, as opposed to how sure it is about the garment's attributes.
+  final double detectionConfidence;
+
+  /// PNG bytes with transparency, cropped to the garment; null only if the
+  /// server could not make the picture. Set together with [cutoutKind].
+  final List<int>? cutout;
+
+  /// How [cutout] was made.
+  final CutoutKind? cutoutKind;
+
+  @override
+  String toString() => 'WornDetection(${scan.type.value.label}, $cutoutKind)';
+}
+
+/// What scanning a photo of a person wearing their clothes produces.
+final class WornScanResult {
+  const WornScanResult({required this.detections});
+
+  final List<WornDetection> detections;
+
+  int get count => detections.length;
+
+  @override
+  String toString() => 'WornScanResult($count detections)';
+}
+
 /// The interface every vision provider implements.
 abstract interface class VisionPort {
   /// Identifies a single garment from one or more photographs.
@@ -261,6 +317,10 @@ abstract interface class VisionPort {
 
   /// Finds and identifies every garment in a photo of a pile.
   Future<PileScanResult> scanPile(ScanImage image);
+
+  /// Finds every garment and accessory a person is wearing in a photo, each
+  /// with a picture cut from that photo.
+  Future<WornScanResult> scanWorn(ScanImage image);
 }
 
 /// Remembers what has already been learned, so repeat scans are cheap.

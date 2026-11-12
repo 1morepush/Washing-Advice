@@ -101,7 +101,7 @@ final patchNotes = <Release>[
   Release(
     version: '0.35.0',
     name: 'Spare Set',
-    date: DateTime.utc(2026, 11, 11),
+    date: DateTime.utc(2026, 11, 12),
     headline: 'Save your whole wardrobe to a file, and bring it back',
     changes: [
       'Settings has a new Backup group. Save a backup packs everything into '

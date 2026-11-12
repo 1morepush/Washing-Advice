@@ -210,7 +210,8 @@ class _SuggestionCard extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           OutfitPieces(items: suggestion.items),
-          if (suggestion.reasons.isNotEmpty) ...[
+          if (suggestion.reasons.isNotEmpty ||
+              suggestion.weatherReasons.isNotEmpty) ...[
             const SizedBox(height: 14),
             Divider(height: 1, color: context.rinse.lineSoft),
             const SizedBox(height: 14),

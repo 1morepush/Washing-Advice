@@ -475,6 +475,13 @@ void main() {
       // so without it they would be the one part of Settings nothing checks.
       await pumpSettings(tester, textScaler: enlarged);
 
+      // Settings is a lazy list and has grown past one screen of groups, so
+      // the notes are not built until they are scrolled to.
+      await tester.scrollUntilVisible(
+        find.text('Earlier changes'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.tap(find.text('Earlier changes'));
       await tester.pumpAndSettle();
 

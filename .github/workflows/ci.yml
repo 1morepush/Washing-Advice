@@ -63,6 +63,11 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          # Pinned: an unpinned stable moved overnight to a release whose
+          # flutter_test the app's drift and sqlite3 versions cannot resolve
+          # against, and every job failed at `pub get`. Raise this together
+          # with those packages, not by accident.
+          flutter-version: 3.47.7
           cache: true
 
       - name: Resolve dependencies
@@ -101,6 +106,11 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          # Pinned: an unpinned stable moved overnight to a release whose
+          # flutter_test the app's drift and sqlite3 versions cannot resolve
+          # against, and every job failed at `pub get`. Raise this together
+          # with those packages, not by accident.
+          flutter-version: 3.47.7
           cache: true
 
       - uses: astral-sh/setup-uv@v5

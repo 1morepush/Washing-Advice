@@ -152,6 +152,33 @@ class SettingsStore {
   Future<void> setAppearance(Appearance value) =>
       _prefs.setString(_appearanceKey, value.name);
 
+  // --- Weather. One block, so it merges as one hunk. Values are decoded by
+  // the weather feature; the store only keeps the strings.
+  static const _weatherOnKey = 'weatherOn';
+  static const _weatherPlaceKey = 'weatherPlace';
+  static const _weatherUnitKey = 'weatherUnit';
+  static const _weatherCacheKey = 'weatherLastGood';
+
+  /// On unless switched off; with no place set it does nothing either way.
+  bool get weatherOn => _prefs.getBool(_weatherOnKey) ?? true;
+  Future<void> setWeatherOn(bool value) =>
+      _prefs.setBool(_weatherOnKey, value);
+
+  /// JSON of the chosen place, or null.
+  String? get weatherPlaceJson => _prefs.getString(_weatherPlaceKey);
+  Future<void> setWeatherPlaceJson(String? json) =>
+      _write(_weatherPlaceKey, json);
+
+  /// `celsius` or `fahrenheit`, or null to follow the device locale.
+  String? get weatherUnitName => _prefs.getString(_weatherUnitKey);
+  Future<void> setWeatherUnitName(String? name) =>
+      _write(_weatherUnitKey, name);
+
+  /// The last forecast that was fetched successfully, as JSON.
+  String? get weatherLastGoodJson => _prefs.getString(_weatherCacheKey);
+  Future<void> setWeatherLastGoodJson(String? json) =>
+      _write(_weatherCacheKey, json);
+
   /// The sync credential, or null when sync has not been set up.
   ///
   /// A bearer token: whoever holds it owns the wardrobe on the server. Kept in

@@ -23,6 +23,7 @@ import '../data/drift/drift_listing_repository.dart';
 import '../data/drift/drift_outfit_repository.dart';
 import '../data/drift/drift_wardrobe_repository.dart';
 import '../data/images/image_store.dart';
+import '../features/weather/weather_providers.dart';
 import 'link_opener.dart';
 import 'settings.dart';
 
@@ -338,7 +339,7 @@ final outfitSuggestionsProvider = Provider<AsyncValue<List<OutfitSuggestion>>>(
       .whenData(
         (items) => ref
             .watch(outfitBuilderProvider)
-            .suggest(items, ref.watch(outfitRequestProvider)),
+            .suggest(items, ref.watch(weatherAwareRequestProvider)),
       ),
 );
 

@@ -33,6 +33,9 @@ import 'data/api/scan_dto.dart';
 import 'data/api/stain_dto.dart';
 import 'data/capture/image_capture_source.dart';
 import 'data/images/memory_image_store.dart';
+import 'data/weather/fake_weather_source.dart';
+import 'data/weather/weather_models.dart';
+import 'features/weather/weather_providers.dart';
 import 'widgets/screen_insets_scope.dart';
 
 Future<void> main() async {
@@ -83,7 +86,9 @@ Future<void> main() async {
       overrides: [
         imageStoreProvider.overrideWithValue(images),
         wardrobeRepositoryProvider.overrideWithValue(repository),
-        eventLogProvider.overrideWithValue(InMemoryEventLog()),
+        // Two months of outfits, so the calendar shows what it looks like in
+        // use rather than its empty state.
+        eventLogProvider.overrideWithValue(InMemoryEventLog(demoWearHistory())),
         // Two saved outfits, one already worn a few times, so the Saved tab
         // shows what it looks like in use rather than its empty state.
         outfitRepositoryProvider.overrideWithValue(
@@ -100,6 +105,12 @@ Future<void> main() async {
           FixedImageCaptureSource([captured]),
         ),
         settingsStoreProvider.overrideWithValue(settings),
+        // A canned place and forecast, so the Outfits tab shows its weather
+        // line and reasons without the network. A cool, wet London day, in
+        // Celsius whatever the browser's locale says.
+        weatherSourceProvider.overrideWithValue(FakeWeatherSource()),
+        weatherPlaceProvider.overrideWith((ref) => demoPlace),
+        temperatureUnitProvider.overrideWith((ref) => WeatherUnit.celsius),
         backendUrlProvider.overrideWith((ref) => defaultBackendUrl),
         // A machine, so the plan names real programmes rather than stating
         // abstract requirements. Both paths ship; this is the interesting one.
@@ -773,6 +784,34 @@ List<WardrobeItem> _seed() {
       ),
       addedDaysAgo: 420,
     ),
+    // Two garments that have gone more than a year unworn, so Insights and the
+    // Sell tab have something to offer. Dated from the seed's own clock: by any
+    // day after March 2026 they are over twelve months idle.
+    build(
+      id: 'demo-cardigan',
+      name: 'Mustard cardigan',
+      type: ItemType.cardigan,
+      composition: const {Fiber.wool: 70, Fiber.acrylic: 30},
+      hex: '#C79A2B',
+      colorName: 'Mustard',
+      brand: 'Zara',
+      usage: UsageStats(
+        timesWorn: 3,
+        timesWashed: 1,
+        lastWornAt: now.subtract(const Duration(days: 520)),
+      ),
+      addedDaysAgo: 900,
+    ),
+    build(
+      id: 'demo-boots',
+      name: 'Brown chelsea boots',
+      type: ItemType.boots,
+      composition: const {Fiber.cotton: 100},
+      hex: '#5B3A26',
+      colorName: 'Brown',
+      // Never worn, and added long enough ago to count.
+      addedDaysAgo: 600,
+    ),
     for (var i = 0; i < 6; i++)
       build(
         id: 'demo-socks-$i',
@@ -822,6 +861,41 @@ List<WardrobeItem> _seed() {
       addedDaysAgo: 700,
     ),
   ];
+}
+
+/// About two months of what was worn, for the calendar.
+///
+/// Dated back from [now], because the calendar opens on the current month and
+/// a history that stopped in August would show an empty grid in November. A
+/// rotation of five outfits, with gaps — some days nobody logged anything, as
+/// in life — and one of the five is four pieces so the grid shows its "+1".
+@visibleForTesting
+List<WardrobeEvent> demoWearHistory({DateTime? now}) {
+  final today = now ?? DateTime.now();
+  const outfits = [
+    ['demo-tee', 'demo-jeans', 'demo-sneakers'],
+    ['demo-hoodie', 'demo-chinos', 'demo-sneakers'],
+    ['demo-jumper', 'demo-trousers'],
+    ['demo-silk', 'demo-trousers', 'demo-sneakers'],
+    ['demo-red', 'demo-chinos', 'demo-jacket', 'demo-sneakers'],
+  ];
+
+  final events = <WardrobeEvent>[];
+  for (var back = 1; back <= 61; back++) {
+    // Gaps: a day in seven, and the odd extra one.
+    if (back % 7 == 3 || back % 11 == 0) continue;
+    final at = DateTime(today.year, today.month, today.day - back, 8, 30);
+    for (final id in outfits[(back * 3) % outfits.length]) {
+      events.add(
+        ItemWorn(
+          id: EventId('demo-wear-$back-$id'),
+          itemId: ItemId(id),
+          occurredAt: at,
+        ),
+      );
+    }
+  }
+  return events;
 }
 
 /// Spreads a few garments across the laundry piles.

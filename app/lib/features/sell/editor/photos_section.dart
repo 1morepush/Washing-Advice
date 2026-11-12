@@ -16,6 +16,7 @@ import '../../../data/capture/image_capture_source.dart';
 import '../../../widgets/stored_image.dart';
 import 'edit_session.dart';
 import 'fields.dart';
+import 'photo_actions.dart';
 import 'photo_views.dart';
 
 /// How wide and tall one photograph is drawn in the strip.
@@ -66,6 +67,20 @@ class _PhotosSectionState extends ConsumerState<PhotosSection> {
     }
   }
 
+  Future<void> _options(int index) async {
+    final photos = widget.session.listing.photos;
+    if (index >= photos.length) return;
+
+    final action = await showPhotoActions(
+      context,
+      photo: photos[index],
+      index: index,
+      total: photos.length,
+    );
+    if (action == null || !mounted) return;
+    await doPhotoAction(context, widget.session, action, index);
+  }
+
   @override
   Widget build(BuildContext context) {
     final listing = widget.listing;
@@ -102,10 +117,11 @@ class _PhotosSectionState extends ConsumerState<PhotosSection> {
                       type: listing.itemType,
                       onTap: () => showListingPhotos(
                         context,
-                        photos: photos,
+                        session: widget.session,
                         index: index,
                         type: listing.itemType,
                       ),
+                      onOptions: () => _options(index),
                     ),
                   ),
               ],
@@ -144,6 +160,7 @@ class _PhotoTile extends StatelessWidget {
     required this.total,
     required this.type,
     required this.onTap,
+    required this.onOptions,
   });
 
   final ListingPhoto photo;
@@ -152,6 +169,9 @@ class _PhotoTile extends StatelessWidget {
   final ItemType type;
   final VoidCallback onTap;
 
+  /// Opens the choices for this photo: cover, earlier, later, remove.
+  final VoidCallback onOptions;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -159,45 +179,64 @@ class _PhotoTile extends StatelessWidget {
 
     // The whole tile is the button, the caption as much as the picture: a
     // label that looks like the way in and is not is a tap that does nothing.
-    return Semantics(
-      button: true,
-      label:
-          '${photo.shot.label} photo, ${index + 1} of $total. '
-          'Tap to see it large.',
-      excludeSemantics: true,
-      onTap: onTap,
-      child: SizedBox(
-        width: _tile,
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(
+    return SizedBox(
+      width: _tile,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Semantics(
+            button: true,
+            label:
+                '${photo.shot.label} photo, ${index + 1} of $total. '
+                'Tap to see it large.',
+            excludeSemantics: true,
             onTap: onTap,
-            borderRadius: radius,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ClipRRect(
-                  borderRadius: radius,
-                  child: SizedBox.square(
-                    dimension: _tile,
-                    child: StoredImage(
-                      uri: photo.uri,
-                      fallback: PhotoSilhouette(type: type),
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: radius,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ClipRRect(
+                      borderRadius: radius,
+                      child: SizedBox.square(
+                        dimension: _tile,
+                        child: StoredImage(
+                          uri: photo.uri,
+                          fallback: PhotoSilhouette(type: type),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    Text(
+                      photo.shot.label,
+                      maxLines: 2,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  photo.shot.label,
-                  maxLines: 2,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
-        ),
+          // A word and not a bare icon, and a button of its own: the picture
+          // above is the way in to the large view.
+          Semantics(
+            label: 'Options for the ${photo.shot.label} photo, ${index + 1}',
+            excludeSemantics: true,
+            button: true,
+            onTap: onOptions,
+            child: TextButton(
+              key: ValueKey('photo-options-$index'),
+              style: inlineTextButton,
+              onPressed: onOptions,
+              child: const Text('Options'),
+            ),
+          ),
+        ],
       ),
     );
   }

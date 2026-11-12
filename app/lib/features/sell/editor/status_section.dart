@@ -17,11 +17,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../../widgets/notice.dart';
+import '../list/listing_money.dart';
 import '../list/listing_when.dart';
 import 'edit_session.dart';
 import 'editor_text.dart';
 import 'fields.dart';
 import 'garment_sale.dart';
+import 'net_sentence.dart';
 import 'price_links.dart';
 import 'sold_price_dialog.dart';
 
@@ -63,6 +65,7 @@ class _StatusSectionState extends ConsumerState<StatusSection> {
     final answer = await showSoldPriceDialog(
       context,
       asking: widget.listing.priceCents,
+      shippingDiscountCents: widget.listing.shippingDiscountCents,
     );
     if (answer == null || !mounted) return;
     await _change(() => widget.session.markSold(priceCents: answer.cents));
@@ -166,7 +169,6 @@ class _StatusSectionState extends ConsumerState<StatusSection> {
 
   List<Widget> _finished(BuildContext context, Listing listing) {
     final theme = Theme.of(context);
-    const fees = DepopFees.us;
     final price = listing.soldPriceCents;
     final soldAt = listing.soldAt?.toLocal();
     final took = listing.listedFor(DateTime.now());
@@ -179,8 +181,13 @@ class _StatusSectionState extends ConsumerState<StatusSection> {
       if (price != null) ...[
         const SizedBox(height: 8),
         Text(
-          "You got ${formatUsd(fees.netCents(price))} after Depop's fees "
-          '(${fees.label})',
+          netSentence(
+            'got',
+            saleNetOf(
+              price,
+              shippingDiscountCents: listing.shippingDiscountCents,
+            ),
+          ),
           style: theme.textTheme.bodyLarge?.copyWith(
             fontWeight: FontWeight.w800,
           ),

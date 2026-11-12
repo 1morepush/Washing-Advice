@@ -99,6 +99,43 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.36.0',
+    name: 'Tumble Dry Forecast',
+    date: DateTime.utc(2026, 11, 12),
+    headline:
+        'Outfit ideas that know the weather, and a calendar of what '
+        'you wore',
+    changes: [
+      'Outfit ideas now dress for the day. Type your city in Settings, '
+          'under Weather, and the top of Ideas shows today\'s forecast: the '
+          'range, what it feels like, and whether rain is coming. The ideas '
+          'follow it: a layer when it is cool, short sleeves when it is hot, '
+          'closed shoes and a jacket for rain, and each card says why. If '
+          'something is missing it says so, such as no waterproof layer. '
+          'Ignore the weather shows the ideas as they were. Degrees follow '
+          'your phone, Fahrenheit or Celsius, and you can switch. Only the '
+          'city you search for and its coordinates go to the forecast '
+          'service, Open-Meteo; nothing about your clothes does.',
+      'More has a Calendar: a month of what you wore each day, in small '
+          'pictures, with how many days you logged and the piece you wore '
+          'most. Tap a day to see it large, open any piece, wear the same '
+          'thing again today, or save it as an outfit.',
+      'Things you have not worn in a year are gathered in one list, from '
+          'Insights and from Sell. Each has Sell this, Keep, which hides it '
+          'for six months, and Open. Occasion pieces such as a blazer, a '
+          'dress or a tie are left out, since a year between wears is '
+          'normal for them. It is an offer, not advice, and there are no '
+          'notifications.',
+      'In a listing you can now remove a photo, move it earlier or later, '
+          'and choose which one is the cover. A photo that also belongs to '
+          'a garment in your wardrobe stays with the garment.',
+      'A listing can carry the shipping discount you choose to cover on '
+          'Depop. It comes off what you get, in the listing, on its card and '
+          'in the Sold total, and the listing warns you if fees and the '
+          'discount together would leave you out of pocket.',
+    ],
+  ),
+  Release(
     version: '0.35.0',
     name: 'Spare Set',
     date: DateTime.utc(2026, 11, 12),

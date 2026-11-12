@@ -26,6 +26,7 @@ which cycle to select on *your* machine.
   checked against that garment before you see it.
 - **Ask what to wear.** Outfits built from what you own, and — if you ask — a
   model's opinion on top, including which piece your wardrobe is missing.
+  Optionally shaped by today's weather for a city you choose.
 - **Say what you wore, in three taps.** At the front door, tired: tap what you
   had on and it is logged and put in the basket, no photo. An optional evening
   reminder opens that screen for you.
@@ -443,6 +444,23 @@ cannot without it: cost per wear has a divisor, "never worn" means something,
 and a new red shirt stops being isolated into its own load once it has been
 through the machine three times and stopped bleeding.
 
+### See what you wore, day by day
+
+**More → Calendar** is a month at a time, built from the same wear history. Each
+day with something logged shows small pictures of what was worn (three, and a
+"+2" for the rest); today is marked, and days with nothing are left quiet. A
+line above the grid says how many days were logged that month and which piece
+was worn on the most of them. You can page back to the month of the first wear
+and forward to this one, not into the future.
+
+Tap a day to see its pieces large. Each opens its garment. **Wore this again
+today** records them the way "Wearing this" does on an outfit idea (the wear,
+and into the basket), and **Save as an outfit** names them and keeps them with
+the others. Days are the *local* day: a wear logged at 23:30 is that evening
+and not the next morning in UTC. A garment deleted since keeps its day and is
+shown as no longer in the wardrobe. A wardrobe with no wears yet says how wear
+gets recorded.
+
 ### Search and filter
 
 By category, colour, fabric, brand, season, favourites, never-worn, or items
@@ -486,6 +504,49 @@ missing one: a pair must recur before it counts at all, and the strength is a
 conditional rate — "when you wear the blazer, you wear those trousers" — shrunk
 toward zero when there is little evidence, so two observations out of two does
 not claim the same certainty as twenty out of twenty.
+
+### Dress for the weather
+
+Outfits → Ideas can take today's weather into account, for free. Choose a city
+in **Settings → Weather** (type it, pick it from the matches; no device location
+is used) and the top of the tab shows one line — "London · 9–14°, feels 7° · rain
+likely this afternoon" — and the ideas are reordered by what the day asks for.
+Celsius or Fahrenheit (the default follows the phone's locale; US is °F), a
+switch turns it all off, and **Ignore the weather** shows the plain ideas
+without leaving the tab. Pull down, or **Refresh weather**, to re-read it.
+
+The rule is small and every step is visible, in `wardrobe_core`
+(`outfits/weather.dart`, `weather_fit.dart`). From the day's *feels-like*
+temperatures, weighted towards the warm half of the day (`0.4 × low + 0.6 ×
+high`), it picks a band: freezing below 0°C, cold below 8°, cool below 15°, mild
+below 21°, warm below 27°, hot from 27°. Rain is "likely" at 50% chance or 1 mm,
+"possible" from 30%; wind counts from 30 km/h. A jacket or coat is wanted when
+it is cool or colder, when rain is likely or it is snowing, when it is windy and
+not warm, or when the morning starts below 10°. The builder then nudges its
+scoring: long sleeves and heavy knits up in the cold, shorts and sandals out;
+short sleeves up and heavy knits and coats down in the heat; a waterproof layer
+and boots up in the rain, sandals and suede down. Pieces that are plainly wrong
+for the day are dropped when the wardrobe has something better, and kept when it
+does not, so a small wardrobe still gets an idea — plus a line saying what is
+missing ("No waterproof layer in your wardrobe"). Each idea carries its reason
+("Cold and rainy: a waterproof jacket and closed shoes").
+
+What leaves the phone: the text you type into the city search, and the
+coordinates of the city you pick, which go to
+[Open-Meteo](https://open-meteo.com/) (free, no key, no account) straight from
+the app. Nothing about the wardrobe is sent, and the server in this repository
+is not involved. The forecast is kept for an hour in memory, and the last good
+one in preferences, so opening the tab does not refetch every time; if the
+weather cannot be had, the line says so quietly and the ideas work as before.
+
+Limits, stated plainly: it is a forecast, not a promise. The rules are simple
+and the thresholds are a judgement, not a measurement. It only uses what the
+wardrobe records — an item's type, its sleeve length (or the sleeve its type
+implies), its fibre, and its tags — so it cannot know a jacket is waterproof
+unless it is tagged `waterproof`, or a shoe is suede unless it is tagged
+`suede`; where it cannot tell it makes no judgement rather than guessing. It
+plans for one day, not a trip, and the Stylist (a model) does not see the
+weather.
 
 ### Ask a model what goes with what
 
@@ -597,7 +658,7 @@ drops data between them. It found two such bugs the first time it ran.
 
 A bar along the bottom holds the five places you move between all day:
 **Wardrobe**, **Laundry**, **Outfits**, **Sell** and **More**, which holds
-**Ask**, **Packing**, **Insights** and **Settings**. Ask had a place on the bar
+**Ask**, **Packing**, **Calendar**, **Insights** and **Settings**. Ask had a place on the bar
 until Sell took it; it is the first thing under More, and an old link to it
 still opens it. Each place keeps its own history. Go
 three screens deep in the wardrobe, switch to Laundry and back, and you are
@@ -738,6 +799,19 @@ two things that help: drop the price a little, or relist it so it shows as new.
 garment as sold** takes it out of the wardrobe in one tap while its history keeps
 it. Sold carries a running total of what the sales left after fees.
 
+**A quiet suggestion.** Anything owned that has not been worn for more than a
+year, or never since it was added more than a year ago, is offered on its own
+screen: a card in Insights and a line on the Sell tab ("6 things you haven't
+worn in a year") lead there, longest unworn first, each with the date it was
+last worn. **Sell this** starts its listing. **Keep** hides that garment from the
+suggestion for six months (remembered on the phone, so it survives a restart),
+and **Open** goes to the garment. It is a list of offers, not advice, and it
+sends no notifications. It leaves out what a long gap says nothing about:
+blazers, dresses, dress shoes, ties and swimwear (occasion and holiday pieces),
+underwear and socks, and household linen. Anything in the wash, away for repair,
+or already sold, donated or discarded is not offered. The rule is one function
+in the core, `letGoCandidates`, tested at the twelve-month edge.
+
 #### What leaves the phone
 
 The **photographs** go to Gemini through the server, exactly as every scan's do,
@@ -826,6 +900,9 @@ On your phone, and nowhere else unless you send it somewhere.
 - **Sync is off** until you turn it on, and it points at a server you run. See
   [Turning on sync](#turning-on-sync), including what the credential is and is
   not.
+- **Weather** is off until you pick a city. Then the city search text and the
+  chosen coordinates go to Open-Meteo, and nothing about the wardrobe does. See
+  [Dress for the weather](#dress-for-the-weather).
 - **Listings** are kept in a table of their own beside the wardrobe, on the same
   phone, and are not synced.
 - **A backup** is a file you make yourself, in Settings > Backup. See
@@ -1097,9 +1174,9 @@ A few decisions worth reading about:
 
 | # | Scope | Status |
 |---|---|---|
-| 1 | Domain core: care model, sorting engine, machine translation, matching, events, selling | **Done** — 1304 core tests |
+| 1 | Domain core: care model, sorting engine, machine translation, matching, events, selling | **Done** — 1398 core tests |
 | 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts, machine identification, listing descriptions and price search | **Done** — 1345 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage, the Sell tab | **Done** — 1906 app tests |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage, the Sell tab | **Done** — 2056 app tests |
 | 4 | Care-label scanning, item editing, filter sheet, garment cutouts, grid view | **Done** |
 | 5 | Pile scanning, load grouping, machine profiles, wear and wash history | **Done** |
 | 6 | Outfit suggestions, laundry-aware packing, wardrobe insights | **Done** |

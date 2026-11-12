@@ -330,19 +330,31 @@ class ListingController {
   Future<void> delete(Listing listing) async {
     await _listings.delete(listing.id);
 
-    final garmentId = listing.itemId;
-    final garment = garmentId == null
-        ? null
-        : await _ref.read(wardrobeRepositoryProvider).byId(garmentId);
-    final theirs = {
-      for (final photo in garment?.photos.photos ?? const <ItemPhoto>[]) ...[
-        photo.uri,
-        ?photo.cutoutUri,
-      ],
-    };
+    await deletePhotoFiles(listing, listing.photos);
+  }
 
+  /// Whether a garment also holds [photo]'s stored image, so that it is not
+  /// the listing's to delete.
+  ///
+  /// A listing made from a garment points at the garment's images instead of
+  /// copying them, cutouts included. This is the one place that says so: the
+  /// editor asks it before telling the person what removing a photo will do,
+  /// and [deletePhotoFiles] asks it before deleting.
+  Future<bool> garmentHolds(Listing listing, ListingPhoto photo) async =>
+      (await _garmentImages(listing)).contains(photo.uri);
+
+  /// Deletes the stored images of [photos], except any a garment also holds.
+  ///
+  /// For [delete], and for a photo taken off a listing that stays. One that
+  /// will not delete is left where it is, which costs a few hundred
+  /// kilobytes, and does not stop the rest.
+  Future<void> deletePhotoFiles(
+    Listing listing,
+    Iterable<ListingPhoto> photos,
+  ) async {
+    final theirs = await _garmentImages(listing);
     final store = _ref.read(imageStoreProvider);
-    for (final photo in listing.photos) {
+    for (final photo in photos) {
       if (theirs.contains(photo.uri)) continue;
       try {
         await store.delete(photo.uri);
@@ -350,6 +362,19 @@ class ListingController {
         continue;
       }
     }
+  }
+
+  Future<Set<String>> _garmentImages(Listing listing) async {
+    final garmentId = listing.itemId;
+    final garment = garmentId == null
+        ? null
+        : await _ref.read(wardrobeRepositoryProvider).byId(garmentId);
+    return {
+      for (final photo in garment?.photos.photos ?? const <ItemPhoto>[]) ...[
+        photo.uri,
+        ?photo.cutoutUri,
+      ],
+    };
   }
 
   // --- Behind the scenes --------------------------------------------------

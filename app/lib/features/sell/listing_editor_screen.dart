@@ -207,6 +207,7 @@ class _Editor extends StatelessWidget {
               ShippingSection(
                 key: const ValueKey('shipping'),
                 listing: listing,
+                session: session,
               ),
               StatusSection(
                 key: const ValueKey('status'),

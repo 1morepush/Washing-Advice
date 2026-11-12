@@ -239,6 +239,10 @@ for (const theme of ['light', 'dark']) {
 
     await page.goto(`${BASE}/#/outfits`, { waitUntil: 'load' });
     await ready(page);
+    // Ideas, with the demo's canned London forecast: the weather line, the
+    // note about what the wardrobe lacks for rain, and each card's weather
+    // reason. The source is a fake in the demo build, so nothing is fetched.
+    await page.waitForTimeout(800);
     await shot(page, 'outfits');
 
     // The Saved tab, reached by its own address rather than by tapping — a
@@ -252,6 +256,28 @@ for (const theme of ['light', 'dark']) {
     await page.goto(`${BASE}/#/packing`, { waitUntil: 'load' });
     await ready(page);
     await shot(page, 'packing');
+
+    // The outfit calendar: the month grid, then a day. The demo seeds about two
+    // months of wears back from today, so the current month is never empty. The
+    // day is yesterday, which the seed always logs, built from this machine's
+    // own calendar day because that is the one the app will read it by.
+    await page.goto(`${BASE}/#/calendar`, { waitUntil: 'load' });
+    await ready(page);
+    await shot(page, 'calendar');
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const pad = (n) => String(n).padStart(2, '0');
+    const day = `${yesterday.getFullYear()}-${pad(yesterday.getMonth() + 1)}-${pad(yesterday.getDate())}`;
+    await page.goto(`${BASE}/#/calendar/${day}`, { waitUntil: 'load' });
+    await ready(page);
+    await shot(page, 'calendar-day');
+
+    // What has not been worn in a year. The demo has two such garments, which
+    // is also what puts the line on the Sell tab below.
+    await page.goto(`${BASE}/#/sell/unworn`, { waitUntil: 'load' });
+    await ready(page);
+    await shot(page, 'not-worn-in-a-year');
 
     // Selling, by address as the screens above are. The demo seeds three
     // listings, one in each state, so the tab shows a draft with its price and

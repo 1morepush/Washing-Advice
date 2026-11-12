@@ -23,10 +23,12 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../../widgets/notice.dart';
 import '../../../widgets/rinse_kit.dart';
+import '../list/listing_money.dart';
 import '../list/listing_when.dart';
 import 'amount_input.dart';
 import 'edit_session.dart';
 import 'fields.dart';
+import 'net_sentence.dart';
 
 /// What the garment cost, in cents, when it was bought in US dollars; else
 /// null.
@@ -57,6 +59,7 @@ PriceSuggestion suggestionFor(Listing listing, {int? paidCents}) {
     typedComparablesSold: listing.typedComparablesSold,
     condition: listing.condition,
     paidCents: paidCents,
+    shippingDiscountCents: listing.shippingDiscountCents,
   );
 }
 
@@ -155,12 +158,20 @@ class YourPrice extends StatelessWidget {
     final theme = Theme.of(context);
     const fees = DepopFees.us;
     final price = listing.priceCents;
-    final net = price == null ? null : fees.netCents(price);
+    final sale = price == null
+        ? null
+        : saleNetOf(
+            price,
+            shippingDiscountCents: listing.shippingDiscountCents,
+          );
+    final net = sale?.netCents;
 
     // Either the price they typed leaves too little, or the one suggested
     // would. The first is said first: it is the one they are looking at.
     final String? warning;
-    if (net != null && net < worthwhileNetCents) {
+    if (sale != null && shortfallWarning(sale) != null) {
+      warning = shortfallWarning(sale);
+    } else if (net != null && net < worthwhileNetCents) {
       warning =
           "You'd get only ${formatUsd(net)} after Depop's fees. Is it worth "
           'the postage? Bundling it with something else may be.';
@@ -193,7 +204,7 @@ class YourPrice extends StatelessWidget {
         const SizedBox(height: 8),
         if (net != null) ...[
           Text(
-            "You get ${formatUsd(net)} after Depop's fees (${fees.label})",
+            netSentence('get', sale!),
             style: theme.textTheme.bodyLarge?.copyWith(
               fontWeight: FontWeight.w800,
             ),

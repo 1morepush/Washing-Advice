@@ -27,6 +27,8 @@ import '../wardrobe/model/wardrobe_item.dart';
 import 'color_harmony.dart';
 import 'model/occasion.dart';
 import 'model/outfit.dart';
+import 'weather.dart';
+import 'weather_fit.dart';
 
 /// How many candidates per slot survive individual scoring.
 ///
@@ -49,6 +51,10 @@ const int _neglectedAfterDays = 60;
 /// still gets suggestions rather than a shorter list.
 const double _repeatPenalty = 0.8;
 
+/// A weather adjustment at or below this marks a piece as a misfit for the
+/// day (see `_dropWeatherMisfits`).
+const double _misfitBelow = -0.3;
+
 /// What the user is dressing for.
 final class OutfitRequest {
   const OutfitRequest({
@@ -59,6 +65,7 @@ final class OutfitRequest {
     this.includeFootwear = true,
     this.mustInclude,
     this.exclude = const {},
+    this.needs,
   });
 
   final Occasion occasion;
@@ -75,6 +82,13 @@ final class OutfitRequest {
 
   /// Items to leave out: already packed, in the wash, deliberately rejected.
   final Set<ItemId> exclude;
+
+  /// What today's weather asks of the outfit, or null to ignore the weather.
+  ///
+  /// Null is not "mild": with no needs the builder behaves exactly as it did
+  /// before weather existed, which is what the person gets until they set a
+  /// place and what they get from "ignore the weather".
+  final DressingNeeds? needs;
 }
 
 /// One proposed outfit, with its reasoning.
@@ -83,6 +97,7 @@ final class OutfitSuggestion {
     required this.items,
     required this.score,
     required this.reasons,
+    this.weatherReasons = const [],
   });
 
   final List<WardrobeItem> items;
@@ -92,6 +107,11 @@ final class OutfitSuggestion {
 
   /// Why this was suggested, in plain English, strongest reason first.
   final List<String> reasons;
+
+  /// Why this suits today's weather, e.g. "Cold and rainy: a waterproof
+  /// jacket and closed shoes". Empty when the request carried no weather.
+  /// Kept apart from [reasons] so the screen can lead with it.
+  final List<String> weatherReasons;
 
   Iterable<ItemId> get itemIds => items.map((i) => i.id);
 
@@ -123,6 +143,7 @@ final class OutfitBuilder {
     OutfitRequest request,
   ) {
     final now = clock.now();
+    final needs = request.needs;
     final anchor = request.mustInclude == null
         ? null
         : wardrobe.where((i) => i.id == request.mustInclude).firstOrNull;
@@ -135,12 +156,13 @@ final class OutfitBuilder {
       final slot = OutfitSlot.ofType(item.type.value);
       if (slot == null || slot == OutfitSlot.accessory) continue;
 
-      (bySlot[slot] ??= []).add(_Candidate(item, _scoreItem(item, now)));
+      (bySlot[slot] ??= []).add(_Candidate(item, _scoreItem(item, now, needs)));
     }
 
     for (final candidates in bySlot.values) {
       candidates.sort((a, b) => b.score.compareTo(a.score));
     }
+    if (needs != null) _dropWeatherMisfits(bySlot, needs);
 
     // An anchor is forced into its slot as the only candidate, so every
     // suggestion contains it. Ranking it against alternatives it is meant to
@@ -148,7 +170,7 @@ final class OutfitBuilder {
     if (anchor != null) {
       final slot = OutfitSlot.ofType(anchor.type.value);
       if (slot == null) return const [];
-      bySlot[slot] = [_Candidate(anchor, _scoreItem(anchor, now))];
+      bySlot[slot] = [_Candidate(anchor, _scoreItem(anchor, now, needs))];
     }
 
     final bases = _bases(bySlot, shortlist: _shortlist);
@@ -156,14 +178,14 @@ final class OutfitBuilder {
 
     for (final base in bases) {
       var items = base;
-      if (request.includeOuterwear) {
+      if (request.includeOuterwear || (needs?.outerLayer ?? false)) {
         items = _addBestFit(items, bySlot[OutfitSlot.outerwear]);
       }
       if (request.includeFootwear) {
         items = _addBestFit(items, bySlot[OutfitSlot.footwear]);
       }
 
-      final suggestion = _assess(items, now);
+      final suggestion = _assess(items, now, needs);
       // Ties on signature are impossible to tell apart, so the first wins;
       // scores would be identical anyway.
       suggestions.putIfAbsent(suggestion.signature, () => suggestion);
@@ -172,6 +194,30 @@ final class OutfitBuilder {
     final ranked = suggestions.values.toList()
       ..sort((a, b) => b.score.compareTo(a.score));
     return _diversify(ranked, request.count);
+  }
+
+  /// Removes the pieces that are plainly wrong for the weather — shorts in a
+  /// freeze, sandals in the rain — from any slot that has something better.
+  ///
+  /// Scoring alone left them in: diversification penalises reusing the one
+  /// good pair of trousers, which let the shorts back in as the "different"
+  /// option. A slot whose every candidate is a misfit keeps them all, so a
+  /// small wardrobe still gets an outfit.
+  void _dropWeatherMisfits(
+    Map<OutfitSlot, List<_Candidate>> bySlot,
+    DressingNeeds needs,
+  ) {
+    for (final candidates in bySlot.values) {
+      final fine = [
+        for (final c in candidates)
+          if (weatherAdjustment(c.item, needs) > _misfitBelow) c,
+      ];
+      if (fine.isNotEmpty && fine.length < candidates.length) {
+        candidates
+          ..clear()
+          ..addAll(fine);
+      }
+    }
   }
 
   /// Picks [count] suggestions that are not all the same outfit.
@@ -219,6 +265,12 @@ final class OutfitBuilder {
   bool _isAvailable(WardrobeItem item, OutfitRequest request) {
     if (!item.lifecycle.isWearable) return false;
     if (!_suitsSeason(item, request.season)) return false;
+    // A coat is not on the everyday list, which is a styling default. When the
+    // weather calls for a layer, a proper jacket or coat is allowed anyway:
+    // being cold is a better reason than a default.
+    if ((request.needs?.outerLayer ?? false) && item.isProperOuterLayer) {
+      return true;
+    }
     return _suitsOccasion(item, request.occasion);
   }
 
@@ -233,7 +285,7 @@ final class OutfitBuilder {
       item.tags.contains(occasion.tag) || occasion.suits(item.type.value);
 
   /// How good a choice this item is, ignoring what it will be worn with.
-  double _scoreItem(WardrobeItem item, DateTime now) {
+  double _scoreItem(WardrobeItem item, DateTime now, [DressingNeeds? needs]) {
     var score = 0.5;
 
     if (item.isFavorite) score += 0.15;
@@ -253,7 +305,10 @@ final class OutfitBuilder {
 
     if (item.condition.warrantsGentlerCare) score -= 0.05;
 
-    return score.clamp(0.0, 1.0);
+    score = score.clamp(0.0, 1.0);
+    if (needs != null)
+      score = (score + weatherAdjustment(item, needs)).clamp(0.0, 1.0);
+    return score;
   }
 
   /// Every combination of the shortlisted tops and bottoms, plus every
@@ -304,10 +359,14 @@ final class OutfitBuilder {
     return [...items, best!.item];
   }
 
-  OutfitSuggestion _assess(List<WardrobeItem> items, DateTime now) {
+  OutfitSuggestion _assess(
+    List<WardrobeItem> items,
+    DateTime now,
+    DressingNeeds? needs,
+  ) {
     final harmony = _harmony(items);
     final individual =
-        items.map((i) => _scoreItem(i, now)).reduce((a, b) => a + b) /
+        items.map((i) => _scoreItem(i, now, needs)).reduce((a, b) => a + b) /
             items.length;
     final affinity = _affinity(items);
 
@@ -322,7 +381,18 @@ final class OutfitBuilder {
       items: items,
       score: score.clamp(0.0, 1.0),
       reasons: _reasons(items, now, affinity: affinity),
+      weatherReasons: needs == null ? const [] : weatherReasons(items, needs),
     );
+  }
+
+  /// What the wardrobe cannot supply for the request's weather, e.g. "No
+  /// waterproof layer in your wardrobe". Empty without weather.
+  List<String> weatherGapsFor(
+    List<WardrobeItem> wardrobe,
+    OutfitRequest request,
+  ) {
+    final needs = request.needs;
+    return needs == null ? const [] : weatherGaps(wardrobe, needs);
   }
 
   double _harmony(List<WardrobeItem> items) => harmonyOf([

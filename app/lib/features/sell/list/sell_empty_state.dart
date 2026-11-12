@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../widgets/rinse_kit.dart';
+import '../../let_go/let_go_cards.dart';
 import 'new_listing_sheet.dart';
 
 class SellEmptyState extends StatelessWidget {
@@ -59,6 +60,7 @@ class SellEmptyState extends StatelessWidget {
                   style: theme.textTheme.bodyMedium?.copyWith(color: quiet),
                 ),
                 const SizedBox(height: 24),
+                const LetGoSellLine(margin: EdgeInsets.only(bottom: 16)),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(

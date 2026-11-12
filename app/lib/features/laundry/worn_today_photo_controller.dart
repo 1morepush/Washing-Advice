@@ -23,6 +23,7 @@ import '../../core/providers.dart';
 import '../../data/api/ai_gateway.dart';
 import '../../data/capture/image_capture_source.dart';
 import '../history/wear_recorder.dart';
+import '../scan/cutout_preview.dart';
 import '../scan/worn_matching.dart';
 import '../scan/worn_photo_controller.dart';
 import 'laundry_controller.dart';
@@ -116,8 +117,18 @@ class WornTodayPhotoController extends StateNotifier<WornTodayPhotoState> {
   /// The photo that was read, kept to hand to the add flow.
   ScanImage? _photo;
 
+  /// What was found in it, kept to match again after something is added.
+  List<WornDetection> _detections = const [];
+
+  /// Bumped by every scan and by [reset]. Work started under an older number
+  /// belongs to a screen that has been left: no further request, no write.
+  int _generation = 0;
+
+  bool _stale(int generation) => !mounted || generation != _generation;
+
   /// Takes or picks one photo and reads it.
   Future<void> start({bool fromGallery = false}) async {
+    final generation = _generation;
     final ScanImage? image;
     try {
       final capture = _ref.read(imageCaptureProvider);
@@ -125,6 +136,7 @@ class WornTodayPhotoController extends StateNotifier<WornTodayPhotoState> {
           ? (await capture.pickMultiple()).firstOrNull
           : await capture.capture();
     } on CaptureFailure catch (failure) {
+      if (_stale(generation)) return;
       state = WornTodayPhotoState(
         phase: WornPhase.failed,
         message: failure.message,
@@ -132,23 +144,27 @@ class WornTodayPhotoController extends StateNotifier<WornTodayPhotoState> {
       );
       return;
     } on Exception catch (error) {
+      if (_stale(generation)) return;
       state = WornTodayPhotoState(
         phase: WornPhase.failed,
         message: 'The camera could not be opened. $error',
       );
       return;
     }
+    if (_stale(generation)) return;
     // Backing out is not a failure.
     if (image == null) return;
     await scan(image);
   }
 
   Future<void> scan(ScanImage photo) async {
+    final generation = ++_generation;
     _photo = photo;
+    _detections = const [];
     state = const WornTodayPhotoState(phase: WornPhase.scanning);
 
     final timer = Timer(wakingAfter, () {
-      if (mounted && state.phase == WornPhase.scanning) {
+      if (!_stale(generation) && state.phase == WornPhase.scanning) {
         state = state.copy(waking: true);
       }
     });
@@ -158,7 +174,7 @@ class WornTodayPhotoController extends StateNotifier<WornTodayPhotoState> {
     } finally {
       timer.cancel();
     }
-    if (!mounted) return;
+    if (_stale(generation)) return;
 
     if (reading.failure case final String problem) {
       state = WornTodayPhotoState(
@@ -179,8 +195,9 @@ class WornTodayPhotoController extends StateNotifier<WornTodayPhotoState> {
       return;
     }
 
-    final sightings = await _match(photo, detections);
-    if (!mounted) return;
+    _detections = detections;
+    final sightings = await _match(detections);
+    if (_stale(generation)) return;
     state = WornTodayPhotoState(
       phase: WornPhase.result,
       sightings: sightings,
@@ -191,10 +208,7 @@ class WornTodayPhotoController extends StateNotifier<WornTodayPhotoState> {
     );
   }
 
-  Future<List<Sighting>> _match(
-    ScanImage photo,
-    List<WornDetection> detections,
-  ) async {
+  Future<List<Sighting>> _match(List<WornDetection> detections) async {
     // Everything owned, not only what is clean: a garment in the basket can
     // still be the one in the mirror, and calling it "not in your wardrobe"
     // would offer a duplicate.
@@ -239,12 +253,45 @@ class WornTodayPhotoController extends StateNotifier<WornTodayPhotoState> {
               certainty: Certainty.none,
               picture: cutout == null || cutout.isEmpty
                   ? null
-                  : ScanImage(bytes: cutout, mimeType: 'image/png'),
+                  : _tile(cutout, detection.cutoutKind),
             ),
           );
       }
     }
     return sightings;
+  }
+
+  /// An outline cutout covers its whole box, so it is trimmed to the garment
+  /// for the tile; a box crop is shown as it is.
+  static ScanImage _tile(List<int> bytes, CutoutKind? kind) {
+    final picture = ScanImage(bytes: bytes, mimeType: 'image/png');
+    return kind == CutoutKind.outline ? trimmedForTile(picture) : picture;
+  }
+
+  /// Matches what was found again, after the person has added a garment.
+  ///
+  /// The garment they added is in the wardrobe now, so it matches its own
+  /// detection and moves up out of "Not in your wardrobe", ticked to be logged
+  /// like any confident match. What was ticked or unticked by hand stays so.
+  Future<void> rematch() async {
+    final generation = _generation;
+    if (state.phase != WornPhase.result || _detections.isEmpty) return;
+    final before = state;
+    final sightings = await _match(_detections);
+    if (_stale(generation) || state.phase != WornPhase.result) return;
+
+    final selected = {...before.selected};
+    for (final (i, now) in sightings.indexed) {
+      final was = before.sightings[i];
+      if (was.certainty == Certainty.none && now.certainty == Certainty.sure) {
+        selected.add(i);
+      }
+    }
+    state = WornTodayPhotoState(
+      phase: WornPhase.result,
+      sightings: sightings,
+      selected: selected,
+    );
   }
 
   void toggle(int index) {
@@ -267,12 +314,26 @@ class WornTodayPhotoController extends StateNotifier<WornTodayPhotoState> {
     }.toList();
     if (state.saving || ids.isEmpty) return;
 
+    final generation = _generation;
     state = state.copy(saving: true);
-    await _ref.read(wearRecorderProvider).recordOutfit(ids);
-    await _ref
-        .read(laundryControllerProvider)
-        .move(ids, LifecycleState.inLaundry);
-    if (!mounted) return;
+    try {
+      await _ref.read(wearRecorderProvider).recordOutfit(ids);
+      await _ref
+          .read(laundryControllerProvider)
+          .move(ids, LifecycleState.inLaundry);
+    } on Exception {
+      if (_stale(generation)) return;
+      // Back to the list with the ticks as they were, so it can be tried again.
+      state = WornTodayPhotoState(
+        phase: WornPhase.result,
+        sightings: state.sightings,
+        selected: state.selected,
+        message:
+            'Could not record what you wore. Nothing was logged; try again.',
+      );
+      return;
+    }
+    if (_stale(generation)) return;
     state = WornTodayPhotoState(phase: WornPhase.done, saved: ids.length);
   }
 
@@ -288,7 +349,12 @@ class WornTodayPhotoController extends StateNotifier<WornTodayPhotoState> {
     );
   }
 
-  void reset() => state = const WornTodayPhotoState();
+  void reset() {
+    _generation++;
+    _photo = null;
+    _detections = const [];
+    if (mounted) state = const WornTodayPhotoState();
+  }
 }
 
 final wornTodayPhotoControllerProvider =

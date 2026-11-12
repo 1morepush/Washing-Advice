@@ -27,7 +27,7 @@ class WornTodayPhotoScreen extends ConsumerWidget {
     final controller = ref.read(wornTodayPhotoControllerProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Worn today, from a photo')),
+      appBar: AppBar(title: const Text('From a photo')),
       body: switch (state.phase) {
         WornPhase.idle => _Start(controller: controller),
         WornPhase.scanning => LoadingView(
@@ -173,6 +173,15 @@ class _Result extends StatelessWidget {
                     : "You're wearing: ${names.join(', ')}",
                 body: 'Check the list. Only what is ticked is logged.',
               ),
+              if (state.message case final String message) ...[
+                const SizedBox(height: 8),
+                Text(
+                  message,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               for (final (i, s) in sure)
                 _MatchRow(
@@ -196,7 +205,10 @@ class _Result extends StatelessWidget {
                     sighting: s,
                     onAdd: () async {
                       await controller.addToWardrobe(s);
-                      if (context.mounted) context.push('/scan/worn');
+                      if (!context.mounted) return;
+                      await context.push('/scan/worn');
+                      // Whatever was added is in the wardrobe now.
+                      await controller.rematch();
                     },
                   ),
               ],
@@ -323,7 +335,12 @@ class _NewRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (sighting.picture case final picture?) ...[
-              ScanThumb(image: picture, size: 56, fit: BoxFit.contain),
+              ScanThumb(
+                image: picture,
+                size: 56,
+                fit: BoxFit.contain,
+                garmentRgb: scan.colors.value.colors.firstOrNull?.rgb,
+              ),
               const SizedBox(width: 12),
             ],
             Expanded(

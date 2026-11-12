@@ -242,3 +242,81 @@ Future<ScanImage> cropToBox({
     return photo;
   }
 }
+
+/// The whole pixels of an [imageWidth] by [imageHeight] photograph that [box]
+/// covers.
+///
+/// The worn-photo server reports a box as whole-pixel edges divided by the
+/// photograph's size, so each edge is multiplied back and rounded to the
+/// nearest pixel, right and bottom as edges of their own rather than as a left
+/// plus a rounded width. That is the rounding the server's picture was cut with
+/// (see `contracts/scan_results.schema.json`), and it is why a crop made here
+/// and a cutout made there are the same frame to the pixel.
+///
+/// Not [clampCrop]: that refuses a crop under a tenth of the shorter edge,
+/// which would quietly turn a pair of glasses into a much bigger box. Null for
+/// a box with no area.
+Rect? exactBoxPixels(BoundingBox box, int imageWidth, int imageHeight) {
+  int edge(double fraction, int size) =>
+      (fraction * size).round().clamp(0, size);
+
+  final left = edge(box.left, imageWidth);
+  final top = edge(box.top, imageHeight);
+  final right = edge(box.left + box.width, imageWidth);
+  final bottom = edge(box.top + box.height, imageHeight);
+  if (right <= left || bottom <= top) return null;
+  return Rect.fromLTRB(
+    left.toDouble(),
+    top.toDouble(),
+    right.toDouble(),
+    bottom.toDouble(),
+  );
+}
+
+/// [photo]'s opaque crop of exactly [box]'s pixels, as a JPEG.
+///
+/// The garment's front picture for a worn photo: the editor's "add back" brush
+/// restores from this, so it must be the frame of the server's cutout (see
+/// [exactBoxPixels]). A box covering the whole photograph returns [photo]
+/// untouched rather than spending a JPEG generation.
+///
+/// Never throws: a photograph that will not decode, or a crop that fails, gives
+/// the whole [photo], a worse picture rather than a lost garment.
+Future<ScanImage> cropToExactBox({
+  required ScanImage photo,
+  required ui.Image? decoded,
+  required BoundingBox box,
+}) async {
+  if (decoded == null) return photo;
+  final pixels = exactBoxPixels(box, decoded.width, decoded.height);
+  if (pixels == null) return photo;
+  final whole =
+      Offset.zero & Size(decoded.width.toDouble(), decoded.height.toDouble());
+  if (pixels == whole) return photo;
+
+  try {
+    final raw = await decoded.toByteData(format: ui.ImageByteFormat.rawRgba);
+    if (raw == null) return photo;
+    final everything = img.Image.fromBytes(
+      width: decoded.width,
+      height: decoded.height,
+      bytes: raw.buffer,
+      numChannels: 4,
+    );
+    final cropped = img.copyCrop(
+      everything,
+      x: pixels.left.toInt(),
+      y: pixels.top.toInt(),
+      width: pixels.width.toInt(),
+      height: pixels.height.toInt(),
+    );
+    return ScanImage(
+      bytes: img.encodeJpg(cropped, quality: 90),
+      mimeType: 'image/jpeg',
+      width: pixels.width.toInt(),
+      height: pixels.height.toInt(),
+    );
+  } on Exception {
+    return photo;
+  }
+}

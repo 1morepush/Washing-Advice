@@ -37,6 +37,7 @@ import '../../data/capture/image_capture_source.dart';
 import '../../data/images/image_store.dart';
 import 'bulk_controller.dart' show BulkController;
 import 'crop.dart';
+import 'cutout_preview.dart';
 import 'garment_intake.dart';
 import 'worn_matching.dart';
 
@@ -70,15 +71,26 @@ final class WornFind {
     required this.picture,
     required this.pictureKind,
     required this.photoIndex,
+    this.cutout,
+    ScanImage? preview,
     this.ownedAs,
     this.repeatOf,
-  });
+  }) : preview = preview ?? cutout ?? picture;
 
   /// The garment as it would be saved.
   final WardrobeItem draft;
 
-  /// This garment's own picture: a cutout where the server made one.
+  /// The garment's front photo: an opaque crop of the worn photo by the
+  /// detection's box. Always whole pixels of the photograph, never cut out.
   final ScanImage picture;
+
+  /// The outline cutout, in the same frame as [picture] (the same box), for an
+  /// [WornPicture.outline] find and null otherwise.
+  final ScanImage? cutout;
+
+  /// What a tile draws: the cutout trimmed to the garment where there is one,
+  /// else [picture].
+  final ScanImage preview;
 
   final WornPicture pictureKind;
 
@@ -97,6 +109,8 @@ final class WornFind {
   WornFind withDraft(WardrobeItem revised) => WornFind(
     draft: revised,
     picture: picture,
+    cutout: cutout,
+    preview: preview,
     pictureKind: pictureKind,
     photoIndex: photoIndex,
     ownedAs: ownedAs,
@@ -259,33 +273,51 @@ Future<WornReading> readWornPhoto(Ref ref, ScanImage photo) async {
   }
 }
 
-/// A detection's own picture, or a crop of the photo when it has none.
+/// What a detection's pictures are: the opaque box crop, the cutout aligned to
+/// it, and the tile's framing of the cutout.
+typedef WornPictures = ({
+  ScanImage image,
+  ScanImage? cutout,
+  ScanImage preview,
+  WornPicture kind,
+});
+
+/// A detection's pictures.
 ///
-/// An outline or box picture from the server is used as sent. A detection with
-/// no picture still has its box, so the photo is cropped by it: a worse
-/// picture, never a lost garment.
-Future<({ScanImage image, WornPicture kind})> pictureFor(
+/// The front photo is always the opaque crop of the photograph by the
+/// detection's box ([cropToExactBox]), so the cutout editor has real pixels to
+/// restore from. An outline cutout from the server covers that same box and is
+/// kept beside it. A `box` picture from the server is just that crop again, so
+/// the app's own crop is used and no cutout is kept. A detection with no
+/// picture from the server is cropped the same way.
+Future<WornPictures> pictureFor(
   WornDetection detection,
   ScanImage photo,
   Future<ui.Image?> Function() decoded,
 ) async {
+  final image = await cropToExactBox(
+    photo: photo,
+    decoded: await decoded(),
+    box: detection.boundingBox,
+  );
   final bytes = detection.cutout;
-  if (bytes != null && bytes.isNotEmpty) {
+  final hasPicture = bytes != null && bytes.isNotEmpty;
+
+  if (hasPicture && detection.cutoutKind == CutoutKind.outline) {
+    final cutout = ScanImage(bytes: bytes, mimeType: 'image/png');
     return (
-      image: ScanImage(bytes: bytes, mimeType: 'image/png'),
-      // A kind this build does not know was already read as `box` by the core.
-      kind: detection.cutoutKind == CutoutKind.outline
-          ? WornPicture.outline
-          : WornPicture.box,
+      image: image,
+      cutout: cutout,
+      preview: trimmedForTile(cutout),
+      kind: WornPicture.outline,
     );
   }
   return (
-    image: await cropToBox(
-      photo: photo,
-      decoded: await decoded(),
-      box: detection.boundingBox,
-    ),
-    kind: WornPicture.cropped,
+    image: image,
+    cutout: null,
+    preview: image,
+    // A kind this build does not know was already read as `box` by the core.
+    kind: hasPicture ? WornPicture.box : WornPicture.cropped,
   );
 }
 
@@ -294,12 +326,20 @@ class WornPhotoController extends StateNotifier<WornPhotoState> {
 
   final Ref _ref;
 
+  /// Bumped by every scan and by [reset]. Work that was started under an older
+  /// number belongs to a screen that has since been left, and must not call the
+  /// server again or write state.
+  int _generation = 0;
+
+  bool _stale(int generation) => !mounted || generation != _generation;
+
   /// The longest a batch pauses for a rate limit, shared with the bulk scan
   /// so the two agree on what "too long to wait" means.
   static const longestRateLimitWait = BulkController.longestRateLimitWait;
 
   /// Takes a photo or picks several, then reads them.
   Future<void> start({bool fromGallery = false}) async {
+    final generation = _generation;
     final List<ScanImage> images;
     try {
       final capture = _ref.read(imageCaptureProvider);
@@ -307,26 +347,35 @@ class WornPhotoController extends StateNotifier<WornPhotoState> {
           ? await capture.pickMultiple()
           : [if (await capture.capture() case final ScanImage taken) taken];
     } on CaptureFailure catch (failure) {
+      if (_stale(generation)) return;
       state = WornFailed(failure.message, isRetryable: failure.isRetryable);
       return;
     } on Exception catch (error) {
+      if (_stale(generation)) return;
       state = WornFailed('The camera could not be opened. $error');
       return;
     }
 
+    if (_stale(generation)) return;
     // Backing out is not a failure.
     if (images.isEmpty) return;
     await scan(images);
   }
 
   /// Reads [photos] one after another.
+  ///
+  /// Leaving the screen ([reset]) ends it: the generation is checked after every
+  /// await and before every state write, so no further request is sent and
+  /// nothing is written once the person has gone.
   Future<void> scan(List<ScanImage> photos) async {
+    final generation = ++_generation;
     final readings = <WornReading>[];
 
     for (final (index, photo) in photos.indexed) {
       state = WornScanning(current: index + 1, total: photos.length);
 
-      var reading = await _read(photo);
+      var reading = await _read(photo, generation);
+      if (_stale(generation)) return;
       if (reading.retryAfter case final Duration wait
           when wait <= longestRateLimitWait) {
         state = WornScanning(
@@ -335,16 +384,16 @@ class WornPhotoController extends StateNotifier<WornPhotoState> {
           waitingFor: wait,
         );
         await Future<void>.delayed(wait);
-        if (!mounted) return;
+        if (_stale(generation)) return;
         state = WornScanning(current: index + 1, total: photos.length);
-        reading = await _read(photo);
+        reading = await _read(photo, generation);
+        if (_stale(generation)) return;
       }
-      if (!mounted) return;
       readings.add(reading);
     }
 
-    final reviewing = await _review(photos, readings);
-    if (!mounted) return;
+    final reviewing = await _review(photos, readings, generation);
+    if (reviewing == null || _stale(generation)) return;
     state = reviewing;
   }
 
@@ -357,18 +406,21 @@ class WornPhotoController extends StateNotifier<WornPhotoState> {
     ScanImage photo,
     List<WornDetection> detections,
   ) async {
+    final generation = ++_generation;
     final reviewing = await _review(
       [photo],
       [WornReading.found(WornScanResult(detections: detections))],
+      generation,
     );
-    if (!mounted) return;
+    if (reviewing == null || _stale(generation)) return;
     state = reviewing;
   }
 
   /// One request, with the "server is asleep" line armed alongside it.
-  Future<WornReading> _read(ScanImage photo) async {
+  Future<WornReading> _read(ScanImage photo, int generation) async {
+    if (_stale(generation)) return const WornReading.failed('Cancelled');
     final timer = Timer(wakingAfter, () {
-      if (mounted && state is WornScanning) {
+      if (!_stale(generation) && state is WornScanning) {
         state = (state as WornScanning).asWaking();
       }
     });
@@ -379,9 +431,11 @@ class WornPhotoController extends StateNotifier<WornPhotoState> {
     }
   }
 
-  Future<WornReviewing> _review(
+  /// Null when the screen was left part way through.
+  Future<WornReviewing?> _review(
     List<ScanImage> photos,
     List<WornReading> readings,
+    int generation,
   ) async {
     final intake = _ref.read(garmentIntakeProvider);
     // The whole wardrobe: a garment being in the basket is not evidence that
@@ -389,6 +443,7 @@ class WornPhotoController extends StateNotifier<WornPhotoState> {
     final wardrobe = await _ref
         .read(wardrobeRepositoryProvider)
         .query(const WardrobeQuery());
+    if (_stale(generation)) return null;
     final matcher = _ref.read(itemMatcherProvider);
     final resolver = _ref.read(matchResolverProvider);
     final byId = {for (final item in wardrobe) item.id: item};
@@ -448,6 +503,10 @@ class WornPhotoController extends StateNotifier<WornPhotoState> {
       for (final (at, detection) in detections.indexed) {
         final draft = intake.draftFrom(detection.scan);
         final picture = await pictureFor(detection, photo, decode);
+        if (_stale(generation)) {
+          decoded?.dispose();
+          return null;
+        }
 
         WardrobeItem? owned;
         WornRepeat? repeat;
@@ -462,6 +521,8 @@ class WornPhotoController extends StateNotifier<WornPhotoState> {
           WornFind(
             draft: draft,
             picture: picture.image,
+            cutout: picture.cutout,
+            preview: picture.preview,
             pictureKind: picture.kind,
             photoIndex: index,
             ownedAs: owned,
@@ -514,23 +575,21 @@ class WornPhotoController extends StateNotifier<WornPhotoState> {
   ///
   /// **The front photo** is the garment's own picture:
   ///
-  /// * `uri` holds the cutout's pixels. Not the worn photo: the cutout editor
-  ///   and "Clean up" treat `uri` as the picture to cut *from*, and cutting a
-  ///   garment out of a whole photo of a person would hand them somebody's
-  ///   face. The cutout is the only picture of this garment alone there is.
-  /// * `cutoutUri` holds the same cutout again, under its own name, for an
-  ///   `outline` cutout. The copy is deliberate. The editor writes its result
-  ///   to the cutout's name and then deletes the file the cutout used to be,
-  ///   so if both fields named one file, tidying would overwrite the picture it
-  ///   was tidying *from* and rubbing out too much could never be undone. With
-  ///   two files the original stays put and the editor behaves as it does for
-  ///   any other garment. A `box` picture is not stored as a cutout at all: it
-  ///   has its background in it, so it sits in `uri` alone, which is exactly
-  ///   the shape of a photo whose cutout is missing, and "Clean up" then offers
-  ///   to remove the background, as the review screen promised it could.
-  /// * `isPrimary` is true. [PhotoSet.displayPhoto] would pick this photo
-  ///   anyway when it has a cutout, but not for a `box` picture, and the worn
-  ///   photo must never be what a tile shows.
+  /// * `uri` holds an **opaque crop of the worn photo by the detection's box**
+  ///   ([cropToExactBox]). Not the cutout: the cutout editor's "add back" brush
+  ///   restores real pixels from `uri`, and a `uri` that was itself the cutout
+  ///   would have nothing behind its transparent pixels to restore. It is a
+  ///   box, not the whole photograph, so "Clean up" and the editor work on the
+  ///   garment's frame rather than somebody's face and the room.
+  /// * `cutoutUri` holds the server's outline cutout, for an `outline` find. The
+  ///   server cuts it to the same box, pixel for pixel (see the contract), so
+  ///   the editor's mask lines up with `uri`. It is a separate file, which is
+  ///   also what the editor wants: it writes its result under the cutout's name
+  ///   and deletes the file the cutout used to be, so with two files the box
+  ///   crop stays put and rubbing out too much can always be undone. A `box`
+  ///   find has no cutout; it is the box crop alone, which is exactly the shape
+  ///   of a photo whose cutout is missing.
+  /// * `isPrimary` is true, so the worn photo is never what a tile shows.
   ///
   /// **The worn photo** is the original, role [PhotoRole.worn], never primary
   /// and never given a cutout. The photo viewer pages through photos by `uri`,
@@ -542,6 +601,9 @@ class WornPhotoController extends StateNotifier<WornPhotoState> {
   ///
   /// Retaking a photo adds a new primary front photo and leaves these alone,
   /// so the worn photo survives it.
+  ///
+  /// A garment whose row cannot be written has the files stored for it deleted,
+  /// the shared original only when no saved garment holds it.
   Future<void> saveAccepted() async {
     if (state case final WornReviewing reviewing) {
       final accepted = reviewing.accepted;
@@ -552,6 +614,8 @@ class WornPhotoController extends StateNotifier<WornPhotoState> {
       // Original URIs by photo index, stored the first time a kept garment
       // needs one. A photo whose garments were all turned down is never stored.
       final originals = <int, String?>{};
+      // Photo indices whose original a saved garment points at.
+      final originalKept = <int>{};
       Future<String?> originalOf(int photoIndex) async {
         if (originals.containsKey(photoIndex)) return originals[photoIndex];
         final photo = reviewing.photos[photoIndex];
@@ -566,18 +630,28 @@ class WornPhotoController extends StateNotifier<WornPhotoState> {
         }
       }
 
+      Future<void> forget(String? uri) async {
+        if (uri == null) return;
+        try {
+          await store.delete(uri);
+        } on Exception {
+          // Nothing more can be done about a file that will not go.
+        }
+      }
+
       var saved = 0;
       for (final (n, find) in accepted.indexed) {
+        final stored = <String>[];
+        int? usedOriginal;
         try {
           final photos = <ItemPhoto>[];
           final id = find.draft.id;
           final capturedAt = batch.add(Duration(microseconds: n));
-          final bytes = Uint8List.fromList(find.picture.bytes);
 
           try {
             var front = ItemPhoto(
               uri: await store.save(
-                bytes,
+                Uint8List.fromList(find.picture.bytes),
                 name: imageName(id, PhotoRole.front, takenAt: capturedAt),
               ),
               role: PhotoRole.front,
@@ -586,13 +660,15 @@ class WornPhotoController extends StateNotifier<WornPhotoState> {
               height: find.picture.height,
               isPrimary: true,
             );
-            if (find.pictureKind == WornPicture.outline) {
+            stored.add(front.uri);
+            if (find.cutout case final ScanImage cutout) {
               front = front.copyWith(
                 cutoutUri: await store.save(
-                  bytes,
+                  Uint8List.fromList(cutout.bytes),
                   name: cutoutNameFor(id, front),
                 ),
               );
+              stored.add(front.cutoutUri!);
             }
             photos.add(front);
           } on Exception {
@@ -600,6 +676,7 @@ class WornPhotoController extends StateNotifier<WornPhotoState> {
           }
 
           if (await originalOf(find.photoIndex) case final String uri) {
+            usedOriginal = find.photoIndex;
             final original = reviewing.photos[find.photoIndex];
             photos.add(
               ItemPhoto(
@@ -613,9 +690,17 @@ class WornPhotoController extends StateNotifier<WornPhotoState> {
           }
 
           await intake.saveItem(find.draft.copyWith(photos: PhotoSet(photos)));
+          if (usedOriginal != null) originalKept.add(usedOriginal);
           saved++;
         } on Exception {
-          // One garment failing to write must not abandon the rest.
+          // One garment failing to write must not abandon the rest, and must
+          // not leave its files behind.
+          for (final uri in stored) {
+            await forget(uri);
+          }
+          if (usedOriginal != null && !originalKept.contains(usedOriginal)) {
+            await forget(originals.remove(usedOriginal));
+          }
           continue;
         }
       }
@@ -625,7 +710,11 @@ class WornPhotoController extends StateNotifier<WornPhotoState> {
     }
   }
 
-  void reset() => state = const WornIdle();
+  /// Back to a fresh start, and anything still running is abandoned.
+  void reset() {
+    _generation++;
+    if (mounted) state = const WornIdle();
+  }
 }
 
 final wornPhotoControllerProvider =

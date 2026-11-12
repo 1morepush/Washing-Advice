@@ -49,9 +49,21 @@ class WornPhotoScreen extends ConsumerWidget {
             title: 'That did not work',
             detail: failed.message,
             action: failed.isRetryable
-                ? FilledButton(
-                    onPressed: controller.start,
-                    child: const Text('Take a photo'),
+                ? Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      FilledButton.icon(
+                        onPressed: () => controller.start(fromGallery: true),
+                        icon: const Icon(Icons.photo_library_outlined),
+                        label: const Text('Choose photos'),
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: controller.start,
+                        icon: const Icon(Icons.camera_alt_outlined),
+                        label: const Text('Take a photo'),
+                      ),
+                    ],
                   )
                 : FilledButton.tonal(
                     onPressed: controller.reset,
@@ -285,6 +297,15 @@ class _Reviewing extends StatelessWidget {
   }
 }
 
+/// What the garment's page offers a picture that still has background in it:
+/// "Mark out by hand" and "New photo". "Clean up" is deliberately not promised:
+/// it is the lay-flat remover, which looks for a plain border to subtract, and
+/// the border of a crop from a photo of a person is arms, a face and a room.
+const _backgroundNote =
+    'Includes some background. On the garment\'s page you can mark it out by '
+    'hand or take a new photo; "Clean up" is made for clothes laid flat and '
+    'may not work on this.';
+
 class _FindCard extends StatelessWidget {
   const _FindCard({
     required this.find,
@@ -342,7 +363,12 @@ class _FindCard extends StatelessWidget {
             ),
             // Whole, not cropped to a square: a long coat and a pair of shoes
             // are the shapes cover-fitting would cut.
-            ScanThumb(image: find.picture, size: 64, fit: BoxFit.contain),
+            ScanThumb(
+              image: find.preview,
+              size: 64,
+              fit: BoxFit.contain,
+              garmentRgb: draft.colors.value.colors.firstOrNull?.rgb,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -381,16 +407,11 @@ class _FindCard extends StatelessWidget {
                   // Plain words about the picture, so a tile with a bedroom in
                   // it is never mistaken for a bad cutout of something else.
                   if (find.pictureKind == WornPicture.box)
-                    note(
-                      Icons.crop_outlined,
-                      'Includes some background — you can tidy it in the '
-                      'cutout editor.',
-                    ),
+                    note(Icons.crop_outlined, _backgroundNote),
                   if (find.pictureKind == WornPicture.cropped)
                     note(
                       Icons.crop_outlined,
-                      'Cropped from your photo, so it includes some '
-                      'background — you can tidy it in the cutout editor.',
+                      'Cropped from your photo. $_backgroundNote',
                     ),
                   Align(
                     alignment: AlignmentDirectional.centerStart,

@@ -22,7 +22,9 @@ import 'outfit_controller.dart';
 import 'outfit_pieces.dart';
 import 'outfit_source.dart';
 import 'saved_outfits.dart';
+import '../weather/weather_providers.dart';
 import 'stylist_section.dart';
+import 'weather_strip.dart';
 
 /// The two views of "what to wear", in the order they are shown.
 ///
@@ -75,43 +77,55 @@ class OutfitsScreen extends ConsumerWidget {
                       .update((r) => _copy(r, occasion: occasion)),
                 ),
                 Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                    children: [
-                      const SourceHeader(OutfitSource.wardrobe),
-                      ...suggestions.when(
-                        loading: () => const [
-                          SectionNote(
-                            icon: Icons.style_outlined,
-                            busy: true,
-                            title: 'Putting outfits together…',
-                          ),
-                        ],
-                        error: (error, _) => [
-                          SectionNote(
-                            icon: Icons.error_outline,
-                            title: 'Could not suggest an outfit',
-                            detail:
-                                'Something went wrong reading your wardrobe. '
-                                'It is still on this device — try again, and '
-                                'if it keeps happening the detail below is '
-                                'what to report.',
-                            technical: '$error',
-                          ),
-                        ],
-                        data: (list) => list.isEmpty
-                            ? [_Empty(occasion: request.occasion)]
-                            : [
-                                for (final suggestion in list)
-                                  _SuggestionCard(
-                                    suggestion: suggestion,
-                                    occasion: request.occasion,
-                                  ),
-                              ],
-                      ),
-                      const SizedBox(height: 16),
-                      const StylistSection(),
-                    ],
+                  // Pull to refresh re-reads the weather; the ideas are
+                  // recomputed from it. Without a city there is nothing to
+                  // refresh and the gesture is a harmless no-op.
+                  child: RefreshIndicator(
+                    onRefresh: () async {
+                      refreshWeather(ref);
+                      await ref.read(forecastProvider.future);
+                    },
+                    child: ListView(
+                      // Always scrollable so the gesture works on a short list.
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                      children: [
+                        const WeatherStrip(),
+                        const SourceHeader(OutfitSource.wardrobe),
+                        ...suggestions.when(
+                          loading: () => const [
+                            SectionNote(
+                              icon: Icons.style_outlined,
+                              busy: true,
+                              title: 'Putting outfits together…',
+                            ),
+                          ],
+                          error: (error, _) => [
+                            SectionNote(
+                              icon: Icons.error_outline,
+                              title: 'Could not suggest an outfit',
+                              detail:
+                                  'Something went wrong reading your wardrobe. '
+                                  'It is still on this device — try again, and '
+                                  'if it keeps happening the detail below is '
+                                  'what to report.',
+                              technical: '$error',
+                            ),
+                          ],
+                          data: (list) => list.isEmpty
+                              ? [_Empty(occasion: request.occasion)]
+                              : [
+                                  for (final suggestion in list)
+                                    _SuggestionCard(
+                                      suggestion: suggestion,
+                                      occasion: request.occasion,
+                                    ),
+                                ],
+                        ),
+                        const SizedBox(height: 16),
+                        const StylistSection(),
+                      ],
+                    ),
                   ),
                 ),
                 // Inside the Ideas tab rather than in a bottomNavigationBar
@@ -196,18 +210,26 @@ class _SuggestionCard extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           OutfitPieces(items: suggestion.items),
-          if (suggestion.reasons.isNotEmpty) ...[
+          if (suggestion.reasons.isNotEmpty ||
+              suggestion.weatherReasons.isNotEmpty) ...[
             const SizedBox(height: 14),
             Divider(height: 1, color: context.rinse.lineSoft),
             const SizedBox(height: 14),
-            for (final reason in suggestion.reasons.take(3))
+            // The weather reason leads: it is the one that is true today and
+            // not yesterday.
+            for (final reason in [
+              ...suggestion.weatherReasons,
+              ...suggestion.reasons,
+            ].take(3))
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(
-                      Icons.check_circle,
+                      suggestion.weatherReasons.contains(reason)
+                          ? Icons.wb_cloudy_outlined
+                          : Icons.check_circle,
                       size: 18,
                       color: theme.colorScheme.primary,
                     ),

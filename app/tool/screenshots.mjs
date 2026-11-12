@@ -239,6 +239,10 @@ for (const theme of ['light', 'dark']) {
 
     await page.goto(`${BASE}/#/outfits`, { waitUntil: 'load' });
     await ready(page);
+    // Ideas, with the demo's canned London forecast: the weather line, the
+    // note about what the wardrobe lacks for rain, and each card's weather
+    // reason. The source is a fake in the demo build, so nothing is fetched.
+    await page.waitForTimeout(800);
     await shot(page, 'outfits');
 
     // The Saved tab, reached by its own address rather than by tapping — a

@@ -22,6 +22,8 @@ import 'sorting_section.dart';
 import '../../widgets/rinse_kit.dart';
 import 'setting_info.dart';
 import 'update_section.dart';
+import 'weather_section.dart';
+import '../weather/weather_providers.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -131,6 +133,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
 
           const SettingsGroup(title: 'Reminders', children: [NudgeSection()]),
+
+          SettingsGroup(
+            title: 'Weather',
+            value: weatherValue(
+              on: ref.watch(weatherOnProvider),
+              place: ref.watch(weatherPlaceProvider),
+            ),
+            info: weatherInfo,
+            children: const [WeatherSection()],
+          ),
 
           const SettingsGroup(
             title: 'Sync',

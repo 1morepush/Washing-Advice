@@ -81,6 +81,7 @@ void main() {
       'Appearance',
       'Washing and drying',
       'Reminders',
+      'Weather',
       'Sync',
       'Backup',
       'Advanced',

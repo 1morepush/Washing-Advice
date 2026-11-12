@@ -26,6 +26,7 @@ which cycle to select on *your* machine.
   checked against that garment before you see it.
 - **Ask what to wear.** Outfits built from what you own, and — if you ask — a
   model's opinion on top, including which piece your wardrobe is missing.
+  Optionally shaped by today's weather for a city you choose.
 - **Say what you wore, in three taps.** At the front door, tired: tap what you
   had on and it is logged and put in the basket, no photo. An optional evening
   reminder opens that screen for you.
@@ -504,6 +505,49 @@ conditional rate — "when you wear the blazer, you wear those trousers" — shr
 toward zero when there is little evidence, so two observations out of two does
 not claim the same certainty as twenty out of twenty.
 
+### Dress for the weather
+
+Outfits → Ideas can take today's weather into account, for free. Choose a city
+in **Settings → Weather** (type it, pick it from the matches; no device location
+is used) and the top of the tab shows one line — "London · 9–14°, feels 7° · rain
+likely this afternoon" — and the ideas are reordered by what the day asks for.
+Celsius or Fahrenheit (the default follows the phone's locale; US is °F), a
+switch turns it all off, and **Ignore the weather** shows the plain ideas
+without leaving the tab. Pull down, or **Refresh weather**, to re-read it.
+
+The rule is small and every step is visible, in `wardrobe_core`
+(`outfits/weather.dart`, `weather_fit.dart`). From the day's *feels-like*
+temperatures, weighted towards the warm half of the day (`0.4 × low + 0.6 ×
+high`), it picks a band: freezing below 0°C, cold below 8°, cool below 15°, mild
+below 21°, warm below 27°, hot from 27°. Rain is "likely" at 50% chance or 1 mm,
+"possible" from 30%; wind counts from 30 km/h. A jacket or coat is wanted when
+it is cool or colder, when rain is likely or it is snowing, when it is windy and
+not warm, or when the morning starts below 10°. The builder then nudges its
+scoring: long sleeves and heavy knits up in the cold, shorts and sandals out;
+short sleeves up and heavy knits and coats down in the heat; a waterproof layer
+and boots up in the rain, sandals and suede down. Pieces that are plainly wrong
+for the day are dropped when the wardrobe has something better, and kept when it
+does not, so a small wardrobe still gets an idea — plus a line saying what is
+missing ("No waterproof layer in your wardrobe"). Each idea carries its reason
+("Cold and rainy: a waterproof jacket and closed shoes").
+
+What leaves the phone: the text you type into the city search, and the
+coordinates of the city you pick, which go to
+[Open-Meteo](https://open-meteo.com/) (free, no key, no account) straight from
+the app. Nothing about the wardrobe is sent, and the server in this repository
+is not involved. The forecast is kept for an hour in memory, and the last good
+one in preferences, so opening the tab does not refetch every time; if the
+weather cannot be had, the line says so quietly and the ideas work as before.
+
+Limits, stated plainly: it is a forecast, not a promise. The rules are simple
+and the thresholds are a judgement, not a measurement. It only uses what the
+wardrobe records — an item's type, its sleeve length (or the sleeve its type
+implies), its fibre, and its tags — so it cannot know a jacket is waterproof
+unless it is tagged `waterproof`, or a shoe is suede unless it is tagged
+`suede`; where it cannot tell it makes no judgement rather than guessing. It
+plans for one day, not a trip, and the Stylist (a model) does not see the
+weather.
+
 ### Ask a model what goes with what
 
 The suggestions above are arithmetic the app can defend line by line. They also
@@ -856,6 +900,9 @@ On your phone, and nowhere else unless you send it somewhere.
 - **Sync is off** until you turn it on, and it points at a server you run. See
   [Turning on sync](#turning-on-sync), including what the credential is and is
   not.
+- **Weather** is off until you pick a city. Then the city search text and the
+  chosen coordinates go to Open-Meteo, and nothing about the wardrobe does. See
+  [Dress for the weather](#dress-for-the-weather).
 - **Listings** are kept in a table of their own beside the wardrobe, on the same
   phone, and are not synced.
 - **A backup** is a file you make yourself, in Settings > Backup. See

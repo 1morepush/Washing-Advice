@@ -17,6 +17,7 @@ import 'core/licences.dart';
 import 'core/providers.dart';
 import 'core/router.dart';
 import 'core/settings.dart';
+import 'features/weather/weather_providers.dart';
 import 'core/theme.dart';
 import 'data/images/image_store.dart';
 import 'data/images/memory_image_store.dart';
@@ -97,6 +98,7 @@ Future<void> main() async {
         // Seeded here rather than read on demand: see `splitDryingProvider`.
         splitDryingProvider.overrideWith((ref) => settings.splitDrying),
         separateWashingProvider.overrideWith((ref) => settings.separateWashing),
+        ...weatherSeedOverrides(settings),
         imageStoreProvider.overrideWithValue(images),
         nudgesProvider.overrideWithValue(nudges),
       ],

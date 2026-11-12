@@ -33,6 +33,9 @@ import 'data/api/scan_dto.dart';
 import 'data/api/stain_dto.dart';
 import 'data/capture/image_capture_source.dart';
 import 'data/images/memory_image_store.dart';
+import 'data/weather/fake_weather_source.dart';
+import 'data/weather/weather_models.dart';
+import 'features/weather/weather_providers.dart';
 import 'widgets/screen_insets_scope.dart';
 
 Future<void> main() async {
@@ -102,6 +105,12 @@ Future<void> main() async {
           FixedImageCaptureSource([captured]),
         ),
         settingsStoreProvider.overrideWithValue(settings),
+        // A canned place and forecast, so the Outfits tab shows its weather
+        // line and reasons without the network. A cool, wet London day, in
+        // Celsius whatever the browser's locale says.
+        weatherSourceProvider.overrideWithValue(FakeWeatherSource()),
+        weatherPlaceProvider.overrideWith((ref) => demoPlace),
+        temperatureUnitProvider.overrideWith((ref) => WeatherUnit.celsius),
         backendUrlProvider.overrideWith((ref) => defaultBackendUrl),
         // A machine, so the plan names real programmes rather than stating
         // abstract requirements. Both paths ship; this is the interesting one.

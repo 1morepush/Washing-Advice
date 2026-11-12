@@ -82,6 +82,38 @@ final class DepopFees {
   /// What the seller is left with from a sale at [priceCents].
   int netCents(int priceCents) => priceCents - feeCents(priceCents);
 
+  /// What a sale at [priceCents] leaves the seller, with the shipping discount
+  /// they chose to cover taken off as well.
+  ///
+  /// This is the one place the sum is done. The editor, the Sell list's cards
+  /// and the sold totals all call it, so the three cannot disagree about what
+  /// a sale is worth.
+  ///
+  /// [shippingDiscountCents] is Depop's "shipping discount": the part of the
+  /// buyer's postage the seller pays out of the sale. It is a plain amount the
+  /// seller picks and is not looked up or worked out here. Null, zero and
+  /// negative all mean no discount.
+  ///
+  /// The net floors at zero. A seller is not sent a bill because the fees and
+  /// the discount came to more than the sale, so [SaleNet.netCents] is never
+  /// negative and [SaleNet.shortfallCents] says how far past zero it went, for
+  /// a screen to warn about.
+  SaleNet saleNet(int priceCents, {int? shippingDiscountCents}) {
+    final fee = feeCents(priceCents);
+    final discount = shippingDiscountCents == null || shippingDiscountCents < 0
+        ? 0
+        : shippingDiscountCents;
+    final left = priceCents - fee - discount;
+
+    return SaleNet(
+      priceCents: priceCents,
+      feeCents: fee,
+      shippingDiscountCents: discount,
+      netCents: left < 0 ? 0 : left,
+      shortfallCents: left < 0 ? -left : 0,
+    );
+  }
+
   /// The fee in words: `3.3% + $0.45`, with non-breaking spaces, so that it
   /// never wraps in the middle of a bracket on a narrow screen.
   String get label {
@@ -89,6 +121,66 @@ final class DepopFees {
     if (share.contains('.')) share = share.replaceFirst(RegExp(r'\.?0+$'), '');
     return '$share%\u00a0+\u00a0${formatUsd(fixedCents)}';
   }
+}
+
+/// What a sale leaves the seller, with the working shown. See
+/// [DepopFees.saleNet].
+final class SaleNet {
+  const SaleNet({
+    required this.priceCents,
+    required this.feeCents,
+    required this.shippingDiscountCents,
+    required this.netCents,
+    required this.shortfallCents,
+  });
+
+  /// What it sold, or is asked, for.
+  final int priceCents;
+
+  /// Depop's fee on [priceCents].
+  final int feeCents;
+
+  /// The shipping discount the seller covers; zero when there is none.
+  final int shippingDiscountCents;
+
+  /// What the seller is left with, never below zero.
+  final int netCents;
+
+  /// How far the fee and the discount went past the price, when they did.
+  ///
+  /// Zero unless [netCents] was floored. It is what the seller would be short
+  /// by, so a screen can say the sale would leave them nothing and not merely
+  /// show $0.00.
+  final int shortfallCents;
+
+  /// Whether a shipping discount is being covered.
+  bool get hasDiscount => shippingDiscountCents > 0;
+
+  /// Whether the fee and the discount together are more than the price.
+  bool get hasShortfall => shortfallCents > 0;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SaleNet &&
+          other.priceCents == priceCents &&
+          other.feeCents == feeCents &&
+          other.shippingDiscountCents == shippingDiscountCents &&
+          other.netCents == netCents &&
+          other.shortfallCents == shortfallCents;
+
+  @override
+  int get hashCode => Object.hash(
+        priceCents,
+        feeCents,
+        shippingDiscountCents,
+        netCents,
+        shortfallCents,
+      );
+
+  @override
+  String toString() => 'SaleNet(price $priceCents, fee $feeCents, discount '
+      '$shippingDiscountCents, net $netCents)';
 }
 
 /// What a suggested price was built on.
@@ -165,6 +257,9 @@ const int worthwhileNetCents = 500;
 ///   and is treated as ordinary used wear.
 /// * [paidCents] is what the seller paid. It is shown and then ignored: a price
 ///   paid is a sunk cost, not a market.
+/// * [shippingDiscountCents] is the postage the seller covers. It comes off
+///   the net the suggestion reports, so "worth bundling" is judged on what the
+///   seller really keeps; it does not change the price suggested.
 ///
 /// Never throws. With nothing to go on the price is null and the reasons say
 /// where to look.
@@ -175,6 +270,7 @@ PriceSuggestion suggestPrice({
   required List<RetailReference> retail,
   required DepopCondition? condition,
   int? paidCents,
+  int? shippingDiscountCents,
   DepopFees fees = DepopFees.us,
 }) {
   final reasons = <String>[];
@@ -272,7 +368,11 @@ PriceSuggestion suggestPrice({
     }
   }
 
-  final net = listed == null ? null : fees.netCents(listed);
+  final net = listed == null
+      ? null
+      : fees
+          .saleNet(listed, shippingDiscountCents: shippingDiscountCents)
+          .netCents;
   var belowWorthwhile = false;
   if (net != null && net < worthwhileNetCents) {
     belowWorthwhile = true;

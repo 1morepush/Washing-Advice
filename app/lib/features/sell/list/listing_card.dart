@@ -106,18 +106,25 @@ class ListingCard extends StatelessWidget {
 
     final asking = listing.priceCents;
     final sold = listing.soldPriceCents;
+    final discount = listing.shippingDiscountCents;
 
     return switch (listing.status) {
       ListingStatus.draft => [
-        asking == null ? quiet('No price yet') : money(askingLine(asking)),
+        asking == null
+            ? quiet('No price yet')
+            : money(askingLine(asking, shippingDiscountCents: discount)),
       ],
       ListingStatus.listed => [
-        asking == null ? quiet('No price yet') : money(askingLine(asking)),
+        asking == null
+            ? quiet('No price yet')
+            : money(askingLine(asking, shippingDiscountCents: discount)),
         if (listing.listedAt case final DateTime at)
           quiet('Listed ${timeAgo(now.difference(at))}'),
       ],
       ListingStatus.sold => [
-        sold == null ? quiet('No sale price recorded') : money(soldLine(sold)),
+        sold == null
+            ? quiet('No sale price recorded')
+            : money(soldLine(sold, shippingDiscountCents: discount)),
         if (listing.soldAt case final DateTime at)
           quiet('Sold ${shortDate(at)}'),
       ],

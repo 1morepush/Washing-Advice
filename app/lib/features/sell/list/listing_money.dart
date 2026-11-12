@@ -9,17 +9,43 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 
 import 'listing_when.dart';
 
-/// What the seller is left with from a sale at [priceCents], after Depop's fees.
-int netOf(int priceCents) => DepopFees.us.netCents(priceCents);
+/// What a sale at [priceCents] leaves the seller, after Depop's fees and the
+/// shipping discount they chose to cover, if any.
+///
+/// The core's `DepopFees.saleNet`, and the only way the Sell tab works out a
+/// net: the cards, the sold totals and the editor all come through it, so they
+/// cannot disagree.
+SaleNet saleNetOf(int priceCents, {int? shippingDiscountCents}) => DepopFees.us
+    .saleNet(priceCents, shippingDiscountCents: shippingDiscountCents);
+
+/// What the seller is left with from a sale at [priceCents].
+int netOf(int priceCents, {int? shippingDiscountCents}) => saleNetOf(
+  priceCents,
+  shippingDiscountCents: shippingDiscountCents,
+).netCents;
+
+/// `you get $28.56`, or `you get $24.56 after $4.00 shipping discount` when the
+/// seller covers some of the postage. [verb] is `get` or `got`.
+String _youGet(String verb, int priceCents, int? shippingDiscountCents) {
+  final sale = saleNetOf(
+    priceCents,
+    shippingDiscountCents: shippingDiscountCents,
+  );
+  final discount = sale.hasDiscount
+      ? ' after ${formatUsd(sale.shippingDiscountCents)} shipping discount'
+      : '';
+  return 'you $verb ${formatUsd(sale.netCents)}$discount';
+}
 
 /// `$30.00 · you get $28.56`: the asking price and what is left of it.
-String askingLine(int priceCents) =>
-    '${formatUsd(priceCents)} · you get ${formatUsd(netOf(priceCents))}';
+String askingLine(int priceCents, {int? shippingDiscountCents}) =>
+    '${formatUsd(priceCents)} · '
+    '${_youGet('get', priceCents, shippingDiscountCents)}';
 
 /// `Sold for $34.00 · you got $32.43`.
-String soldLine(int priceCents) =>
-    'Sold for ${formatUsd(priceCents)} · you got '
-    '${formatUsd(netOf(priceCents))}';
+String soldLine(int priceCents, {int? shippingDiscountCents}) =>
+    'Sold for ${formatUsd(priceCents)} · '
+    '${_youGet('got', priceCents, shippingDiscountCents)}';
 
 /// The fee, said once at the foot of the list, with the day it was checked.
 ///

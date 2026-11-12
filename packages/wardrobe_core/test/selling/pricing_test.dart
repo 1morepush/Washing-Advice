@@ -64,6 +64,119 @@ void main() {
       expect(DepopFees.us.netCents(10000), 9625);
     });
 
+    group('after a shipping discount', () {
+      test('is the net less what the seller covers', () {
+        final sale = DepopFees.us.saleNet(3000, shippingDiscountCents: 400);
+
+        expect(sale.priceCents, 3000);
+        expect(sale.feeCents, 144);
+        expect(sale.shippingDiscountCents, 400);
+        expect(sale.netCents, 2456); // 28.56 - 4.00
+        expect(formatUsd(sale.netCents), r'$24.56');
+        expect(sale.hasDiscount, isTrue);
+        expect(sale.hasShortfall, isFalse);
+        expect(sale.shortfallCents, 0);
+      });
+
+      test('is the plain net when there is no discount', () {
+        for (final discount in <int?>[null, 0, -300]) {
+          final sale = DepopFees.us.saleNet(
+            3000,
+            shippingDiscountCents: discount,
+          );
+
+          expect(
+            sale.netCents,
+            DepopFees.us.netCents(3000),
+            reason: '$discount',
+          );
+          expect(sale.shippingDiscountCents, 0, reason: '$discount');
+          expect(sale.hasDiscount, isFalse, reason: '$discount');
+        }
+        expect(DepopFees.us.saleNet(3000).netCents, 2856);
+      });
+
+      test('can use up all of the net, and is not short', () {
+        final sale = DepopFees.us.saleNet(3000, shippingDiscountCents: 2856);
+
+        expect(sale.netCents, 0);
+        expect(sale.hasShortfall, isFalse);
+      });
+
+      test('floors at zero and says how far past it went', () {
+        final sale = DepopFees.us.saleNet(1000, shippingDiscountCents: 1500);
+
+        // 10.00 - 0.78 fees = 9.22, less 15.00 is 5.78 short.
+        expect(sale.netCents, 0);
+        expect(sale.shortfallCents, 578);
+        expect(sale.hasShortfall, isTrue);
+        expect(sale.hasDiscount, isTrue);
+      });
+
+      test('floors a sale the fees alone swallow', () {
+        // 20 cents is less than the 45 cent fixed fee.
+        final plain = DepopFees.us.saleNet(20);
+
+        expect(plain.netCents, 0);
+        expect(plain.shortfallCents, 26);
+        expect(DepopFees.us.netCents(20), lessThan(0));
+      });
+
+      test('uses whichever fees it is called on', () {
+        const free = DepopFees(
+          percent: 0.0,
+          fixedCents: 0,
+          asOfYear: 2026,
+          asOfMonth: 1,
+          asOfDay: 1,
+        );
+
+        expect(free.saleNet(3000, shippingDiscountCents: 500).netCents, 2500);
+      });
+
+      test('compares by value', () {
+        final a = DepopFees.us.saleNet(3000, shippingDiscountCents: 400);
+        final b = DepopFees.us.saleNet(3000, shippingDiscountCents: 400);
+
+        expect(a, b);
+        expect(a.hashCode, b.hashCode);
+        expect(
+          a,
+          isNot(DepopFees.us.saleNet(3000, shippingDiscountCents: 300)),
+        );
+      });
+    });
+
+    group('in a price suggestion', () {
+      PriceSuggestion withDiscount(int discount) => suggestPrice(
+            comparables: [found(3000)],
+            retail: const [],
+            condition: DepopCondition.usedExcellent,
+            shippingDiscountCents: discount,
+          );
+
+      test('takes the discount off the net it reports', () {
+        final result = withDiscount(400);
+
+        expect(result.listPriceCents, 3000);
+        expect(result.netCents, 2456);
+      });
+
+      test('asks to bundle when the discount leaves too little', () {
+        final result = withDiscount(2500);
+
+        // 28.56 - 25.00 = 3.56, under the \$5 that is worth the trip.
+        expect(result.netCents, 356);
+        expect(result.belowWorthwhileNet, isTrue);
+      });
+
+      test('does not change the price suggested', () {
+        final without = suggest(comparables: [found(3000)]);
+
+        expect(withDiscount(900).listPriceCents, without.listPriceCents);
+      });
+    });
+
     test('round a half cent up', () {
       // 3.3% of \$5 is 16.5 cents, and of \$15 is 49.5.
       expect(DepopFees.us.feeCents(500), 62); // 17 + 45

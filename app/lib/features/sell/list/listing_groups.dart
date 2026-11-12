@@ -54,6 +54,7 @@ final class SoldTotals {
     required this.count,
     required this.netCents,
     required this.withoutPrice,
+    this.includesDiscounts = false,
   });
 
   /// Adds up [sold], taking each net from the core's fees.
@@ -61,16 +62,24 @@ final class SoldTotals {
     var count = 0;
     var net = 0;
     var withoutPrice = 0;
+    var discounts = false;
 
     for (final listing in sold) {
       count++;
       if (listing.soldPriceCents case final int paid) {
-        net += netOf(paid);
+        final discount = listing.shippingDiscountCents;
+        net += netOf(paid, shippingDiscountCents: discount);
+        if (discount != null) discounts = true;
       } else {
         withoutPrice++;
       }
     }
-    return SoldTotals(count: count, netCents: net, withoutPrice: withoutPrice);
+    return SoldTotals(
+      count: count,
+      netCents: net,
+      withoutPrice: withoutPrice,
+      includesDiscounts: discounts,
+    );
   }
 
   /// How many have sold.
@@ -85,11 +94,16 @@ final class SoldTotals {
   /// that quietly left a sale out would read as less than the person took.
   final int withoutPrice;
 
+  /// Whether any sale in the total had a shipping discount taken off, which
+  /// the summary then says, so the figure is not mistaken for fees alone.
+  final bool includesDiscounts;
+
   /// `3 sold · you got $84.20 after fees`.
   String get summary {
     final parts = [
       '$count sold',
-      'you got ${formatUsd(netCents)} after fees',
+      'you got ${formatUsd(netCents)} after '
+          '${includesDiscounts ? 'fees and shipping discounts' : 'fees'}',
       if (withoutPrice > 0)
         withoutPrice == 1
             ? '1 has no price recorded'

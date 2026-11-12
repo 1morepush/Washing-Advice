@@ -79,6 +79,7 @@ export 'src/selling/description.dart';
 export 'src/selling/listing.dart';
 export 'src/selling/listing_repository.dart';
 export 'src/selling/money.dart';
+export 'src/selling/photo_order.dart';
 export 'src/selling/pricing.dart';
 export 'src/selling/search_links.dart';
 export 'src/selling/shipping.dart';

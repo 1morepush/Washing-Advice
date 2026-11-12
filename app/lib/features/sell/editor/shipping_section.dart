@@ -17,13 +17,20 @@ import 'package:flutter/material.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
 
 import '../../../widgets/notice.dart';
+import 'amount_input.dart';
+import 'edit_session.dart';
 import 'editor_text.dart';
 import 'fields.dart';
 
 class ShippingSection extends StatelessWidget {
-  const ShippingSection({required this.listing, super.key});
+  const ShippingSection({
+    required this.listing,
+    required this.session,
+    super.key,
+  });
 
   final Listing listing;
+  final ListingEditSession session;
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +61,26 @@ class ShippingSection extends StatelessWidget {
         const QuietText(
           'Weigh it packed to be sure. A label for the wrong weight means '
           'postage due.',
+        ),
+        const SizedBox(height: 16),
+        // Depop's own form has this box. It is a free amount the seller
+        // chooses, so nothing is suggested and no tiers are assumed.
+        ParsedField<int>(
+          key: const ValueKey('shipping-discount'),
+          value: listing.shippingDiscountCents,
+          parse: parseUsdInput,
+          format: usdInputText,
+          label: 'Shipping discount you cover',
+          prefixText: r'$',
+          helper:
+              "Optional. Pay part or all of the buyer's postage; it comes off "
+              'what you get.',
+          invalidMessage: 'Use an amount like 4 or 4.50, or leave it empty.',
+          onChanged: (cents) => session.edit(
+            (listing) => cents == null
+                ? listing.copyWith(clearShippingDiscount: true)
+                : listing.copyWith(shippingDiscountCents: cents),
+          ),
         ),
         const SizedBox(height: 16),
         fact(Icons.local_shipping_outlined, "Depop's prepaid USPS label."),

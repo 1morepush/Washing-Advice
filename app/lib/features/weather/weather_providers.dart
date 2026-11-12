@@ -41,27 +41,41 @@ final weatherSourceProvider = Provider<WeatherSource>(
 );
 
 /// Whether weather shapes the ideas at all.
-final weatherOnProvider = StateProvider<bool>(
-  (ref) => ref.watch(settingsStoreProvider).weatherOn,
+///
+/// Plain defaults rather than reads of the store, for the reason given on
+/// `splitDryingProvider`: the Outfits and Settings screens watch these, and
+/// making every test that builds either wire up SharedPreferences first would
+/// be the tail wagging the dog. [weatherSeedOverrides] seeds them from the
+/// stored values at startup, and the Settings section writes through to both.
+final weatherOnProvider = StateProvider<bool>((ref) => true);
+
+final weatherPlaceProvider = StateProvider<Place?>((ref) => null);
+
+/// Celsius or Fahrenheit. Defaults to what the device locale expects
+/// (Fahrenheit in the US) until a choice is stored.
+final temperatureUnitProvider = StateProvider<WeatherUnit>(
+  (ref) =>
+      WeatherUnit.forCountry(PlatformDispatcher.instance.locale.countryCode),
 );
 
-final weatherPlaceProvider = StateProvider<Place?>((ref) {
-  final stored = ref.watch(settingsStoreProvider).weatherPlaceJson;
-  if (stored == null) return null;
-  try {
-    return Place.tryFromJson(jsonDecode(stored));
-  } on FormatException {
-    return null;
+/// The stored weather settings, as overrides for `main()`.
+List<Override> weatherSeedOverrides(SettingsStore settings) {
+  Place? place;
+  final storedPlace = settings.weatherPlaceJson;
+  if (storedPlace != null) {
+    try {
+      place = Place.tryFromJson(jsonDecode(storedPlace));
+    } on FormatException {
+      place = null;
+    }
   }
-});
-
-/// Celsius or Fahrenheit: the stored choice, else what the device locale
-/// expects (Fahrenheit in the US).
-final temperatureUnitProvider = StateProvider<WeatherUnit>((ref) {
-  final stored = ref.watch(settingsStoreProvider).weatherUnitName;
-  return WeatherUnit.values.asNameMap()[stored] ??
-      WeatherUnit.forCountry(PlatformDispatcher.instance.locale.countryCode);
-});
+  final unit = WeatherUnit.values.asNameMap()[settings.weatherUnitName];
+  return [
+    weatherOnProvider.overrideWith((ref) => settings.weatherOn),
+    weatherPlaceProvider.overrideWith((ref) => place),
+    if (unit != null) temperatureUnitProvider.overrideWith((ref) => unit),
+  ];
+}
 
 /// "Show me ideas ignoring the weather", for this session only.
 final ignoreWeatherProvider = StateProvider<bool>((ref) => false);

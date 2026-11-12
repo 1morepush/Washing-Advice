@@ -70,7 +70,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('has six groups, in the order a person reaches for them', (
+  testWidgets('has seven groups, in the order a person reaches for them', (
     tester,
   ) async {
     // Tall enough to lay every group out at once: the list builds lazily.
@@ -81,6 +81,7 @@ void main() {
       'Appearance',
       'Washing and drying',
       'Reminders',
+      'Weather',
       'Sync',
       'Advanced',
       'About',

@@ -443,6 +443,23 @@ cannot without it: cost per wear has a divisor, "never worn" means something,
 and a new red shirt stops being isolated into its own load once it has been
 through the machine three times and stopped bleeding.
 
+### See what you wore, day by day
+
+**More → Calendar** is a month at a time, built from the same wear history. Each
+day with something logged shows small pictures of what was worn (three, and a
+"+2" for the rest); today is marked, and days with nothing are left quiet. A
+line above the grid says how many days were logged that month and which piece
+was worn on the most of them. You can page back to the month of the first wear
+and forward to this one, not into the future.
+
+Tap a day to see its pieces large. Each opens its garment. **Wore this again
+today** records them the way "Wearing this" does on an outfit idea (the wear,
+and into the basket), and **Save as an outfit** names them and keeps them with
+the others. Days are the *local* day: a wear logged at 23:30 is that evening
+and not the next morning in UTC. A garment deleted since keeps its day and is
+shown as no longer in the wardrobe. A wardrobe with no wears yet says how wear
+gets recorded.
+
 ### Search and filter
 
 By category, colour, fabric, brand, season, favourites, never-worn, or items
@@ -597,7 +614,7 @@ drops data between them. It found two such bugs the first time it ran.
 
 A bar along the bottom holds the five places you move between all day:
 **Wardrobe**, **Laundry**, **Outfits**, **Sell** and **More**, which holds
-**Ask**, **Packing**, **Insights** and **Settings**. Ask had a place on the bar
+**Ask**, **Packing**, **Calendar**, **Insights** and **Settings**. Ask had a place on the bar
 until Sell took it; it is the first thing under More, and an old link to it
 still opens it. Each place keeps its own history. Go
 three screens deep in the wardrobe, switch to Laundry and back, and you are
@@ -737,6 +754,19 @@ two things that help: drop the price a little, or relist it so it shows as new.
 **It sold** asks what it sold for, since offers are common, and **Mark the
 garment as sold** takes it out of the wardrobe in one tap while its history keeps
 it. Sold carries a running total of what the sales left after fees.
+
+**A quiet suggestion.** Anything owned that has not been worn for more than a
+year, or never since it was added more than a year ago, is offered on its own
+screen: a card in Insights and a line on the Sell tab ("6 things you haven't
+worn in a year") lead there, longest unworn first, each with the date it was
+last worn. **Sell this** starts its listing. **Keep** hides that garment from the
+suggestion for six months (remembered on the phone, so it survives a restart),
+and **Open** goes to the garment. It is a list of offers, not advice, and it
+sends no notifications. It leaves out what a long gap says nothing about:
+blazers, dresses, dress shoes, ties and swimwear (occasion and holiday pieces),
+underwear and socks, and household linen. Anything in the wash, away for repair,
+or already sold, donated or discarded is not offered. The rule is one function
+in the core, `letGoCandidates`, tested at the twelve-month edge.
 
 #### What leaves the phone
 

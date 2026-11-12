@@ -1,4 +1,5 @@
-/// The places that are not on the bar: Ask, Packing, Insights and Settings.
+/// The places that are not on the bar: Ask, Packing, Calendar, Insights and
+/// Settings.
 ///
 /// A list in words rather than four more icons, for the reason the drawer it
 /// replaces gave: a feature with an unlabelled icon is a feature nobody finds.
@@ -37,6 +38,12 @@ class MoreScreen extends StatelessWidget {
               title: 'Packing',
               subtitle: 'What to take, from what you own',
               route: '/packing',
+            ),
+            _Place(
+              icon: Icons.calendar_month_outlined,
+              title: 'Calendar',
+              subtitle: 'What you wore, day by day',
+              route: '/calendar',
             ),
             _Place(
               icon: Icons.insights_outlined,

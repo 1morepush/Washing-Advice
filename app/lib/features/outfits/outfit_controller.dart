@@ -36,6 +36,15 @@ class OutfitController {
     required Occasion occasion,
   }) => _save(styled.items, name: name, occasion: occasion);
 
+  /// Saves garments that were actually worn together — a day on the calendar —
+  /// as an outfit, which [saveSuggestion] cannot: it wants a suggestion the
+  /// builder made.
+  Future<Outfit> saveItems(
+    List<WardrobeItem> items, {
+    required String name,
+    required Occasion occasion,
+  }) => _save(items, name: name, occasion: occasion);
+
   Future<Outfit> _save(
     List<WardrobeItem> items, {
     required String name,

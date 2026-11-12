@@ -48,6 +48,7 @@ export 'src/events/co_wear.dart';
 export 'src/events/event_log.dart';
 export 'src/events/projections.dart';
 export 'src/events/wardrobe_event.dart';
+export 'src/events/wear_calendar.dart';
 // Laundry: sorting a pile into loads, and recording what was run.
 export 'src/laundry/model/laundry_load.dart';
 export 'src/laundry/model/laundry_record.dart';
@@ -99,6 +100,7 @@ export 'src/wardrobe/analytics.dart';
 export 'src/wardrobe/condition_review.dart';
 export 'src/wardrobe/duplicates.dart';
 export 'src/wardrobe/in_memory_repository.dart';
+export 'src/wardrobe/letting_go.dart';
 export 'src/wardrobe/model/condition.dart';
 export 'src/wardrobe/model/fabric.dart';
 export 'src/wardrobe/model/item_attributes.dart';

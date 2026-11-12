@@ -19,6 +19,7 @@ import 'package:wardrobe_core/wardrobe_core.dart';
 import '../../core/providers.dart';
 import '../../widgets/rinse_kit.dart';
 import '../../widgets/status_message.dart';
+import '../let_go/let_go_cards.dart';
 import 'list/listing_card.dart';
 import 'list/listing_clock.dart';
 import 'list/listing_groups.dart';
@@ -120,6 +121,7 @@ class _Listings extends StatelessWidget {
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.only(bottom: _floatingButtonClearance),
     children: [
+      const LetGoSellLine(),
       if (groups.drafts.isNotEmpty) ..._section('Drafts', groups.drafts),
       if (groups.listed.isNotEmpty) ..._section('Listed', groups.listed),
       if (groups.sold.isNotEmpty)

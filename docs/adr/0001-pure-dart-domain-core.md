@@ -33,3 +33,12 @@ catch fields written but never read back.
 
 Code generation is still fine in the app layer, where Drift and Riverpod pay for
 themselves.
+
+## Amendment: one dependency, for the backup file
+
+The core now depends on `archive`, and on nothing else. A backup is a zip, a
+zip has to be read as well as written, and reading deflate (a file somebody
+re-zipped on a laptop is deflated) is not something to reimplement. `archive`
+is pure Dart, so the core still runs anywhere a Dart VM does, the browser
+included, and the dependency is confined to `src/backup/`. The rule stands for
+everything else: a second dependency needs the same kind of argument.

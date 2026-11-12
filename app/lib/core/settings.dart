@@ -35,6 +35,8 @@ class SettingsStore {
   static const _syncLocalCursorKey = 'syncCursorLocal';
   static const _nudgeMinutesKey = 'eveningNudgeMinutes';
   static const _appearanceKey = 'appearance';
+  static const _lastBackupKey = 'lastBackupAt';
+  static const _lastBackupGarmentsKey = 'garmentsAtLastBackup';
 
   final SharedPreferences _prefs;
 
@@ -151,6 +153,122 @@ class SettingsStore {
 
   Future<void> setAppearance(Appearance value) =>
       _prefs.setString(_appearanceKey, value.name);
+
+  /// When the last backup was made, or null if there never was one.
+  ///
+  /// Recorded when the file was handed over, not when somebody later restored
+  /// from one: a restore says nothing about whether *this* wardrobe is safe.
+  DateTime? get lastBackupAt => _readTime(_lastBackupKey);
+
+  /// How many garments the wardrobe held at the last backup, so "it has grown
+  /// since" can be answered without opening the file.
+  int? get garmentsAtLastBackup => _prefs.getInt(_lastBackupGarmentsKey);
+
+  Future<void> setLastBackup(DateTime at, {required int garments}) async {
+    await _prefs.setString(_lastBackupKey, at.toUtc().toIso8601String());
+    await _prefs.setInt(_lastBackupGarmentsKey, garments);
+  }
+
+  /// The preferences a backup carries to another phone, as plain JSON.
+  ///
+  /// **What is deliberately not here**, and why:
+  ///
+  /// * the sync token: it is the key to a synced wardrobe, and a backup is a
+  ///   file people email to themselves and leave in downloads folders;
+  /// * the server address: it describes where *this* phone can reach a server
+  ///   (usually `localhost` in development), so on another it is wrong more
+  ///   often than right;
+  /// * the sync cursors: they describe one account on one device;
+  /// * the evening reminder: it only works once this phone has been given
+  ///   permission, and restoring a switch that says "on" over a phone that
+  ///   will never fire it is worse than leaving it off.
+  ///
+  /// Only what has been chosen is included; a preference nobody changed is
+  /// left out so that restoring it cannot overwrite a choice made since.
+  Map<String, Object?> portableSettings() {
+    final out = <String, Object?>{};
+    if (washerBrand case final String brand) out[_washerKey] = brand;
+    if (dryerBrand case final String brand) out[_dryerKey] = brand;
+    if (customWasher case final WasherProfile profile) {
+      out[_customWasherKey] = profile.toJson();
+    }
+    if (customDryer case final DryerProfile profile) {
+      out[_customDryerKey] = profile.toJson();
+    }
+    for (final key in [_splitDryingKey, _separateWashingKey]) {
+      if (_prefs.getBool(key) case final bool value) out[key] = value;
+    }
+    if (_prefs.get(_appearanceKey) is String) {
+      out[_appearanceKey] = appearance.name;
+    }
+    return out;
+  }
+
+  /// Applies preferences read from a backup, and says how many were set.
+  ///
+  /// With [overwrite] false a preference this phone already has is kept: a
+  /// merge adds what is missing. Anything that does not read as a valid value
+  /// for its key is skipped, as the getters above skip it — a backup is not a
+  /// place to learn that a catalogue entry has since been renamed.
+  Future<int> applyPortableSettings(
+    Map<String, Object?> settings, {
+    required bool overwrite,
+  }) async {
+    var applied = 0;
+
+    bool wanted(String key) => overwrite || !_prefs.containsKey(key);
+
+    Future<void> string(
+      String key,
+      Object? value,
+      bool Function(String) ok,
+    ) async {
+      if (value is String && ok(value) && wanted(key)) {
+        await _prefs.setString(key, value);
+        applied++;
+      }
+    }
+
+    Future<void> profile(
+      String key,
+      Object? value,
+      Object Function(Map<String, Object?>) read,
+    ) async {
+      if (value is! Map<String, Object?> || !wanted(key)) return;
+      try {
+        read(value);
+      } on Object {
+        return;
+      }
+      await _prefs.setString(key, jsonEncode(value));
+      applied++;
+    }
+
+    await string(_washerKey, settings[_washerKey], seededWashers.containsKey);
+    await string(_dryerKey, settings[_dryerKey], seededDryers.containsKey);
+    await profile(
+      _customWasherKey,
+      settings[_customWasherKey],
+      WasherProfile.fromJson,
+    );
+    await profile(
+      _customDryerKey,
+      settings[_customDryerKey],
+      DryerProfile.fromJson,
+    );
+    for (final key in [_splitDryingKey, _separateWashingKey]) {
+      if (settings[key] case final bool value when wanted(key)) {
+        await _prefs.setBool(key, value);
+        applied++;
+      }
+    }
+    await string(
+      _appearanceKey,
+      settings[_appearanceKey],
+      Appearance.values.asNameMap().containsKey,
+    );
+    return applied;
+  }
 
   /// The sync credential, or null when sync has not been set up.
   ///

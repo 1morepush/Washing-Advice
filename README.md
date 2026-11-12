@@ -778,6 +778,16 @@ no account, so anyone who finds the server's address could use up the free searc
 allowance, just as they could the Gemini one. When that happens the search
 answers `quotaExceeded` and the app falls back to the same links.
 
+The AI endpoints do have a request limit: by default 20 a minute and 200 a day
+from one network address, and 1,000 a day from everyone together, answered with
+a 429 and a `Retry-After`. It is kept in the server's memory, so it resets when
+the free instance restarts, and it tells people apart by address, so two people
+on one network share a quota. It stops a script hammering the server by
+accident or in passing, and the daily total puts a ceiling on what a stranger
+can spend. It does not stop someone who changes address, and when the daily
+total is reached it refuses everyone, you included, until the window moves on.
+The numbers are environment settings (see `render.yaml`).
+
 #### What to keep in mind
 
 Every comparable was checked by code after a model read it: its link has to come
@@ -818,6 +828,9 @@ On your phone, and nowhere else unless you send it somewhere.
   not.
 - **Listings** are kept in a table of their own beside the wardrobe, on the same
   phone, and are not synced.
+- **A backup** is a file you make yourself, in Settings > Backup. See
+  [Backup and restore](#backup-and-restore). On an iPhone's home-screen web app,
+  clearing site data erases the wardrobe, so make one now and then.
 - **Nothing in this repository is anybody's real wardrobe.** The screenshots are
   a seeded demo build (`app/lib/main_demo.dart`) with invented garments and
   drawn illustrations, generated in a container with no camera.
@@ -966,6 +979,47 @@ flutter run -t lib/main_demo.dart -d chrome   # or any connected device
 `http://localhost:8000` — editable in Settings, because a phone cannot reach a
 development machine's localhost.
 
+### Backup and restore
+
+**Settings > Backup > Save a backup** writes one zip named like
+`washing-advice-backup-2026-11-11.zip` and hands it to you: a download in the browser, the share sheet
+on a phone (which includes "save to Files"), a save dialog on a desktop. It says
+what is in it ("84 garments, 212 photos, 3 listings") and how big it is. Nothing
+is uploaded anywhere.
+
+It holds every garment (deleted ones too, so a deletion survives), the history,
+saved outfits, listings, every photograph and cutout they use, and the settings
+worth keeping: machines, the two sorting choices and the look. It does **not**
+hold the sync token, the server address, the sync cursors or the evening reminder
+time (that needs this phone's permission), so passing the file around never
+shares the key to a synced wardrobe.
+
+Inside: `manifest.json` (format version, app version, created-at, counts),
+`data/*.json` (the same JSON the database and sync use) and `images/` (the
+pictures, stored uncompressed, openable in any viewer). Reading is strict about
+damage and relaxed about novelty: a truncated or altered file, or one whose
+counts do not add up, is refused before anything changes; a backup from a newer
+format is refused with "update the app"; keys it does not know are ignored.
+
+**Restore from a backup** checks the file, shows when it was made and what it
+holds, and asks how to apply it:
+
+- **Merge** (the default) adds what is missing, keeps the newer of two copies of
+  the same garment, outfit or listing (by `updatedAt`), unions the history by
+  event id, and never deletes. A garment you deleted after the backup stays
+  deleted, because the deletion is the newer copy.
+- **Replace everything** makes the wardrobe exactly the backup, after a second
+  confirmation that says how much will be lost.
+
+Pictures are written first and the records in one database transaction, so a
+failed restore leaves the existing wardrobe as it was. The sync cursors are
+forgotten afterwards so the next sync re-sends what was restored. Settings shows
+when the last backup was made, with a quiet note if there has never been one, or
+it is over a month old and the wardrobe has grown.
+
+The archive is built in memory, so it is as large as your pictures; a few
+hundred garments is tens of megabytes.
+
 ### Turning on sync
 
 Sync is off until you configure it, and the app is fully usable without it.
@@ -1043,9 +1097,9 @@ A few decisions worth reading about:
 
 | # | Scope | Status |
 |---|---|---|
-| 1 | Domain core: care model, sorting engine, machine translation, matching, events, selling | **Done** — 1252 core tests |
-| 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts, machine identification, listing descriptions and price search | **Done** — 1299 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage, the Sell tab | **Done** — 1877 app tests |
+| 1 | Domain core: care model, sorting engine, machine translation, matching, events, selling | **Done** — 1304 core tests |
+| 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts, machine identification, listing descriptions and price search | **Done** — 1345 tests |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage, the Sell tab | **Done** — 1906 app tests |
 | 4 | Care-label scanning, item editing, filter sheet, garment cutouts, grid view | **Done** |
 | 5 | Pile scanning, load grouping, machine profiles, wear and wash history | **Done** |
 | 6 | Outfit suggestions, laundry-aware packing, wardrobe insights | **Done** |
@@ -1212,10 +1266,9 @@ Stated plainly, because the code says so too.
   so the first local `flutter build apk` or iOS build is what proves them.
 - **Sync only runs when you tap "Sync now".** Nothing syncs on launch or in the
   background yet, so two devices drift until one of them is told to catch up.
-- **There is no export.** Sync is the only copy off the phone, and its token
-  cannot be recovered; a JSON backup of garments and history does not exist yet.
-  The Sell tab's listings are not in sync at all, so they exist on one phone
-  only.
+- **Backups are manual.** Nothing saves one for you, and the app only nudges on
+  the Settings screen. A backup includes the Sell tab's listings, which sync does
+  not carry. Sync is still the only way to keep two devices level.
 - **Sync has no hosted deployment.** The endpoints, the client and the
   reconciliation all exist and are exercised end to end against a real server in
   CI, but nobody is running that server anywhere. You point the app at your own.

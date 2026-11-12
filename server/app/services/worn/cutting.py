@@ -33,12 +33,36 @@ the feature.
 4. Keep every region that is a real part of the garment and drop the speckle.
    Not just the largest: a pair of shoes is two regions, and a cutout of one
    shoe is a wrong answer.
-5. Fill small holes, feather the edge, cut the garment out and crop to the mask
-   with a margin.
+5. Fill small holes, feather the edge and cut the garment out.
+
+## The cutout is the box, not the garment
+
+An outline cutout covers exactly the detection's box, transparent where the
+garment is not, and is *not* trimmed to the garment. The app keeps an opaque
+crop of the same box beside it, and the cutout editor's "add back" brush
+restores pixels from that crop, so the two have to be the same frame: a cutout
+trimmed to the mask would not line up with anything, and a garment whose outline
+was drawn too tight could never be repaired. The app trims transparent margins
+itself when it draws a tile.
+
+The box is `pixel_box`'s: the model's fractions floored on the left and top and
+ceiled on the right and bottom, then clamped to the photograph. The response
+reports that box as pixel edges divided by the photograph's size, so the app
+multiplying back and rounding to the nearest pixel finds exactly these edges
+and crops exactly these pixels. Both halves round the same way and neither
+trusts a float to land on an integer.
+
+## Invisible pixels, and the soft edge
 
 The colour under every fully transparent pixel is zeroed. A cutout is kept
 forever and shown small; the face that stood beside the garment must not be
 recoverable from the picture's invisible pixels.
+
+The feathered band around the outline is not fully transparent, so zeroing
+would not cover it, and left alone it would carry the neighbour's real colour
+(an arm, a wall) at low opacity. Outside the thresholded mask the colour is
+instead bled outward from the garment's own edge, so the band is garment-coloured
+and the background never appears in the file at any opacity.
 """
 
 from __future__ import annotations
@@ -84,15 +108,19 @@ _MIN_REGION_COVERAGE = 0.005
 # body, and stay open, as do any that reach the box edge.
 _HOLE_SHARE = 0.02
 
-# Space left around the mask in the crop, as a share of its longer edge.
-_MARGIN = 0.04
-
 # Feather radius in working-resolution pixels, as `cutout.py` does it: blurred
 # before the resize so the edge stays proportionate whatever the photograph's size.
 _FEATHER_RADIUS = 1.2
 
 # A box smaller than this on either side is a point, not a garment.
 _MIN_BOX_PX = 4
+
+# The most pixels a photograph may have before it is refused, checked from the
+# file's header and before anything is decoded. A 200 kB PNG can declare a
+# hundred-megapixel canvas, which is the cheap way to take a worker's memory.
+# Forty megapixels is a 200 MP phone camera's binned output and far beyond the
+# 1600 px the app sends.
+MAX_PHOTO_PIXELS = 40_000_000
 
 # What a mask is allowed to cost before it is looked at. A PNG that is tiny to
 # send and gigantic to decode is the cheap way to hurt a server.
@@ -148,7 +176,11 @@ class Cut:
     """One garment's picture."""
 
     png: bytes
-    """RGBA PNG bytes, cropped and capped to the display size."""
+    """RGBA PNG bytes of the whole box, capped to the display size.
+
+    For `OUTLINE` the box is the frame and the garment is where it is opaque;
+    for `BOX` the picture is the box's opaque crop.
+    """
 
     kind: CutoutKind
 
@@ -188,17 +220,37 @@ def orient_photo(photo: ScanImage) -> OrientedPhoto:
     Pillow ignores the tag unless asked, so a crop taken without this one is
     cut from a sideways picture while the model, which reads the tag, boxed an
     upright one. Done once, here, so both halves see one photograph.
+
+    Refuses a photograph of more than `MAX_PHOTO_PIXELS` before decoding it.
     """
     try:
         source = Image.open(io.BytesIO(photo.data))
-        source.load()
     except Exception as error:  # Pillow raises a wide variety here.
+        raise PhotoError("the photograph could not be opened") from error
+
+    # From the header alone: nothing has been decoded yet.
+    if source.width * source.height > MAX_PHOTO_PIXELS:
+        megapixels = MAX_PHOTO_PIXELS // 1_000_000
+        raise PhotoError(
+            f"the photograph is too large to read (over {megapixels} megapixels); "
+            "send a smaller one"
+        )
+
+    try:
+        if source.format == "JPEG":
+            # Lets the decoder skip work when it can shrink on the way in. It
+            # only ever shrinks by whole halves, and asked for 4096 px it
+            # leaves any ordinary photograph at its own size.
+            source.draft("RGB", (4096, 4096))
+        source.load()
+    except Exception as error:
         raise PhotoError("the photograph could not be opened") from error
 
     try:
         turned = source.getexif().get(0x0112, 1) not in (0, 1)
         upright = ImageOps.exif_transpose(source) if turned else source
-        rgb = upright.convert("RGB")
+        # No copy when it is RGB already, which an ordinary JPEG is.
+        rgb = upright if upright.mode == "RGB" else upright.convert("RGB")
     except Exception as error:
         raise PhotoError("the photograph could not be read") from error
 
@@ -266,8 +318,8 @@ class _Outline:
     alpha: Image.Image
     """Mode `L`, feathered: the box's shape at `_WORK_EDGE`."""
 
-    bounds: tuple[int, int, int, int]
-    """The tight bounds of the garment within [alpha], before feathering."""
+    solid: Image.Image
+    """Mode `L`, 0 or 255: the thresholded garment, before feathering."""
 
 
 def _outline(encoded: str, box_width: int, box_height: int) -> _Outline | None:
@@ -289,17 +341,9 @@ def _outline(encoded: str, box_width: int, box_height: int) -> _Outline | None:
     if kept is None or not _plausible(kept):
         return None
 
-    rows, columns = np.nonzero(kept)
-    bounds = (
-        int(columns.min()),
-        int(rows.min()),
-        int(columns.max()) + 1,
-        int(rows.max()) + 1,
-    )
-
-    alpha = Image.fromarray(kept.astype(np.uint8) * 255, mode="L")
-    alpha = alpha.filter(ImageFilter.GaussianBlur(radius=_FEATHER_RADIUS))
-    return _Outline(alpha=alpha, bounds=bounds)
+    solid = Image.fromarray(kept.astype(np.uint8) * 255, mode="L")
+    alpha = solid.filter(ImageFilter.GaussianBlur(radius=_FEATHER_RADIUS))
+    return _Outline(alpha=alpha, solid=solid)
 
 
 def _decode_mask(encoded: str) -> Image.Image | None:
@@ -377,36 +421,72 @@ def _keep_regions(inside: np.ndarray) -> np.ndarray | None:
 
 
 def _outline_cut(photo: Image.Image, pixels: PixelBox, outline: _Outline) -> Cut:
-    work_width, work_height = outline.alpha.size
-    left, top, right, bottom = outline.bounds
-
-    margin = max(1, round(max(right - left, bottom - top) * _MARGIN))
-    left, top = max(0, left - margin), max(0, top - margin)
-    right, bottom = min(work_width, right + margin), min(work_height, bottom + margin)
-
-    # Working coordinates back to the photograph's. The crop is rounded outwards
-    # to whole pixels and the alpha is then resampled from exactly the region
-    # that crop covers, so the two never drift apart by a pixel.
-    to_x, to_y = pixels.width / work_width, pixels.height / work_height
-    crop_box = (
-        max(pixels.left, math.floor(pixels.left + left * to_x)),
-        max(pixels.top, math.floor(pixels.top + top * to_y)),
-        min(pixels.right, math.ceil(pixels.left + right * to_x)),
-        min(pixels.bottom, math.ceil(pixels.top + bottom * to_y)),
-    )
-    crop = photo.crop(crop_box)
+    box = (pixels.left, pixels.top, pixels.right, pixels.bottom)
+    crop = photo.crop(box)
     out_size = _display_size(crop.size)
 
-    source = (
-        (crop_box[0] - pixels.left) / to_x,
-        (crop_box[1] - pixels.top) / to_y,
-        (crop_box[2] - pixels.left) / to_x,
-        (crop_box[3] - pixels.top) / to_y,
-    )
-    alpha = outline.alpha.resize(out_size, Image.Resampling.BILINEAR, box=source)
     colour = crop if out_size == crop.size else crop.resize(out_size, Image.Resampling.LANCZOS)
+    alpha = outline.alpha.resize(out_size, Image.Resampling.BILINEAR)
+    solid = np.asarray(outline.solid.resize(out_size, Image.Resampling.NEAREST)) > _THRESHOLD
 
-    return _finish(colour, np.asarray(alpha), CutoutKind.OUTLINE, pixels, photo.size)
+    bled = _bleed_outwards(crop, np.asarray(colour, dtype=np.uint8), solid, outline)
+    return _finish(bled, np.asarray(alpha), CutoutKind.OUTLINE, pixels, photo.size)
+
+
+def _bleed_outwards(
+    crop: Image.Image, colour: np.ndarray, solid: np.ndarray, outline: _Outline
+) -> np.ndarray:
+    """[colour] with everything outside [solid] replaced by the garment's edge colour.
+
+    A normalised blur: the garment's colour blurred, divided by the garment's
+    coverage blurred, which is the average of the garment pixels nearby and
+    nowhere the average of anything else. It is done at working resolution, in
+    floats, where the soft edge is a few pixels wide: at the output's size the
+    kernel would be dozens of taps, and in 8 bits the division is noise. The
+    kernel is wider than the alpha's feather, so every pixel the alpha leaves
+    visible has garment pixels in reach.
+    """
+    size = outline.alpha.size
+    source = np.asarray(crop.resize(size, Image.Resampling.BOX), dtype=np.float32)
+    inside = np.asarray(outline.solid) > _THRESHOLD
+    # Sourced one pixel in from the outline, where the photograph is garment
+    # rather than a blend of garment and neighbour, unless that leaves nothing.
+    core = np.asarray(outline.solid.filter(ImageFilter.MinFilter(3))) > _THRESHOLD
+    if core.any():
+        inside = core
+
+    sigma = _FEATHER_RADIUS * 2.0
+    weight = _gaussian(inside.astype(np.float32), sigma)
+    spread = np.stack(
+        [_gaussian(source[..., i] * inside, sigma) for i in range(3)],
+        axis=-1,
+    )
+    nearby = np.clip(np.rint(spread / np.maximum(weight, 1e-6)[..., None]), 0, 255)
+    nearby_image = Image.fromarray(nearby.astype(np.uint8), mode="RGB")
+    if nearby_image.size != (colour.shape[1], colour.shape[0]):
+        nearby_image = nearby_image.resize(
+            (colour.shape[1], colour.shape[0]), Image.Resampling.BILINEAR
+        )
+    return np.where(solid[..., None], colour, np.asarray(nearby_image))
+
+
+def _gaussian(values: np.ndarray, sigma: float) -> np.ndarray:
+    """A separable Gaussian blur in floats, edges treated as empty."""
+    reach = max(1, math.ceil(sigma * 4))
+    offsets = np.arange(-reach, reach + 1)
+    kernel = np.exp(-(offsets**2) / (2 * sigma**2))
+    kernel /= kernel.sum()
+
+    padded = np.pad(values, reach)
+    horizontal = sum(
+        weight * padded[:, reach + offset : reach + offset + values.shape[1]]
+        for offset, weight in zip(offsets.tolist(), kernel.tolist(), strict=True)
+    )
+    vertical = sum(
+        weight * horizontal[reach + offset : reach + offset + values.shape[0], :]
+        for offset, weight in zip(offsets.tolist(), kernel.tolist(), strict=True)
+    )
+    return np.asarray(vertical, dtype=np.float32)
 
 
 def _box_cut(photo: Image.Image, pixels: PixelBox) -> Cut:
@@ -418,17 +498,17 @@ def _box_cut(photo: Image.Image, pixels: PixelBox) -> Cut:
     # Opaque: the background is in this picture, and an alpha channel that said
     # otherwise would make it look cut out.
     opaque = np.full((out_size[1], out_size[0]), 255, dtype=np.uint8)
-    return _finish(crop, opaque, CutoutKind.BOX, pixels, photo.size)
+    return _finish(np.asarray(crop, dtype=np.uint8), opaque, CutoutKind.BOX, pixels, photo.size)
 
 
 def _finish(
-    colour: Image.Image,
+    colour: np.ndarray,
     alpha: np.ndarray,
     kind: CutoutKind,
     pixels: PixelBox,
     photo_size: tuple[int, int],
 ) -> Cut:
-    rgba = np.dstack([np.asarray(colour, dtype=np.uint8), alpha])
+    rgba = np.dstack([colour, alpha])
     # Nothing is left behind a fully transparent pixel. See the module docstring.
     rgba[alpha == 0, :3] = 0
 
@@ -445,8 +525,8 @@ def _finish(
             right=pixels.right / width,
             bottom=pixels.bottom / height,
         ),
-        width=colour.width,
-        height=colour.height,
+        width=colour.shape[1],
+        height=colour.shape[0],
     )
 
 

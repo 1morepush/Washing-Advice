@@ -19,7 +19,7 @@ from collections.abc import Callable
 
 import numpy as np
 import pytest
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, PngImagePlugin
 
 from app.schemas.scan import CutoutKind
 from app.services.ai.base import ScanImage
@@ -85,8 +85,8 @@ def pixels_of(cut: Cut) -> np.ndarray:
     return np.asarray(image)
 
 
-# The tight rectangle used by most tests: 80 x 120 inside the box, giving a crop
-# of 90 x 130 once the 4% margin (5 px of a 120 px edge) is added on every side.
+# The garment used by most tests: 80 x 120 inside the 160 x 240 box. The cutout
+# is the whole box, so it is 160 x 240 whatever the garment's size.
 CORE = (40, 60, 120, 180)
 
 
@@ -158,32 +158,56 @@ class TestAnOutlineThatPassesVetting:
         assert cut is not None
         assert Image.open(io.BytesIO(cut.png)).mode == "RGBA"
 
-    def test_is_cropped_to_the_mask_with_a_small_margin(self) -> None:
+    def test_is_the_whole_box_and_not_trimmed_to_the_mask(self) -> None:
+        # The app keeps an opaque crop of the same box, and the editor's "add
+        # back" brush restores from it: the two must be one frame.
         cut = cut_garment(scene(), BOX, rect_mask(CORE))
 
         assert cut is not None
-        # 80 x 120 core; 5 px of margin (4% of the longer edge) on every side.
-        assert (cut.width, cut.height) == (90, 130)
-        assert pixels_of(cut).shape[:2] == (130, 90)
+        assert (cut.width, cut.height) == BOX_SIZE
+        assert pixels_of(cut).shape[:2] == (240, 160)
+
+    def test_pixel_for_pixel_the_cutout_lines_up_with_the_box_crop(self) -> None:
+        # Where the cutout is opaque it is the photograph's pixel at the same
+        # place in the box: the property "add back" depends on.
+        photo = scene()
+        cut = cut_garment(photo, BOX, rect_mask(CORE))
+
+        assert cut is not None
+        rgba = pixels_of(cut)
+        crop = np.asarray(photo.crop((20, 30, 180, 270)))
+        opaque = rgba[..., 3] == 255
+        assert opaque.sum() > 0
+        assert (rgba[opaque][:, :3] == crop[opaque]).all()
 
     def test_the_garment_is_opaque_and_the_picture_is_the_photographs(self) -> None:
         cut = cut_garment(scene(), BOX, rect_mask(CORE))
 
         assert cut is not None
         rgba = pixels_of(cut)
-        # The crop starts at (55, 85) in the photograph. The mask covers photograph
-        # x 60..140, y 90..210; (75, 110) is well inside it and inside the red square.
-        assert tuple(rgba[110 - 85, 75 - 55]) == (*RED, 255)
+        # The cutout starts at (20, 30) in the photograph. The mask covers
+        # photograph x 60..140, y 90..210; (75, 110) is well inside it and inside
+        # the red square.
+        assert tuple(rgba[110 - 30, 75 - 20]) == (*RED, 255)
         # (120, 190) is inside the mask and outside the red square.
-        assert tuple(rgba[190 - 85, 120 - 55]) == (*SKY, 255)
+        assert tuple(rgba[190 - 30, 120 - 20]) == (*SKY, 255)
 
     def test_is_transparent_outside_the_mask(self) -> None:
         cut = cut_garment(scene(), BOX, rect_mask(CORE))
 
         assert cut is not None
         alpha = pixels_of(cut)[..., 3]
-        # The margin, in all four corners and the middle of every side.
-        for y, x in [(0, 0), (0, 89), (129, 0), (129, 89), (0, 45), (129, 45), (65, 0), (65, 89)]:
+        # The box's four corners and the middle of every side.
+        for y, x in [
+            (0, 0),
+            (0, 159),
+            (239, 0),
+            (239, 159),
+            (0, 80),
+            (239, 80),
+            (120, 0),
+            (120, 159),
+        ]:
             assert alpha[y, x] == 0, (y, x)
 
     def test_leaves_nothing_behind_a_transparent_pixel(self) -> None:
@@ -203,6 +227,37 @@ class TestAnOutlineThatPassesVetting:
         assert cut is not None
         alpha = pixels_of(cut)[..., 3]
         assert ((alpha > 0) & (alpha < 255)).any(), "a hard edge composites with a jagged line"
+
+    def test_the_soft_edge_carries_garment_colour_not_the_background(self) -> None:
+        # A red garment on a blue background. The feathered band is partly
+        # opaque, so whatever colour sits under it shows: it must be the
+        # garment's, never the neighbour's.
+        photo = Image.new("RGB", PHOTO_SIZE, SKY)
+        ImageDraw.Draw(photo).rectangle([60, 90, 139, 209], fill=RED)
+
+        cut = cut_garment(photo, BOX, rect_mask(CORE))
+
+        assert cut is not None
+        rgba = pixels_of(cut)
+        solid = np.zeros(rgba.shape[:2], dtype=bool)
+        solid[60:180, 40:120] = True  # CORE, in box coordinates
+
+        band = ~solid & (rgba[..., 3] > 0)
+        assert band.sum() > 0, "there is a soft edge to look at"
+        assert (rgba[band][:, :3] == RED).all()
+        # And nowhere does the background's blue survive under any opacity.
+        visible = rgba[rgba[..., 3] > 0][:, :3]
+        assert not (visible == SKY).all(axis=1).any()
+
+    def test_the_soft_edge_keeps_the_hidden_pixels_cleared(self) -> None:
+        photo = Image.new("RGB", PHOTO_SIZE, SKY)
+        ImageDraw.Draw(photo).rectangle([60, 90, 139, 209], fill=RED)
+
+        cut = cut_garment(photo, BOX, rect_mask(CORE))
+
+        assert cut is not None
+        rgba = pixels_of(cut)
+        assert not rgba[rgba[..., 3] == 0][:, :3].any()
 
     def test_is_deterministic(self) -> None:
         first = cut_garment(scene(), BOX, rect_mask(CORE))
@@ -245,7 +300,7 @@ class TestAnOutlineThatPassesVetting:
 
         assert cut is not None
         assert cut.kind is CutoutKind.OUTLINE
-        assert abs(cut.width - 90) <= 2 and abs(cut.height - 130) <= 2
+        assert (cut.width, cut.height) == BOX_SIZE
 
     def test_a_mask_in_another_mode_is_read_as_greyscale(self) -> None:
         for mode, fill in (("RGB", (255, 255, 255)), ("RGBA", (255, 255, 255, 255)), ("1", 1)):
@@ -258,7 +313,7 @@ class TestAnOutlineThatPassesVetting:
 
     def test_a_probability_map_is_thresholded_at_half(self) -> None:
         # A confident core (200) with a faint halo (100) around it: only the core
-        # is the garment, so the crop is the core's and not the halo's.
+        # is the garment, so the halo stays transparent.
         image = mask_image(
             lambda d: (
                 d.rectangle([20, 30, 139, 209], fill=100),
@@ -270,15 +325,16 @@ class TestAnOutlineThatPassesVetting:
 
         assert cut is not None
         assert cut.kind is CutoutKind.OUTLINE
-        assert (cut.width, cut.height) == (90, 130)
+        alpha = pixels_of(cut)[..., 3]
+        assert alpha[120, 80] == 255  # the core
+        assert alpha[40, 30] == 0  # inside the halo, outside the core
 
-    def test_a_margin_does_not_run_past_the_box(self) -> None:
-        # A garment touching the box edge has nowhere to put its margin.
+    def test_a_garment_touching_the_box_edge_is_the_same_frame(self) -> None:
         cut = cut_garment(scene(), BOX, rect_mask((0, 0, 100, 150)))
 
         assert cut is not None
         assert cut.kind is CutoutKind.OUTLINE
-        assert (cut.width, cut.height) == (106, 156)  # margin only where there is room
+        assert (cut.width, cut.height) == BOX_SIZE
 
     def test_is_capped_to_the_display_size(self) -> None:
         photo = Image.new("RGB", (3000, 4000), SKY)
@@ -316,15 +372,15 @@ class TestRegions:
         assert cut is not None
         assert cut.kind is CutoutKind.OUTLINE
         alpha = pixels_of(cut)[..., 3]
-        # The crop spans both shoes, not one.
-        assert cut.width > 150
+        # The frame spans both shoes, not one.
+        assert cut.width == BOX_SIZE[0]
         # Each shoe's centre is opaque, and the gap between them is not.
         row = cut.height // 2
         assert alpha[row, 30] == 255
         assert alpha[row, cut.width // 2] == 0
         assert alpha[row, cut.width - 36] == 255
 
-    def test_speckle_is_dropped_and_does_not_stretch_the_crop(self) -> None:
+    def test_speckle_is_dropped(self) -> None:
         speck = (150, 220, 153, 223)  # 3 x 3, far from the garment.
         image = mask_image(
             lambda d: (
@@ -337,7 +393,9 @@ class TestRegions:
 
         assert cut is not None
         assert cut.kind is CutoutKind.OUTLINE
-        assert (cut.width, cut.height) == (90, 130)
+        alpha = pixels_of(cut)[..., 3]
+        assert alpha[220 - 0, 150] == 0  # the speck, in box coordinates
+        assert alpha[120, 80] == 255
 
     def test_a_small_hole_in_the_garment_is_filled(self) -> None:
         image = mask_image(
@@ -351,8 +409,8 @@ class TestRegions:
 
         assert cut is not None
         alpha = pixels_of(cut)[..., 3]
-        # Photograph (80, 120) is in the hole; the crop starts at (55, 85).
-        assert alpha[120 - 85, 80 - 55] == 255
+        # Box (77..82, 117..122) is the hole.
+        assert alpha[120, 80] == 255
 
     def test_a_large_hole_is_a_real_one_and_stays_open(self) -> None:
         # The gap between a bag's strap and its body is not noise.
@@ -368,7 +426,7 @@ class TestRegions:
         assert cut is not None
         assert cut.kind is CutoutKind.OUTLINE
         alpha = pixels_of(cut)[..., 3]
-        assert alpha[(30 + 120) - 85, (20 + 80) - 55] == 0
+        assert alpha[120, 80] == 0
 
 
 class TestAMaskThatFallsBackToTheBox:
@@ -571,3 +629,45 @@ class TestOrientation:
         oriented = orient_photo(ScanImage(data=buffer.getvalue(), mime_type="image/png"))
 
         assert oriented.image.mode == "RGB"
+
+
+class TestAPhotographThatIsTooLarge:
+    def test_one_over_the_pixel_cap_is_refused_before_it_is_decoded(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # A solid PNG compresses to almost nothing, which is the point: it is
+        # tiny to send and enormous to decode.
+        buffer = io.BytesIO()
+        Image.new("L", (7000, 6000), 0).save(buffer, format="PNG")  # 42 MP
+        assert len(buffer.getvalue()) < 200_000
+
+        def never(self: Image.Image) -> None:
+            raise AssertionError("decoded a photograph that should have been refused")
+
+        monkeypatch.setattr(PngImagePlugin.PngImageFile, "load", never)
+
+        with pytest.raises(PhotoError, match="too large"):
+            orient_photo(ScanImage(data=buffer.getvalue(), mime_type="image/png"))
+
+    def test_one_under_the_cap_is_accepted(self) -> None:
+        buffer = io.BytesIO()
+        Image.new("RGB", (6000, 6000), (10, 20, 30)).save(buffer, format="PNG")  # 36 MP
+
+        oriented = orient_photo(ScanImage(data=buffer.getvalue(), mime_type="image/png"))
+
+        assert oriented.image.size == (6000, 6000)
+
+    def test_a_jpeg_over_the_cap_is_refused_too(self) -> None:
+        buffer = io.BytesIO()
+        Image.new("RGB", (8000, 6000), (10, 20, 30)).save(buffer, format="JPEG")  # 48 MP
+
+        with pytest.raises(PhotoError, match="too large"):
+            orient_photo(ScanImage(data=buffer.getvalue(), mime_type="image/jpeg"))
+
+    def test_an_ordinary_jpeg_is_not_shrunk_by_the_draft_mode(self) -> None:
+        buffer = io.BytesIO()
+        Image.new("RGB", (4000, 3000), (10, 20, 30)).save(buffer, format="JPEG")
+
+        oriented = orient_photo(ScanImage(data=buffer.getvalue(), mime_type="image/jpeg"))
+
+        assert oriented.image.size == (4000, 3000)

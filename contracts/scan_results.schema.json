@@ -180,7 +180,7 @@
     },
 
     "cutoutKind": {
-      "description": "How a worn-photo cutout was made. `outline` means a per-garment mask was used, so the picture is the garment alone on transparency. `box` means only the bounding box could be trusted, so the picture is a rectangular crop of the photo with the background still in it, and the app should say so and offer the cutout editor.",
+      "description": "How a worn-photo cutout was made. `outline` means a per-garment mask was used, so the picture is the garment alone on transparency. `box` means only the bounding box could be trusted, so the picture is the box's rectangular crop with the background still in it, and the app should say so.",
       "enum": ["outline", "box"]
     },
 
@@ -197,7 +197,7 @@
           "$ref": "#/$defs/confidence"
         },
         "cutout": {
-          "description": "Base64 of a PNG with an alpha channel, cropped to the garment and at most 768 px on its longer edge. Plain base64: no data: URI prefix.",
+          "description": "Base64 of a PNG with an alpha channel covering exactly the detection's `boundingBox`, not trimmed to the garment: for `outline` it is transparent where the garment is not, for `box` it is the box's opaque crop. Scaled uniformly down so its longer edge is at most 768 px, never up. The box is whole pixels of the photograph as received (after EXIF turning): `boundingBox` edges are those pixel edges divided by the photograph's width or height, so a client that multiplies back and rounds each edge to the nearest pixel (left and top, then right and bottom, never width first) crops exactly the pixels this picture was cut from, and the picture is that crop's frame. Plain base64: no data: URI prefix.",
           "type": "string",
           "contentEncoding": "base64",
           "contentMediaType": "image/png"

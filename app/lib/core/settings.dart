@@ -161,8 +161,7 @@ class SettingsStore {
 
   /// On unless switched off; with no place set it does nothing either way.
   bool get weatherOn => _prefs.getBool(_weatherOnKey) ?? true;
-  Future<void> setWeatherOn(bool value) =>
-      _prefs.setBool(_weatherOnKey, value);
+  Future<void> setWeatherOn(bool value) => _prefs.setBool(_weatherOnKey, value);
 
   /// JSON of the chosen place, or null.
   String? get weatherPlaceJson => _prefs.getString(_weatherPlaceKey);

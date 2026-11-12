@@ -158,10 +158,10 @@ class OpenMeteoWeatherSource implements WeatherSource {
     }
 
     Weather? dayWeather(int day) {
-      final low = at('apparent_temperature_min', day) ??
-          at('temperature_2m_min', day);
-      final high = at('apparent_temperature_max', day) ??
-          at('temperature_2m_max', day);
+      final low =
+          at('apparent_temperature_min', day) ?? at('temperature_2m_min', day);
+      final high =
+          at('apparent_temperature_max', day) ?? at('temperature_2m_max', day);
       if (low == null || high == null) return null;
       final code = at('weather_code', day)?.round();
       return Weather(

@@ -1,0 +1,49 @@
+{
+  "diagnostics": {
+    "elapsedMs": 0,
+    "servedFromCache": false,
+    "stageAnswered": "fake",
+    "stagesRun": [
+      "fake"
+    ]
+  },
+  "pieces": [
+    {
+      "colors": [
+        "dark blue"
+      ],
+      "pairsWith": [
+        "a"
+      ],
+      "rationale": "Something with weight under the navy shirt would stop it reading as an afterthought.",
+      "type": "T-shirt"
+    },
+    {
+      "colors": [
+        "olive"
+      ],
+      "pairsWith": [],
+      "rationale": "Goes with nothing of theirs, so it is not advice.",
+      "type": "T-shirt"
+    },
+    {
+      "colors": [
+        "taupe"
+      ],
+      "pairsWith": [
+        "a"
+      ],
+      "rationale": "Not a thing anybody can go and look for.",
+      "type": "gorpcore silhouette"
+    }
+  ],
+  "result": [
+    {
+      "itemIds": [
+        "a",
+        "b"
+      ],
+      "rationale": "The grey jeans keep the navy shirt from reading as formal, which suits Work."
+    }
+  ]
+}

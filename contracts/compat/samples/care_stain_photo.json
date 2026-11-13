@@ -1,0 +1,34 @@
+{
+  "diagnostics": {
+    "elapsedMs": 0,
+    "servedFromCache": false,
+    "stageAnswered": "fake",
+    "stagesRun": [
+      "fake"
+    ]
+  },
+  "result": {
+    "steps": [
+      {
+        "abrades": true,
+        "because": "Working inward keeps the stain from spreading into clean fabric.",
+        "instruction": "Blot the mark with a clean dry cloth, working from the outside in.",
+        "isMachineWash": false
+      },
+      {
+        "abrades": false,
+        "because": "The general-purpose answer for a mark that will not shift.",
+        "bleach": "chlorine",
+        "instruction": "Soak in hot water with household bleach for 20 minutes.",
+        "isMachineWash": false,
+        "temperatureC": 60
+      },
+      {
+        "abrades": false,
+        "because": "Heat sets whatever is left, and a dryer makes it permanent.",
+        "instruction": "Wash as normal and check the mark before it goes anywhere near heat.",
+        "isMachineWash": true
+      }
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "method": "POST",
+  "path": "/v1/care/condition",
+  "contentType": "multipart/form-data",
+  "fields": {
+    "garment": "Navy shirt",
+    "fabric": "100% cotton",
+    "known": "collar frayed"
+  },
+  "files": [
+    {
+      "field": "images",
+      "filename": "upload.png",
+      "contentType": "image/png",
+      "asset": "photo.png"
+    }
+  ]
+}

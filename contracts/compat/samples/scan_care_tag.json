@@ -1,0 +1,48 @@
+{
+  "diagnostics": {
+    "elapsedMs": 0,
+    "servedFromCache": false,
+    "stageAnswered": "fake",
+    "stagesRun": [
+      "knowledge-cache",
+      "fake"
+    ]
+  },
+  "result": {
+    "composition": {
+      "confidence": 0.96,
+      "source": "tagScan",
+      "value": {
+        "cotton": 95,
+        "elastane": 5
+      }
+    },
+    "confidence": 0.7,
+    "countryOfOrigin": {
+      "confidence": 0.94,
+      "source": "tagScan",
+      "value": "Tunisie"
+    },
+    "instructions": {
+      "agitation": "normal",
+      "bleach": "none",
+      "doNotDryClean": true,
+      "ironTemperature": "low",
+      "maxTempC": 30,
+      "method": "machine",
+      "warnings": [
+        "washInsideOut",
+        "doNotIronDecoration"
+      ],
+      "washTemperature": "cold"
+    },
+    "language": "fr",
+    "rawText": "95% COTON 5% \u00c9LASTHANNE / LAVER \u00c0 FROID / LAVER \u00c0 L'ENVERS",
+    "symbolsFound": [
+      "wash.30",
+      "bleach.none",
+      "iron.low"
+    ],
+    "unreadableSymbolCount": 1
+  }
+}

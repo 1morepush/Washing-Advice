@@ -1,0 +1,14 @@
+{
+  "availableProviders": [
+    "fake",
+    "gemini"
+  ],
+  "geminiConfigured": false,
+  "pipelineStages": [
+    "knowledge-cache",
+    "fake"
+  ],
+  "status": "ok",
+  "version": "0.1.0",
+  "visionProvider": "fake"
+}

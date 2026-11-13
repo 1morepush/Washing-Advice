@@ -27,7 +27,6 @@ class _FakeSwitcher implements VersionSwitcher {
   @override
   final bool available;
 
-  @override
   DataFormat? stored;
 
   @override

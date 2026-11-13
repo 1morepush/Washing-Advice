@@ -474,7 +474,7 @@ void main() {
   final write = Platform.environment['COMPAT_WRITE'];
   final dir = Directory('${_root.path}/$_version');
 
-  group('what ${_version} sends', () {
+  group('what $_version sends', () {
     for (final endpoint in _endpoints) {
       test(endpoint.id, () async {
         if (write == 'required') return;
@@ -505,7 +505,7 @@ void main() {
     }
   });
 
-  group('what ${_version} needs back', () {
+  group('what $_version needs back', () {
     for (final endpoint in _endpoints) {
       test(endpoint.id, () async {
         if (write == 'requests') return;

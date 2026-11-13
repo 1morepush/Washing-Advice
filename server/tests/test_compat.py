@@ -195,11 +195,7 @@ def test_the_server_answers_what_that_version_sends(
     kind = required["kind"]
     if kind == "json":
         body = response.json()
-        gone = [
-            place
-            for path in required["paths"]
-            for place in _missing(body, _steps(path))
-        ]
+        gone = [place for path in required["paths"] for place in _missing(body, _steps(path))]
         assert not gone, (
             f"{version} {name}: the response no longer has what that version's "
             f"app needs: {gone[:5]}"

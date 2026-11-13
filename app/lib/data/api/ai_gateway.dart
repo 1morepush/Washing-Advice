@@ -484,7 +484,17 @@ class AiGateway implements VisionPort {
   /// rather than an exception, because a missing cutout is a cosmetic loss and
   /// must never stop an item being saved. The wardrobe falls back to the
   /// colour swatch and the user is none the wiser.
-  Future<Uint8List?> cutout(ScanImage image) async {
+  Future<Uint8List?> cutout(ScanImage image) async =>
+      (await cutoutAttempt(image)).bytes;
+
+  /// [cutout], and also how long the server asked to be left alone for.
+  ///
+  /// A bulk caller needs the difference between "this garment cannot be cut
+  /// out" and "you are going too fast": the first is final, the second is worth
+  /// waiting out. `retryAfter` is set only from a 429.
+  Future<({Uint8List? bytes, Duration? retryAfter})> cutoutAttempt(
+    ScanImage image,
+  ) async {
     final request = http.MultipartRequest(
       'POST',
       baseUrl.resolve('v1/image/cutout'),
@@ -504,11 +514,20 @@ class AiGateway implements VisionPort {
           .timeout(const Duration(seconds: 45));
       if (streamed.statusCode != 200) {
         await streamed.stream.drain<void>();
-        return null;
+        return (
+          bytes: null,
+          retryAfter: streamed.statusCode == 429
+              ? _retryAfterOf(streamed.headers['retry-after']) ??
+                    const Duration(seconds: 5)
+              : null,
+        );
       }
-      return Uint8List.fromList(await streamed.stream.toBytes());
+      return (
+        bytes: Uint8List.fromList(await streamed.stream.toBytes()),
+        retryAfter: null,
+      );
     } on Exception {
-      return null;
+      return (bytes: null, retryAfter: null);
     }
   }
 

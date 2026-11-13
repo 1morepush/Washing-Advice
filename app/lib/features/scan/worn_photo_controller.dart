@@ -693,6 +693,14 @@ class WornPhotoController extends StateNotifier<WornPhotoState> {
           if (usedOriginal != null) originalKept.add(usedOriginal);
           saved++;
         } on Exception {
+          // The row may have been written before the failure (the log entry
+          // after it is what threw). A garment that is in the wardrobe keeps
+          // its files; deleting them would leave it pointing at nothing.
+          if (await _isInWardrobe(find.draft.id)) {
+            if (usedOriginal != null) originalKept.add(usedOriginal);
+            saved++;
+            continue;
+          }
           // One garment failing to write must not abandon the rest, and must
           // not leave its files behind.
           for (final uri in stored) {
@@ -707,6 +715,14 @@ class WornPhotoController extends StateNotifier<WornPhotoState> {
 
       if (!mounted) return;
       state = WornSaved(saved: saved, skipped: accepted.length - saved);
+    }
+  }
+
+  Future<bool> _isInWardrobe(ItemId id) async {
+    try {
+      return await _ref.read(wardrobeRepositoryProvider).byId(id) != null;
+    } on Exception {
+      return false;
     }
   }
 

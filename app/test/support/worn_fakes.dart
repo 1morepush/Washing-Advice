@@ -88,9 +88,18 @@ class WornGateway extends AiGateway {
 class CountingImageStore extends MemoryImageStore {
   final List<String> saved = [];
 
+  /// Every URI asked to be deleted.
+  final List<String> deleted = [];
+
   @override
   Future<String> save(Uint8List bytes, {required String name}) {
     saved.add(name);
     return super.save(bytes, name: name);
+  }
+
+  @override
+  Future<void> delete(String uri) {
+    deleted.add(uri);
+    return super.delete(uri);
   }
 }

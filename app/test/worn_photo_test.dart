@@ -266,7 +266,7 @@ void main() {
   });
 
   group('pictures', () {
-    testWidgets('a cutout is the garment picture, as the server sent it', (
+    testWidgets('an outline cutout is kept as sent, beside the box crop', (
       tester,
     ) async {
       setUpWith([
@@ -277,7 +277,9 @@ void main() {
 
       final find = reviewing().finds.single;
       expect(find.pictureKind, WornPicture.outline);
-      expect(find.picture.bytes, wornCutoutBytes);
+      expect(find.cutout!.bytes, wornCutoutBytes);
+      expect(find.picture.bytes, isNot(wornCutoutBytes));
+      expect(find.picture.bytes, [...wornPng.bytes, 0]);
     });
 
     testWidgets('a box picture is kept as a box picture', (tester) async {
@@ -366,12 +368,13 @@ void main() {
       expect((state() as WornSaved).saved, 1);
     });
 
-    testWidgets('the cutout is stored twice so editing cannot lose it', (
+    testWidgets('the crop and the cutout are two files so editing is safe', (
       tester,
     ) async {
-      // The mask editor reads `uri` as the picture to cut from and writes to
-      // the cutout's own name, deleting what was there. One file for both
-      // would be overwritten by the very edit it feeds.
+      // The mask editor restores pixels from `uri` and writes to the cutout's
+      // own name, deleting what was there. One file for both would be
+      // overwritten by the very edit it feeds, and `uri` would have nothing to
+      // restore from.
       setUpWith([
         [wornDetection()],
       ]);
@@ -384,7 +387,10 @@ void main() {
 
       expect(front.cutoutUri, isNotNull);
       expect(front.cutoutUri, isNot(front.uri));
-      expect(await tester.runAsync(() => store.read(front.uri)), isNotNull);
+      expect(await tester.runAsync(() => store.read(front.uri)), [
+        ...wornPng.bytes,
+        0,
+      ]);
       expect(
         await tester.runAsync(() => store.read(front.cutoutUri!)),
         wornCutoutBytes,
@@ -427,10 +433,10 @@ void main() {
 
       expect(front.hasCutout, isFalse);
       expect(item.photos.displayPhoto, front, reason: 'primary, not the worn');
-      expect(
-        await tester.runAsync(() => store.read(front.uri)),
-        wornCutoutBytes,
-      );
+      expect(await tester.runAsync(() => store.read(front.uri)), [
+        ...wornPng.bytes,
+        0,
+      ]);
     });
 
     testWidgets('retaking later leaves the worn photo and takes over', (

@@ -99,6 +99,39 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.37.0',
+    name: 'Off the Rack',
+    date: DateTime.utc(2026, 11, 13),
+    headline: 'Add clothes from a photo of you wearing them',
+    changes: [
+      'Add has a new way in: From a photo of me. Choose photos of yourself '
+          'from your library, or take one, and the app finds each thing you '
+          'are wearing, top, trousers, shoes, hat, glasses and the rest, and '
+          'shows each as its own picture, already named. Tick the ones to '
+          'keep. Things you already own are shown but left unticked.',
+      'Each picture is cut from your real photo, so it shows the garment as '
+          'you wore it, creases and all, and something under a jacket comes '
+          'out partial. It is not a drawn catalog picture. Where the outline '
+          'could not be found the picture keeps some background and says so. '
+          'A cutout that missed part of the garment can be fixed by hand: '
+          'the editor can now paint back what was cut off.',
+      'The photo of you is kept as the garment\'s Worn photo, stored once '
+          'however many garments came from it, and removed when the last of '
+          'them is deleted. Nothing outside each garment is left hidden in '
+          'its cutout. The photo goes to the server to be read, as every '
+          'scan does, and these photos include you, not only your clothes.',
+      'Worn today has From a photo. Take a mirror photo and it works out '
+          'which of your clothes you have on, for you to confirm before '
+          'anything is logged. A match it is unsure of is never ticked for '
+          'you, and something it does not recognise can be added to your '
+          'wardrobe from the same photo.',
+      'Care labels cannot be read from a photo of you wearing something, so '
+          'these garments ask for their label to be scanned, as usual. Each '
+          'photo is one request to the free AI service, so a large batch is '
+          'worked through steadily, not all at once.',
+    ],
+  ),
+  Release(
     version: '0.36.0',
     name: 'Tumble Dry Forecast',
     date: DateTime.utc(2026, 11, 12),

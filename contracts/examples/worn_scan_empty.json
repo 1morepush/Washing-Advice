@@ -1,0 +1,13 @@
+{
+  "result": {
+    "detections": []
+  },
+  "diagnostics": {
+    "stagesRun": [
+      "gemini"
+    ],
+    "stageAnswered": "gemini",
+    "servedFromCache": false,
+    "elapsedMs": 2950
+  }
+}

@@ -46,6 +46,18 @@ void main() {
       expect(find.text('Several garments'), findsOneWidget);
     });
 
+    testWidgets('one way is a photo of you wearing them, with its reason', (
+      tester,
+    ) async {
+      await pump(tester);
+
+      await tester.tap(find.byTooltip('Add garments'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('From a photo of me'), findsOneWidget);
+      expect(find.textContaining('wearing your clothes'), findsOneWidget);
+    });
+
     testWidgets('and says what the bulk one saves you', (tester) async {
       // The reason somebody standing over a laundry basket would pick it, and
       // not something they should have to discover by trying it.

@@ -1,15 +1,19 @@
 """The scan endpoints.
 
-Three routes, one per kind of scan. Each does the same three things: validate
+Four routes, one per kind of scan. Each does the same three things: validate
 the upload, run the pipeline, return the result with diagnostics. All the
 interesting behaviour lives in the pipeline; these are deliberately thin.
+
+The fourth, `/worn`, does not go through the pipeline: see `services/worn/base.py`.
 """
 
 from __future__ import annotations
 
+import time
+
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 
-from app.api.v1.dependencies import get_pipeline
+from app.api.v1.dependencies import get_pipeline, get_worn_scanner
 from app.config import Settings, get_settings
 from app.core.errors import ScanFailedError, from_provider_error
 from app.core.limits import check_image, check_image_count
@@ -20,10 +24,15 @@ from app.schemas.scan import (
     GarmentScanResult,
     PileScanResponse,
     PileScanResult,
+    ScanDiagnostics,
     ScanKind,
+    WornScanResponse,
 )
 from app.services.ai.base import ProviderError, ScanImage, ScanRequest
 from app.services.ai.pipeline import PipelineResult, VisionPipeline
+from app.services.worn.base import WornScanner
+from app.services.worn.cutting import PhotoError
+from app.services.worn.service import scan_worn as read_worn
 
 router = APIRouter(prefix="/scan", tags=["scan"])
 
@@ -154,3 +163,41 @@ async def scan_pile(
         )
 
     return PileScanResponse(result=outcome.result, diagnostics=outcome.diagnostics)
+
+
+@router.post(
+    "/worn",
+    response_model=WornScanResponse,
+    response_model_exclude_none=True,
+    summary="Find the clothes a person is wearing in a photo",
+)
+async def scan_worn(
+    image: UploadFile = File(..., description="One photo of a person wearing the clothes."),
+    settings: Settings = Depends(get_settings),
+    scanner: WornScanner = Depends(get_worn_scanner),
+) -> WornScanResponse:
+    scan_image = await _read_image(image, settings)
+
+    started = time.perf_counter()
+    try:
+        result = await read_worn(scan_image, scanner)
+    except PhotoError as error:
+        # The upload passed the type and size checks, so this is a format the
+        # server cannot cut from (a HEIC straight off a phone, say) rather than
+        # a bad request: the model could have read it, but nothing here can
+        # crop it.
+        raise ScanFailedError(
+            str(error),
+            hint="Send the photo as a JPEG or PNG.",
+        ) from error
+    except ProviderError as error:
+        raise from_provider_error(error) from error
+
+    return WornScanResponse(
+        result=result,
+        diagnostics=ScanDiagnostics(
+            stages_run=[scanner.name],
+            stage_answered=scanner.name,
+            elapsed_ms=int((time.perf_counter() - started) * 1000),
+        ),
+    )

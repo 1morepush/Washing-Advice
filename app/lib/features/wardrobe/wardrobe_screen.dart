@@ -153,37 +153,50 @@ Future<void> _chooseHowToAdd(BuildContext context) async {
     context: context,
     showDragHandle: true,
     builder: (context) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.camera_alt_outlined),
-            title: const Text('One garment'),
-            subtitle: const Text(
-              'Photograph it and its care label, and check the reading.',
+      // Scrolls: four options with their explanations are taller than a sheet
+      // gets at a large text size.
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('One garment'),
+              subtitle: const Text(
+                'Photograph it and its care label, and check the reading.',
+              ),
+              onTap: () => Navigator.pop(context, '/scan'),
             ),
-            onTap: () => Navigator.pop(context, '/scan'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.checklist_outlined),
-            title: const Text('Several garments'),
-            subtitle: const Text(
-              'Photograph a whole pile first, then submit the lot at once. '
-              'No waiting between garments.',
+            ListTile(
+              leading: const Icon(Icons.checklist_outlined),
+              title: const Text('Several garments'),
+              subtitle: const Text(
+                'Photograph a whole pile first, then submit the lot at once. '
+                'No waiting between garments.',
+              ),
+              onTap: () => Navigator.pop(context, '/scan/bulk'),
             ),
-            onTap: () => Navigator.pop(context, '/scan/bulk'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.grid_view_outlined),
-            title: const Text('A few at once'),
-            subtitle: const Text(
-              'Lay them out, take one photo, and get a garment for each. '
-              'Fastest way to record a wardrobe.',
+            ListTile(
+              leading: const Icon(Icons.grid_view_outlined),
+              title: const Text('A few at once'),
+              subtitle: const Text(
+                'Lay them out, take one photo, and get a garment for each. '
+                'Fastest way to record a wardrobe.',
+              ),
+              onTap: () => Navigator.pop(context, '/scan/spread'),
             ),
-            onTap: () => Navigator.pop(context, '/scan/spread'),
-          ),
-          const SizedBox(height: 8),
-        ],
+            ListTile(
+              leading: const Icon(Icons.checkroom_outlined),
+              title: const Text('From a photo of me'),
+              subtitle: const Text(
+                'Use photos of you wearing your clothes. Each piece is cut out '
+                'and added.',
+              ),
+              onTap: () => Navigator.pop(context, '/scan/worn'),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     ),
   );

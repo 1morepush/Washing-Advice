@@ -131,7 +131,15 @@ void paintMask(
   canvas.saveLayer(destination, Paint());
 
   if (cutout != null) {
-    canvas.drawImageRect(cutout, source, destination, Paint());
+    // The cutout's own whole frame, scaled onto the photograph's: a worn
+    // photo's cutout is capped at 768 px while the box crop beside it is not,
+    // and the two are the same box at different resolutions.
+    canvas.drawImageRect(
+      cutout,
+      Offset.zero & Size(cutout.width.toDouble(), cutout.height.toDouble()),
+      destination,
+      Paint()..filterQuality = FilterQuality.medium,
+    );
   }
 
   final scale = imageSize.width == 0

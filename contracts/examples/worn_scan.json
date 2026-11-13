@@ -1,0 +1,100 @@
+{
+  "result": {
+    "detections": [
+      {
+        "scan": {
+          "type": {
+            "value": "sweater",
+            "confidence": 0.9,
+            "source": "aiInference"
+          },
+          "colors": {
+            "value": [
+              {
+                "l": 24.1,
+                "a": 2.3,
+                "b": -8.7,
+                "coverage": 1.0,
+                "name": "Navy"
+              }
+            ],
+            "confidence": 0.85,
+            "source": "aiInference"
+          },
+          "pattern": {
+            "value": "solid",
+            "confidence": 0.8,
+            "source": "aiInference"
+          },
+          "suggestedName": "Navy sweater"
+        },
+        "boundingBox": {
+          "left": 0.2,
+          "top": 0.1125,
+          "width": 0.6,
+          "height": 0.4375
+        },
+        "detectionConfidence": 0.92,
+        "cutout": "iVBORw0KGgoAAAANSUhEUgAAACEAAAAiCAYAAADRcLDBAAAByklEQVR42u3YTWsTURTG8d9MppqFb4VSUTDd11rQboLu3bhx58ov4Sdz48YPINnEQhpdm1osLUKFBIx9MW7OyG3MqskEF3NgGLgM9/znuYfLeU4motPtZShwA+u4hztYQe7q8Rtn+IFDHGOE8/bO9gSyKYCbaGELmwHSLL+7YkwwDoDP6GMfwxKk6HR72avXb0qADTxGO0Du4toCIE5xhLVkvwGGnW7vvEgUKAGe4gkexHrD/HGBW6FqerQDDMsaaAXAs3hvBEAxpwplNHA7AcgSlQZFFOFWHEEVAGXSVPFSnVP8LKL4NvEoFFk0wCyQFn7hOw5yrAbIehxNFQDTIOk1sJrHPdCMqm1UCJCCNCJfEyt5LGZLSD4LJkOW+w+ihqghaogaooaoIWqIeSAmybPM+Js3D3c0jqbzYgkwk6TJHeMsx8m0PasQZBL7jyLfIU6KxJ6t4XpFLX8KMAwbuBd5D4sg6ieNrgpAUoABdtGJvMdFSLM/5YpUYAOH+IqP+BAg+xhlU468akPcDwV2Sx+K839GAy9fPG+FG3uI+zNM7FXmE2N8wyfsvX33/vJoANo725NOt1dW7UH8+SiUWNR84ghfYv9LQ5I/SVmUbNi/YXYAAAAASUVORK5CYII=",
+        "cutoutKind": "outline"
+      },
+      {
+        "scan": {
+          "type": {
+            "value": "trousers",
+            "confidence": 0.84,
+            "source": "aiInference"
+          },
+          "colors": {
+            "value": [
+              {
+                "l": 18.0,
+                "a": 0.0,
+                "b": 0.0,
+                "coverage": 1.0,
+                "name": "Black"
+              }
+            ],
+            "confidence": 0.8,
+            "source": "aiInference"
+          },
+          "suggestedName": "Black trousers"
+        },
+        "boundingBox": {
+          "left": 0.25,
+          "top": 0.5125,
+          "width": 0.5,
+          "height": 0.375
+        },
+        "detectionConfidence": 0.86,
+        "cutout": "iVBORw0KGgoAAAANSUhEUgAAAB4AAAAeCAYAAAA7MK6iAAAASElEQVR42mM8cfbSf4YBACzInABvN5pbuGHrLgYGBgYGJoYBAqMWj1o8avGoxaMWj1o8avGoxaMWj1o8avEQtphxoPpOA+ZjAE15CgkbInb5AAAAAElFTkSuQmCC",
+        "cutoutKind": "box"
+      },
+      {
+        "scan": {
+          "type": {
+            "value": "other",
+            "confidence": 0.55,
+            "source": "aiInference"
+          },
+          "suggestedName": "Glasses"
+        },
+        "boundingBox": {
+          "left": 0.38,
+          "top": 0.04,
+          "width": 0.24,
+          "height": 0.07
+        },
+        "detectionConfidence": 0.58
+      }
+    ]
+  },
+  "diagnostics": {
+    "stagesRun": [
+      "gemini"
+    ],
+    "stageAnswered": "gemini",
+    "servedFromCache": false,
+    "elapsedMs": 4810
+  }
+}

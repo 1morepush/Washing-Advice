@@ -23,12 +23,31 @@ import 'package:washing_advice/features/scan/worn_photo_screen.dart';
 import 'support/fixtures.dart';
 import 'support/worn_fakes.dart';
 
+/// A camera that cannot be opened.
+class _BrokenCapture implements ImageCaptureSource {
+  @override
+  Future<ScanImage?> capture() async => throw const CaptureFailure(
+    'The camera is not available.',
+    isRetryable: true,
+  );
+
+  @override
+  Future<List<ScanImage>> pickMultiple() async => throw const CaptureFailure(
+    'The camera is not available.',
+    isRetryable: true,
+  );
+}
+
 void main() {
   late InMemoryWardrobeRepository repository;
   late WornGateway gateway;
   late ProviderContainer container;
 
-  void setUpWith(List<Object> script, {int photos = 1}) {
+  void setUpWith(
+    List<Object> script, {
+    int photos = 1,
+    ImageCaptureSource? capture,
+  }) {
     repository = InMemoryWardrobeRepository();
     gateway = WornGateway(script);
     container = ProviderContainer(
@@ -41,10 +60,11 @@ void main() {
           SequentialIdGenerator(prefix: 'g'),
         ),
         imageCaptureProvider.overrideWithValue(
-          FixedImageCaptureSource([
-            for (var i = 0; i < photos; i++)
-              ScanImage(bytes: [...wornPng.bytes, i]),
-          ]),
+          capture ??
+              FixedImageCaptureSource([
+                for (var i = 0; i < photos; i++)
+                  ScanImage(bytes: [...wornPng.bytes, i]),
+              ]),
         ),
       ],
     );
@@ -107,10 +127,18 @@ void main() {
       expect(find.textContaining('waking up'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
+      // Cropping decodes the photo, which is engine work in real time, while
+      // this controller's own continuations run on the test's fake clock: so
+      // alternate the two until it has finished.
       gateway.hold!.complete();
-      await tester.pump();
-      await tester.pump();
-      await tester.runAsync(() => running);
+      for (var i = 0; i < 200; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+        await tester.pump();
+        if (container.read(wornPhotoControllerProvider) is WornReviewing) break;
+      }
+      await running;
       await tester.pumpAndSettle();
       expect(find.text('Add 1 garment'), findsOneWidget);
     });
@@ -161,12 +189,16 @@ void main() {
       );
       expect(find.text('Black jeans'), findsOneWidget);
       expect(
-        find.textContaining(
-          'Includes some background — you can tidy it in the cutout editor.',
-        ),
-        findsOneWidget,
-        reason: 'only the box picture says so; the outline one does not',
+        find.textContaining('Includes some background.'),
+        findsNWidgets(2),
+        reason: 'the box picture and the cropped one say so; the outline not',
       );
+      expect(
+        find.textContaining('"Clean up" is made for clothes laid flat'),
+        findsNWidgets(2),
+        reason: 'no promise that Clean up fixes a photo of a person',
+      );
+      expect(find.textContaining('cutout editor'), findsNothing);
       expect(find.textContaining('Cropped from your photo'), findsOneWidget);
       expect(find.text('Add 2 garments'), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -193,6 +225,21 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('1 garment found'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a failed start offers both ways in again', (tester) async {
+      setUpWith([], capture: _BrokenCapture());
+      await show(tester, const WornPhotoScreen());
+
+      await tester.runAsync(
+        () => container.read(wornPhotoControllerProvider.notifier).start(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('That did not work'), findsOneWidget);
+      expect(find.text('Choose photos'), findsOneWidget);
+      expect(find.text('Take a photo'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -264,6 +311,9 @@ void main() {
       );
       await show(tester, const WornTodayPhotoScreen());
       expect(find.text('Take a photo'), findsOneWidget);
+      // Short enough for a 320 px bar at 1.6 text, where the old one ran out.
+      expect(find.text('From a photo'), findsOneWidget);
+      expect(find.text('Worn today, from a photo'), findsNothing);
 
       await tester.runAsync(
         () => container.read(wornTodayPhotoControllerProvider.notifier).start(),

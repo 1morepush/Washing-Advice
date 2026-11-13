@@ -89,3 +89,31 @@ class TestRefusal:
     def test_an_empty_upload_is_rejected(self, client):
         response = post(client, b"")
         assert response.status_code in (415, 422)
+
+
+class TestBusy:
+    def test_a_request_beyond_the_waiting_cap_is_told_to_retry(self, client, monkeypatch):
+        from app.api.v1 import images
+
+        monkeypatch.setattr(images, "_in_flight", 3)
+
+        response = post(client, photo(WHITE, NAVY))
+
+        assert response.status_code == 429
+        assert int(response.headers["retry-after"]) >= 1
+
+    def test_the_count_comes_back_down_after_success_and_failure(self, client):
+        from app.api.v1 import images
+
+        post(client, photo(WHITE, NAVY))
+        post(client, b"not an image")
+        post(client, photo(WHITE, None))
+
+        assert images._in_flight == 0
+
+    def test_the_classical_switch_still_serves_cutouts(self, monkeypatch):
+        monkeypatch.setenv("CUTOUT_REMOVER", "classical")
+        reset_wiring()
+        with TestClient(create_app()) as classical_client:
+            assert post(classical_client, photo(WHITE, NAVY)).status_code == 200
+        reset_wiring()

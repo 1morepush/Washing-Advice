@@ -16,7 +16,7 @@ from app.api.v1 import (
     style,
     sync,
 )
-from app.core.request_limit import enforce_request_limit
+from app.core.request_limit import enforce_cutout_limit, enforce_request_limit
 
 api_router = APIRouter(prefix="/v1")
 
@@ -28,8 +28,10 @@ _limited = [Depends(enforce_request_limit)]
 
 api_router.include_router(health.router)
 api_router.include_router(scan.router, dependencies=_limited)
-# Cutout is not limited: it is local pixel work and spends no allowance.
-api_router.include_router(images.router)
+# Cutout has its own, separate limit: it spends CPU and memory rather than the
+# AI allowances, so a wardrobe-wide redo neither eats the scan quota nor is
+# refused because scans did.
+api_router.include_router(images.router, dependencies=[Depends(enforce_cutout_limit)])
 api_router.include_router(machines.router, dependencies=_limited)
 api_router.include_router(stains.router, dependencies=_limited)
 api_router.include_router(condition.router, dependencies=_limited)

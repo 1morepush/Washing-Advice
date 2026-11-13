@@ -200,7 +200,8 @@ class _EditorState extends ConsumerState<_Editor> {
       // a file per save.
       final uri = await store.save(
         bytes,
-        name: cutoutNameFor(widget.item.id, widget.photo),
+        // Marked as hand-made, so "Redo cutouts" leaves it alone.
+        name: cutoutNameFor(widget.item.id, widget.photo, edited: true),
       );
       await discardSupersededCutout(store, widget.photo.cutoutUri, uri);
 

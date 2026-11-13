@@ -228,6 +228,24 @@ def limiter_from_settings() -> RequestLimiter:
     )
 
 
+def cutout_limiter_from_settings() -> RequestLimiter:
+    """The cutout endpoint's own limiter.
+
+    Separate from the AI limiter: a cutout draws on CPU and memory rather than
+    on the Gemini or Tavily allowances, and re-cutting a whole wardrobe is a
+    legitimate burst that should not eat the scan quota (nor be refused because
+    scans did). No global cap, because there is no shared allowance to protect;
+    the single-inference lock and `cutout_max_waiting` bound the cost.
+    """
+    settings = get_settings()
+    return RequestLimiter(
+        per_minute=settings.cutout_rate_limit_per_minute,
+        per_day=settings.cutout_rate_limit_per_day,
+        global_per_day=0,
+        max_clients=settings.rate_limit_max_clients,
+    )
+
+
 async def enforce_request_limit(request: Request) -> None:
     """Dependency for a whole router, so no endpoint body knows about it.
 
@@ -236,7 +254,16 @@ async def enforce_request_limit(request: Request) -> None:
     wait itself, so the detail carries no number; the hint repeats it for any
     other client.
     """
-    limiter: RequestLimiter | None = getattr(request.app.state, "request_limiter", None)
+    _enforce(request, "request_limiter")
+
+
+async def enforce_cutout_limit(request: Request) -> None:
+    """The same, against the cutout endpoint's own limiter."""
+    _enforce(request, "cutout_limiter")
+
+
+def _enforce(request: Request, attribute: str) -> None:
+    limiter: RequestLimiter | None = getattr(request.app.state, attribute, None)
     if limiter is None:
         return
     key = client_key(request, trust_forwarded_for=get_settings().rate_limit_trust_forwarded_for)

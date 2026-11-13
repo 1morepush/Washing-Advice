@@ -9,6 +9,7 @@ on it without a billing account, and CI cannot run.
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -203,6 +204,40 @@ class Settings(BaseSettings):
             "Identify clients by the first X-Forwarded-For address. Right behind "
             "Render's proxy; wrong when the server faces the internet directly, "
             "where the header is whatever the client writes."
+        ),
+    )
+
+    # --- Cutouts --------------------------------------------------------------
+
+    cutout_remover: Literal["learned", "classical"] = Field(
+        default="learned",
+        description=(
+            "Which background remover makes garment cutouts. 'learned' runs the "
+            "bundled u2netp model and falls back to 'classical' (a border-colour "
+            "rule) when it cannot run; 'classical' never loads the model."
+        ),
+    )
+    cutout_rate_limit_per_minute: int = Field(
+        default=12,
+        ge=0,
+        description=(
+            "Cutouts one client address may request per minute. Their own limit, "
+            "separate from the AI endpoints': a cutout spends CPU and memory, not "
+            "the Gemini allowance. 0 = no limit."
+        ),
+    )
+    cutout_rate_limit_per_day: int = Field(
+        default=600,
+        ge=0,
+        description="Cutouts one client address may request per rolling day. 0 = no limit.",
+    )
+    cutout_max_waiting: int = Field(
+        default=3,
+        ge=1,
+        description=(
+            "Cutouts that may be in flight at once, one running and the rest queued "
+            "behind it. More are told to retry shortly: every queued request holds "
+            "its upload in memory."
         ),
     )
 

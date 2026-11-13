@@ -102,6 +102,29 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.39.0',
+    name: 'Back Through the Wringer',
+    date: DateTime.utc(2026, 11, 13),
+    headline: 'A way back to an earlier version when a new one misbehaves',
+    changes: [
+      'Each release now stays published. Settings, under Advanced, has Use '
+          'an earlier version: pick one and the app reopens as that version '
+          'and stays on it. A bar across the top says which version you are '
+          'on and has Back to latest.',
+      'The list starts filling from the next release, because builds before '
+          'this one were never kept. It holds the newest version and the '
+          'five before it.',
+      'Going back changes the app, not your wardrobe. A version too old to '
+          'read what a newer one has saved is greyed out, with the reason, '
+          'so you cannot open your data in something that would mangle it.',
+      'The server keeps answering every version on that list, and its tests '
+          'now replay what each of them sends to make sure of it.',
+      'If a release is bad for everyone, the whole site can be put back to '
+          'an earlier version from GitHub, and it stays there until a newer '
+          'release is merged.',
+    ],
+  ),
+  Release(
     version: '0.38.0',
     name: 'Clean Cut',
     date: DateTime.utc(2026, 11, 13),

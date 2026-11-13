@@ -1,0 +1,13 @@
+{
+  "method": "POST",
+  "path": "/v1/scan/worn",
+  "contentType": "multipart/form-data",
+  "files": [
+    {
+      "field": "image",
+      "filename": "upload.png",
+      "contentType": "image/png",
+      "asset": "photo.png"
+    }
+  ]
+}

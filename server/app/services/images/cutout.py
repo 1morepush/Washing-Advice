@@ -1,32 +1,38 @@
 """Removing the background from a garment photograph.
 
-## Why this is classical rather than a model
+## Two removers behind one seam
 
-The app already tells the user to "lay it flat against a plain background",
-because that is also what makes the garment easiest to *identify*. Given that
-instruction, the hard part of matting — separating a subject from a cluttered
-scene — does not arise, and the remaining problem is well handled by measuring
-how far each pixel sits from the colour the borders are made of.
+`BackgroundRemover` is an interface with two implementations:
 
-A learned matting model would be better on hair, lace and fringing, and it is
-the obvious upgrade. It is not the starting point, because it would cost a
-~170 MB download at first run and break the property that this service starts
-and passes its whole suite with no network and no credentials.
+* `LearnedRemover` (`learned.py`) runs the 4.6 MB `u2netp` salient-object
+  model, bundled in this package, and is the default. It copes with what the
+  owner's real photographs actually look like: a garment on a white board on a
+  carpet, with soft shadows and creases. See ADR 0010 for why this model, what
+  it costs in memory, and what was rejected.
+* `BorderSampledRemover` (below) is the classical remover this service started
+  with. It stays, for two reasons: it is the fallback when the model cannot
+  run, and it keeps the property that the service starts and passes its suite
+  with no network and no credentials even if the model file were missing.
 
-`BackgroundRemover` is therefore an interface with one implementation and a
-documented seam, in the same shape as `VisionProvider`: a learned remover slots
-in beside this one without any caller changing.
+Both finish through the same code here, [render_cutout], so a cutout looks the
+same whichever one found the garment: the mask is eroded a pixel, the colour of
+the edge is replaced with the garment's own, and the result is lightly
+feathered. That last step matters more than the choice of remover for how the
+result *looks*: the white fringe the owner saw was the board's colour bleeding
+into edge pixels, and it appears on a dark tile whatever found the outline.
 
-## What it does
+## What the classical remover does
 
 1. Sample the border to build a model of the background colour. Real photos
-   have gradients and shadow, so the border is clustered rather than averaged —
-   one mean over a background that is white at the top and grey at the bottom
-   describes neither.
+   have gradients, shadow, and sometimes two different surfaces, so the border
+   is clustered rather than averaged. Only clusters holding a real share of the
+   border count as background: a garment touching the frame makes a small
+   cluster, which must not be mistaken for backdrop.
 2. Score every pixel by its distance to the nearest background cluster, in
-   CIELAB so the distance is perceptual rather than a raw RGB difference.
+   CIELAB so the distance is perceptual, less each cluster's own spread so a
+   textured carpet is background rather than a field of tiny foregrounds.
 3. Threshold, keep the largest connected region, fill its holes.
-4. Feather the edge, so the result composites without a hard jagged line.
+4. Render it (above).
 """
 
 from __future__ import annotations
@@ -65,6 +71,14 @@ _BORDER_FRACTION = 0.06
 # Background colour clusters. More than one because a real backdrop is lit
 # unevenly; more than a handful just fits noise.
 _BACKGROUND_CLUSTERS = 4
+
+# A border cluster is only backdrop if it holds at least this share of the
+# border. Smaller ones are more likely a garment touching the frame.
+_MIN_CLUSTER_SHARE = 0.08
+
+# How many of a cluster's own standard deviations are forgiven when measuring
+# distance to it, so texture does not read as subject.
+_SPREAD_DISCOUNT = 2.0
 
 
 class CutoutError(Exception):
@@ -111,14 +125,7 @@ class BorderSampledRemover:
     """Segments by distance from the colours found at the frame's border."""
 
     def remove(self, image_bytes: bytes) -> Cutout:
-        try:
-            source = Image.open(io.BytesIO(image_bytes))
-            source.load()
-        except Exception as error:  # Pillow raises a wide variety here.
-            raise CutoutError("the image could not be decoded") from error
-
-        rgb = source.convert("RGB")
-        full_size = rgb.size
+        rgb = decode_for_cutout(image_bytes)
 
         work = rgb.copy()
         work.thumbnail((_WORK_EDGE, _WORK_EDGE), Image.Resampling.LANCZOS)
@@ -127,33 +134,131 @@ class BorderSampledRemover:
         distance = _distance_from_background(lab)
         mask = _largest_region(distance > _threshold(distance))
 
-        coverage = float(mask.mean())
+        return render_cutout(rgb, _resize_mask(mask, rgb.size))
 
-        # Sized for what will actually be drawn rather than for what arrived.
-        out_size = _display_size(full_size)
 
-        alpha = Image.fromarray((mask * 255).astype(np.uint8), mode="L")
-        # Feathering before the resize, so the blur is in working-resolution
-        # pixels and the edge stays proportionate whatever the source size.
-        alpha = alpha.filter(ImageFilter.GaussianBlur(radius=1.2))
-        alpha = alpha.resize(out_size, Image.Resampling.BILINEAR)
+def decode_for_cutout(image_bytes: bytes) -> Image.Image:
+    """The photograph as RGB at the size the cutout will be returned at.
 
-        cut = (
-            rgb if out_size == full_size else rgb.resize(out_size, Image.Resampling.LANCZOS)
-        ).convert("RGBA")
-        cut.putalpha(alpha)
+    Never holds the full-size image when it does not have to: a JPEG is decoded
+    at a reduced scale (Pillow's `draft`, which makes the decoder skip the
+    discarded detail rather than computing and throwing it away), so a
+    12-megapixel photograph costs about what a 1-megapixel one does. This is
+    the first line of defence for the server's 512 MB.
+    """
+    try:
+        source = Image.open(io.BytesIO(image_bytes))
+        target = _display_size(source.size)
+        if source.format == "JPEG":
+            source.draft("RGB", target)
+        source.load()
+        rgb = source.convert("RGB")
+    except Exception as error:  # Pillow raises a wide variety here.
+        raise CutoutError("the image could not be decoded") from error
 
-        buffer = io.BytesIO()
-        cut.save(buffer, format="PNG", optimize=True)
+    if rgb.size != target:
+        rgb = rgb.resize(target, Image.Resampling.LANCZOS)
+    return rgb
 
-        return Cutout(
-            png=buffer.getvalue(),
-            coverage=coverage,
-            # The returned image's own size, which is what a caller laying it
-            # out needs — not the size of the photograph it came from.
-            width=out_size[0],
-            height=out_size[1],
-        )
+
+def _resize_mask(mask: np.ndarray, size: tuple[int, int]) -> np.ndarray:
+    """A boolean mask at another size, with a smooth rather than blocky edge."""
+    if (mask.shape[1], mask.shape[0]) == size:
+        return mask
+    image = Image.fromarray((mask * 255).astype(np.uint8), mode="L")
+    resized = np.asarray(image.resize(size, Image.Resampling.BILINEAR))
+    result: np.ndarray = resized >= 128
+    return result
+
+
+# How far inside the garment the "trusted" colour starts, and how far out the
+# trusted colour is spread. The mask is eroded by one pixel; the colour of
+# everything outside the trusted interior is then rebuilt from the interior.
+_EDGE_TRUST_PX = 3
+_EDGE_FILL_RADIUS = 8
+_FEATHER_RADIUS = 1.0
+
+
+def box_mean(values: np.ndarray, radius: int) -> np.ndarray:
+    """Mean over a (2r+1) square window, by integral image.
+
+    Windows are clipped at the frame rather than padded, so an edge pixel is
+    the mean of the pixels that exist. Float32 throughout: this runs over
+    every pixel of the returned image and the memory is the constraint.
+    """
+    height, width = values.shape[:2]
+    padded = np.zeros((height + 1, width + 1, *values.shape[2:]), dtype=np.float64)
+    padded[1:, 1:] = values.cumsum(axis=0).cumsum(axis=1)
+
+    ys = np.arange(height)
+    xs = np.arange(width)
+    y0 = np.clip(ys - radius, 0, height)
+    y1 = np.clip(ys + radius + 1, 0, height)
+    x0 = np.clip(xs - radius, 0, width)
+    x1 = np.clip(xs + radius + 1, 0, width)
+
+    total = padded[y1][:, x1] - padded[y0][:, x1] - padded[y1][:, x0] + padded[y0][:, x0]
+    area = ((y1 - y0)[:, None] * (x1 - x0)[None, :]).astype(np.float64)
+    if values.ndim == 3:
+        area = area[..., None]
+    result: np.ndarray = (total / area).astype(np.float32)
+    return result
+
+
+def _erode(mask: np.ndarray, pixels: int) -> np.ndarray:
+    if pixels <= 0:
+        return mask
+    image = Image.fromarray((mask * 255).astype(np.uint8), mode="L")
+    eroded = image.filter(ImageFilter.MinFilter(2 * pixels + 1))
+    result: np.ndarray = np.asarray(eroded) >= 128
+    return result
+
+
+def render_cutout(rgb: Image.Image, mask: np.ndarray) -> Cutout:
+    """Turns a boolean subject mask over [rgb] into the PNG that is returned.
+
+    `mask` is at `rgb`'s own size. This is where the white fringe is removed:
+
+    1. Erode the mask a pixel, so the outline sits on the garment rather than
+       on the blend of garment and board that the camera recorded at the edge.
+    2. Take the colour of the garment's *interior* (a few pixels in from the
+       outline) and spread it outward over the edge band. The pixels that
+       survive at the edge then carry the garment's colour, not the board's,
+       so a dark shirt on a dark tile has no pale halo whatever the alpha does.
+    3. Feather lightly, so it composites without a hard jagged line.
+    """
+    coverage = float(mask.mean())
+
+    outline = _erode(mask, 1)
+    interior = _erode(mask, _EDGE_TRUST_PX)
+
+    pixels = np.asarray(rgb, dtype=np.float32)
+    weight = interior.astype(np.float32)
+    colour = box_mean(pixels * weight[..., None], _EDGE_FILL_RADIUS)
+    support = box_mean(weight, _EDGE_FILL_RADIUS)
+
+    # Where the interior reaches (support > 0) the colour is rebuilt from it;
+    # beyond that, or in a part too thin to have an interior, keep the original.
+    reach = (support > 1e-3) & ~interior
+    filled = np.where(reach[..., None], colour / np.maximum(support, 1e-3)[..., None], pixels)
+
+    alpha = Image.fromarray((outline * 255).astype(np.uint8), mode="L")
+    alpha = alpha.filter(ImageFilter.GaussianBlur(radius=_FEATHER_RADIUS))
+
+    cut = Image.fromarray(np.clip(filled, 0, 255).astype(np.uint8), mode="RGB").convert("RGBA")
+    cut.putalpha(alpha)
+
+    buffer = io.BytesIO()
+    cut.save(buffer, format="PNG", optimize=True)
+
+    return Cutout(
+        png=buffer.getvalue(),
+        coverage=coverage,
+        # The returned image's own size, which is what a caller laying it out
+        # needs — not the size of the photograph it came from.
+        width=rgb.size[0],
+        height=rgb.size[1],
+    )
 
 
 def _display_size(size: tuple[int, int]) -> tuple[int, int]:
@@ -215,17 +320,24 @@ def _border_pixels(lab: np.ndarray) -> np.ndarray:
     return np.concatenate(strips, axis=0)
 
 
-def _background_clusters(border: np.ndarray) -> np.ndarray:
-    """A few representative background colours, by k-means on the border.
+def _background_clusters(border: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Representative background colours and each one's spread, by k-means.
 
     Clustered rather than averaged because a backdrop lit from one side is two
     colours, and their mean is a third that appears nowhere in the picture —
-    which makes both real ones look like foreground.
+    which makes both real ones look like foreground. A white board with carpet
+    showing at its edge is the same shape of problem.
+
+    Only a cluster holding a real share of the border is background. A garment
+    that touches the frame makes a small cluster of its own, and counting that
+    as backdrop would eat the garment from the side. Where *every* cluster is
+    small (a very noisy border) all are kept, as before.
     """
     rng = np.random.default_rng(0)  # Deterministic: same photo, same cutout.
     k = min(_BACKGROUND_CLUSTERS, len(border))
     centres = border[rng.choice(len(border), size=k, replace=False)]
 
+    assignment = np.zeros(len(border), dtype=np.int64)
     for _ in range(12):
         distances = np.linalg.norm(border[:, None, :] - centres[None, :, :], axis=2)
         assignment = distances.argmin(axis=1)
@@ -241,15 +353,35 @@ def _background_clusters(border: np.ndarray) -> np.ndarray:
             break
         centres = moved
 
-    return centres
+    shares = np.array([np.mean(assignment == i) for i in range(k)])
+    spreads = np.array(
+        [
+            float(np.sqrt(((border[assignment == i] - centres[i]) ** 2).sum(axis=1).mean()))
+            if np.any(assignment == i)
+            else 0.0
+            for i in range(k)
+        ]
+    )
+
+    keep = shares >= _MIN_CLUSTER_SHARE
+    if not keep.any():
+        keep = shares > 0
+    return centres[keep], spreads[keep]
 
 
 def _distance_from_background(lab: np.ndarray) -> np.ndarray:
-    """Per-pixel distance to the nearest background colour."""
-    centres = _background_clusters(_border_pixels(lab))
+    """Per-pixel distance to the nearest background colour, beyond its spread.
+
+    A textured backdrop (carpet) is a cloud of colours, not a point. Measuring
+    to the cloud's centre makes every fibre look like foreground; discounting
+    the cloud's own spread makes the carpet background and leaves the garment,
+    which is a different colour altogether, far from it.
+    """
+    centres, spreads = _background_clusters(_border_pixels(lab))
     flat = lab.reshape(-1, 1, 3)
-    distances = np.linalg.norm(flat - centres[None, :, :], axis=2).min(axis=1)
-    reshaped: np.ndarray = distances.reshape(lab.shape[:2])
+    raw = np.linalg.norm(flat - centres[None, :, :], axis=2)
+    discounted = np.clip(raw - _SPREAD_DISCOUNT * spreads[None, :], 0.0, None)
+    reshaped: np.ndarray = discounted.min(axis=1).reshape(lab.shape[:2])
     return reshaped
 
 

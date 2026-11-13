@@ -14,7 +14,7 @@
 //   dart tool/web_site.dart build-info  [--out build/web/build-info.json]
 //   dart tool/web_site.dart publish     --build build/web --store S --out O
 //                                       --base /Washing-Advice/
-//                                       [--keep 5] [--lift-hold]
+//                                       [--keep 5] [--lift-hold] [--info F]
 //   dart tool/web_site.dart rollback    --store S --out O --base /Washing-Advice/
 //                                       [--version 0.37.0]
 //
@@ -644,7 +644,14 @@ void main(List<String> args) {
             store: Directory(_need(flags, 'store')),
             out: Directory(_need(flags, 'out')),
             base: _need(flags, 'base'),
-            info: readBuildInfo(),
+            // `--info` is for tests, which publish pretend builds of versions
+            // the sources do not say; a workflow never passes it.
+            info: flags['info'] == null
+                ? readBuildInfo()
+                : BuildInfo.fromJson(
+                    jsonDecode(File(flags['info']!).readAsStringSync())
+                        as Map<String, Object?>,
+                  ),
             keep: int.tryParse(flags['keep'] ?? '') ?? defaultKeep,
             liftHold: flags['lift-hold'] == 'true',
           ),

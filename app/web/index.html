@@ -31,7 +31,9 @@
 
     * Act anywhere but the root. A release built after this script existed
       carries it too, and under `v/0.39.0/` it would send a pinned person to a
-      `v/` path inside a `v/` path.
+      `v/` path inside a `v/` path. The same page is also loaded as app.html
+      inside the way-back bar's frame, where acting would put the newest
+      build inside the frame, and that is a mistake the browser test caught.
     * Trap anyone. `?latest=1` clears the pin and carries on to the newest
       build, with no screen needed, for the case where the chosen version's
       page cannot be reached or cannot show its own way back. (A pin to a
@@ -50,6 +52,7 @@
       var key = 'washingAdvice.pinnedVersion';
       try {
         var path = location.pathname;
+        if (!/\/(index\.html)?$/.test(path)) return;
         if (/\/v\/[^\/]+\/(index\.html)?$/.test(path)) return;
 
         var params = new URLSearchParams(location.search);

@@ -176,8 +176,19 @@ class AppDatabase extends _$AppDatabase {
   /// instead. The schema is then exercisable with plain `dart test`.
   AppDatabase(super.executor);
 
+  /// The layout of the wardrobe database this build writes.
+  ///
+  /// A constant of its own, rather than only the getter below, because two
+  /// things need it without opening a database: the web build records it
+  /// where the "Use an earlier version" list can read it (a build that
+  /// understands a lower number must not be offered once the wardrobe has
+  /// been saved at a higher one), and `tool/web_site.dart` reads this line
+  /// out of the source to stamp every published build with it. Raise it with
+  /// a migration in [migration], never alone.
+  static const currentSchemaVersion = 5;
+
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => currentSchemaVersion;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(

@@ -1,0 +1,20 @@
+{
+  "diagnostics": {
+    "elapsedMs": 0,
+    "servedFromCache": false,
+    "stageAnswered": "fake",
+    "stagesRun": [
+      "fake"
+    ]
+  },
+  "pieces": [],
+  "result": [
+    {
+      "itemIds": [
+        "a",
+        "b"
+      ],
+      "rationale": "The grey jeans keep the navy shirt from reading as formal, which suits Everyday."
+    }
+  ]
+}

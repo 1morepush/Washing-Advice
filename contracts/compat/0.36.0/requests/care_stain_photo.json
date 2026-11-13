@@ -1,0 +1,18 @@
+{
+  "method": "POST",
+  "path": "/v1/care/stain",
+  "contentType": "multipart/form-data",
+  "fields": {
+    "substance": "ink",
+    "fabric": "80% wool, 20% polyamide",
+    "care": "Hand wash cold"
+  },
+  "files": [
+    {
+      "field": "photo",
+      "filename": "stain.png",
+      "contentType": "image/png",
+      "asset": "photo.png"
+    }
+  ]
+}

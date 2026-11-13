@@ -1,0 +1,73 @@
+{
+  "method": "POST",
+  "path": "/v1/style/outfits",
+  "contentType": "application/json",
+  "json": {
+    "occasion": "Work",
+    "count": 4,
+    "wardrobe": [
+      {
+        "id": "a",
+        "name": "Navy shirt",
+        "type": "T-shirt",
+        "category": "Tops",
+        "colors": [
+          "navy"
+        ],
+        "fabric": "100% Cotton"
+      },
+      {
+        "id": "b",
+        "name": "Grey jeans",
+        "type": "Jeans",
+        "category": "Bottoms",
+        "colors": [
+          "#808080"
+        ],
+        "fabric": "100% Cotton"
+      }
+    ],
+    "note": "smart casual",
+    "suggestGaps": true,
+    "stylableTypes": [
+      "T-shirt",
+      "Long-sleeve shirt",
+      "Dress shirt",
+      "Polo shirt",
+      "Blouse",
+      "Tank top",
+      "Sweater",
+      "Cardigan",
+      "Hoodie",
+      "Sweatshirt",
+      "Jeans",
+      "Trousers",
+      "Chinos",
+      "Shorts",
+      "Skirt",
+      "Leggings",
+      "Dress",
+      "Jumpsuit",
+      "Jacket",
+      "Blazer",
+      "Coat",
+      "Vest",
+      "Socks",
+      "Tights",
+      "Activewear top",
+      "Activewear bottom",
+      "Scarf",
+      "Hat",
+      "Gloves",
+      "Belt",
+      "Tie",
+      "Sneakers",
+      "Boots",
+      "Dress shoes",
+      "Sandals",
+      "Handbag",
+      "Backpack",
+      "Other"
+    ]
+  }
+}

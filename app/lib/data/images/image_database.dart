@@ -39,8 +39,13 @@ class StoredImages extends Table {
 class ImageDatabase extends _$ImageDatabase {
   ImageDatabase(super.executor);
 
+  /// The layout of the picture database this build writes. A constant for the
+  /// same reasons as `AppDatabase.currentSchemaVersion`: the web build records
+  /// it, and `tool/web_site.dart` stamps it on every published build.
+  static const currentSchemaVersion = 1;
+
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => currentSchemaVersion;
 
   Future<void> put(String name, Uint8List bytes) =>
       into(storedImages).insertOnConflictUpdate(

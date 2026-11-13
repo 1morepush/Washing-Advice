@@ -1,0 +1,71 @@
+{
+  "diagnostics": {
+    "elapsedMs": 0,
+    "servedFromCache": false,
+    "stageAnswered": "fake",
+    "stagesRun": [
+      "fake"
+    ]
+  },
+  "result": {
+    "brand": "Miele",
+    "capacityKg": 7.0,
+    "id": "ai.dryer.miele-twf-720",
+    "isVerifiedModel": false,
+    "model": "TWF 720",
+    "options": [],
+    "programs": [
+      {
+        "availableHeats": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "control": "sensor",
+        "defaultHeat": "medium",
+        "displayName": "Normal",
+        "id": "ai.dryer.miele-twf-720.program-0",
+        "kind": "normal",
+        "maxLoadFraction": 1.0,
+        "suitableFor": [
+          "normal",
+          "heavy"
+        ],
+        "typicalDurationMinutes": 60
+      },
+      {
+        "availableHeats": [
+          "noHeat",
+          "low"
+        ],
+        "control": "sensor",
+        "defaultHeat": "low",
+        "displayName": "Delicates",
+        "id": "ai.dryer.miele-twf-720.program-1",
+        "kind": "delicates",
+        "maxLoadFraction": 0.5,
+        "suitableFor": [
+          "delicate"
+        ],
+        "typicalDurationMinutes": 40
+      },
+      {
+        "availableHeats": [
+          "noHeat"
+        ],
+        "control": "timed",
+        "defaultHeat": "noHeat",
+        "displayName": "Air Fluff",
+        "id": "ai.dryer.miele-twf-720.program-2",
+        "kind": "airFluff",
+        "maxLoadFraction": 1.0,
+        "suitableFor": [
+          "delicate",
+          "normal",
+          "heavy"
+        ],
+        "typicalDurationMinutes": 20
+      }
+    ]
+  }
+}

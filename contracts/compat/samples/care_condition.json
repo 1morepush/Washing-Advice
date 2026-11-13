@@ -1,0 +1,26 @@
+{
+  "diagnostics": {
+    "elapsedMs": 0,
+    "servedFromCache": false,
+    "stageAnswered": "fake",
+    "stagesRun": [
+      "fake"
+    ]
+  },
+  "result": {
+    "observed": [
+      {
+        "confidence": 0.74,
+        "note": "across the shoulders",
+        "severity": "slight",
+        "type": "fading"
+      },
+      {
+        "confidence": 0.21,
+        "note": "possibly near the hem, hard to tell",
+        "severity": "severe",
+        "type": "hole"
+      }
+    ]
+  }
+}

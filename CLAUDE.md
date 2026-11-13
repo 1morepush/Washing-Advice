@@ -38,6 +38,26 @@ When the digit moves, both of these change together:
 A test enforces that the newest note matches the version the app declares, so
 bumping one without the other fails the build rather than shipping crooked.
 
+A third thing moves with the digit, because the earlier versions stay available
+(Settings → Use an earlier version) and the server has to keep answering them:
+
+3. `contracts/compat/<version>/` — record the release's wire format with
+   `app/tool/capture_compat.sh` (from `app/`, on the release commit). Two tests
+   fail until it is done. A release that changed nothing on the wire produces a
+   folder identical to the last, which is the point.
+
+## Server changes are additive within the supported window
+
+The server is one deployment that every offered version of the app talks to:
+the current release and the five before it (`contracts/compat/` holds what each
+sends and needs; `server/tests/test_compat.py` replays all of it). So within
+that window a server change may **add** (a response field, a request field with
+a default, an endpoint) but may not **remove or rename** anything an offered
+version uses. If `test_compat.py` fails, keep the old shape beside the new one;
+do not edit the fixtures. Editing or deleting a version's fixtures is the
+deliberate act of dropping support for that version. See
+`contracts/compat/README.md`.
+
 ## Verifying before you push
 
 Run all three suites and both formatters; CI runs the same four jobs.

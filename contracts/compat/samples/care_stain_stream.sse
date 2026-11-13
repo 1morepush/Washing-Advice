@@ -1,0 +1,12 @@
+data: {"type": "identified", "identifiedAs": "a tannin stain"}
+
+data: {"type": "step", "step": {"instruction": "Blot the mark with a clean dry cloth, working from the outside in.", "because": "Working inward keeps the stain from spreading into clean fabric.", "isMachineWash": false, "abrades": true}}
+
+data: {"type": "step", "step": {"instruction": "Rinse the back of the fabric under a cold tap.", "because": "Pushing from behind lifts the stain out rather than through.", "temperatureC": 20, "isMachineWash": false, "abrades": false}}
+
+data: {"type": "step", "step": {"instruction": "Soak in warm water with an oxygen-bleach powder for an hour.", "because": "Oxygen bleach breaks the colour down without stripping most dyes.", "temperatureC": 40, "bleach": "oxygen", "isMachineWash": false, "abrades": false}}
+
+data: {"type": "step", "step": {"instruction": "Wash as normal and check the mark before it goes anywhere near heat.", "because": "Heat sets whatever is left, and a dryer makes it permanent.", "isMachineWash": true, "abrades": false}}
+
+data: {"type": "done", "diagnostics": {"stagesRun": ["fake"], "stageAnswered": "fake", "servedFromCache": false, "elapsedMs": 0}}
+

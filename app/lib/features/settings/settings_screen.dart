@@ -16,6 +16,7 @@ import '../backup/backup_section.dart';
 import '../sync/sync_section.dart';
 import 'appearance_section.dart';
 import 'cutouts_section.dart';
+import 'earlier_versions_section.dart';
 import 'machine_section.dart';
 import 'nudge_section.dart';
 import 'patch_notes.dart';
@@ -177,7 +178,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               // Only where there is a service worker to clear — a native
               // build, should one ever exist, has no stale cache to get past.
-              if (kIsWeb) ...[const RowDivider(), const UpdateSection()],
+              if (kIsWeb) ...[
+                const RowDivider(),
+                const UpdateSection(),
+                const RowDivider(),
+                const EarlierVersionsSection(),
+              ],
             ],
           ),
 

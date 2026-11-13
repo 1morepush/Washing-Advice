@@ -1,0 +1,77 @@
+{
+  "diagnostics": {
+    "elapsedMs": 0,
+    "servedFromCache": false,
+    "stageAnswered": "fake",
+    "stagesRun": [
+      "fake"
+    ]
+  },
+  "result": {
+    "items": [
+      {
+        "boundingBox": {
+          "height": 0.18,
+          "left": 0.05,
+          "top": 0.1,
+          "width": 0.2
+        },
+        "detectionConfidence": 0.88,
+        "scan": {
+          "colors": {
+            "confidence": 0.85,
+            "source": "aiInference",
+            "value": [
+              {
+                "a": 0.1,
+                "b": 0.6,
+                "coverage": 1.0,
+                "l": 96.5,
+                "name": "White"
+              }
+            ]
+          },
+          "seasons": [],
+          "suggestedName": "White tShirt",
+          "type": {
+            "confidence": 0.9,
+            "source": "aiInference",
+            "value": "tShirt"
+          }
+        }
+      },
+      {
+        "boundingBox": {
+          "height": 0.18,
+          "left": 0.27,
+          "top": 0.28,
+          "width": 0.2
+        },
+        "detectionConfidence": 0.8200000000000001,
+        "scan": {
+          "colors": {
+            "confidence": 0.85,
+            "source": "aiInference",
+            "value": [
+              {
+                "a": 0.0,
+                "b": 0.0,
+                "coverage": 1.0,
+                "l": 63.7,
+                "name": "Gray"
+              }
+            ]
+          },
+          "seasons": [],
+          "suggestedName": "Gray bathTowel",
+          "type": {
+            "confidence": 0.85,
+            "source": "aiInference",
+            "value": "bathTowel"
+          }
+        }
+      }
+    ],
+    "partiallyObscuredCount": 0
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "kind": "json",
+  "status": 200,
+  "paths": [
+    "result",
+    "result.brand",
+    "result.capacityKg",
+    "result.id",
+    "result.model",
+    "result.programs",
+    "result.programs[].availableHeats",
+    "result.programs[].defaultHeat",
+    "result.programs[].displayName",
+    "result.programs[].id",
+    "result.programs[].kind",
+    "result.programs[].suitableFor"
+  ]
+}

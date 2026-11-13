@@ -75,10 +75,13 @@ final class Release {
   final List<String> changes;
 
   /// e.g. `11 August 2026`.
-  String get formattedDate =>
-      '${date.day} ${_months[date.month - 1]} '
-      '${date.year}';
+  String get formattedDate => formatLongDate(date);
 }
+
+/// e.g. `11 August 2026`. Shared with the list of earlier versions, which
+/// shows the same dates in the same words.
+String formatLongDate(DateTime date) =>
+    '${date.day} ${_months[date.month - 1]} ${date.year}';
 
 const _months = [
   'January',

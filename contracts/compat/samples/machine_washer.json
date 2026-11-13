@@ -1,0 +1,88 @@
+{
+  "diagnostics": {
+    "elapsedMs": 0,
+    "servedFromCache": false,
+    "stageAnswered": "fake",
+    "stagesRun": [
+      "fake"
+    ]
+  },
+  "result": {
+    "brand": "Miele",
+    "capacityKg": 10.0,
+    "id": "ai.washer.miele-wwd-120",
+    "isVerifiedModel": false,
+    "model": "WWD 120",
+    "options": [],
+    "programs": [
+      {
+        "agitation": "normal",
+        "availableTempsC": [
+          0,
+          30,
+          40,
+          60
+        ],
+        "defaultTempC": 40,
+        "displayName": "Cotton",
+        "id": "ai.washer.miele-wwd-120.program-0",
+        "kind": "cotton",
+        "maxLoadFraction": 1.0,
+        "spinSpeedsRpm": [
+          0,
+          600,
+          800,
+          1200
+        ],
+        "suitableFor": [
+          "normal",
+          "heavy"
+        ],
+        "typicalDurationMinutes": 120
+      },
+      {
+        "agitation": "veryMild",
+        "availableTempsC": [
+          0,
+          20,
+          30
+        ],
+        "defaultTempC": 30,
+        "displayName": "Delicates",
+        "id": "ai.washer.miele-wwd-120.program-1",
+        "kind": "delicates",
+        "maxLoadFraction": 0.5,
+        "spinSpeedsRpm": [
+          0,
+          400,
+          600
+        ],
+        "suitableFor": [
+          "delicate"
+        ],
+        "typicalDurationMinutes": 55
+      },
+      {
+        "agitation": "mild",
+        "availableTempsC": [
+          0,
+          30
+        ],
+        "defaultTempC": 30,
+        "displayName": "Quick Wash",
+        "id": "ai.washer.miele-wwd-120.program-2",
+        "kind": "quick",
+        "maxLoadFraction": 1.0,
+        "spinSpeedsRpm": [
+          0,
+          600,
+          800
+        ],
+        "suitableFor": [
+          "normal"
+        ],
+        "typicalDurationMinutes": 30
+      }
+    ]
+  }
+}

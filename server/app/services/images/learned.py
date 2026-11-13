@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import ctypes
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -36,7 +37,7 @@ from app.services.images.cutout import (
 MODEL_PATH = Path(__file__).parent / "models" / "u2netp.onnx"
 
 # What the network was trained at. Fixed, not a tuning knob.
-_INPUT_EDGE = 320
+_INPUT_EDGE = 320  # the exported graph has a fixed 320x320 input
 _MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 _STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
@@ -74,8 +75,17 @@ class LearnedRemover:
         # One inference at a time, whole `remove` call included, so that the
         # working set of exactly one photograph exists at once.
         self._lock = threading.Lock()
+        # And always on the same thread. glibc gives every thread its own heap
+        # arena, and numpy/ONNX buffers freed into an arena other threads never
+        # allocate from are not reused: measured, requests served by a rotating
+        # pool of threads pushed the peak ~65 MB higher than the same requests
+        # served by one.
+        self._worker = ThreadPoolExecutor(max_workers=1, thread_name_prefix="cutout")
 
     def remove(self, image_bytes: bytes) -> Cutout:
+        return self._worker.submit(self._remove, image_bytes).result()
+
+    def _remove(self, image_bytes: bytes) -> Cutout:
         with self._lock:
             rgb = decode_for_cutout(image_bytes)
             probability = self._infer(rgb)

@@ -77,8 +77,27 @@ String imageName(
 /// Regenerating a cutout for a photo stored before this existed therefore
 /// writes a new file, so callers delete the superseded one rather than leaving
 /// it behind.
-String cutoutNameFor(ItemId id, ItemPhoto photo) =>
-    imageName(id, photo.role, takenAt: photo.capturedAt, cutout: true);
+///
+/// A cutout the person finished by hand in the mask editor is named with
+/// [handEditedSuffix] on the end (`edited: true`). That is the marker "Redo
+/// cutouts" reads: it lives in the name rather than in a new field on the photo
+/// so nothing in the core, the sync merge or a backup has to learn about it,
+/// and an old build that does not know the marker simply sees a cutout.
+String cutoutNameFor(ItemId id, ItemPhoto photo, {bool edited = false}) =>
+    '${imageName(id, photo.role, takenAt: photo.capturedAt, cutout: true)}'
+    '${edited ? handEditedSuffix : ''}';
+
+/// What the mask editor appends to a cutout's name when it saves one.
+const handEditedSuffix = '-edited';
+
+/// Whether [cutoutUri] is a cutout a person edited by hand.
+///
+/// Cutouts saved before the marker existed read as automatic. That is the
+/// honest limit: there was no way to tell them apart, and the alternative —
+/// treating every existing cutout as hand-made — would make "Redo cutouts" a
+/// button that does nothing on exactly the wardrobes that need it.
+bool isHandEditedCutout(String? cutoutUri) =>
+    cutoutUri != null && cutoutUri.contains('-cutout$handEditedSuffix');
 
 /// Names a stored photograph on a listing.
 ///

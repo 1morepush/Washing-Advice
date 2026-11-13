@@ -64,11 +64,13 @@ void main() {
             await _png(const Color(0xFF204080)),
             name: derivedName
                 ? imageName(
-                    id,
-                    PhotoRole.front,
-                    takenAt: DateTime.utc(2026, 1, 1),
-                    cutout: true,
-                  )
+                        id,
+                        PhotoRole.front,
+                        takenAt: DateTime.utc(2026, 1, 1),
+                        cutout: true,
+                      ) +
+                      // What the editor's own save derives, marker included.
+                      handEditedSuffix
                 : 'cut',
           )
         : null;
@@ -197,6 +199,8 @@ void main() {
 
     final photo = (await repository.byId(id))!.photos.displayPhoto!;
     expect(photo.cutoutUri, isNot(before));
+    // Marked as hand-made, which is what keeps "Redo cutouts" off it.
+    expect(isHandEditedCutout(photo.cutoutUri), isTrue);
     // Real bytes, not a pointer to something that was never written.
     expect(await images.read(photo.cutoutUri!), isNotNull);
     // And back on the item, rather than stranded on the editor.

@@ -21,7 +21,7 @@ from app.api.v1.dependencies import close_providers
 from app.api.v1.router import api_router
 from app.config import get_settings
 from app.core.errors import install_error_handlers
-from app.core.request_limit import limiter_from_settings
+from app.core.request_limit import cutout_limiter_from_settings, limiter_from_settings
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +68,7 @@ def create_app() -> FastAPI:
 
     install_error_handlers(app)
     app.state.request_limiter = limiter_from_settings()
+    app.state.cutout_limiter = cutout_limiter_from_settings()
     app.include_router(api_router)
 
     return app

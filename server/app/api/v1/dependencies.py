@@ -27,7 +27,9 @@ from app.services.chat.gemini_adviser import GeminiChatAdviser
 from app.services.condition.base import ConditionReader
 from app.services.condition.fake import FakeConditionReader
 from app.services.condition.gemini_reader import GeminiConditionReader
+from app.services.images.chain import FallbackRemover
 from app.services.images.cutout import BackgroundRemover, BorderSampledRemover
+from app.services.images.learned import LearnedRemover
 from app.services.machines.base import MachineIdentifier
 from app.services.machines.fake import FakeMachineIdentifier
 from app.services.machines.gemini_identifier import GeminiMachineIdentifier
@@ -53,13 +55,16 @@ from app.services.worn.gemini_scanner import GeminiWornScanner
 
 @lru_cache
 def get_background_remover() -> BackgroundRemover:
-    """The background remover.
+    """The background remover described by `CUTOUT_REMOVER`.
 
-    Cached because it is stateless and cheap to hold, and behind the interface
-    so a learned matting model can replace it without any caller changing —
-    the same seam `VisionProvider` gives the scan stages.
+    Cached because the learned remover owns the model session and the lock that
+    keeps it to one inference at a time: a per-request instance would have
+    neither. Behind the interface, so no caller knows which one it got.
     """
-    return BorderSampledRemover()
+    classical = BorderSampledRemover()
+    if get_settings().cutout_remover == "classical":
+        return classical
+    return FallbackRemover(LearnedRemover(), classical)
 
 
 @lru_cache

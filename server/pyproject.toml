@@ -13,6 +13,7 @@ dependencies = [
     "python-multipart>=0.0.12",
     "pillow>=12.3.0",
     "numpy>=2.4.6",
+    "onnxruntime>=1.20",
 ]
 
 [dependency-groups]
@@ -55,6 +56,11 @@ ignore = ["B008"]  # FastAPI's Depends() in argument defaults is the documented 
 python_version = "3.11"
 strict = true
 warn_unreachable = true
+
+[[tool.mypy.overrides]]
+# onnxruntime ships no type information; it is only touched in one place.
+module = "onnxruntime.*"
+ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 # Test bodies are exercised by pytest; the contract that matters is app/.

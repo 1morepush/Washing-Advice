@@ -15,6 +15,7 @@ import '../../data/api/ai_gateway.dart';
 import '../backup/backup_section.dart';
 import '../sync/sync_section.dart';
 import 'appearance_section.dart';
+import 'cutouts_section.dart';
 import 'machine_section.dart';
 import 'nudge_section.dart';
 import 'patch_notes.dart';
@@ -148,6 +149,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             title: 'Sync',
             info: syncInfo,
             children: [SyncSection()],
+          ),
+
+          const SettingsGroup(
+            title: 'Cutouts',
+            info: cutoutsInfo,
+            children: [CutoutsSection()],
           ),
 
           const SettingsGroup(

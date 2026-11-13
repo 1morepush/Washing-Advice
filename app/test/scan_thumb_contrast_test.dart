@@ -5,7 +5,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:wardrobe_core/wardrobe_core.dart';
 import 'package:washing_advice/core/theme.dart';
 import 'package:washing_advice/features/scan/scan_parts.dart';
 

@@ -58,6 +58,11 @@ strict = true
 warn_unreachable = true
 
 [[tool.mypy.overrides]]
+# onnxruntime ships no type information; it is only touched in one place.
+module = "onnxruntime.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
 # Test bodies are exercised by pytest; the contract that matters is app/.
 module = "tests.*"
 disallow_untyped_defs = false

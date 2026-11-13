@@ -62,5 +62,14 @@ services:
       # Clients are told apart by the first X-Forwarded-For address, which
       # Render's proxy sets. Behind any other host, or none, set the last one to
       # false: the header is otherwise whatever the caller writes.
+      # Garment cutouts run a small bundled model (u2netp) whose peak is about
+      # 395 MB of the free plan's 512 MB (ADR 0010). If the instance is ever
+      # OOM-killed, set CUTOUT_REMOVER=classical here: peak drops to about 160
+      # MB and cutouts fall back to the older border-colour rule. Cutouts have
+      # their own limits, separate from the AI ones above:
+      #   CUTOUT_REMOVER=learned               or "classical"
+      #   CUTOUT_RATE_LIMIT_PER_MINUTE=12      per client address
+      #   CUTOUT_RATE_LIMIT_PER_DAY=600        per client address
+      #   CUTOUT_MAX_WAITING=3                 in flight at once, then 429
       - key: CORS_ALLOWED_ORIGINS
         value: https://1morepush.github.io

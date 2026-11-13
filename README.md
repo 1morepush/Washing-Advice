@@ -175,6 +175,12 @@ Anything added before the feature existed, or whose background defeated the
 remover on the day, can have a cutout made from the photograph already stored —
 without re-photographing the garment.
 
+When the remover improves, **Redo cutouts** (in Settings) re-cuts the whole
+wardrobe from the stored originals, one garment at a time, with progress and a
+Cancel. It replaces a cutout only when the new one is plausible, carries on past
+a failure, waits out the server's rate limit, skips garments photographed worn,
+and **never touches a cutout you edited by hand**.
+
 When the remover gets it wrong, you fix it with a finger rather than arguing
 with it. **Remove** rubs out what it left behind; **Restore** paints back what
 it ate, and paints back the photograph's own pixels rather than a colour, so a
@@ -1004,7 +1010,9 @@ uv run uvicorn app.main:app --reload   # http://localhost:8000/docs
 
 The default vision provider is a **deterministic fake** derived from an image
 hash, so the service starts and every test passes on a completely empty
-environment. Background removal is classical and calls nothing at all.
+environment. Background removal calls nothing external either: it runs a small
+model (`u2netp`, 4.6 MB, Apache-2.0) that is bundled in the server package, with
+a classical border-colour remover behind it as the fallback.
 
 For real identification, set a [Gemini API key](https://aistudio.google.com/apikey):
 
@@ -1268,12 +1276,23 @@ Stated plainly, because the code says so too.
   medium or high iron, do-not-iron and most dry-cleaning solvents have no
   artwork, so a row of symbols can be shorter than the label. The words beside
   it are always complete.
-- **Background removal assumes a plain background.** It measures distance from
-  the colours at the frame's border, which handles a garment on a bed or a table
-  and will not handle one on a patterned rug. A learned matting model is the
-  upgrade, and the remover sits behind an interface so one can be dropped in.
-  Until then there are two fallbacks — paint it out by hand, then hand the rough
-  result back for a second pass — and both are fixes rather than cures.
+- **Background removal is a small model, and small models have limits.** Cutouts
+  are made by `u2netp`, a 4.6 MB salient-object network, because it is the
+  largest one that fits the server's 512 MB (about 395 MB peak, measured; see
+  [ADR 0010](docs/adr/0010-small-learned-cutout-model.md)). It copes with a
+  garment on a white board on carpet, which the earlier border-colour rule did
+  not. It is still small: **thin straps, lace and open-weave knits, and
+  white-on-white** (a white shirt on a white board) are the hard cases, and
+  photographs still work best when the garment **fills the frame**. If the model
+  cannot run, the server falls back to the older border-colour remover (set
+  `CUTOUT_REMOVER=classical` to use it on purpose, which also cuts the peak to
+  about 160 MB), and when neither is convincing it refuses rather than showing
+  you the whole photograph as a "cutout". The last resort is the same as ever:
+  paint it out by hand, then hand the rough result back for a second pass.
+- **Cutouts are rate-limited separately from scans.** Cutting out costs CPU and
+  memory rather than the Gemini allowance, so it has its own per-address limit
+  (12 a minute, 600 a day) and at most three in flight at once. *Redo cutouts*
+  waits out a refusal rather than failing.
 - **The demo cutouts are of drawn shapes, not photographs.** There are no
   garments in a build container. The *cutouts* are genuine output from the
   shipping remover; the things it was run on are illustrations.
@@ -1364,3 +1383,6 @@ Stated plainly, because the code says so too.
 
 Not yet chosen. The bundled Nunito font is
 [SIL OFL 1.1](https://scripts.sil.org/OFL); see `app/assets/fonts/README.md`.
+The bundled cutout model `u2netp` (U²-Net) is
+[Apache-2.0](http://www.apache.org/licenses/LICENSE-2.0); its source and
+checksum are in `server/app/services/images/models/NOTICE.md`.

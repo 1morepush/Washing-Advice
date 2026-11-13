@@ -165,15 +165,17 @@ clothes rather than a redrawn product shot, and it costs no more than the free
 scan. Photos are read one at a time with "Photo 2 of 5" shown, and a busy server
 is waited for rather than failing the batch. Garments you already own, or that
 came up in an earlier photo of the same batch, are shown and left unticked. The
-photo is kept once as each garment's **Worn** photo, and the cutout is its
-picture on the tile.
+photo is kept once as each garment's **Worn** photo. Each garment keeps an
+untouched crop of the photo around it, and the cutout is laid over that crop, so
+the cutout editor's "add back" brush can restore anything the outline missed.
 
 Be clear about what that gives you. The pictures are your clothes *as worn*, with
 creases and your shape, not catalogue photos. A shirt under a jacket or trousers
 under a long coat come out partial. How clean the outline is depends on the
 model: where it returns only a box, the tile is a plain crop with the background
-still in it, and says so ("Includes some background") so you can tidy it in the
-cutout editor. Thin things like glasses and chains are the likeliest to come out
+still in it, and says so ("Includes some background"); on the garment's page you
+can mark it out by hand or take a new photo ("Clean up" is made for clothes laid
+flat and may not cope with a photo of a person). Thin things like glasses and chains are the likeliest to come out
 rough. A photo cannot show a care label, so these garments get the usual "scan
 the care label" prompt. Each photo is one request against the free allowance,
 which is metered by the minute, so a big batch is worked through slowly.

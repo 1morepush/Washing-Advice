@@ -315,11 +315,40 @@ class TestOverTheWire:
             assert limited.get("/v1/sync").status_code != 429
             assert limited.post("/v1/sync", json={}).status_code != 429
 
-    def test_cutout_is_exempt_because_it_spends_no_allowance(self, limited: TestClient) -> None:
+    def test_cutout_is_not_counted_against_the_ai_limit(self, limited: TestClient) -> None:
+        # It has its own limit: a wardrobe-wide redo must not eat the scan
+        # quota, and scans using theirs up must not refuse a cutout.
         for _ in range(5):
             _chat(limited)
 
         assert limited.post("/v1/image/cutout").status_code == 422
+
+    def test_cutouts_have_their_own_limit(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("CUTOUT_RATE_LIMIT_PER_MINUTE", "2")
+        reset_wiring()
+        client = TestClient(create_app())
+        headers = {"X-Forwarded-For": "203.0.113.7"}
+
+        codes = [client.post("/v1/image/cutout", headers=headers).status_code for _ in range(3)]
+
+        assert codes == [422, 422, 429]
+        refused = client.post("/v1/image/cutout", headers=headers)
+        assert int(refused.headers["retry-after"]) >= 1
+        # Scans are unaffected by the cutout limit being spent.
+        assert _chat(client) == 422
+
+    def test_a_different_client_has_its_own_cutout_quota(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("CUTOUT_RATE_LIMIT_PER_MINUTE", "1")
+        reset_wiring()
+        client = TestClient(create_app())
+
+        client.post("/v1/image/cutout", headers={"X-Forwarded-For": "203.0.113.7"})
+        client.post("/v1/image/cutout", headers={"X-Forwarded-For": "203.0.113.7"})
+        other = client.post("/v1/image/cutout", headers={"X-Forwarded-For": "198.51.100.9"})
+
+        assert other.status_code == 422
 
     def test_a_forwarded_header_is_ignored_when_untrusted(
         self, monkeypatch: pytest.MonkeyPatch

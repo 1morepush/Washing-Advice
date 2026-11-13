@@ -1,0 +1,16 @@
+{
+  "method": "POST",
+  "path": "/v1/sell/describe",
+  "contentType": "multipart/form-data",
+  "fields": {
+    "context": "{\"known\":{\"itemType\":\"sweatshirt\",\"brand\":\"Nike\"},\"notes\":\"Bought in 2019\"}"
+  },
+  "files": [
+    {
+      "field": "images",
+      "filename": "upload.png",
+      "contentType": "image/png",
+      "asset": "photo.png"
+    }
+  ]
+}

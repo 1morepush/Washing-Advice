@@ -477,6 +477,7 @@ void main() {
   group('what ${_version} sends', () {
     for (final endpoint in _endpoints) {
       test(endpoint.id, () async {
+        if (write == 'required') return;
         final sent = await _sent(endpoint);
         final file = File('${dir.path}/requests/${endpoint.id}.json');
         if (write == 'requests') {
@@ -507,6 +508,7 @@ void main() {
   group('what ${_version} needs back', () {
     for (final endpoint in _endpoints) {
       test(endpoint.id, () async {
+        if (write == 'requests') return;
         final required = await _required(endpoint);
         if (required == null) {
           // No sample yet: recording is in its first phase, or the sample

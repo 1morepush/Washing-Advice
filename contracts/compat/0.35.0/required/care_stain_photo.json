@@ -1,0 +1,9 @@
+{
+  "kind": "json",
+  "status": 200,
+  "paths": [
+    "result",
+    "result.steps",
+    "result.steps[].instruction"
+  ]
+}

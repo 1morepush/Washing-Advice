@@ -166,9 +166,18 @@ class GarmentIntake {
 
   /// Writes a reviewed garment to the wardrobe, photographs and all.
   Future<WardrobeItem> commit(WardrobeItem draft, List<ScanShot> shots) async {
-    final ids = _ref.read(idGeneratorProvider);
-    final item = await _withPhotos(draft, shots);
+    return saveItem(await _withPhotos(draft, shots));
+  }
 
+  /// Writes a garment whose photographs are already stored.
+  ///
+  /// The tail of [commit], public for the flow that arrives with its pictures
+  /// made (the worn photo: the server has already cut each garment out, so
+  /// asking it to cut the front again would spend a request to get a worse
+  /// answer). Saving the row and logging that the garment was added stay
+  /// together here, which is what keeps the history replayable.
+  Future<WardrobeItem> saveItem(WardrobeItem item) async {
+    final ids = _ref.read(idGeneratorProvider);
     await _ref.read(wardrobeRepositoryProvider).save(item);
     // The row is what the wardrobe screen reads; the event is what makes the
     // history replayable.

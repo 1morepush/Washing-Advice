@@ -24,7 +24,6 @@ library;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-import 'package:flutter/painting.dart' show Rect;
 import 'package:flutter/widgets.dart' show decodeImageFromList;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wardrobe_core/wardrobe_core.dart';
@@ -36,6 +35,7 @@ import '../../data/capture/image_capture_source.dart';
 import 'crop.dart';
 import 'garment_intake.dart';
 import 'scan_controller.dart' show ScanShot;
+import 'worn_matching.dart' show fingerprintOf;
 
 /// One garment found in the photograph.
 final class SpreadFind {
@@ -212,7 +212,7 @@ class SpreadController extends StateNotifier<SpreadState> {
           if (!claimed.contains(item.id)) item,
       ];
       final decision = resolver.resolve(
-        matcher.rank(_fingerprintOf(detected.scan), available),
+        matcher.rank(fingerprintOf(detected.scan), available),
       );
 
       final owned = switch (decision) {
@@ -224,7 +224,11 @@ class SpreadController extends StateNotifier<SpreadState> {
       finds.add(
         SpreadFind(
           draft: intake.draftFrom(detected.scan),
-          image: await _cutOut(photo, decoded, detected.boundingBox),
+          image: await cropToBox(
+            photo: photo,
+            decoded: decoded,
+            box: detected.boundingBox,
+          ),
           ownedAs: owned,
         ),
       );
@@ -256,44 +260,6 @@ class SpreadController extends StateNotifier<SpreadState> {
       return null;
     }
   }
-
-  /// Cuts one garment out of the photograph.
-  Future<ScanImage> _cutOut(
-    ScanImage photo,
-    ui.Image? decoded,
-    BoundingBox box,
-  ) async {
-    if (decoded == null) return photo;
-
-    // The box is normalised, so it survives the image being resized between
-    // here and the model. Multiplying it back up is the only place this flow
-    // touches pixels.
-    final width = decoded.width.toDouble();
-    final height = decoded.height.toDouble();
-    final crop = Rect.fromLTWH(
-      box.left * width,
-      box.top * height,
-      box.width * width,
-      box.height * height,
-    );
-
-    try {
-      return await cropScanImage(image: photo, decoded: decoded, crop: crop);
-    } on Exception {
-      // A crop that fails is a worse picture, not a lost garment.
-      return photo;
-    }
-  }
-
-  GarmentFingerprint _fingerprintOf(GarmentScanResult scan) =>
-      GarmentFingerprint(
-        type: scan.type.value,
-        colors: scan.colors.value,
-        composition: scan.composition?.value ?? FabricComposition.unknown(),
-        brand: scan.brand?.value,
-        pattern: scan.pattern?.value,
-        distinguishingText: scan.distinguishingText,
-      );
 
   /// Turns one garment down, or takes it back.
   void toggle(int index) {

@@ -432,6 +432,87 @@ class _CannedGateway extends AiGateway {
     );
   }
 
+  /// A photo of a person, read.
+  ///
+  /// Three garments, so the review shows every case it has words for: one
+  /// the demo wardrobe already holds (shown, not ticked), one with a real
+  /// outline, and one that is only a plain crop and says so. The pictures are
+  /// the demo's prepared cutouts, which are real transparent PNGs.
+  @override
+  Future<WornScanResult> scanWorn(ScanImage image) async {
+    await Future<void>.delayed(const Duration(milliseconds: 900));
+
+    lastDiagnostics = ScanDiagnostics(
+      stagesRun: const ['gemini'],
+      stageAnswered: 'gemini',
+      elapsedMs: 2950,
+    );
+
+    final Map<String, Object?> pictures =
+        jsonDecode(await rootBundle.loadString('assets/demo/cutouts.json'))
+            as Map<String, Object?>;
+
+    WornDetection worn(
+      String picture,
+      ItemType type,
+      String hex,
+      String colourName, {
+      required String name,
+      required CutoutKind kind,
+      required double left,
+      required double top,
+    }) => WornDetection(
+      scan: GarmentScanResult(
+        type: Confident(type, confidence: 0.9, source: Provenance.aiInference),
+        colors: Confident(
+          ColorPalette([ItemColor.fromHex(hex, name: colourName)]),
+          confidence: 0.84,
+          source: Provenance.aiInference,
+        ),
+        suggestedName: name,
+      ),
+      boundingBox: BoundingBox(left: left, top: top, width: 0.4, height: 0.3),
+      detectionConfidence: 0.9,
+      cutout: base64Decode(pictures[picture]! as String),
+      cutoutKind: kind,
+    );
+
+    return WornScanResult(
+      detections: [
+        worn(
+          'demo-jumper',
+          ItemType.sweater,
+          '#3C3F44',
+          'Charcoal',
+          name: 'Charcoal jumper',
+          kind: CutoutKind.outline,
+          left: 0.30,
+          top: 0.15,
+        ),
+        worn(
+          'demo-hoodie',
+          ItemType.hoodie,
+          '#7A8F5C',
+          'Sage',
+          name: 'Sage hoodie',
+          kind: CutoutKind.outline,
+          left: 0.25,
+          top: 0.40,
+        ),
+        worn(
+          'demo-tee',
+          ItemType.poloShirt,
+          '#C8A24A',
+          'Mustard',
+          name: 'Mustard polo shirt',
+          kind: CutoutKind.box,
+          left: 0.30,
+          top: 0.60,
+        ),
+      ],
+    );
+  }
+
   @override
   Future<Uint8List?> cutout(ScanImage image) async {
     // The demo's capture source hands back three bytes, which no remover could

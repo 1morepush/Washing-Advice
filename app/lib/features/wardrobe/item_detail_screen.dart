@@ -25,6 +25,7 @@ import '../sell/start/start_listing.dart';
 import 'condition_sheet.dart';
 import 'item_details.dart';
 import 'report_wear_sheet.dart';
+import 'shared_photos.dart';
 
 /// The bar's colour and the colour of its icons: the hero's tile, and the
 /// page's ink or its ground, whichever has more contrast with that tile.
@@ -225,10 +226,18 @@ Future<void> _confirmAndDelete(
   // from them. Left behind, they are bytes nothing will ever read again —
   // and on a platform that already has a storage-quota problem, an orphaned
   // photo per deleted item is exactly the kind of thing that adds up.
+  //
+  // Except a file another garment still shows: the photo of a person is stored
+  // once for every garment found in it.
   final images = ref.read(imageStoreProvider);
+  final shared = await urisHeldByOthers(
+    ref.read(wardrobeRepositoryProvider),
+    item,
+  );
   for (final photo in item.photos.photos) {
-    await images.delete(photo.uri);
-    if (photo.cutoutUri case final String cutoutUri) {
+    if (!shared.contains(photo.uri)) await images.delete(photo.uri);
+    if (photo.cutoutUri case final String cutoutUri
+        when !shared.contains(cutoutUri)) {
       await images.delete(cutoutUri);
     }
   }

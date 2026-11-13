@@ -180,6 +180,55 @@ class PileScanResult(WireModel):
         return len(self.items)
 
 
+class CutoutKind(StrEnum):
+    """How a worn-photo cutout was made.
+
+    The app words its review screen from this, so it is a fact about the
+    picture and not a quality score: an outline is the garment alone, a box is
+    a rectangle of the photograph with whatever was behind the garment still
+    in it.
+    """
+
+    OUTLINE = "outline"
+    """A per-garment mask was used and passed vetting."""
+
+    BOX = "box"
+    """Only the bounding box could be trusted, so the picture is a plain crop."""
+
+
+class WornDetection(WireModel):
+    """One garment or accessory found on a person, with its picture cut out."""
+
+    scan: GarmentScanResult
+    bounding_box: BoundingBox = Field()
+    detection_confidence: float = Field(
+        ge=0.0,
+        le=1.0,
+        description=(
+            "How sure the model is that this is a distinct garment worn by the "
+            "person — separate from how sure it is about the garment's attributes."
+        ),
+    )
+    cutout: str | None = Field(
+        default=None,
+        description=(
+            "Base64 of an RGBA PNG cropped to the garment. Absent only if the "
+            "picture could not be made, in which case `cutout_kind` is absent too."
+        ),
+    )
+    cutout_kind: CutoutKind | None = None
+
+
+class WornScanResult(WireModel):
+    """What scanning a photo of a person wearing their clothes produces."""
+
+    detections: list[WornDetection] = Field(default_factory=list)
+
+    @property
+    def count(self) -> int:
+        return len(self.detections)
+
+
 class ScanDiagnostics(WireModel):
     """How a result was arrived at.
 
@@ -206,4 +255,9 @@ class CareTagScanResponse(WireModel):
 
 class PileScanResponse(WireModel):
     result: PileScanResult
+    diagnostics: ScanDiagnostics
+
+
+class WornScanResponse(WireModel):
+    result: WornScanResult
     diagnostics: ScanDiagnostics

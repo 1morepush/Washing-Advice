@@ -104,6 +104,17 @@ class AiGateway implements VisionPort {
     return pileResultFromJson(json);
   }
 
+  /// Finds what a person is wearing in a photo, with a picture of each.
+  ///
+  /// The garment facts inside each detection use the same decoder as a garment
+  /// scan: one copy of "what a scan says" is the point, and the core's worn
+  /// decoder takes it as an argument for that reason.
+  @override
+  Future<WornScanResult> scanWorn(ScanImage image) async {
+    final json = await _post('scan/worn', files: [('image', image)]);
+    return wornScanResultFromJson(json, decodeScan: garmentResultFromJson);
+  }
+
   /// Identifies a washing machine's real programme line-up from its brand and
   /// model alone — built once, from the AI's own knowledge of the appliance,
   /// rather than asked again for every garment. The result is stored exactly

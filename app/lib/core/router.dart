@@ -13,6 +13,7 @@ import '../features/calendar/calendar_screen.dart';
 import '../features/chat/chat_screen.dart';
 import '../features/insights/insights_screen.dart';
 import '../features/laundry/laundry_screen.dart';
+import '../features/laundry/worn_today_photo_screen.dart';
 import '../features/laundry/worn_today_screen.dart';
 import '../features/let_go/let_go_screen.dart';
 import '../features/more/more_screen.dart';
@@ -24,6 +25,7 @@ import '../features/scan/care_tag_screen.dart';
 import '../features/scan/retake_screen.dart';
 import '../features/scan/scan_screen.dart';
 import '../features/scan/spread_screen.dart';
+import '../features/scan/worn_photo_screen.dart';
 import '../features/sell/list/new_listing_sheet.dart' show newFromWardrobeRoute;
 import '../features/sell/listing_editor_screen.dart';
 import '../features/sell/new_listing_screen.dart';
@@ -94,6 +96,12 @@ GoRouter _router(String initialLocation) => GoRouter(
                 GoRoute(
                   path: 'worn',
                   builder: (_, _) => const WornTodayScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'photo',
+                      builder: (_, _) => const WornTodayPhotoScreen(),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -218,6 +226,7 @@ GoRouter _router(String initialLocation) => GoRouter(
     GoRoute(path: '/scan', builder: (_, _) => const ScanScreen()),
     GoRoute(path: '/scan/bulk', builder: (_, _) => const BulkScanScreen()),
     GoRoute(path: '/scan/spread', builder: (_, _) => const SpreadScanScreen()),
+    GoRoute(path: '/scan/worn', builder: (_, _) => const WornPhotoScreen()),
     GoRoute(path: '/pile', builder: (_, _) => const PileScreen()),
     GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
   ],

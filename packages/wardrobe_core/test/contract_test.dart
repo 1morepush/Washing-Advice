@@ -256,6 +256,111 @@ void main() {
     });
   });
 
+  group('worn scan fixture', () {
+    // The garment facts are decoded by the app's own decoder in production;
+    // here only the type is read, because what is under test is the new part.
+    GarmentScanResult decodeScan(Map<String, Object?> scan) {
+      return GarmentScanResult(
+        type: Confident.fromJson(
+          scan['type']! as Map<String, Object?>,
+          (raw) => ItemType.values.byName(raw! as String),
+        ),
+        colors: Confident(
+          ColorPalette.empty(),
+          confidence: 0,
+          source: Provenance.fallbackDefault,
+        ),
+        suggestedName: scan['suggestedName'] as String?,
+      );
+    }
+
+    late Map<String, Object?> result;
+    late WornScanResult decoded;
+
+    setUpAll(() {
+      result = loadFixture('worn_scan.json')['result']! as Map<String, Object?>;
+      decoded = wornScanResultFromJson(result, decodeScan: decodeScan);
+    });
+
+    test('decodes every detection, in order', () {
+      expect(decoded.count, 3);
+      expect(
+        [for (final d in decoded.detections) d.scan.type.value],
+        [ItemType.sweater, ItemType.trousers, ItemType.other],
+      );
+      expect(decoded.detections.first.detectionConfidence, closeTo(0.92, 1e-9));
+    });
+
+    test('the cutout is a PNG, and its kind says how it was made', () {
+      final first = decoded.detections[0];
+      final second = decoded.detections[1];
+
+      expect(first.cutoutKind, CutoutKind.outline);
+      expect(second.cutoutKind, CutoutKind.box);
+      for (final detection in [first, second]) {
+        // The PNG signature: it decoded from base64 to real image bytes.
+        expect(detection.cutout!.sublist(0, 8),
+            [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+      }
+    });
+
+    test('a detection whose picture could not be made has neither field', () {
+      final third = decoded.detections[2];
+      final raw =
+          (result['detections']! as List<Object?>)[2]! as Map<String, Object?>;
+
+      expect(raw.containsKey('cutout'), isFalse);
+      expect(raw.containsKey('cutoutKind'), isFalse);
+      expect(third.cutout, isNull);
+      expect(third.cutoutKind, isNull);
+      expect(third.scan.suggestedName, 'Glasses');
+    });
+
+    test('bounding boxes are normalised and within the frame', () {
+      for (final detection in decoded.detections) {
+        final box = detection.boundingBox;
+        expect(box.left, inInclusiveRange(0.0, 1.0));
+        expect(box.top, inInclusiveRange(0.0, 1.0));
+        expect(box.width, greaterThan(0));
+        expect(box.right, lessThanOrEqualTo(1.0));
+        expect(box.bottom, lessThanOrEqualTo(1.0));
+      }
+    });
+
+    test('an empty result decodes to no detections', () {
+      final empty = wornScanResultFromJson(
+        loadFixture('worn_scan_empty.json')['result']! as Map<String, Object?>,
+        decodeScan: decodeScan,
+      );
+      expect(empty.count, 0);
+    });
+
+    test('a kind this build does not know is read as a box', () {
+      final first = Map<String, Object?>.of(
+        (result['detections']! as List<Object?>)[0]! as Map<String, Object?>,
+      )..['cutoutKind'] = 'halo';
+
+      final detection = wornDetectionFromJson(first, decodeScan: decodeScan);
+
+      expect(detection.cutoutKind, CutoutKind.box);
+    });
+
+    test('the schema lists exactly the kinds Dart has', () {
+      final schema = jsonDecode(
+        File('${findContracts().path}/scan_results.schema.json')
+            .readAsStringSync(),
+      ) as Map<String, Object?>;
+      final defs = schema[r'$defs']! as Map<String, Object?>;
+      final listed = {
+        for (final v in (defs['cutoutKind']! as Map<String, Object?>)['enum']!
+            as List<Object?>)
+          v! as String,
+      };
+
+      expect(listed, {for (final v in CutoutKind.values) v.name});
+    });
+  });
+
   group('vocabulary agreement', () {
     test('every enum value the schema lists exists in Dart', () {
       // Catches the schema gaining a value the core cannot decode, which would

@@ -17,10 +17,39 @@ import '../../widgets/care_symbol.dart';
 /// Small thumbnails (a failed pile photo, a care label) take a tighter corner
 /// so the radius stays in proportion to the picture.
 class ScanThumb extends StatelessWidget {
-  const ScanThumb({required this.image, required this.size, super.key});
+  const ScanThumb({
+    required this.image,
+    required this.size,
+    this.fit = BoxFit.cover,
+    this.garmentRgb,
+    super.key,
+  });
 
   final ScanImage image;
   final double size;
+
+  /// The garment's dominant colour (0xRRGGBB), for a cutout shown on the well.
+  ///
+  /// A cutout has no background of its own, so a black jumper on the Dark and
+  /// AMOLED wells, or a white one on the Light well, nearly vanishes. When the
+  /// garment is about as light as the well the well is nudged toward the text
+  /// colour, which is the contrast the theme already guarantees against its
+  /// surfaces. Left null for photographs, which carry their own background.
+  final int? garmentRgb;
+
+  /// How the picture fills the tile. A cutout is shown whole ([BoxFit.contain])
+  /// so a long coat or a pair of shoes is not cropped by the tile it sits on.
+  final BoxFit fit;
+
+  Color _wellFor(Color well, Color ink) {
+    final rgb = garmentRgb;
+    if (rgb == null) return well;
+    final garment = Color(0xFF000000 | rgb).computeLuminance();
+    final ground = well.computeLuminance();
+    // Close in lightness is what makes a shape disappear.
+    if ((garment - ground).abs() > 0.25) return well;
+    return Color.lerp(well, ink, 0.18)!;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,15 +61,16 @@ class ScanThumb extends StatelessWidget {
 
     // On the well, so a photograph with transparent edges (a cutout) still
     // reads as a tile instead of a shape floating on the page.
+    final well = _wellFor(rinse.well, scheme.onSurface);
     return ClipRRect(
       borderRadius: radius,
       child: ColoredBox(
-        color: rinse.well,
+        color: well,
         child: Image.memory(
           Uint8List.fromList(image.bytes),
           width: size,
           height: size,
-          fit: BoxFit.cover,
+          fit: fit,
           // A thumbnail that will not decode must not take the screen with it —
           // the photograph is still perfectly good to the server.
           errorBuilder: (_, _, _) => Container(

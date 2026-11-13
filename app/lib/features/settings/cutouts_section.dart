@@ -24,7 +24,10 @@ const cutoutsInfo =
 String redoSummary(RedoFinished done) {
   final parts = <String>[
     done.cancelled ? 'Stopped.' : 'Done.',
-    if (done.redone == 1) '1 cutout redone.' else '${done.redone} cutouts redone.',
+    if (done.redone == 1)
+      '1 cutout redone.'
+    else
+      '${done.redone} cutouts redone.',
     if (done.kept > 0)
       done.kept == 1
           ? '1 kept as it was — the server could not do better.'

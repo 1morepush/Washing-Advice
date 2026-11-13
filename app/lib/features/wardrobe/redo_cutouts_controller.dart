@@ -104,7 +104,14 @@ class RedoCutoutsController extends StateNotifier<RedoCutoutsState> {
   static RedoSkip? skipReason(WardrobeItem item) {
     final photo = item.photos.displayPhoto;
     if (photo == null) return RedoSkip.noPhoto;
-    if (photo.role == PhotoRole.worn) return RedoSkip.worn;
+    // Any worn photograph, not only a worn display photo: a garment added
+    // from a photo of somebody wearing it shows a crop of that photo as its
+    // front picture, with the outline the worn scan made. The lay-flat
+    // remover would replace that outline with a guess at a person's sleeve.
+    if (photo.role == PhotoRole.worn ||
+        item.photos.withRole(PhotoRole.worn).isNotEmpty) {
+      return RedoSkip.worn;
+    }
     if (isHandEditedCutout(photo.cutoutUri)) return RedoSkip.handEdited;
     return null;
   }

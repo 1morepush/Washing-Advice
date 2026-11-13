@@ -99,6 +99,36 @@ const _months = [
 /// the bottom out of habit would be silently buried.
 final patchNotes = <Release>[
   Release(
+    version: '0.38.0',
+    name: 'Clean Cut',
+    date: DateTime.utc(2026, 11, 13),
+    headline: 'Cutouts that find the garment, not just the background',
+    changes: [
+      'Cutting a garment out of its photo was hit and miss. The old way '
+          'looked at the colour round the edge of the photo and removed '
+          'whatever matched, so a shadow or a crease left a ragged shape '
+          'with a pale fringe, and a board lying on carpet got no cutout at '
+          'all. The server now uses a small model that finds the garment by '
+          'its shape, then trims and recolours the edge so no fringe is '
+          'left on a dark tile.',
+      'Settings has a Cutouts group with Redo cutouts. It goes through the '
+          'garments you already have and cuts each again from its stored '
+          'photo, one at a time, with progress, and you can stop it. A '
+          'cutout is only replaced when the new one is sound. Garments '
+          'added from a photo of you are left alone, and so is any cutout '
+          'you tidy by hand from now on. One you tidied by hand before this '
+          'version is not marked as yours, so it would be redone.',
+      'Clean up on a garment\'s page uses the better cutter too. If the '
+          'model cannot be used on a photo the old method still runs, and '
+          'it copes better than it did with a board on carpet.',
+      'It is a small model, chosen to fit the free server. Thin straps, '
+          'lace and white on white are still the hard cases, and a photo '
+          'where the garment fills the frame cuts best. Cutouts have their '
+          'own limit on the server, 12 a minute, so redoing a wardrobe '
+          'does not use up your scans.',
+    ],
+  ),
+  Release(
     version: '0.37.0',
     name: 'Off the Rack',
     date: DateTime.utc(2026, 11, 13),

@@ -121,6 +121,38 @@ void main() {
     expect(await images.read(edited), Uint8List.fromList([42]));
   });
 
+  test('a garment added from a photo of somebody wearing it keeps its '
+      'outline', () async {
+    // Its display photo is a front crop, not a worn one: the worn photo sits
+    // beside it. The lay-flat remover must not be pointed at that crop.
+    final gateway = _Gateway([cut]);
+    final container = build(gateway);
+    final item = await garment('fromPhoto', cutoutName: 'fromPhoto-outline');
+    final original = await images.save(
+      Uint8List.fromList([9, 9]),
+      name: 'worn-batch-1',
+    );
+    await repository.save(
+      item.copyWith(
+        photos: item.photos.add(
+          ItemPhoto(
+            uri: original,
+            role: PhotoRole.worn,
+            capturedAt: DateTime.utc(2026, 1, 1),
+          ),
+        ),
+      ),
+    );
+    final outline = await cutoutOf('fromPhoto');
+
+    await container.read(redoCutoutsProvider.notifier).run();
+
+    final done = container.read(redoCutoutsProvider) as RedoFinished;
+    expect(done.skippedWorn, 1);
+    expect(gateway.calls, 0);
+    expect(await cutoutOf('fromPhoto'), outline);
+  });
+
   test('a worn photograph is skipped', () async {
     final gateway = _Gateway([cut]);
     final container = build(gateway);

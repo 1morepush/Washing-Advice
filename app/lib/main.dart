@@ -17,6 +17,7 @@ import 'core/licences.dart';
 import 'core/providers.dart';
 import 'core/router.dart';
 import 'core/settings.dart';
+import 'core/version_switch.dart';
 import 'features/weather/weather_providers.dart';
 import 'core/theme.dart';
 import 'data/images/image_store.dart';
@@ -30,6 +31,10 @@ import 'widgets/screen_insets_scope.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   registerFontLicences();
+
+  // Before anything opens a database: record the data layout this build
+  // writes, for the "Use an earlier version" list to compare against.
+  recordDataFormat();
 
   // Settings are read before the first frame rather than awaited inside a
   // provider, so no screen has to render a spinner while waiting to find out

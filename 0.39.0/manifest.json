@@ -1,0 +1,35 @@
+{
+    "name": "Washing Advice",
+    "short_name": "Washing Advice",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#EEF4F8",
+    "theme_color": "#EEF4F8",
+    "description": "An AI wardrobe and laundry assistant: photograph your clothes, scan their care labels, and get told exactly which loads to run.",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}

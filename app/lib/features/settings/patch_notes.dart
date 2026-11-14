@@ -104,7 +104,7 @@ final patchNotes = <Release>[
   Release(
     version: '0.39.0',
     name: 'Back Through the Wringer',
-    date: DateTime.utc(2026, 11, 13),
+    date: DateTime.utc(2026, 11, 14),
     headline: 'A way back to an earlier version when a new one misbehaves',
     changes: [
       'Each release now stays published. Settings, under Advanced, has Use '

@@ -1,0 +1,14 @@
+{
+  "kind": "json",
+  "status": 200,
+  "paths": [
+    "result",
+    "result.composition.confidence",
+    "result.composition.source",
+    "result.composition.value",
+    "result.confidence",
+    "result.countryOfOrigin.confidence",
+    "result.countryOfOrigin.source",
+    "result.instructions"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "method": "POST",
+  "path": "/v1/image/cutout",
+  "contentType": "multipart/form-data",
+  "files": [
+    {
+      "field": "image",
+      "filename": "garment.png",
+      "contentType": "image/png",
+      "asset": "cutout.png"
+    }
+  ]
+}

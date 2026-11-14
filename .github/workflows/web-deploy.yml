@@ -7,30 +7,64 @@ name: Deploy web app to GitHub Pages
 # Runs on an ordinary Linux runner — cheap, unlike the macOS runner the iOS
 # sideload workflow needs — so it is fine to redeploy on every push to main
 # rather than requiring a manual trigger each time.
+#
+# What is deployed is not just this build. GitHub Pages replaces the whole site
+# with each deployment, so a release that was merely built is gone the moment
+# the next one ships. To let somebody go back ("Settings -> Use an earlier
+# version"), every build is also kept in a store -- the orphan branch
+# `web-builds` -- and each deployment lays the site out again from it:
+#
+#   /                  the newest build (or the rolled-back one, see below)
+#   /v/<version>/      each of the last five releases before it
+#   /versions.json     what the app's list reads
+#
+# All of the layout logic is in app/tool/web_site.dart, which runs the same
+# on a laptop. This file only moves things in and out of the store. The
+# rollback workflow (web-rollback.yml) is the other half.
 on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      lift_hold:
+        description: >-
+          End a rollback that is still in force, so this build goes back to the
+          site root. Only needed when the broken version has been fixed without
+          raising the version number.
+        type: boolean
+        default: false
 
 # Only one deploy in flight; a second push while one is running should
-# supersede it rather than queue behind it.
+# supersede it rather than queue behind it. Shared with the rollback workflow,
+# so the two can never write the store or the site at the same time.
 concurrency:
   group: pages
   cancel-in-progress: false
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+# Nothing by default; each job asks for what it uses.
+permissions: {}
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # `contents: write` is for one thing: updating the `web-builds` branch. It
+    # cannot touch main (main is only ever read here) and no other job has it.
+    permissions:
+      contents: write
     defaults:
       run:
+        shell: bash
         working-directory: app
     steps:
       - uses: actions/checkout@v4
+
+      # Where the store and the assembled site live while this job runs. Set
+      # once for every step below (the `runner` context cannot be used in a
+      # job-level `env`, hence the file).
+      - name: Choose working folders
+        run: |
+          echo "STORE=$RUNNER_TEMP/store" >> "$GITHUB_ENV"
+          echo "SITE=$RUNNER_TEMP/site" >> "$GITHUB_ENV"
 
       - uses: subosito/flutter-action@v2
         with:
@@ -49,16 +83,80 @@ jobs:
       # from https://<owner>.github.io/<repo>/ rather than the domain root.
       # Getting this wrong is the classic symptom of a page that loads with a
       # blank white screen and 404s in the console for every asset.
+      #
+      # It is always built for the root. Where a build is served from is
+      # decided when the site is laid out: an earlier version is the same files
+      # with only the <base> tag rewritten, which is why one stored copy can
+      # serve either as /v/<version>/ or, after a rollback, as the root.
       - name: Build web (release)
         run: flutter build web --release --no-web-resources-cdn --base-href /${{ github.event.repository.name }}/
 
+      # The store is a branch of this repository that holds one folder per
+      # version (the built site, as above) and a state.json. A branch, not a
+      # release asset or an Actions cache: the files are deduplicated by git
+      # (every build ships the same ~30 MB of CanvasKit, stored once), nothing
+      # expires on its own, and it can be read with `git` by anyone who needs
+      # to look. If it does not exist yet this is the first run: the store
+      # starts empty and the site has only this build, which is expected --
+      # earlier versions appear from the next release on.
+      - name: Fetch the build store
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          remote="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git ls-remote --exit-code --heads "$remote" web-builds >/dev/null 2>&1; then
+            git clone --quiet --depth 1 --branch web-builds "$remote" "$STORE"
+          else
+            echo "No web-builds branch yet: starting an empty store."
+            mkdir -p "$STORE"
+          fi
+
+      # Stamps this build with its version, name, date and data format (read
+      # from the app's own source, not a second list), files it in the store,
+      # prunes the store to the newest six, and lays out the site. If a
+      # rollback is in force it decides, here, whether this build ends it
+      # (see web_site.dart: only a release newer than the one rolled back
+      # from does) and says so in the summary.
+      - name: Lay out the site
+        run: |
+          dart tool/web_site.dart publish \
+            --build build/web \
+            --store "$STORE" \
+            --out "$SITE" \
+            --base "/${GITHUB_REPOSITORY#*/}/" \
+            ${{ inputs.lift_hold && '--lift-hold' || '' }} | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # One fresh commit with no parent, force-pushed over the last. The
+      # branch is a snapshot, not a history: keeping every earlier snapshot
+      # would keep every pruned build in the repository for ever. A force
+      # push is safe here because only these two workflows write the branch
+      # and they share a concurrency group.
+      - name: Update the build store
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd "$STORE"
+          rm -rf .git
+          printf '%s\n' \
+            'Built web apps, one folder per version, kept by .github/workflows/web-deploy.yml.' \
+            'Written by the workflows only; the branch is replaced on every deploy.' > README.md
+          git init --quiet --initial-branch=web-builds
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all
+          git commit --quiet -m "Web builds as of ${GITHUB_SHA::7}"
+          git push --quiet --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" web-builds
+
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: app/build/web
+          path: ${{ runner.temp }}/site
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

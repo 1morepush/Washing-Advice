@@ -1,0 +1,29 @@
+{
+  "kind": "json",
+  "status": 200,
+  "paths": [
+    "result",
+    "result.brand.confidence",
+    "result.brand.source",
+    "result.brand.value",
+    "result.colors.confidence",
+    "result.colors.source",
+    "result.colors.value",
+    "result.colors.value[].a",
+    "result.colors.value[].b",
+    "result.colors.value[].l",
+    "result.composition.confidence",
+    "result.composition.source",
+    "result.composition.value",
+    "result.pattern.confidence",
+    "result.pattern.source",
+    "result.pattern.value",
+    "result.sleeveLength.confidence",
+    "result.sleeveLength.source",
+    "result.sleeveLength.value",
+    "result.type",
+    "result.type.confidence",
+    "result.type.source",
+    "result.type.value"
+  ]
+}

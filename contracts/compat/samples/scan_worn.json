@@ -1,0 +1,128 @@
+{
+  "diagnostics": {
+    "elapsedMs": 70,
+    "servedFromCache": false,
+    "stageAnswered": "fake",
+    "stagesRun": [
+      "fake"
+    ]
+  },
+  "result": {
+    "detections": [
+      {
+        "boundingBox": {
+          "height": 0.325,
+          "left": 0.216667,
+          "top": 0.175,
+          "width": 0.566667
+        },
+        "cutout": "iVBORw0KGgoAAAANSUhEUgAAAEQAAAA0CAYAAAAzMZ5zAAAD5UlEQVR42u2bW08TQRiGn90uBayIB0RAhBujeLpQEy+UxL/gtb/EG6+84Zd4zV8wMfHGEyFGosbggYIHPFGobdmuF/tOHGC7lhbb0syXTDbLZqfMs+/3zSTzjsceRO+tOx5gGta1FRFZ16g0OxM105nXJARfLQv0AT26bzWQKlABfgNl3VcbgeM1AaIX6AdywBHgGDAIBHreqqgCm8BPYBX4DmwARaAEhLsB4zUAIhCE48AYMAKMPrh7+6Sg9LZBISVg9ea9+0vAMvBZ7QtQkHLqAuM1oIgBQTgDnAMmgBPAkKWQVgMxCvkqEHlgEXgLfNTf1gQmNZW8OmAEwEFgWIoYFYRzgjKi5/1WDWl1mBpSVLp8A5YE5LXaIvBJitmsBcWrA8aAAFwEzgOTgjKmtMlZdcOjfWGKa1UptKaU+QAsAHPAPPBezxKhZOqAMQlcAW4A1wRlQvWiU2CYj+trTD1Weh9V0e8DQqmoCGwGU9NRuPBwSydBjc4zSoMJ4DJwXVBO6Uc6BUIaHFP8s6p/Pdb/GwHvjFJSFSJ19CstLksZV6WUQ21aazSrGqOYAxpzEfgFrAdT05u2SpIU4uvlMeACcElKGWjDDLKXajG1sGLNSD+1kKvYg09Kl5xmjwlrFtmPMJKgjANngdNaKmSVFTuB6EEWOKyUGe4CGDaUHqX9uErAsIqtX0shZgE2ZE2rfW1aW/wvKFktIIcEJ2t/bL/GC4c0re54oQvCFNm+pIWkv9sXukgpXtKH9nf7QreHjwsHxAFxQBwQB8QBcUAcEAfEAXFAHBAHxAFxQBwQB8SFA+KANAskslo3Rs3xJQGxDWwV3XdTpI7PTyBXJt4ZX9W13EVK+ef4/AR6JeKd8SVib1aR2GjSLer4TewsymucJVslW4DIYlQmtjbmBWWV2LcV7nOlGHNeQR96GfgBlG1rVZI/JATWid17L4k3hiPize8ctV1H+wXGCrHPbEXj3KL+oIasNgTkiToqS03jxP4Rbx/CWBOIeeCFMqC4vajusFSFCw8JpqarglAQxQyxZ2SQv26ATt/7tS3fvwTjKfCI2JGYBzZKszPpQAQlCqamjTKMOnLEHi3fqiV+B4KJrOJZUA18BzwXjGeCUwDC7S7ETK1eLaWEarZqNvTDGSuF2g3GVsSaiuYb1cE54LGuqT7Veqzdxt54QoV1jM52MpvC+Uow3gtOXrNLqpO5nhkjVCcVyW+R2DKdV+s0r/snQXgpKCtShDkd0bjXfZtSUk9DAG0/DaF107Ig5LUAWxew6p6chkgB08nnZdbrVUTTQBLAZDQV9+varhNVZUEom0mgkRNVfwCxfHL6PYOCXAAAAABJRU5ErkJggg==",
+        "cutoutKind": "outline",
+        "detectionConfidence": 0.9,
+        "scan": {
+          "colors": {
+            "confidence": 0.85,
+            "source": "aiInference",
+            "value": [
+              {
+                "a": 0.0,
+                "b": 0.0,
+                "coverage": 1.0,
+                "l": 63.7,
+                "name": "Gray"
+              }
+            ]
+          },
+          "pattern": {
+            "confidence": 0.8,
+            "source": "aiInference",
+            "value": "solid"
+          },
+          "seasons": [],
+          "suggestedName": "Gray tShirt",
+          "type": {
+            "confidence": 0.9,
+            "source": "aiInference",
+            "value": "tShirt"
+          }
+        }
+      },
+      {
+        "boundingBox": {
+          "height": 0.38125,
+          "left": 0.275,
+          "top": 0.5,
+          "width": 0.45
+        },
+        "cutout": "iVBORw0KGgoAAAANSUhEUgAAADYAAAA9CAYAAADmgpoeAAABy0lEQVR42u3bTU7CQBjG8X8/In4sMFE06sadbkzc6Dk8jkfgOJyDE0hc6IaVoBCJUE1bF7w1DdYaTKYp+ExCgKTz0l9mOp2XmXoUlMbNbQA0gG179wGP+pQUSIAIeAOiqNOO8wd4BSgP2ARawAmwb9/9GsESYAYMgD7wBMyiTjvNDggLKvnAlqGugXOgWUPYGLgDusAEeAfiMphn3a8FnAFX9jmoESy2VkqBB+BxsfeFP1T0rfvtGuqwhjDs/Aovk7CksmcVAnuF1KsEZYOaz5oWwQQTTDDBBFvlUsVsIs29shmN5zoNcg3LcqYp8GG4DZvfOc3zQsctFdksvG+5U2IT1yObWO+4OofQcWtNDdUFegY9Bi6AS8v5AhetVlWL9Qz3apgUOAD2rFsGq3iNzYCRAZ8tlzoFXizrTVd1uM/+eIltAMkPJsk63ccWh3/doAUTTDDBBBNMMMEEE0wwwQQTTDDBBBNMMMEEE0wwwQQTTLB/BitbXM+vHcd/iJ3VS/i+LOsydilscbUflt+ykG0hH1mspILYpbCU+TaFIXBvxzT/+ONjizG0mInD2OlvsGz/04D5xpMJ82dclr0eE+bPnWTbjaIKYn+VT6xaluJjCmv/AAAAAElFTkSuQmCC",
+        "cutoutKind": "outline",
+        "detectionConfidence": 0.8400000000000001,
+        "scan": {
+          "colors": {
+            "confidence": 0.85,
+            "source": "aiInference",
+            "value": [
+              {
+                "a": 0.1,
+                "b": 0.6,
+                "coverage": 1.0,
+                "l": 96.5,
+                "name": "White"
+              }
+            ]
+          },
+          "pattern": {
+            "confidence": 0.8,
+            "source": "aiInference",
+            "value": "solid"
+          },
+          "seasons": [],
+          "suggestedName": "White chinos",
+          "type": {
+            "confidence": 0.85,
+            "source": "aiInference",
+            "value": "chinos"
+          }
+        }
+      },
+      {
+        "boundingBox": {
+          "height": 0.10625,
+          "left": 0.216667,
+          "top": 0.875,
+          "width": 0.566667
+        },
+        "cutout": "iVBORw0KGgoAAAANSUhEUgAAAEQAAAARCAYAAABkUAr2AAAATUlEQVR42mM8cfbSfwYkYN+8jGGkgYO1UXA2E8MoQAGjATIaIKMBQhJgRC9UR1PIKBgNkNEAGQ2Q0QAZDZDRABkNkNEAGQ2Q0QAZAgAA8q4J7awMoUEAAAAASUVORK5CYII=",
+        "cutoutKind": "box",
+        "detectionConfidence": 0.78,
+        "scan": {
+          "colors": {
+            "confidence": 0.85,
+            "source": "aiInference",
+            "value": [
+              {
+                "a": 2.3,
+                "b": -8.7,
+                "coverage": 1.0,
+                "l": 24.1,
+                "name": "Navy"
+              }
+            ]
+          },
+          "pattern": {
+            "confidence": 0.8,
+            "source": "aiInference",
+            "value": "solid"
+          },
+          "seasons": [],
+          "suggestedName": "Navy sneakers",
+          "type": {
+            "confidence": 0.8,
+            "source": "aiInference",
+            "value": "sneakers"
+          }
+        }
+      }
+    ]
+  }
+}

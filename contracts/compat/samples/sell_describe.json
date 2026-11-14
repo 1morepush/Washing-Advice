@@ -1,0 +1,38 @@
+{
+  "diagnostics": {
+    "elapsedMs": 0,
+    "servedFromCache": false,
+    "stageAnswered": "fake",
+    "stagesRun": [
+      "fake"
+    ]
+  },
+  "result": {
+    "brand": {
+      "confidence": 1.0,
+      "source": "userEdited",
+      "value": "Nike"
+    },
+    "colors": [
+      "Black"
+    ],
+    "itemType": "sweatshirt",
+    "searchQueries": {
+      "depop": "Nike crewneck sweatshirt black",
+      "retail": "Nike crew sweatshirt black"
+    },
+    "sizeOnTag": {
+      "confidence": 0.85,
+      "source": "aiInference",
+      "value": "L"
+    },
+    "styleWords": [
+      "crewneck",
+      "embroidered logo"
+    ],
+    "title": "Nike crewneck sweatshirt black",
+    "visibleFlaws": [
+      "small mark on the left cuff"
+    ]
+  }
+}

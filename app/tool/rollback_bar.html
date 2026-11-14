@@ -1,0 +1,118 @@
+<!--
+  {{marker}}
+
+  The way back, for a build that predates it. `tool/web_site.dart` puts this
+  where Flutter's bootstrap script was in an earlier version's index.html, and
+  moves the real page to app.html, which is loaded in the frame below.
+
+  Plain HTML, CSS and JS, with nothing from the app: an old build knows nothing
+  of this feature and cannot be asked to help.
+
+  Why a frame and not a strip in the page: Flutter's view sizes itself to the
+  window and paints over everything else in it. A strip at the top hid the
+  app's title bar and one at the bottom hid its navigation bar. In a frame the
+  app is given exactly the room that is left, and behaves as it always did.
+
+  `{{version}}` is filled in when the site is assembled. Tested in a real
+  browser by tool/web_site_browser_test.mjs at 320 px, light and dark.
+-->
+<style>
+  :root {
+    --wa-bar-height: 40px;
+    --wa-bar-bg: #fff4d6;
+    --wa-bar-fg: #3b2f06;
+    --wa-bar-line: #e2cf94;
+    --wa-btn-bg: #3b2f06;
+    --wa-btn-fg: #fff4d6;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --wa-bar-bg: #33290c;
+      --wa-bar-fg: #f6e7b5;
+      --wa-bar-line: #5a4a1a;
+      --wa-btn-bg: #f6e7b5;
+      --wa-btn-fg: #33290c;
+    }
+  }
+
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+
+  #wa-rollback {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 2;
+    box-sizing: border-box;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px 12px;
+    min-height: 40px;
+    padding: 4px max(12px, env(safe-area-inset-right)) 4px max(12px, env(safe-area-inset-left));
+    padding-top: max(4px, env(safe-area-inset-top));
+    background: var(--wa-bar-bg);
+    color: var(--wa-bar-fg);
+    border-bottom: 1px solid var(--wa-bar-line);
+    font: 14px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  #wa-rollback button {
+    font: inherit;
+    font-weight: 600;
+    min-height: 32px;
+    padding: 4px 12px;
+    border: 0;
+    border-radius: 16px;
+    background: var(--wa-btn-bg);
+    color: var(--wa-btn-fg);
+    cursor: pointer;
+  }
+
+  #wa-frame {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    top: var(--wa-bar-height);
+    width: 100%;
+    height: calc(100% - var(--wa-bar-height));
+    border: 0;
+    background: transparent;
+  }
+</style>
+<div id="wa-rollback" role="region" aria-label="Earlier version">
+  <span>You are using <strong>{{version}}</strong></span>
+  <button type="button" id="wa-latest">Back to latest</button>
+</div>
+<iframe
+  id="wa-frame"
+  src="app.html"
+  title="Washing Advice"
+  allow="camera; geolocation; clipboard-read; clipboard-write"></iframe>
+<script>
+  (function () {
+    // The pin lives under a name of its own, outside the `flutter.` prefix the
+    // app's preferences use, so nothing the app does can clear or overwrite it.
+    var key = 'washingAdvice.pinnedVersion';
+    var bar = document.getElementById('wa-rollback');
+
+    // Where the site root is: this page's path without its `v/<version>/`.
+    var root = location.pathname.replace(/v\/[^\/]+\/(index\.html)?$/, '');
+
+    document.getElementById('wa-latest').addEventListener('click', function () {
+      try { localStorage.removeItem(key); } catch (error) {}
+      // `?latest=1` clears the pin again on arrival, for the case where this
+      // page could not reach storage but the root can.
+      location.href = root + '?latest=1';
+    });
+
+    // The bar can grow a second line at a large text size or a narrow width;
+    // the frame always starts where the bar ends.
+    function fit() {
+      document.documentElement.style.setProperty(
+        '--wa-bar-height', bar.offsetHeight + 'px');
+    }
+    fit();
+    window.addEventListener('resize', fit);
+    window.addEventListener('orientationchange', fit);
+  })();
+</script>

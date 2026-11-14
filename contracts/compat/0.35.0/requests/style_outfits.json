@@ -1,0 +1,32 @@
+{
+  "method": "POST",
+  "path": "/v1/style/outfits",
+  "contentType": "application/json",
+  "json": {
+    "occasion": "Everyday",
+    "season": "autumn",
+    "count": 3,
+    "wardrobe": [
+      {
+        "id": "a",
+        "name": "Navy shirt",
+        "type": "T-shirt",
+        "category": "Tops",
+        "colors": [
+          "navy"
+        ],
+        "fabric": "100% Cotton"
+      },
+      {
+        "id": "b",
+        "name": "Grey jeans",
+        "type": "Jeans",
+        "category": "Bottoms",
+        "colors": [
+          "#808080"
+        ],
+        "fabric": "100% Cotton"
+      }
+    ]
+  }
+}

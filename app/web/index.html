@@ -16,6 +16,64 @@
   -->
   <base href="$FLUTTER_BASE_HREF">
 
+  <!-- wa-pin-shim:start -->
+  <!--
+    "Use an earlier version", for the page that opens first.
+
+    Every release stays published under `v/<version>/` next to this root (see
+    .github/workflows/web-deploy.yml). Choosing one in Settings stores its
+    number here, in local storage, under a name of its own outside the app's
+    `flutter.` preferences, and this script is what honours it: it runs before
+    Flutter has been fetched, so reopening the home screen icon goes straight
+    to the chosen version and never shows the newest one first.
+
+    Three things it must not do:
+
+    * Act anywhere but the root. A release built after this script existed
+      carries it too, and under `v/0.39.0/` it would send a pinned person to a
+      `v/` path inside a `v/` path. The same page is also loaded as app.html
+      inside the way-back bar's frame, where acting would put the newest
+      build inside the frame, and that is a mistake the browser test caught.
+    * Trap anyone. `?latest=1` clears the pin and carries on to the newest
+      build, with no screen needed, for the case where the chosen version's
+      page cannot be reached or cannot show its own way back. (A pin to a
+      version that has been dropped from the store lands on 404.html, which
+      clears it by itself.)
+    * Fail loudly. Local storage can refuse a page outright, and a page that
+      cannot read the pin is only a page that opens the newest version.
+
+    Tested in a real browser by tool/web_site_browser_test.mjs.
+    tool/web_site.dart copies this block, between its two markers, into a
+    build that predates it when a rollback puts that build at the root, so
+    keep it self-contained.
+  -->
+  <script>
+    (function () {
+      var key = 'washingAdvice.pinnedVersion';
+      try {
+        var path = location.pathname;
+        if (!/\/(index\.html)?$/.test(path)) return;
+        if (/\/v\/[^\/]+\/(index\.html)?$/.test(path)) return;
+
+        var params = new URLSearchParams(location.search);
+        if (params.has('latest')) {
+          localStorage.removeItem(key);
+          params.delete('latest');
+          var rest = params.toString();
+          history.replaceState(
+            null, '', path + (rest ? '?' + rest : '') + location.hash);
+          return;
+        }
+
+        var pin = localStorage.getItem(key);
+        if (!/^\d+\.\d+\.\d+$/.test(pin || '')) return;
+        location.replace(
+          path.replace(/index\.html$/, '') + 'v/' + pin + '/' + location.hash);
+      } catch (error) {}
+    })();
+  </script>
+  <!-- wa-pin-shim:end -->
+
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="An AI wardrobe and laundry assistant: photograph your clothes, scan their care labels, and get told exactly which loads to run.">

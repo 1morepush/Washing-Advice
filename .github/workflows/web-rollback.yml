@@ -1,0 +1,132 @@
+name: Roll back the web app
+
+# The last resort, for when a release is broken badly enough that the app's own
+# "Use an earlier version" (Settings) is not enough -- or cannot be reached
+# because the broken release is the one that opens. Run by hand from the
+# Actions tab: Run workflow, optionally name a version.
+#
+# What it does: republishes the site with an earlier build, from the store that
+# web-deploy.yml keeps on the `web-builds` branch, at the site ROOT -- the
+# address the home screen icon opens -- and keeps the other versions under
+# /v/<version>/ as before. Nothing is rebuilt: the stored files are the files
+# that shipped, with only their <base> tag pointed at the root.
+#
+# How long it lasts: until a release NEWER than the one rolled back from is
+# merged to main. Pushes that do not raise the version -- docs, server, tests,
+# anything with no user-visible change -- redeploy but leave the rollback
+# alone, so an unrelated commit cannot quietly put the broken build back. The
+# next version bump ends it (that is the release that should contain the fix),
+# or run "Deploy web app to GitHub Pages" by hand with "lift_hold" ticked. The
+# job summary says which applies.
+#
+# It does not touch the server: Render has its own Rollback button, and the
+# server is kept compatible with older apps (see README).
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: >-
+          Version to put at the site root, like 0.37.0. Leave empty for the one
+          before the version live now.
+        type: string
+        required: false
+        default: ''
+
+# The same group as web-deploy.yml, so the two never write the store or the
+# site together.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    # `contents: write` only to update the `web-builds` branch.
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+        working-directory: app
+    steps:
+      # The tool and the pin script come from the branch this was run on:
+      # run it on main.
+      - uses: actions/checkout@v4
+
+      # Plain Dart is enough: web_site.dart imports only dart: libraries, so
+      # there is no Flutter to install and nothing to resolve.
+      - uses: dart-lang/setup-dart@v1
+
+      - name: Choose working folders
+        run: |
+          echo "STORE=$RUNNER_TEMP/store" >> "$GITHUB_ENV"
+          echo "SITE=$RUNNER_TEMP/site" >> "$GITHUB_ENV"
+
+      - name: Fetch the build store
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          remote="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if ! git ls-remote --exit-code --heads "$remote" web-builds >/dev/null 2>&1; then
+            echo "::error::There is no web-builds branch, so no earlier version has been stored yet. The first one is kept when the next release is deployed."
+            exit 1
+          fi
+          git clone --quiet --depth 1 --branch web-builds "$remote" "$STORE"
+
+      # Refuses a version that is not in the store, or that is the one already
+      # live, and says what is stored. The version comes in through the
+      # environment, never spliced into the script, so a stray quote in the
+      # input is just a version that is not in the store.
+      - name: Lay out the site with the earlier build at the root
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set +e
+          dart tool/web_site.dart rollback \
+            --store "$STORE" \
+            --out "$SITE" \
+            --base "/${GITHUB_REPOSITORY#*/}/" \
+            ${VERSION:+--version "$VERSION"} > "$RUNNER_TEMP/summary.md" 2> "$RUNNER_TEMP/error.txt"
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            message="$(cat "$RUNNER_TEMP/error.txt")"
+            echo "::error::${message}"
+            printf '### Roll back refused\n\n%s\n' "$message" >> "$GITHUB_STEP_SUMMARY"
+            exit "$status"
+          fi
+          cat "$RUNNER_TEMP/summary.md" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # Records the rollback in the store (state.json) so web-deploy.yml holds
+      # it. Same one-commit snapshot as there.
+      - name: Update the build store
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd "$STORE"
+          rm -rf .git
+          git init --quiet --initial-branch=web-builds
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all
+          git commit --quiet -m "Rollback recorded as of ${GITHUB_SHA::7}"
+          git push --quiet --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" web-builds
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/site
+
+  deploy:
+    needs: rollback
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

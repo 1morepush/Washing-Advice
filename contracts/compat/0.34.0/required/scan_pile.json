@@ -1,0 +1,24 @@
+{
+  "kind": "json",
+  "status": 200,
+  "paths": [
+    "result",
+    "result.items[].boundingBox",
+    "result.items[].boundingBox.height",
+    "result.items[].boundingBox.left",
+    "result.items[].boundingBox.top",
+    "result.items[].boundingBox.width",
+    "result.items[].detectionConfidence",
+    "result.items[].scan",
+    "result.items[].scan.colors.confidence",
+    "result.items[].scan.colors.source",
+    "result.items[].scan.colors.value",
+    "result.items[].scan.colors.value[].a",
+    "result.items[].scan.colors.value[].b",
+    "result.items[].scan.colors.value[].l",
+    "result.items[].scan.type",
+    "result.items[].scan.type.confidence",
+    "result.items[].scan.type.source",
+    "result.items[].scan.type.value"
+  ]
+}

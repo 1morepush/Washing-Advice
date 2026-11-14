@@ -1,0 +1,19 @@
+{
+  "method": "POST",
+  "path": "/v1/scan/garment",
+  "contentType": "multipart/form-data",
+  "files": [
+    {
+      "field": "images",
+      "filename": "upload.png",
+      "contentType": "image/png",
+      "asset": "photo.png"
+    },
+    {
+      "field": "images",
+      "filename": "upload.png",
+      "contentType": "image/png",
+      "asset": "photo.png"
+    }
+  ]
+}

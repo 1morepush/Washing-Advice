@@ -1,0 +1,13 @@
+{
+  "method": "POST",
+  "path": "/v1/care/stain",
+  "contentType": "multipart/form-data",
+  "fields": {
+    "substance": "red wine",
+    "fabric": "100% cotton",
+    "care": "Machine wash 40C",
+    "color": "white",
+    "note": "on the cuff"
+  },
+  "files": []
+}

@@ -1089,6 +1089,78 @@ forces a fresh copy from inside the app: it unregisters the service worker,
 clears what the browser cached, and reloads — the same result as deleting the
 icon and re-adding it, without doing either.
 
+#### Going back to an earlier version
+
+If a release does not work, there are three ways back, from least to most
+drastic. None of them touches your wardrobe: every version of the web app is
+served from the same address, so they all read the same database, pictures and
+settings.
+
+**1. In the app: Settings → Advanced → Use an earlier version.** Every release
+stays published under its own address (`/Washing-Advice/v/0.37.0/`) for the
+newest five before the current one. The list shows each with its date; choose
+one and confirm. The app reopens as that version and *stays* on it, including
+when you open it from the home screen, until you tap **Back to latest** in the
+bar across the top of the screen. A version is greyed out, with the reason, if
+your wardrobe has been saved in a newer layout than it can read.
+
+*If the app will not open at all:* open
+`https://<owner>.github.io/Washing-Advice/?latest=1` in the browser. That
+clears the choice and opens the newest version, with no screen needed. It acts
+on the browser it is opened in: an app saved to an iPhone's home screen keeps its
+own storage, separate from Safari's, so there the bar's **Back to latest** (or
+deleting and re-adding the icon, as before) is the way. A version that has since
+been dropped from the list lands on a page that clears the choice by itself.
+
+**2. From GitHub, for everybody: Actions → "Roll back the web app" → Run
+workflow.** This puts an earlier build at the *root* address that the home
+screen icon opens, for every device, without rebuilding anything. Leave the
+version empty for "the one before this", or type one (`0.37.0`); a version that
+is not stored is refused with the list of what is. The rollback holds until a
+release **newer than the one rolled back from** is merged. Pushes that do not
+raise the version (docs, server, tests) redeploy the site but leave the rollback
+alone; to end it sooner, run "Deploy web app to GitHub Pages" by hand with
+`lift_hold` ticked. The run's summary says which applies.
+
+**3. The server: Render dashboard → the service → Events → Rollback** on the
+deploy you want. Separately, if the cutout model is the problem, set
+`CUTOUT_REMOVER=classical` (see [the cutout notes](#what-it-does-not-do-yet)).
+The server is deliberately kept compatible with the older apps (below), so it
+does not need rolling back to run an earlier app.
+
+How it works: GitHub Pages replaces the whole site on every deploy, so the
+deploy workflow keeps every build on an orphan branch, `web-builds` (one folder
+per version, the newest six, one commit that is replaced each time), and lays
+the site out again from it: the newest at `/`, the rest under `/v/<version>/`,
+and a `versions.json` the app's list reads. `app/tool/web_site.dart` does the
+layout and runs the same on a laptop; `app/tool/web_site_browser_test.mjs`
+checks the redirect and the way-back bar in a real browser.
+
+The honest limits:
+
+* **A rollback does not undo data.** Anything added or changed in the newer
+  version stays, and the older version may not show what it does not know.
+* **A version older than your data is not offered.** Each build declares the
+  layout of the databases it writes (`AppDatabase.currentSchemaVersion`,
+  `ImageDatabase.currentSchemaVersion`); the newest build records the largest it
+  has written in this browser, and the list greys out any version that reads
+  less.
+* **The first earlier version appears only after the next release.** The store
+  starts empty; the list says "Earlier versions appear here after the next
+  update" until then. Nothing published before this feature can be gone back to.
+* **Two versions open at once** (two tabs, or the home screen app and Safari)
+  share one database and are not supported: use one.
+* **The server stays compatible, within a window.** `contracts/compat/` records
+  what each recent release sends and needs, and the server's tests replay all of
+  it. Server changes are additive across that window; see
+  [`contracts/compat/README.md`](contracts/compat/README.md).
+
+One-time setup for the owner: nothing to switch on in repository settings, but
+Settings → Actions → General → *Workflow permissions* must allow the workflows'
+`contents: write` (it is requested per job; if the "Update the build store" step
+is denied, choose "Read and write permissions"), and the `web-builds` branch must
+not be protected against force pushes.
+
 ### The app
 
 Flutter. It runs against seeded demo data with no backend at all:
@@ -1223,8 +1295,8 @@ A few decisions worth reading about:
 | # | Scope | Status |
 |---|---|---|
 | 1 | Domain core: care model, sorting engine, machine translation, matching, events, selling | **Done** — 1405 core tests |
-| 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts, machine identification, listing descriptions and price search | **Done** — 1528 tests |
-| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage, the Sell tab | **Done** — 2152 app tests |
+| 2 | FastAPI backend, AI orchestrator, Gemini provider, knowledge cache, cutouts, machine identification, listing descriptions and price search | **Done** — 1630 tests |
+| 3 | Flutter app: wardrobe, item detail, scan flow, Drift storage, the Sell tab | **Done** — 2231 app tests |
 | 4 | Care-label scanning, item editing, filter sheet, garment cutouts, grid view | **Done** |
 | 5 | Pile scanning, load grouping, machine profiles, wear and wash history | **Done** |
 | 6 | Outfit suggestions, laundry-aware packing, wardrobe insights | **Done** |
